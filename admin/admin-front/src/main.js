@@ -1,5 +1,5 @@
 import {createApp} from 'vue'
-import App from '@/components/App.vue'
+import App from '@/views/App.vue'
 import router from '@/js/router.js'
 import store from '@/js/store.js'
 import {useTable} from '@/js/common/xe-table'

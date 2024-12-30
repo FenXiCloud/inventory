@@ -18,10 +18,10 @@
 </template>
 
 <script>
-import AppHead from "@components/app/AppHead";
-import AppMenu from "@components/app/AppMenu";
-import AppFooter from "@components/app/AppFooter";
-import SysTabs from "@components/common/sys-tabs";
+import AppHead from "@/views/app/AppHead";
+import AppMenu from "@/views/app/AppMenu";
+import AppFooter from "@/views/app/AppFooter";
+import SysTabs from "@/views/common/sys-tabs";
 import {mapState} from "vuex";
 import {fullMenuKeys, isAuthPage} from "@js/config/menu-config";
 import {loading} from "heyui.ext";

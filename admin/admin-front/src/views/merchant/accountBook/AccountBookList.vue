@@ -49,7 +49,7 @@
 <script>
 import AccountBook from "@js/api/AccountBook";
 import {confirm, message} from "heyui.ext";
-import AccountBookForm from "@components/merchant/accountBook/AccountBookForm.vue";
+import AccountBookForm from "@/views/merchant/accountBook/AccountBookForm.vue";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 

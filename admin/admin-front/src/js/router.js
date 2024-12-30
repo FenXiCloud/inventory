@@ -5,55 +5,55 @@ const routes = [
 	{
 		path: '/login',
 		name: 'Login',
-		component: () => import('@components/Login'),
+		component: () => import('@/views/Login'),
 		meta: {title: '登录'}
 	},
 	{
 		path: '/',
 		name: 'AppFrame',
-		component: () => import('@components/app/AppFrame'),
+		component: () => import('@/views/app/AppFrame'),
 		children: [
 			{
 				path: '',
 				name: 'DashboardMain',
-				component: () => import('@components/dashboard/DashboardMain'),
+				component: () => import('@/views/dashboard/DashboardMain'),
 				meta: {title: '桌面', icon: 'icon-monitor'}
 			},
 			{
 				path: 'merchant',
 				name: 'MerchantList',
-				component: () => import('@components/merchant/MerchantList'),
+				component: () => import('@/views/merchant/MerchantList'),
 				meta: {title: '商户管理', icon: 'icon-monitor'}
 			},
 			{
 				path: 'menu',
 				name: 'MenuList',
-				component: () => import('@components/menu/MenuList'),
+				component: () => import('@/views/menu/MenuList'),
 				meta: {title: '菜单管理', icon: 'icon-monitor'}
 			},
 			{
 				path: 'user',
 				name: 'UserList',
-				component: () => import('@components/user/UserList'),
+				component: () => import('@/views/user/UserList'),
 				meta: {title: '管理员管理', icon: 'icon-monitor'}
 			},
 			{
 				path: 'wechat/setting',
 				name: 'WechatSetting',
-				component: () => import('@components/wechat/WechatSetting'),
+				component: () => import('@/views/wechat/WechatSetting'),
 				meta: {title: '微信设置', icon: 'icon-monitor'}
 			},
 			{
 				path: 'account',
 				name: 'AccountBasic',
-				component: () => import('@components/common/AccountBasic'),
+				component: () => import('@/views/common/AccountBasic'),
 				meta: {title: '账号信息', icon: 'icon-monitor'}
 			},
 		]
 	}, {
 		path: '/permission/error',
 		name: 'PermissionError',
-		component: () => import('@components/common/PermissionError')
+		component: () => import('@/views/common/PermissionError')
 	}
 ]
 

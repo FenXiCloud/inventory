@@ -10,8 +10,8 @@
 </template>
 
 <script>
-import AppLogo from "@components/app/AppLogo";
-import AppHead from "@components/app/AppHead";
+import AppLogo from "@/views/app/AppLogo";
+import AppHead from "@/views/app/AppHead";
 import {mapState} from 'vuex';
 
 /**

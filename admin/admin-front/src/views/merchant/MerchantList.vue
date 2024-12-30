@@ -57,8 +57,8 @@
 <script>
 import Merchant from "@js/api/Merchant";
 import {confirm, message} from "heyui.ext";
-import MerchantForm from "@components/merchant/MerchantForm";
-import MerchantSetting from "@components/merchant/MerchantSetting";
+import MerchantForm from "@/views/merchant/MerchantForm";
+import MerchantSetting from "@/views/merchant/MerchantSetting";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 

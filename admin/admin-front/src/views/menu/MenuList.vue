@@ -72,7 +72,7 @@
  */
 import Menu from "@js/api/Menu";
 import {confirm, message} from "heyui.ext";
-import MenuForm from "@components/menu/MenuForm";
+import MenuForm from "@/views/menu/MenuForm";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 

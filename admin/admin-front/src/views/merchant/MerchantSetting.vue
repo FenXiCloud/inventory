@@ -15,10 +15,10 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import MerchantModuleGrant from "@components/merchant/MerchantModuleGrant";
-import AdminList from "@components/merchant/admin/AdminList";
-import RoleList from "@components/merchant/role/RoleList";
-import AccountBookList from "@components/merchant/accountBook/AccountBookList.vue";
+import MerchantModuleGrant from "@/views/merchant/MerchantModuleGrant";
+import AdminList from "@/views/merchant/admin/AdminList";
+import RoleList from "@/views/merchant/role/RoleList";
+import AccountBookList from "@/views/merchant/accountBook/AccountBookList.vue";
 
 export default {
   name: "MerchantSetting",

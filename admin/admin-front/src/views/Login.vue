@@ -3,7 +3,6 @@
     <div class="body-wrapper">
       <div class="bg1"></div>
       <div class="gyl">
-        纷析云
         <div class="gy2">纷析云进销存管理系统</div>
       </div>
       <div class="bg">

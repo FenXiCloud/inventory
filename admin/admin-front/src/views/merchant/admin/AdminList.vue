@@ -8,8 +8,6 @@
             <Input id="username" v-model="params.username" class="flex-1" placeholder="请输入账号"/>
             <label for="name" class="mr-10px">姓名</label>
             <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入姓名"/>
-            <label for="phone" class="mr-10px">电话</label>
-            <Input id="phone" v-model="params.phone" class="flex-1" placeholder="请输入电话"/>
             <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
           </div>
           <div class="table-toolbar-right">
@@ -24,7 +22,7 @@
                      show-overflow
                      :row-config="{height: 48}"
                      :loading="loading">
-            <vxe-column type="seq" width="90" title="序列"/>
+            <vxe-column type="seq" width="60" title="序列"/>
             <vxe-column title="账号" field="username"/>
             <vxe-column title="姓名" field="name"/>
             <vxe-column title="角色" field="roleName"/>
@@ -92,7 +90,6 @@ export default {
       params: {
         name: null,
         username: null,
-        phone: null,
       },
       checkedRows: [],
       dataList: [],
@@ -110,6 +107,7 @@ export default {
   computed: {
     queryParams() {
       return Object.assign(this.params, {
+        merchantId: this.merchant.id,
         page: this.pagination.page,
         pageSize: this.pagination.size
       })

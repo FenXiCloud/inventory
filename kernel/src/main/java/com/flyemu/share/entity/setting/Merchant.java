@@ -63,5 +63,15 @@ public class Merchant implements Serializable {
     @Comment("服务结束时间")
     private LocalDate serviceEndDate;
 
+    @Comment("存货计价方式")
+    private CostingMethod costingMethod;
+
+    @Comment("允许负库存")
+    private Boolean stockField;
+
+    public enum CostingMethod {
+        移动平均法,先进先出法
+    }
+
 }
 

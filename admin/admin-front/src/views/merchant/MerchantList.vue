@@ -20,7 +20,7 @@
                    :row-config="{height: 48}"
                    :loading="loading">
           <vxe-column field="id" width="60" title="ID"/>
-          <vxe-column title="商户编码" field="code" width="80"/>
+          <vxe-column title="商户编码" field="code" width="300"/>
           <vxe-column title="商户名称" field="name" width="220">
             <template #default="{row}">
               <span @click="doConfig(row)" class="text-hover primary-color"> <i class="h-icon-edit"></i> {{ row.name }}</span>
@@ -111,7 +111,7 @@ export default {
         title: "商户信息",
         shadeClose: false,
         closeBtn: false,
-        area: ['600px', 'auto'],
+        area: ['800px', '600px'],
         content: h(MerchantForm, {
           merchant,
           onClose: () => {
@@ -147,9 +147,9 @@ export default {
     }
     ,
     doConfig(merchant) {
-      layer.drawer({
+      layer.open({
         title: merchant.name,
-        area: ['80vw', '100vh'],
+        area: ['800px', '600px'],
         content: h(MerchantSetting, {
           merchant
         })

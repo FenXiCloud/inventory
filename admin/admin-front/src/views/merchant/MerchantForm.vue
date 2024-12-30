@@ -5,11 +5,11 @@
         <Input placeholder="请输入商户名称" v-model="model.name"/>
       </FormItem>
       <div class="flex">
-        <FormItem label="联系人姓名" required prop="linkman" class="flex-1 ">
+        <FormItem label="联系人姓名"  prop="linkman" class="flex-1 mr-16px">
           <Input placeholder="请输入联系人姓名" v-model="model.linkman"/>
         </FormItem>
-        <FormItem label="联系人电话" required prop="mobile" class="flex-1">
-          <Input placeholder="请输入联系人常用手机号" v-model="model.mobile"/>
+        <FormItem label="联系人电话"  prop="mobile" class="flex-1">
+          <Input placeholder="请输入联系人常用手机号" v-model="model.phone"/>
         </FormItem>
       </div>
       <div class="flex">
@@ -21,10 +21,10 @@
         </FormItem>
       </div>
       <div class="flex">
-        <FormItem label="服务开始日期" required prop="serviceStartDate" class="flex-1">
+        <FormItem label="服务开始日期"  prop="serviceStartDate" class="flex-1 mr-16px">
           <DatePicker v-model="model.serviceStartDate" format="YYYY-MM" type="month" :clearable="false"/>
         </FormItem>
-        <FormItem label="服务结束日期" required prop="serviceEndDate" class="flex-1">
+        <FormItem label="服务结束日期"  prop="serviceEndDate" class="flex-1">
           <DatePicker v-model="model.serviceEndDate" format="YYYY-MM" type="month" :clearable="false"/>
         </FormItem>
       </div>

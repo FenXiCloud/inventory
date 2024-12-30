@@ -40,6 +40,7 @@ merchant 初始账号密码：13944878765 878765
 #### 数据字典
 - 设置
 - system_config               系统参数配置 
+- pricing_strategy            价格策略（销售采购价格取数优先级）
 - account_book                账套
 - checkout                    结账
 - admin                       管理员
@@ -61,6 +62,7 @@ merchant 初始账号密码：13944878765 878765
 - unit                        计量单位
 - warehouse                   仓库档案
 - account                     账户管理
+- account_flow                账户流水
 - account_type                收支类型
 - settlement_method           结算方式
 - 资金

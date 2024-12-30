@@ -9,6 +9,7 @@ import lombok.Setter;
 import org.hibernate.annotations.*;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
@@ -49,6 +50,10 @@ public class Product {
     private String remark;
 
     private Boolean enabled;
+
+    @Comment("预计采购价")
+    @Column(nullable = false)
+    private BigDecimal cost;
 
     @Column(nullable = false)
     private Long unitId;

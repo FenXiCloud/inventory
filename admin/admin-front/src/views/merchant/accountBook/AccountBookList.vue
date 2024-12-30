@@ -21,7 +21,8 @@
                  :data="dataList"
                  highlight-hover-row
                  show-overflow
-                 :loading="loading">s
+                 :loading="loading">
+        <vxe-column type="seq" width="60" title="序列"/>
         <vxe-column title="名称" field="name" />
         <vxe-column title="启用时间" field="startDate" width="120"/>
         <vxe-column title="状态" field="enabled" width="80" align="center">

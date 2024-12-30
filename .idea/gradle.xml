@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="gradleHome" value="$PROJECT_DIR$/../../gradle-8.5" />
+        <option name="gradleJvm" value="17" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/admin" />
+            <option value="$PROJECT_DIR$/admin/admin-front" />
+            <option value="$PROJECT_DIR$/admin/admin-server" />
+            <option value="$PROJECT_DIR$/kernel" />
+            <option value="$PROJECT_DIR$/merchant" />
+            <option value="$PROJECT_DIR$/merchant/merchant-front" />
+            <option value="$PROJECT_DIR$/merchant/merchant-server" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>

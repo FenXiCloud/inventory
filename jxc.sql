@@ -10,7 +10,7 @@ Target Server Type    : MYSQL
 Target Server Version : 80028
 File Encoding         : 65001
 
-Date: 2024-12-30 12:42:53
+Date: 2024-12-30 17:57:00
 */
 
 SET FOREIGN_KEY_CHECKS=0;
@@ -61,7 +61,6 @@ CREATE TABLE `s_admin` (
 -- Records of s_admin
 -- ----------------------------
 INSERT INTO `s_admin` VALUES ('1', '', null, '1', '13944878765', '李泽龙', '$2a$10$STj6SB0MPRAfqnOl2ZmV7O6YTC2R6UUY5ZhPQmyRgRYY9G3HTJWbK', '1', '', '13944878765');
-INSERT INTO `s_admin` VALUES ('2', '', null, '2', '13456784500', 'abc', '$2a$10$vaw1OQkCCReeA2ZUL7XJKO1BddLRONZgPrGzw4oocvcfGtNaVT6zy', '2', '', '13456784500');
 
 -- ----------------------------
 -- Table structure for s_checkout
@@ -187,7 +186,7 @@ INSERT INTO `s_menu` VALUES ('6', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU
 INSERT INTO `s_menu` VALUES ('7', 'CustomerList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '客户', '6', '1', '');
 INSERT INTO `s_menu` VALUES ('8', 'SupplierList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '供货商', '6', '2', '');
 INSERT INTO `s_menu` VALUES ('9', 'WarehouseList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '仓库', '6', '3', '');
-INSERT INTO `s_menu` VALUES ('10', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '辅助资料', '1', '2', '');
+INSERT INTO `s_menu` VALUES ('10', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '辅助资料', '1', '3', '');
 INSERT INTO `s_menu` VALUES ('12', 'CustomerLevelList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '客户等级', '10', '1', '');
 INSERT INTO `s_menu` VALUES ('14', '', '', 'h-icon-setting', 'MERCHANT', 'MERCHANT', 'MENU', '系统设置', null, '10', '');
 INSERT INTO `s_menu` VALUES ('15', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '系统设置', '14', '0', '');
@@ -292,7 +291,7 @@ CREATE TABLE `s_merchant` (
 -- ----------------------------
 -- Records of s_merchant
 -- ----------------------------
-INSERT INTO `s_merchant` VALUES ('1', '杭州', '32f90df1-c739-463b-8218-715437765807', '2024-12-29 18:54:06.747190', null, '', '李泽龙', '13944878765', '纷析云', null, null);
+INSERT INTO `s_merchant` VALUES ('1', '杭州', '32f90df1-c739-463b-8218-715437765807', '2024-12-29 18:54:06.747190', null, '', '李泽龙', '13944878765', '纷析云', '2024-12-01', '2024-12-01');
 
 -- ----------------------------
 -- Table structure for s_merchant_menu
@@ -400,7 +399,7 @@ CREATE TABLE `s_merchant_user` (
 -- ----------------------------
 -- Records of s_merchant_user
 -- ----------------------------
-INSERT INTO `s_merchant_user` VALUES ('1', '', '2024-12-30 12:10:42.896502', '李泽龙', '$2a$10$MPZ4oROTiWvlKqiq79Sk7.TMcY3D8p8edgUpO5UarsCMroUeChSQC', '', '13944878765');
+INSERT INTO `s_merchant_user` VALUES ('1', '', '2024-12-30 15:27:24.721899', '李泽龙', '$2a$10$MPZ4oROTiWvlKqiq79Sk7.TMcY3D8p8edgUpO5UarsCMroUeChSQC', '', '13944878765');
 
 -- ----------------------------
 -- Table structure for s_product
@@ -469,7 +468,6 @@ CREATE TABLE `s_role` (
 -- Records of s_role
 -- ----------------------------
 INSERT INTO `s_role` VALUES ('1', '1', '商户管理员', '');
-INSERT INTO `s_role` VALUES ('2', '2', '商户管理员', '');
 
 -- ----------------------------
 -- Table structure for s_supplier

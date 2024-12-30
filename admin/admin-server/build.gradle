@@ -1,0 +1,12 @@
+dependencies {
+    implementation project(":kernel")
+}
+bootJar {
+    archivesBaseName = 'jadmin'
+    archiveVersion = '0.1'
+    launchScript()
+}
+
+tasks.withType(Jar).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

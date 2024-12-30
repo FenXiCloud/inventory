@@ -1,0 +1,17 @@
+dependencies {
+    implementation project(":kernel")
+    implementation('com.itextpdf:itextpdf:5.5.13.3')
+    implementation("com.itextpdf:html2pdf:4.0.4")
+    implementation("com.itextpdf:font-asian:7.2.4")
+}
+
+bootJar {
+    archivesBaseName = 'jxc'
+    archiveVersion = '0.1'
+    launchScript()
+}
+
+tasks.withType(Jar).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+

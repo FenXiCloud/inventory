@@ -1,0 +1,145 @@
+@steps-prefix: ~"@{prefix}steps";
+
+.@{steps-prefix} {
+  display: flex;
+  &-item{
+    flex: 1;
+    transition: @transition-time;
+    position: relative;
+  }
+  &-index{
+    transition: background .2s;
+  }
+  &-icon {
+    transition: color .3s;
+  }
+  &-success {
+    opacity: 0;
+  }
+
+  &-transverse {
+    .@{steps-prefix}-content {
+      display: inline-block;
+      position: relative;
+      .@{steps-prefix}-title {
+        background: #FFF;
+        display: inline-block;
+        padding-right: 10px;
+      }
+      .@{steps-prefix}-icon {
+        float: left;
+        vertical-align: top;
+      }
+      .@{steps-prefix}-words {
+        display: inline-block;
+      }
+    }
+  }
+
+  &-actived{
+    .@{steps-prefix}{
+      &-icon{
+        color: @primary-color;
+      }
+      &-success{
+        opacity: 1;
+      }
+      &-index{
+        border-color: @primary-color;
+        background-color: @white-color;
+        &-num{
+          opacity: 0;
+        }
+      }
+      &-tail{
+        border-color: @primary-color;
+      }
+    }
+
+  }
+
+  &-process{
+    .@{steps-prefix}{
+      &-icon{
+        color: @primary-color;
+      }
+      &-title{
+        font-weight: bold;
+      }
+      &-index{
+        background-color: @primary-color;
+        border-color: @primary-color;
+        color: #FFF;
+        font-weight: bold;
+      }
+    }
+  }
+
+  &-icon{
+    font-size: 16px;
+    color: @dark4-color;
+    background: #FFF;
+    display: inline-block;
+    padding-right: 10px;
+    &-custom{
+      font-size: 25px;
+      line-height: 1;
+      background-color: @white-color;
+    }
+  }
+
+  &-tail{
+    border-top: 1px solid @gray1-color;
+    position: absolute;
+    left: 0;
+    right: 10px;
+    top: 15px;
+  }
+
+  &-item-first &-tail{
+    left:0;
+  }
+
+  &-item-last{
+    flex: inherit;
+  }
+
+  &-item-last &-tail{
+    display: none;
+  }
+
+  &-content{
+    display: inline-block;
+    position: relative;
+    z-index: 1;
+  }
+
+  &-desc{
+    color: @gray-color;
+    font-size: @font-size-mini;
+  }
+
+  &-index{
+    background-color: @white-color;
+    border-radius: 50%;
+    border: 1px solid @gray1-color;
+    background-color: @gray2-color;
+    display: inline-block;
+    height: 30px;
+    width: 30px;
+    text-align: center;
+    position: relative;
+    >i{
+      font-size: 16px;
+      overflow: hidden;
+      display: inline-block;
+      position: absolute;
+      width: 30px;
+      text-align: center;
+      left: -1px;
+      font-style: normal;
+      line-height: 30px;
+      top: -1px;
+    }
+  }
+}

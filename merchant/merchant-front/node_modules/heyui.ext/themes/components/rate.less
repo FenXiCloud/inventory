@@ -1,0 +1,34 @@
+.h-rate {
+  background: #fff;
+  margin: 0px;
+  cursor: pointer;
+  box-sizing: border-box;
+  display: block;
+  line-height: @input-height;
+  height: @input-height;
+  > .h-rate-star {
+    font-size: 18px;
+    margin-right: 3px;
+    transition: all @transition-time;
+    color: @gray2-color;
+    &:hover > i {
+      transition: transform @transition-time;
+      transform: scale(1.1);
+    }
+    &.h-rate-star-on {
+      color: @yellow-color;
+    }
+  }
+
+  &&-readonly {
+    pointer-events: painted;
+    cursor: default;
+    & > h-rate-star:hover > i {
+      transform: none;
+    }
+  }
+  > .h-rate-value {
+    font-size: 15px;
+    color: @yellow-color;
+  }
+}

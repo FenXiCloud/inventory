@@ -1,0 +1,18 @@
+@cascader-prefix: ~"@{prefix}cascader";
+.h-func-plugin-input(@cascader-prefix);
+.@{cascader-prefix}{
+
+  &-value-single {
+    >.@{prefix}icon-close{
+      .h-func-input-right-icon();
+    }
+  }
+
+  &-modal-multiple-tags{
+    min-height: @input-height;
+    padding-right: 180px;
+    >span {
+      .h-func-tag-span();
+    }
+  }
+}

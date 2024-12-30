@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "sourceMap": true,
+        // "watch": true,
+        "pretty": true,
+        "lib": [ "dom", "es7" ],
+        "declaration": true,
+        "alwaysStrict": true,
+        "outDir": "lib"
+    },
+    "exclude": [ "node_modules", "test" ]
+}

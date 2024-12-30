@@ -1,0 +1,249 @@
+@table-prefix: ~'@{prefix}table';
+@table-select-item-prefix: ~'@{table-prefix}-filter-select-item';
+
+.@{table-prefix} {
+  border: @border;
+  position: relative;
+  .h-table-th {
+    position: relative;
+    background-color: @gray3-color;
+    padding: 8px 12px;
+    .h-table-th-container {
+      height: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      .h-table-th-title {
+        white-space: nowrap;
+        text-align: left;
+        overflow: hidden;
+        flex: 1;
+        text-overflow: ellipsis;
+      }
+    }
+    &.h-table-th-active {
+      cursor: pointer;
+      &:hover {
+        background-color: @gray2-color;
+      }
+    }
+  }
+  th,
+  td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-all;
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 8px 0px 8px 12px;
+    vertical-align: middle;
+    &.text-right {
+      padding-right: 12px;
+      padding-left: 0;
+    }
+    &.text-center {
+      padding-right: 0;
+      padding-left: 0;
+    }
+  }
+  th&-th-checkbox,
+  td&-td-checkbox {
+    text-align: center;
+    text-overflow: clip;
+    padding-left: 0;
+  }
+  th&-th-radio,
+  td&-td-radio {
+    text-align: center;
+    text-overflow: clip;
+    padding-left: 0;
+  }
+  td {
+    font-size: @font-size-mini;
+    height: 50px;
+    border-top: @border;
+  }
+  table {
+    table-layout: fixed;
+    border-spacing: 0;
+  }
+  &-header {
+    background-color: @gray4-color;
+    position: relative;
+    overflow: hidden;
+    table {
+      width: 100%;
+    }
+    border-bottom: @border;
+  }
+
+  &-body {
+    overflow: auto;
+  }
+  &-container {
+    position: relative;
+    margin-top: -1px;
+    background: #fff;
+    &.h-loading-parent {
+      min-height: 40px;
+    }
+
+    table {
+      width: 100%;
+    }
+  }
+
+  &-fixed-right,
+  &-fixed-left {
+    z-index: 1;
+    position: absolute;
+    top: 0;
+    background: #fff;
+    bottom: 0;
+    overflow: hidden;
+    table {
+      background: @white-color;
+    }
+  }
+
+  &-fixed-right table {
+    float: right;
+  }
+  &-fixed-header-right,
+  &-fixed-header-left {
+    z-index: 1;
+    position: absolute;
+    top: 0;
+    overflow: hidden;
+    table {
+      background: @gray4-color;
+    }
+    border-bottom: @border;
+  }
+
+  &-fixed-cover {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 1px;
+    background: @gray4-color;
+    z-index: 2;
+  }
+
+  &-fixed-right,
+  &-fixed-header-right {
+    right: 0;
+    box-shadow: -2px 0px 6px -2px rgba(0, 0, 0, 0.2);
+  }
+
+  &-fixed-left,
+  &-fixed-header-left {
+    left: 0;
+    box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.2);
+  }
+
+  &-border {
+    border-left: 0;
+    td,
+    th {
+      border-left: @border;
+    }
+    th {
+      border-bottom: @border;
+    }
+    .h-table-header table {
+      margin-bottom: -1px;
+    }
+    .h-table-content-empty {
+      border-left: @border;
+      border-top: @border;
+    }
+  }
+
+  &-border &-fixed-right,
+  &-border &-fixed-header-right {
+    td,
+    th {
+      border-right: none;
+    }
+  }
+
+  &-stripe {
+    .h-table-tbody tr:nth-child(2n) {
+      background-color: fade(@hover-background-color, 30%);
+    }
+  }
+
+  & &-tbody tr {
+    &.h-table-tr-hovered {
+      background-color: @hover-background-color;
+
+      &.h-table-expand-tr {
+        background-color: transparent;
+      }
+    }
+    &.h-table-tr-selected {
+      background-color: @highlight-background-color;
+    }
+  }
+
+  &-content-empty {
+    color: @dark4-color;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 20px;
+  }
+  &-sort-handler {
+    vertical-align: middle;
+    color: @gray1-color;
+    font-size: 12px;
+    transition: color @transition-time;
+    margin-left: 5px;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.8);
+    th:hover & {
+      color: @dark4-color;
+    }
+    > i {
+      &.@{table-prefix}-sort-desc {
+        margin-top: -2px;
+      }
+      &.@{table-prefix}-sort-selected {
+        color: @primary-color;
+      }
+    }
+  }
+
+  &-tr-select-disabled {
+    background: @disabled-background-color;
+  }
+  &-content-empty-width {
+    height: 1px;
+  }
+  &-tree-icon {
+    transform: scale(0.8);
+    font-size: 12px;
+    margin-right: 10px;
+    padding: 3px;
+    border-radius: 2px;
+    border: 1px solid @gray-color;
+    .h-func-text-hover();
+    &:hover {
+      border-color: @primary-color;
+    }
+  }
+  &-tree-expand-space,
+  &-tree-empty {
+    display: inline-block;
+    width: 14px;
+  }
+}
+
+.h-table-checkbox-wrap {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -1,0 +1,93 @@
+    buildscript {
+        dependencies {
+            repositories {
+                maven {
+                    url "https://repo.huaweicloud.com/repository/maven/"
+                }
+            }
+        }
+        dependencies {
+            classpath("com.github.node-gradle:gradle-node-plugin:${nodePluginVer}")
+        }
+}
+
+plugins {
+    id "org.springframework.boot"
+    id "io.spring.dependency-management"
+    id "java"
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+group "com.flyemu.share"
+version "1.0"
+
+
+configure(subprojects.findAll { it.name.endsWith("-server") || it.name.equals("kernel") }) {
+    apply plugin: "org.springframework.boot"
+    apply plugin: "io.spring.dependency-management"
+    apply plugin: "java"
+
+    sourceCompatibility = "17"
+
+    repositories {
+        maven { url "https://repo.huaweicloud.com/repository/maven/" }
+        maven { url "https://repo.spring.io/release/" }
+        maven {
+            url "https://repo.maven.apache.org/maven2"
+            name "Maven Central"
+        }
+    }
+
+    dependencies {
+        implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+        implementation "org.springframework.boot:spring-boot-starter-data-redis"
+        implementation "org.springframework.boot:spring-boot-starter-web"
+        implementation "org.springframework.boot:spring-boot-starter-validation"
+
+        implementation "cn.hutool:hutool-all:${hutoolVer}"
+        implementation "com.querydsl:querydsl-core:${querydslVer}"
+        implementation "com.querydsl:querydsl-jpa:${querydslVer}:jakarta"
+        implementation "org.apache.poi:poi:${poiVer}"
+        implementation "org.apache.poi:poi-ooxml:${poiVer}"
+        implementation "org.apache.poi:poi-ooxml-schemas:${poiSchemasVer}"
+        implementation 'cn.dev33:sa-token-spring-boot3-starter:1.34.0.temp1'
+        implementation 'cn.dev33:sa-token-dao-redis-jackson:1.34.0.temp1'
+        compileOnly("jakarta.servlet:jakarta.servlet-api")
+        implementation "com.sagframe:sagacity-sqltoy-starter:${sqltoyVer}"
+        implementation "com.alibaba:fastjson:${fastjsonVer}"
+
+        implementation "org.apache.commons:commons-pool2"
+        implementation 'com.belerweb:pinyin4j:2.5.1'
+        implementation "org.reflections:reflections:${reflectionsVer}"
+
+        implementation 'com.blazebit:blaze-persistence-integration-querydsl-expressions-jakarta:1.6.8'
+        runtimeOnly 'com.blazebit:blaze-persistence-integration-hibernate-6.0:1.6.8'
+        implementation 'com.vladmihalcea:hibernate-types-60:2.21.1'
+
+        implementation 'io.sentry:sentry-spring-boot-starter-jakarta:6.24.0'
+        implementation 'io.sentry:sentry-logback:6.24.0'
+
+        compileOnly "org.mapstruct:mapstruct:${mapstructVer}"
+        compileOnly "org.projectlombok:lombok"
+        implementation "com.mysql:mysql-connector-j"
+        annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
+        annotationProcessor "org.projectlombok:lombok"
+        annotationProcessor "com.querydsl:querydsl-apt:${querydslVer}:jakarta"
+        annotationProcessor("jakarta.persistence:jakarta.persistence-api")
+        annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVer}"
+
+        implementation('com.itextpdf:itextpdf:5.5.13.3')
+        implementation("com.itextpdf:html2pdf:4.0.4")
+        implementation("com.itextpdf:font-asian:7.2.4")
+
+        implementation("com.aliyun:alibabacloud-dysmsapi20170525:2.0.24")
+        implementation("com.aliyun.oss:aliyun-sdk-oss:3.4.0")
+
+
+    }
+}

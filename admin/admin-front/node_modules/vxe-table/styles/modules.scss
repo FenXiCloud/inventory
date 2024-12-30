@@ -1,0 +1,35 @@
+// 该文件已废弃，请使用 vxe-table/styles/all.scss
+
+@use './variable.scss';
+@use './theme/default.scss';
+@use './theme/dark.scss';
+@use './filter.scss';
+@use './menu.scss';
+@use './export.scss';
+@use './custom.scss';
+
+@use './icon.scss';
+@use './table.scss';
+@use './grid.scss';
+@use './toolbar.scss';
+@use './pager.scss';
+@use './checkbox.scss';
+@use './checkbox-group.scss';
+@use './radio.scss';
+@use './radio-group.scss';
+@use './radio-button.scss';
+@use './input.scss';
+@use './textarea.scss';
+@use './button.scss';
+@use './modal.scss';
+@use './drawer.scss';
+@use './tooltip.scss';
+@use './form.scss';
+@use './form-item.scss';
+@use './form-gather.scss';
+@use './select.scss';
+@use './optgroup.scss';
+@use './option.scss';
+@use './switch.scss';
+@use './list.scss';
+@use './pulldown.scss';

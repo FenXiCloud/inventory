@@ -1,0 +1,41 @@
+@tag-prefix: ~'@{prefix}tag';
+
+.@{tag-prefix} {
+  & {
+    display: inline-block;
+    padding: 4px 10px;
+    border: @border;
+    line-height: 1;
+    border-radius: @border-radius;
+    background: @white-color;
+    font-size: @font-size-mini;
+    vertical-align: middle;
+    cursor: default;
+    margin-right: 5px;
+  }
+  &-circle {
+    padding: 4px 4px;
+    border-radius: 50%;
+  }
+  &-primary {
+    .h-func-tag-color(@primary-color);
+  }
+  &-red {
+    .h-func-tag-color(@red-color);
+  }
+  &-blue {
+    .h-func-tag-color(@blue-color);
+  }
+  &-yellow {
+    .h-func-tag-color(@yellow-color);
+  }
+  &-green {
+    .h-func-tag-color(@green-color);
+  }
+  &-gray {
+    .h-func-tag-color(@gray-color);
+  }
+  &-self-define-color {
+    color: #fff;
+  }
+}

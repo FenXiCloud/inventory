@@ -1,0 +1,40 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        maven { url 'https://repo.huaweicloud.com/repository/maven/' }
+        maven { url 'https://repo.spring.io/release/' }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    plugins {
+        id "${sbPluginId}" version "${sbPluginVersion}"
+        id "${sdmPluginId}" version "${sdmPluginVersion}"
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenLocal()
+        maven { url 'https://repo.huaweicloud.com/repository/maven/' }
+        maven { url 'https://repo.spring.io/release/' }
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'inventory'
+
+include 'kernel'
+
+include 'admin:admin-server'
+findProject(':admin:admin-server')?.name = 'admin-server'
+
+include 'admin:admin-front'
+findProject(':admin:admin-front')?.name = 'admin-front'
+
+include 'merchant:merchant-server'
+findProject(':merchant:merchant-server')?.name = 'merchant-server'
+
+include 'merchant:merchant-front'
+findProject(':merchant:merchant-front')?.name = 'merchant-front'
+
+

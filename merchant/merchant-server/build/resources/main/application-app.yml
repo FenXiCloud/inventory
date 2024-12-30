@@ -1,0 +1,20 @@
+server:
+  port: 8410
+
+spring:
+  data:
+    redis:
+      database: 7
+  cache:
+    redis:
+      key-prefix: i_b_m_
+      cache-null-values: false
+
+sa-token:
+  token-name: i-b-m-token
+
+aliyun:
+  accessKeyId: LTAI5tJuf6qDzjvVKP8wpCh4
+  accessKeySecret: orAgSoDIq621SJ4vVj7rUyLqnV88GH
+  bucketName: fenxi-mall
+

@@ -1,0 +1,52 @@
+@import (less) "~heyui.ext/themes/index.less";
+@import (less) "./var.less";
+@import (less) "./overwrite.less";
+@import (less) "./fonts/style.less";
+@import (less) "./frame.less";
+@import (less) "./common.less";
+
+body {
+  background: #f3f6f8;
+  color: #333639;
+  font-weight: 400;
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif !important;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+}
+
+p {
+  margin: 8px 0;
+}
+
+pre {
+  white-space: pre-wrap;
+}
+
+.table-toolbar {
+  padding: 0 0 16px;
+  display: flex;
+  justify-content: space-between;
+  align-content: center;
+
+  &-left {
+    display: flex;
+    align-items: center;
+  }
+
+  &-right {
+    display: flex;
+    align-items: center;
+
+    &-icon {
+      font-weight: normal;
+      margin-left: 12px;
+      cursor: pointer;
+
+      &:hover {
+        color: @primary-color;
+      }
+    }
+  }
+}

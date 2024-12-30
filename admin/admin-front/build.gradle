@@ -1,0 +1,21 @@
+apply plugin: 'com.github.node-gradle.node'
+
+node {
+    version = '18.9.0'
+    yarnVersion = '1.22.11'
+    pnpmVersion = '8.5.1'
+    download = true
+    distBaseUrl = 'https://npmmirror.com/mirrors/node'
+}
+
+task registry(type: YarnTask, dependsOn: 'yarn'){
+    group = 'build'
+    description = 'set registry'
+    args = ['config', 'set', 'registry', 'https://registry.npmmirror.com']
+}
+
+task build(type: YarnTask, dependsOn: registry) {
+    group = 'build'
+    description = 'Build the client bundle'
+    args = ['run', 'build']
+}

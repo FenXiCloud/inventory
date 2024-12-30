@@ -1,0 +1,80 @@
+@page-cls: ~'@{prefix}page';
+.@{page-cls} {
+  .h-func-clearfix();
+  display: flex;
+  align-items: center;
+  > span,
+  > input,
+  > div {
+    margin: 0 5px;
+  }
+  > .h-page-select-size {
+    margin-right: 0;
+  }
+  &&-align-right {
+    justify-content: flex-end;
+    -ms-flex-pack: flex-end;
+  }
+  &&-align-center {
+    justify-content: center;
+    -ms-flex-pack: center;
+  }
+  &-pager {
+    &-container & {
+      position: relative;
+      border: @border;
+      float: left;
+      display: inline-block;
+      border-radius: @border-radius;
+      height: @input-height;
+      width: @input-height;
+      line-height: @input-height - 2px;
+      text-align: center;
+      margin-left: 5px;
+      cursor: pointer;
+      &:hover {
+        color: @primary-color;
+      }
+      &:first-child {
+        margin-left: 0;
+      }
+    }
+    &-container &-selected {
+      color: @primary-color;
+      border-color: @primary-color;
+      z-index: 2;
+    }
+    &-container &-disabled {
+      pointer-events: none;
+      cursor: @disabled-cursor;
+      color: @disabled-color;
+      &:hover {
+        color: @disabled-color;
+      }
+    }
+  }
+
+  &-ellipsis {
+    pointer-events: none;
+  }
+  &-small {
+    font-size: @font-size-mini;
+    .@{page-cls}-pager-container {
+      .@{page-cls}-pager {
+        margin-left: 2px;
+        border: none;
+        border-radius: @border-radius;
+        height: 25px;
+        line-height: 25px;
+        width: 25px;
+      }
+    }
+    input[type='text'] {
+      height: 25px;
+      line-height: 25px;
+    }
+  }
+  &-jumper-input {
+    width: 40px;
+  }
+}

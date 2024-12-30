@@ -1,0 +1,16 @@
+server:
+  port: 8500
+
+spring:
+  cache:
+    redis:
+      key-prefix: i_a_
+      cache-null-values: false
+  data:
+    redis:
+      database: 6
+  config:
+    import: application-app.yml
+
+sa-token:
+  token-name: i-a-token

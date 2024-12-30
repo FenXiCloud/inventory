@@ -1,0 +1,112 @@
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 120s
+  profiles:
+    include: app
+  datasource:
+    url: jdbc:mysql://localhost:3306/jxc?characterEncoding=UTF-8&useUnicode=true&useSSL=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+
+    hikari:
+      keepalive-time: 60000
+      max-lifetime: 1500000
+      maximum-pool-size: 200
+      minimum-idle: 10
+  jpa:
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: com.flyemu.share.hibernate.SharePhysicalNamingStrategy
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+    open-in-view: false
+  sqltoy:
+    sql-resources-dir: classpath:/sqltoy
+    debug: true
+  data:
+    redis:
+      repositories:
+        enabled: false
+      url: "redis://127.0.0.1:6379"
+      database: 5
+      lettuce:
+        pool:
+          max-active: 200
+          max-wait: -1ms
+          max-idle: 10
+          min-idle: 0
+  cache:
+    redis:
+      key-prefix: budland_
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+logging:
+  logback:
+    rollingpolicy:
+      max-file-size: 2MB
+      max-history: 30
+server:
+  shutdown: graceful
+  tomcat:
+    basedir: D:\temp
+
+sentry:
+  logging:
+    enabled: false
+app:
+  upload-root: D://invoice
+  #  阿里短信服务
+  aliyun:
+    accessKeyId:
+    accessKeySecret:
+    sms:
+      signature: 纷析云
+      template-code:
+        verification: SMS_175580136
+        register: SMS_217436843
+
+fxy:
+  app-id: wxc01bc8cc898db756
+  app-secret: bc29b45f942fb6080acb19eb9f3d7ede
+  token: okI4CFJOuXMgQ3Piaxa07eRdOGJDhf
+  encoding-aes-key: 3oF3ap0jxcdqeOJRWcCKKfrbY47Ui9e7WQaRQVQurZl
+
+wx:
+  pay:
+    appId: wxc01bc8cc898db756 #微信公众号或者小程序等的appid
+    mchId: 1544586471 #微信支付商户号
+    apiV3Key: 1234567890qwertyuiopasdfghjklzxc
+    certSerialNo: 6DAB32DFE2669DE4DC0368A6F0BC6F604A4A7395
+    keyPath: classpath:/apiclient_cert.p12
+    privateKeyPath: classpath:/apiclient_key.pem
+    privateCertPath: classpath:/apiclient_cert.pem
+    notifyUrl: https://m.fenxi365.com/api/wallet/pay/notify/
+#    mchKey: #微信支付商户密钥
+    subMchId: 1664106300 #服务商模式下的子商户号
+    subAppId: wxc01bc8cc898db756 #服务商模式下的子商户号
+#    keyPath: # p12证书的位置，可以指定绝对路径，也可以指定类路径（以classpath:开头）
+
+
+aliyun:
+  accessKeyId: LTAI5tJuf6qDzjvVKP8wpCh4
+  accessKeySecret: orAgSoDIq621SJ4vVj7rUyLqnV88GH
+  bucketName: fenxi-mall
+#gx-wx-pay:
+#  app-id: wxc01bc8cc898db756
+#  mch-id: 1544586471
+#  mch-key: 1234567890qwertyuiopasdfghjklzxc
+#  api-v3-key: 1234567890qwertyuiopasdfghjklzxc
+#  notify-url: https://127.0.0.1:8418/api/wallet/pay/notify/
+#  key-path: classpath:/apiclient_cert.p12
+#  private-cert-path: classpath:/apiclient_cert.pem
+#  private-key-path: classpath:/apiclient_key.pem

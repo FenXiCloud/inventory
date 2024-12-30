@@ -1,0 +1,34 @@
+@category-prefix: ~"@{prefix}category";
+
+.h-func-plugin-input(@category-prefix);
+
+.@{category-prefix}{
+
+  &-value-single {
+    >.@{prefix}icon-close{
+      .h-func-input-right-icon();
+    }
+  }
+  &-item{
+    font-size: 90%;
+    padding: 3px 5px;
+    cursor: pointer;
+    &:hover{
+      background: @hover-background-color;
+    }
+  }
+
+  &-modal-multiple-tags{
+    min-height: @input-height;
+    padding-right: 180px;
+    >span {
+      .h-func-tag-span();
+    }
+  }
+  &-modal-single-tag{
+    min-height: @input-height;
+    line-height: @input-height;
+    padding-right: 200px;
+    .h-func-text-ellipsis();
+  }
+}

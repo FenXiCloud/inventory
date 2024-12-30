@@ -1,1 +1,0 @@
-"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),exports.useSize=useSize;var _vue=require("vue");function useSize(e){const u=(0,_vue.inject)("xesize",null);var i=(0,_vue.computed)(()=>e.size||(u?u.value:null));return(0,_vue.provide)("xesize",i),i}

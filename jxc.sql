@@ -10,7 +10,7 @@ Target Server Type    : MYSQL
 Target Server Version : 80028
 File Encoding         : 65001
 
-Date: 2024-12-29 22:49:36
+Date: 2024-12-30 12:42:53
 */
 
 SET FOREIGN_KEY_CHECKS=0;
@@ -177,7 +177,7 @@ CREATE TABLE `s_menu` (
   `pos` int DEFAULT NULL COMMENT '位置',
   `require_auth` bit(1) DEFAULT NULL COMMENT '是否要求权限',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=79 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
 -- Records of s_menu
@@ -197,6 +197,63 @@ INSERT INTO `s_menu` VALUES ('18', 'RoleList', '', null, 'MERCHANT', 'MERCHANT'
 INSERT INTO `s_menu` VALUES ('19', 'AdminList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '员工账号', '15', '3', '');
 INSERT INTO `s_menu` VALUES ('20', 'ProductList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '产品', '6', '0', '');
 INSERT INTO `s_menu` VALUES ('21', 'UnitList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '计量单位', '10', '1', '');
+INSERT INTO `s_menu` VALUES ('22', 'Account', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '账户管理', '10', '2', '');
+INSERT INTO `s_menu` VALUES ('23', 'AccountType', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '收支类型', '10', '3', '');
+INSERT INTO `s_menu` VALUES ('24', 'SettlementMethod', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '结算方式', '10', '4', '');
+INSERT INTO `s_menu` VALUES ('25', null, '', 'h-icon-plus', 'MERCHANT', 'MERCHANT', 'MENU', '采购管理', null, '1', '');
+INSERT INTO `s_menu` VALUES ('26', null, '', 'h-icon-complete', 'MERCHANT', 'MERCHANT', 'MENU', '销售管理', null, '2', '');
+INSERT INTO `s_menu` VALUES ('27', null, '', 'h-icon-check', 'MERCHANT', 'MERCHANT', 'MENU', '库存管理', null, '3', '');
+INSERT INTO `s_menu` VALUES ('28', null, '', 'h-icon-bell', 'MERCHANT', 'MERCHANT', 'MENU', '资金账户', null, '4', '');
+INSERT INTO `s_menu` VALUES ('29', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '资金单据', '28', '0', '');
+INSERT INTO `s_menu` VALUES ('30', 'ReceiptVoucher ', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '收款单', '29', '0', '');
+INSERT INTO `s_menu` VALUES ('31', 'PaymentVoucher ', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '付款单', '29', '1', '');
+INSERT INTO `s_menu` VALUES ('32', 'WriteOff', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '核销单', '29', '2', '');
+INSERT INTO `s_menu` VALUES ('33', 'AccountTransfer', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '资金转账', '29', '3', '');
+INSERT INTO `s_menu` VALUES ('34', 'OtherIncome', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他收款单', '29', '4', '');
+INSERT INTO `s_menu` VALUES ('35', 'OtherExpense', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他付款单', '29', '5', '');
+INSERT INTO `s_menu` VALUES ('36', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '资金报表', '28', '1', '');
+INSERT INTO `s_menu` VALUES ('37', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '往来单位欠款表', '36', '0', '');
+INSERT INTO `s_menu` VALUES ('38', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '客户对账单', '36', '1', '');
+INSERT INTO `s_menu` VALUES ('39', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '供货商对账单', '36', '2', '');
+INSERT INTO `s_menu` VALUES ('40', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '应收账款明细表', '36', '3', '');
+INSERT INTO `s_menu` VALUES ('41', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '应付账款明细表', '36', '4', '');
+INSERT INTO `s_menu` VALUES ('42', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他收支明细表', '36', '5', '');
+INSERT INTO `s_menu` VALUES ('43', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '价格设置', '1', '2', '');
+INSERT INTO `s_menu` VALUES ('44', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '产品价格资料', '43', '0', '');
+INSERT INTO `s_menu` VALUES ('45', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '产品价格记录', '43', '1', '');
+INSERT INTO `s_menu` VALUES ('46', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '编码规则设置', '15', '4', '');
+INSERT INTO `s_menu` VALUES ('47', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '结账/反结账', '15', '5', '');
+INSERT INTO `s_menu` VALUES ('48', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '打印模板', '15', '6', '');
+INSERT INTO `s_menu` VALUES ('49', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '备份与恢复', '15', '7', '');
+INSERT INTO `s_menu` VALUES ('50', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '操作日志', '15', '8', '');
+INSERT INTO `s_menu` VALUES ('51', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购单据', '25', '0', '');
+INSERT INTO `s_menu` VALUES ('52', 'PurchaseOrder', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购订单', '51', '0', '');
+INSERT INTO `s_menu` VALUES ('53', 'PurchaseInbound', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购入库单', '51', '1', '');
+INSERT INTO `s_menu` VALUES ('54', 'PurchaseReturn', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购退货单', '51', '2', '');
+INSERT INTO `s_menu` VALUES ('55', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购报表', '25', '1', '');
+INSERT INTO `s_menu` VALUES ('56', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购明细表', '55', '0', '');
+INSERT INTO `s_menu` VALUES ('57', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购汇总表', '55', '1', '');
+INSERT INTO `s_menu` VALUES ('58', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售单据', '26', '0', '');
+INSERT INTO `s_menu` VALUES ('59', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售报表', '26', '1', '');
+INSERT INTO `s_menu` VALUES ('60', 'SalesOrder ', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售订单', '58', '0', '');
+INSERT INTO `s_menu` VALUES ('61', 'SalesOutbound', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售出库单', '58', '1', '');
+INSERT INTO `s_menu` VALUES ('62', 'SalesReturn ', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售退货单', '58', '2', '');
+INSERT INTO `s_menu` VALUES ('63', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售明细表', '59', '0', '');
+INSERT INTO `s_menu` VALUES ('64', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售汇总表', '59', '1', '');
+INSERT INTO `s_menu` VALUES ('65', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售利润表', '59', '2', '');
+INSERT INTO `s_menu` VALUES ('66', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售排行表', '59', '3', '');
+INSERT INTO `s_menu` VALUES ('67', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '库存单据', '27', '0', '');
+INSERT INTO `s_menu` VALUES ('68', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '库存报表', '27', '1', '');
+INSERT INTO `s_menu` VALUES ('69', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '库存核算', '27', '2', '');
+INSERT INTO `s_menu` VALUES ('70', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '成本调整单', '69', '0', '');
+INSERT INTO `s_menu` VALUES ('71', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '重算成本', '69', '1', '');
+INSERT INTO `s_menu` VALUES ('72', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '库存余额表', '68', '0', '');
+INSERT INTO `s_menu` VALUES ('73', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '进销存明细表', '68', '1', '');
+INSERT INTO `s_menu` VALUES ('74', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '进销存汇总表', '68', '2', '');
+INSERT INTO `s_menu` VALUES ('75', 'InventoryTransfer', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '调拨单', '67', '0', '');
+INSERT INTO `s_menu` VALUES ('76', 'StockTake ', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '盘点单', '67', '1', '');
+INSERT INTO `s_menu` VALUES ('77', 'OtherOutbound', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他出库单', '67', '2', '');
+INSERT INTO `s_menu` VALUES ('78', 'OtherInbound', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他入库单', '67', '3', '');
 
 -- ----------------------------
 -- Table structure for s_menu_role
@@ -246,26 +303,83 @@ CREATE TABLE `s_merchant_menu` (
   `menu_id` bigint NOT NULL,
   `merchant_id` bigint NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=156 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
 -- Records of s_merchant_menu
 -- ----------------------------
-INSERT INTO `s_merchant_menu` VALUES ('25', '1', '1');
-INSERT INTO `s_merchant_menu` VALUES ('26', '6', '1');
-INSERT INTO `s_merchant_menu` VALUES ('27', '7', '1');
-INSERT INTO `s_merchant_menu` VALUES ('28', '8', '1');
-INSERT INTO `s_merchant_menu` VALUES ('29', '9', '1');
-INSERT INTO `s_merchant_menu` VALUES ('30', '10', '1');
-INSERT INTO `s_merchant_menu` VALUES ('31', '12', '1');
-INSERT INTO `s_merchant_menu` VALUES ('32', '14', '1');
-INSERT INTO `s_merchant_menu` VALUES ('33', '15', '1');
-INSERT INTO `s_merchant_menu` VALUES ('34', '16', '1');
-INSERT INTO `s_merchant_menu` VALUES ('35', '17', '1');
-INSERT INTO `s_merchant_menu` VALUES ('36', '18', '1');
-INSERT INTO `s_merchant_menu` VALUES ('37', '19', '1');
-INSERT INTO `s_merchant_menu` VALUES ('38', '20', '1');
-INSERT INTO `s_merchant_menu` VALUES ('39', '21', '1');
+INSERT INTO `s_merchant_menu` VALUES ('84', '1', '1');
+INSERT INTO `s_merchant_menu` VALUES ('85', '6', '1');
+INSERT INTO `s_merchant_menu` VALUES ('86', '7', '1');
+INSERT INTO `s_merchant_menu` VALUES ('87', '8', '1');
+INSERT INTO `s_merchant_menu` VALUES ('88', '9', '1');
+INSERT INTO `s_merchant_menu` VALUES ('89', '10', '1');
+INSERT INTO `s_merchant_menu` VALUES ('90', '12', '1');
+INSERT INTO `s_merchant_menu` VALUES ('91', '14', '1');
+INSERT INTO `s_merchant_menu` VALUES ('92', '15', '1');
+INSERT INTO `s_merchant_menu` VALUES ('93', '16', '1');
+INSERT INTO `s_merchant_menu` VALUES ('94', '17', '1');
+INSERT INTO `s_merchant_menu` VALUES ('95', '18', '1');
+INSERT INTO `s_merchant_menu` VALUES ('96', '19', '1');
+INSERT INTO `s_merchant_menu` VALUES ('97', '20', '1');
+INSERT INTO `s_merchant_menu` VALUES ('98', '21', '1');
+INSERT INTO `s_merchant_menu` VALUES ('99', '22', '1');
+INSERT INTO `s_merchant_menu` VALUES ('100', '23', '1');
+INSERT INTO `s_merchant_menu` VALUES ('101', '24', '1');
+INSERT INTO `s_merchant_menu` VALUES ('102', '25', '1');
+INSERT INTO `s_merchant_menu` VALUES ('103', '26', '1');
+INSERT INTO `s_merchant_menu` VALUES ('104', '27', '1');
+INSERT INTO `s_merchant_menu` VALUES ('105', '28', '1');
+INSERT INTO `s_merchant_menu` VALUES ('106', '29', '1');
+INSERT INTO `s_merchant_menu` VALUES ('107', '30', '1');
+INSERT INTO `s_merchant_menu` VALUES ('108', '31', '1');
+INSERT INTO `s_merchant_menu` VALUES ('109', '32', '1');
+INSERT INTO `s_merchant_menu` VALUES ('110', '33', '1');
+INSERT INTO `s_merchant_menu` VALUES ('111', '34', '1');
+INSERT INTO `s_merchant_menu` VALUES ('112', '35', '1');
+INSERT INTO `s_merchant_menu` VALUES ('113', '36', '1');
+INSERT INTO `s_merchant_menu` VALUES ('114', '37', '1');
+INSERT INTO `s_merchant_menu` VALUES ('115', '38', '1');
+INSERT INTO `s_merchant_menu` VALUES ('116', '39', '1');
+INSERT INTO `s_merchant_menu` VALUES ('117', '40', '1');
+INSERT INTO `s_merchant_menu` VALUES ('118', '41', '1');
+INSERT INTO `s_merchant_menu` VALUES ('119', '42', '1');
+INSERT INTO `s_merchant_menu` VALUES ('120', '43', '1');
+INSERT INTO `s_merchant_menu` VALUES ('121', '44', '1');
+INSERT INTO `s_merchant_menu` VALUES ('122', '45', '1');
+INSERT INTO `s_merchant_menu` VALUES ('123', '46', '1');
+INSERT INTO `s_merchant_menu` VALUES ('124', '47', '1');
+INSERT INTO `s_merchant_menu` VALUES ('125', '48', '1');
+INSERT INTO `s_merchant_menu` VALUES ('126', '49', '1');
+INSERT INTO `s_merchant_menu` VALUES ('127', '50', '1');
+INSERT INTO `s_merchant_menu` VALUES ('128', '51', '1');
+INSERT INTO `s_merchant_menu` VALUES ('129', '52', '1');
+INSERT INTO `s_merchant_menu` VALUES ('130', '53', '1');
+INSERT INTO `s_merchant_menu` VALUES ('131', '54', '1');
+INSERT INTO `s_merchant_menu` VALUES ('132', '55', '1');
+INSERT INTO `s_merchant_menu` VALUES ('133', '56', '1');
+INSERT INTO `s_merchant_menu` VALUES ('134', '57', '1');
+INSERT INTO `s_merchant_menu` VALUES ('135', '58', '1');
+INSERT INTO `s_merchant_menu` VALUES ('136', '59', '1');
+INSERT INTO `s_merchant_menu` VALUES ('137', '60', '1');
+INSERT INTO `s_merchant_menu` VALUES ('138', '61', '1');
+INSERT INTO `s_merchant_menu` VALUES ('139', '62', '1');
+INSERT INTO `s_merchant_menu` VALUES ('140', '63', '1');
+INSERT INTO `s_merchant_menu` VALUES ('141', '64', '1');
+INSERT INTO `s_merchant_menu` VALUES ('142', '65', '1');
+INSERT INTO `s_merchant_menu` VALUES ('143', '66', '1');
+INSERT INTO `s_merchant_menu` VALUES ('144', '67', '1');
+INSERT INTO `s_merchant_menu` VALUES ('145', '68', '1');
+INSERT INTO `s_merchant_menu` VALUES ('146', '69', '1');
+INSERT INTO `s_merchant_menu` VALUES ('147', '70', '1');
+INSERT INTO `s_merchant_menu` VALUES ('148', '71', '1');
+INSERT INTO `s_merchant_menu` VALUES ('149', '72', '1');
+INSERT INTO `s_merchant_menu` VALUES ('150', '73', '1');
+INSERT INTO `s_merchant_menu` VALUES ('151', '74', '1');
+INSERT INTO `s_merchant_menu` VALUES ('152', '75', '1');
+INSERT INTO `s_merchant_menu` VALUES ('153', '76', '1');
+INSERT INTO `s_merchant_menu` VALUES ('154', '77', '1');
+INSERT INTO `s_merchant_menu` VALUES ('155', '78', '1');
 
 -- ----------------------------
 -- Table structure for s_merchant_user
@@ -286,7 +400,7 @@ CREATE TABLE `s_merchant_user` (
 -- ----------------------------
 -- Records of s_merchant_user
 -- ----------------------------
-INSERT INTO `s_merchant_user` VALUES ('1', '', '2024-12-29 21:27:50.647692', '李泽龙', '$2a$10$MPZ4oROTiWvlKqiq79Sk7.TMcY3D8p8edgUpO5UarsCMroUeChSQC', '', '13944878765');
+INSERT INTO `s_merchant_user` VALUES ('1', '', '2024-12-30 12:10:42.896502', '李泽龙', '$2a$10$MPZ4oROTiWvlKqiq79Sk7.TMcY3D8p8edgUpO5UarsCMroUeChSQC', '', '13944878765');
 
 -- ----------------------------
 -- Table structure for s_product

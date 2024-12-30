@@ -25,8 +25,21 @@
 - Gradle: Gradle
 - Redis: 6.0+
 
+#### 本地部署
+1.初始化根目录数据库脚本jxc.sql
+2.修改项目jdk版本17
+3.修改Gradle jdk版本17
+4.前端运行
+cd admin-front  yarn install
+cd merchant-front  yarn install
+5.配置数据库kernel/src/resources/application.yml
+6.启动项目 
+admin初始账号密码：13944878765 878765
+merchant 初始账号密码：13944878765 878765
+
 #### 数据字典
-## 设置
+- 设置
+- system_config               系统参数配置 
 - account_book                账套
 - checkout                    结账
 - admin                       管理员
@@ -36,7 +49,7 @@
 - merchant                    商户
 - merchant_menu               商户菜单
 - merchant_user               商户用户
-## 资料
+- 资料
 - customer_category           客户分类
 - customer_level              客户等级
 - customer_level_price        客户等级价格
@@ -50,7 +63,7 @@
 - account                     账户管理
 - account_type                收支类型
 - settlement_method           结算方式
-## 资金
+- 资金
 - receipt_voucher             收款单
 - receipt_voucher_item        收款单明细
 - payment_voucher             付款单
@@ -63,26 +76,27 @@
 - other_income_item           其他收款单明细
 - other_expense               其他付款单
 - other_expense_item          其他付款单明细
-## 采购：
+- 采购：
 - purchase_order              采购订单
 - purchase_order_item         采购订单明细
 - purchase_inbound            采购入库单
 - purchase_inbound_item       采购入库单明细
 - purchase_return             采购退货单
 - purchase_return_item        采购退货单明细
-## 销售：
+- purchase_price_record       采购价格记录
+- 销售：
 - sales_order                 销售订单
 - sales_order_item            销售订单明细
 - sales_outbound              销售出库单
 - sales_outbound_item         销售出库单明细
 - sales_return                销售退货单
 - sales_return_item           销售退货单明细
-## 其他出入库：
+- sales_price_record          销售价格记录
+- 库存：
 - other_outbound              其他出库单
 - other_outbound_item         其他出库单明细
 - other_inbound               其他入库单
 - other_inbound_item          其他入库单明细
-## 库存和盘点：
 - inventory                   库存表
 - inventory_item              库存明细表
 - inventory_transfer          库存调拨单

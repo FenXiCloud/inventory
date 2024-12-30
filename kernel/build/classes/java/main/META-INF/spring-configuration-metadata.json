@@ -8,47 +8,54 @@
     {
       "name": "app.aliyun",
       "type": "com.flyemu.share.config.AppConfig$ALiYun",
-      "sourceType": "com.flyemu.share.config.AppConfig",
-      "sourceMethod": "getAliyun()"
+      "sourceType": "com.flyemu.share.config.AppConfig"
     },
     {
       "name": "app.aliyun.sms",
       "type": "com.flyemu.share.config.AppConfig$Sms",
-      "sourceType": "com.flyemu.share.config.AppConfig$ALiYun",
-      "sourceMethod": "getSms()"
+      "sourceType": "com.flyemu.share.config.AppConfig$ALiYun"
     },
     {
       "name": "app.aliyun.sms.template-code",
       "type": "com.flyemu.share.config.AppConfig$TemplateCode",
-      "sourceType": "com.flyemu.share.config.AppConfig$Sms",
-      "sourceMethod": "getTemplateCode()"
+      "sourceType": "com.flyemu.share.config.AppConfig$Sms"
     }
   ],
   "properties": [
     {
       "name": "app.aliyun.access-key-id",
       "type": "java.lang.String",
+      "description": "账号D",
       "sourceType": "com.flyemu.share.config.AppConfig$ALiYun"
     },
     {
       "name": "app.aliyun.access-key-secret",
       "type": "java.lang.String",
+      "description": "账号秘钥",
       "sourceType": "com.flyemu.share.config.AppConfig$ALiYun"
     },
     {
       "name": "app.aliyun.sms.signature",
       "type": "java.lang.String",
+      "description": "短信签名",
       "sourceType": "com.flyemu.share.config.AppConfig$Sms"
     },
     {
       "name": "app.aliyun.sms.template-code.register",
       "type": "java.lang.String",
+      "description": "注册成功发送密码模板Code 模板内容：您的手机已经成功注册纷析云财务软件，密码是${password},您可以登录使用啦！",
       "sourceType": "com.flyemu.share.config.AppConfig$TemplateCode"
     },
     {
       "name": "app.aliyun.sms.template-code.verification",
       "type": "java.lang.String",
+      "description": "验证码模板Code",
       "sourceType": "com.flyemu.share.config.AppConfig$TemplateCode"
+    },
+    {
+      "name": "app.upload-root",
+      "type": "java.lang.String",
+      "sourceType": "com.flyemu.share.config.AppConfig"
     }
   ],
   "hints": []

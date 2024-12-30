@@ -1,6 +1,6 @@
 package com.flyemu.share.repository;
 
-import com.flyemu.share.entity.MerchantUser;
+import com.flyemu.share.entity.setting.MerchantUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**

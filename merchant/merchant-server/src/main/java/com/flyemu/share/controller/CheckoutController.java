@@ -2,11 +2,10 @@ package com.flyemu.share.controller;
 
 import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
-import cn.hutool.core.lang.Assert;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.common.Constants;
 import com.flyemu.share.dto.AccountDto;
-import com.flyemu.share.entity.Checkout;
+import com.flyemu.share.entity.setting.Checkout;
 import com.flyemu.share.service.CheckoutService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

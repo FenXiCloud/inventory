@@ -5,7 +5,7 @@ import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.dto.AccountDto;
-import com.flyemu.share.entity.CustomerCategory;
+import com.flyemu.share.entity.basic.CustomerCategory;
 import com.flyemu.share.service.CustomerCategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

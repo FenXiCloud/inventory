@@ -2,7 +2,7 @@ package com.flyemu.share.controller;
 
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
-import com.flyemu.share.entity.ProductCategory;
+import com.flyemu.share.entity.basic.ProductCategory;
 import com.flyemu.share.service.ProductCategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

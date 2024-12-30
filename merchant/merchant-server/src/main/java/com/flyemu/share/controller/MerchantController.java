@@ -1,7 +1,7 @@
 package com.flyemu.share.controller;
 
 import cn.hutool.core.lang.Assert;
-import com.flyemu.share.entity.Merchant;
+import com.flyemu.share.entity.setting.Merchant;
 import com.flyemu.share.service.MerchantService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

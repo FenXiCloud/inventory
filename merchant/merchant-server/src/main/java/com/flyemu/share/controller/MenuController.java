@@ -1,7 +1,7 @@
 package com.flyemu.share.controller;
 
 import com.flyemu.share.annotation.SaMerchantId;
-import com.flyemu.share.entity.Menu;
+import com.flyemu.share.entity.setting.Menu;
 import com.flyemu.share.service.MenuService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

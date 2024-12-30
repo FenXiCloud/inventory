@@ -8,7 +8,10 @@ import cn.hutool.crypto.digest.DigestUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.entity.*;
+import com.flyemu.share.entity.setting.MerchantUser;
+import com.flyemu.share.entity.setting.QMerchant;
+import com.flyemu.share.entity.setting.QMerchantUser;
+import com.flyemu.share.entity.setting.QRole;
 import com.flyemu.share.repository.MerchantUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
-
 import java.time.LocalDateTime;
 
 /**

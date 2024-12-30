@@ -4,9 +4,9 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
-import com.flyemu.share.entity.ProductCategory;
-import com.flyemu.share.entity.QProduct;
-import com.flyemu.share.entity.QProductCategory;
+import com.flyemu.share.entity.basic.ProductCategory;
+import com.flyemu.share.entity.basic.QProduct;
+import com.flyemu.share.entity.basic.QProductCategory;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.ProductCategoryRepository;
 import com.querydsl.core.BooleanBuilder;
@@ -34,6 +34,7 @@ public class ProductCategoryService extends AbsService {
 
     private final ProductCategoryRepository productCategoryRepository;
 
+    private static final QProduct qProduct = QProduct.product;
 
     public List<ProductCategory> query(Query query) {
         return bqf.selectFrom(qProductCategory).where(query.builder).orderBy(qProductCategory.sort.desc(), qProductCategory.code.asc(), qProductCategory.id.asc()).fetch();
@@ -76,7 +77,6 @@ public class ProductCategoryService extends AbsService {
 
         List<Long> ids = bqf.selectFrom(qProductCategory).select(qProductCategory.id).where((qProductCategory.merchantId.eq(merchantId)).and(qProductCategory.accountBookId.eq(accountBookId))).fetch();
 
-        QProduct qProduct = QProduct.product;
         Assert.isFalse(bqf.selectFrom(qProduct).where(qProduct.categoryId.in(ids).and(qProduct.merchantId.eq(merchantId)).and(qProduct.accountBookId.eq(accountBookId))).fetchCount() > 0, "商品已使用，不能删除");
 
         if (productCategory.getPid() != null) {

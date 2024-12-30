@@ -8,7 +8,7 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.RoleSimpleDto;
-import com.flyemu.share.entity.*;
+import com.flyemu.share.entity.setting.*;
 import com.flyemu.share.repository.MenuRoleRepository;
 import com.flyemu.share.repository.RoleRepository;
 import com.querydsl.core.BooleanBuilder;
@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.List;
 

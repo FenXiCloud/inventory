@@ -4,7 +4,7 @@ import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
 import com.flyemu.share.annotation.SaUserVal;
 import com.flyemu.share.common.Constants;
-import com.flyemu.share.entity.MerchantUser;
+import com.flyemu.share.entity.setting.MerchantUser;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;

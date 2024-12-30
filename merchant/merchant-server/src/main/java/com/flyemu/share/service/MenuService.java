@@ -2,9 +2,9 @@ package com.flyemu.share.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
-import com.flyemu.share.entity.Menu;
-import com.flyemu.share.entity.QMenu;
-import com.flyemu.share.entity.QMerchantMenu;
+import com.flyemu.share.entity.setting.Menu;
+import com.flyemu.share.entity.setting.QMenu;
+import com.flyemu.share.entity.setting.QMerchantMenu;
 import com.flyemu.share.repository.MenuRepository;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.RequiredArgsConstructor;

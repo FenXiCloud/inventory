@@ -1,7 +1,7 @@
 package com.flyemu.share.dto;
 
-import com.flyemu.share.entity.AccountBook;
-import com.flyemu.share.entity.Merchant;
+import com.flyemu.share.entity.setting.AccountBook;
+import com.flyemu.share.entity.setting.Merchant;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;

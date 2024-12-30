@@ -5,7 +5,7 @@ import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
 import com.flyemu.share.annotation.SaUserVal;
 import com.flyemu.share.common.Constants;
-import com.flyemu.share.entity.MerchantUser;
+import com.flyemu.share.entity.setting.MerchantUser;
 import com.flyemu.share.service.MerchantUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -1,6 +1,6 @@
 package com.flyemu.share.repository;
 
-import com.flyemu.share.entity.Role;
+import com.flyemu.share.entity.setting.Role;
 import org.springframework.data.jpa.repository.support.JpaRepositoryImplementation;
 
 

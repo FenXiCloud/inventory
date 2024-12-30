@@ -1,6 +1,6 @@
 package com.flyemu.share.repository;
 
-import com.flyemu.share.entity.SupplierCategory;
+import com.flyemu.share.entity.basic.SupplierCategory;
 import org.springframework.data.jpa.repository.support.JpaRepositoryImplementation;
 
 /**

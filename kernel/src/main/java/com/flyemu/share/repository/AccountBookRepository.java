@@ -1,6 +1,6 @@
 package com.flyemu.share.repository;
 
-import com.flyemu.share.entity.AccountBook;
+import com.flyemu.share.entity.setting.AccountBook;
 import org.springframework.data.jpa.repository.support.JpaRepositoryImplementation;
 
 

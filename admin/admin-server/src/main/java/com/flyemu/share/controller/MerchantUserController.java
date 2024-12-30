@@ -2,7 +2,7 @@ package com.flyemu.share.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.hutool.core.lang.Assert;
-import com.flyemu.share.entity.MerchantUser;
+import com.flyemu.share.entity.setting.MerchantUser;
 import com.flyemu.share.service.MerchantUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

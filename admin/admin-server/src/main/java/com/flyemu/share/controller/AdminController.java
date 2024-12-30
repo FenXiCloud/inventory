@@ -1,8 +1,7 @@
 package com.flyemu.share.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
-import cn.hutool.core.lang.Assert;
-import com.flyemu.share.entity.Admin;
+import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

@@ -5,7 +5,7 @@ import cn.hutool.core.lang.Assert;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.dto.AccountDto;
-import com.flyemu.share.entity.Role;
+import com.flyemu.share.entity.setting.Role;
 import com.flyemu.share.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

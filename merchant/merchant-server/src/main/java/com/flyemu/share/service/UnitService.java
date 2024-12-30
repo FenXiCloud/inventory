@@ -2,9 +2,8 @@ package com.flyemu.share.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
-import cn.hutool.core.lang.Assert;
-import com.flyemu.share.entity.QUnit;
-import com.flyemu.share.entity.Unit;
+import com.flyemu.share.entity.basic.QUnit;
+import com.flyemu.share.entity.basic.Unit;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.UnitRepository;
 import com.querydsl.core.BooleanBuilder;

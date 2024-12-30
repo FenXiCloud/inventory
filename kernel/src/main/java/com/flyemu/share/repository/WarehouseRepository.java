@@ -1,6 +1,6 @@
 package com.flyemu.share.repository;
 
-import com.flyemu.share.entity.Warehouse;
+import com.flyemu.share.entity.basic.Warehouse;
 import org.springframework.data.jpa.repository.support.JpaRepositoryImplementation;
 
 /**

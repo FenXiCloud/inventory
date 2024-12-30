@@ -10,7 +10,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.dto.AdminDto;
-import com.flyemu.share.entity.*;
+import com.flyemu.share.entity.setting.*;
 import com.flyemu.share.repository.AdminRepository;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -44,8 +44,6 @@ public class AdminService extends AbsService {
     private final static QMerchant qMerchant = QMerchant.merchant;
 
     private final AdminRepository adminRepository;
-
-
 
     public PageResults<AdminDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qAdmin)

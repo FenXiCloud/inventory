@@ -1,6 +1,6 @@
 package com.flyemu.share.dto;
 
-import com.flyemu.share.entity.Customer;
+import com.flyemu.share.entity.basic.Customer;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

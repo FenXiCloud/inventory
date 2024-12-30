@@ -1,12 +1,11 @@
 package com.flyemu.share.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
-import cn.hutool.core.lang.Assert;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.dto.AccountDto;
-import com.flyemu.share.entity.Supplier;
+import com.flyemu.share.entity.basic.Supplier;
 import com.flyemu.share.service.SupplierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

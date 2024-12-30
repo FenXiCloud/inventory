@@ -1,7 +1,6 @@
 package com.flyemu.share.controller;
 
-import cn.hutool.core.lang.Assert;
-import com.flyemu.share.entity.AccountBook;
+import com.flyemu.share.entity.setting.AccountBook;
 import com.flyemu.share.service.AccountBookService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

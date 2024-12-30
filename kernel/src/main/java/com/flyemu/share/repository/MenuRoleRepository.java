@@ -1,6 +1,6 @@
 package com.flyemu.share.repository;
 
-import com.flyemu.share.entity.MenuRole;
+import com.flyemu.share.entity.setting.MenuRole;
 import org.springframework.data.jpa.repository.support.JpaRepositoryImplementation;
 
 /**

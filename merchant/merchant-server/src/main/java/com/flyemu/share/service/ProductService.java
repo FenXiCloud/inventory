@@ -12,7 +12,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.ProductDto;
 import com.flyemu.share.dto.UnitPrice;
-import com.flyemu.share.entity.*;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.repository.CustomerLevelPriceRepository;
 import com.flyemu.share.repository.ProductRepository;

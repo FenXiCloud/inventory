@@ -2,13 +2,15 @@ package com.flyemu.share.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
-import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.CustomerDto;
-import com.flyemu.share.entity.*;
+import com.flyemu.share.entity.basic.Customer;
+import com.flyemu.share.entity.basic.QCustomer;
+import com.flyemu.share.entity.basic.QCustomerCategory;
+import com.flyemu.share.entity.basic.QCustomerLevel;
 import com.flyemu.share.repository.CustomerRepository;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;

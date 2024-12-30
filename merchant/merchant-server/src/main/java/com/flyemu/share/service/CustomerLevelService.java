@@ -3,9 +3,9 @@ package com.flyemu.share.service;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.Assert;
-import com.flyemu.share.entity.CustomerLevel;
-import com.flyemu.share.entity.QCustomerLevel;
-import com.flyemu.share.entity.QCustomerLevelPrice;
+import com.flyemu.share.entity.basic.CustomerLevel;
+import com.flyemu.share.entity.basic.QCustomerLevel;
+import com.flyemu.share.entity.basic.QCustomerLevelPrice;
 import com.flyemu.share.repository.CustomerLevelRepository;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +29,7 @@ import java.util.List;
 public class CustomerLevelService extends AbsService {
 
     private final static QCustomerLevel qCustomerLevel = QCustomerLevel.customerLevel;
+
     private final static QCustomerLevelPrice qCustomerLevelPrice = QCustomerLevelPrice.customerLevelPrice;
 
     private final CustomerLevelRepository customerLevelRepository;

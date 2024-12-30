@@ -8,7 +8,7 @@ import cn.hutool.crypto.digest.DigestUtil;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.dto.AdminDto;
 import com.flyemu.share.dto.MenuDto;
-import com.flyemu.share.entity.*;
+import com.flyemu.share.entity.setting.*;
 import com.flyemu.share.repository.AdminRepository;
 import com.flyemu.share.repository.RoleRepository;
 import com.querydsl.core.BooleanBuilder;

@@ -20,27 +20,27 @@
                    :row-config="{height: 48}"
                    :loading="loading">
           <vxe-column field="id" width="60" title="ID"/>
-          <vxe-column title="商户编码" field="code" width="300"/>
-          <vxe-column title="商户名称" field="name" width="220">
+          <vxe-column title="商户编码" field="code" width="280"/>
+          <vxe-column title="商户名称" field="name" >
             <template #default="{row}">
               <span @click="doConfig(row)" class="text-hover primary-color"> <i class="h-icon-edit"></i> {{ row.name }}</span>
             </template>
           </vxe-column>
-          <vxe-column title="联系人" field="linkman" width="200"/>
+          <vxe-column title="联系人" field="contact" width="100"/>
           <vxe-column title="联系人电话" field="mobile" width="130"/>
           <vxe-column title="服务时间" field="serviceDate" align="center" width="200">
             <template #default="{row}">
               {{ row.serviceStartDate }} - {{ row.serviceEndDate }}
             </template>
           </vxe-column>
-          <vxe-column title="创建时间" field="createDate" align="center" width="150"/>
+          <vxe-column title="创建时间" field="createdAt" align="center" width="150"/>
           <vxe-column title="状态" field="enabled" align="center" width="100">
             <template #default="{row}">
               <Tag color="primary" v-if="row.enabled" @click="trigger(row)">启用</Tag>
               <Tag color="red" v-else @click="trigger(row)">禁用</Tag>
             </template>
           </vxe-column>
-          <vxe-column title="操作" align="center">
+          <vxe-column title="操作" align="center" width="100">
             <template #default="{row}">
               <div class="flex items-center justify-center">
                 <span class=" primary-color text-hover ml-10px" @click="showForm(row)" size="s">编辑</span>

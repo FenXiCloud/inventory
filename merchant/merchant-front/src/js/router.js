@@ -34,6 +34,12 @@ const groupRoutes = [
 
 	{name: 'CheckoutList', component: defineAsyncComponent(() => import('@views/setting/CheckoutList'))},
 
+	{name: 'AccountList', component: defineAsyncComponent(() => import('@views/basic/AccountList'))},
+
+	{name: 'AccountTypeList', component: defineAsyncComponent(() => import('@views/basic/AccountTypeList'))},
+
+	{name: 'SettlementMethodList', component: defineAsyncComponent(() => import('@views/basic/SettlementMethodList'))},
+
 ]
 
 /**

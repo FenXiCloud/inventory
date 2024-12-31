@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.Comment;
 
 /**
  * @功能描述: 客户管理
@@ -17,29 +19,41 @@ import lombok.Setter;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "uc_customer_code", columnNames = {"merchantId", "accountBookId", "code"}),
+        @UniqueConstraint(columnNames = {"merchantId", "accountBookId", "code"}),
 })
 public class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("编码")
     private String code;
 
+    @Comment("名称")
     @Column(length = 32, nullable = false)
     private String name;
 
-    private String contactPerson;
+    @Comment("联系人")
+    private String contact;
 
+    @Comment("电话")
     private String phone;
 
-    private String remark;
+    @Comment("备注")
+    private String remarks;
 
+    @Comment("客户分类ID")
     @Column(nullable = false)
     private Long customerCategoryId;
 
+    @Comment("客户等级ID")
     @Column(nullable = false)
     private Long customerLevelId;
+
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
+    private Boolean enabled;
 
     @Column(nullable = false)
     private Long accountBookId;

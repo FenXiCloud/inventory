@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 
 import java.io.Serializable;
@@ -42,7 +43,9 @@ public class Menu implements Serializable {
     @Comment("父id")
     private Long parentId;
 
-    @Comment("是否启用")
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
     private Boolean enabled;
 
     @Comment("位置")

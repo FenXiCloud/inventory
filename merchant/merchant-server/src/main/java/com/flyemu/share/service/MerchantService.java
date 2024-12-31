@@ -64,7 +64,7 @@ public class MerchantService extends AbsService {
     @Transactional
     public Admin create(Merchant merchant) {
         merchant.setEnabled(true);
-        merchant.setCreateDate(LocalDateTime.now());
+        merchant.setCreatedAt(LocalDateTime.now());
         merchant.setCode(LocalDateTime.now().toString());
         merchantRepository.save(merchant);
 
@@ -76,7 +76,7 @@ public class MerchantService extends AbsService {
         roleRepository.save(role);
 
         Admin admin = new Admin();
-        admin.setName(merchant.getLinkman());
+        admin.setName(merchant.getContact());
         admin.setMobile(merchant.getMobile());
         admin.setUsername(merchant.getCode() + LocalDateTime.now().toString());
         admin.setPassword(DigestUtil.bcrypt(merchant.getMobile().substring(5)));

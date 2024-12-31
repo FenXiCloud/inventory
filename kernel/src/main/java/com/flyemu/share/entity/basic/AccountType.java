@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
@@ -22,7 +23,7 @@ import java.math.BigDecimal;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "u_account_type_name", columnNames = {"merchantId", "accountBookId", "name"})
+        @UniqueConstraint(columnNames = {"merchantId", "accountBookId", "name"})
 })
 @DynamicUpdate
 public class AccountType implements Serializable {
@@ -39,7 +40,9 @@ public class AccountType implements Serializable {
     @Column(length = 32,columnDefinition = "varchar(32)  default '收入'")
     private CostType costType;
 
-    @Comment("是否启用")
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
     private Boolean enabled;
 
     @Column(nullable = false)

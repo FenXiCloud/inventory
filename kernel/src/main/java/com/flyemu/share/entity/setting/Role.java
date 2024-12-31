@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 
 import java.io.Serializable;
@@ -34,6 +35,8 @@ public class Role implements Serializable {
     private String name;
 
     @Comment("是否系统默认")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
     private Boolean systemDefault;
 
     private Long merchantId;

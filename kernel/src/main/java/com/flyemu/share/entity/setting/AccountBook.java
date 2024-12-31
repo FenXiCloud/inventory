@@ -4,13 +4,15 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.io.Serializable;
 import java.time.LocalDate;
 
 /**
- * @功能描述: 组织机构
+ * @功能描述: 账套管理
  * @创建时间: 2024年04月28日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -28,18 +30,27 @@ public class AccountBook implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("名称")
     @Column(length = 64, nullable = false)
     private String name;
 
+    @Comment("结账日期")
     private LocalDate checkoutDate;
 
-    //当前账套
+    @Comment("当前账套")
     private Boolean current;
 
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
     private Boolean enabled;
 
+    @Comment("启用日期")
     @CreationTimestamp
     private LocalDate startDate;
+
+    @Comment("默认仓库")
+    private Long warehouseId;
 
     @Column(nullable = false)
     private Long merchantId;

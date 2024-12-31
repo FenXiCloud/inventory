@@ -98,7 +98,7 @@ public class SupplierService extends AbsService {
 
         public void setFilter(String filter) {
             if (StrUtil.isNotBlank(filter)) {
-                builder.and(qSupplier.code.contains(filter).or(qSupplier.contactPerson.contains(filter)).or(qSupplier.phone.contains(filter)).or(qSupplier.name.contains(filter)));
+                builder.and(qSupplier.code.contains(filter).or(qSupplier.contact.contains(filter)).or(qSupplier.phone.contains(filter)).or(qSupplier.name.contains(filter)));
             }
         }
     }

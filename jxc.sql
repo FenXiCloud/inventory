@@ -10,10 +10,32 @@ Target Server Type    : MYSQL
 Target Server Version : 80028
 File Encoding         : 65001
 
-Date: 2024-12-30 17:57:00
+Date: 2024-12-31 13:32:43
 */
 
 SET FOREIGN_KEY_CHECKS=0;
+
+-- ----------------------------
+-- Table structure for s_account
+-- ----------------------------
+DROP TABLE IF EXISTS `s_account`;
+CREATE TABLE `s_account` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `account_type` varchar(32) DEFAULT '银行存款' COMMENT '账户类别',
+  `balance` decimal(38,2) DEFAULT NULL COMMENT '账户余额',
+  `code` varchar(32) NOT NULL COMMENT '编码',
+  `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
+  `merchant_id` bigint NOT NULL,
+  `name` varchar(32) NOT NULL COMMENT '名称',
+  `system_default` bit(1) NOT NULL DEFAULT b'1' COMMENT '是否系统默认',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UKstdtk9c0iaa5uxufahxanaora` (`merchant_id`,`account_book_id`,`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_account
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for s_account_book
@@ -21,21 +43,63 @@ SET FOREIGN_KEY_CHECKS=0;
 DROP TABLE IF EXISTS `s_account_book`;
 CREATE TABLE `s_account_book` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `checkout_date` date DEFAULT NULL,
-  `current` bit(1) DEFAULT NULL,
-  `enabled` bit(1) DEFAULT NULL,
+  `checkout_date` date DEFAULT NULL COMMENT '结账日期',
+  `current` bit(1) DEFAULT NULL COMMENT '当前账套',
+  `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
   `merchant_id` bigint NOT NULL,
-  `name` varchar(64) NOT NULL,
-  `start_date` date DEFAULT NULL,
+  `name` varchar(64) NOT NULL COMMENT '名称',
+  `start_date` date DEFAULT NULL COMMENT '启用日期',
+  `warehouse_id` bigint DEFAULT NULL COMMENT '默认仓库',
   PRIMARY KEY (`id`),
   UNIQUE KEY `UKf3hqsnnsuubp2dp8m2xi3xr2` (`name`,`merchant_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
 -- Records of s_account_book
 -- ----------------------------
-INSERT INTO `s_account_book` VALUES ('1', null, '\0', '', '1', '时逸（苏州）财税咨询有限责任公司', '2024-12-29');
-INSERT INTO `s_account_book` VALUES ('2', null, '', '', '1', '纷析云（杭州）科技有限公司', '2024-12-29');
+
+-- ----------------------------
+-- Table structure for s_account_flow
+-- ----------------------------
+DROP TABLE IF EXISTS `s_account_flow`;
+CREATE TABLE `s_account_flow` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_flow_type` varchar(255) NOT NULL COMMENT '操作类型',
+  `account_id` bigint NOT NULL COMMENT '账户Id',
+  `amount` decimal(38,2) NOT NULL COMMENT '金额',
+  `audit_id` bigint DEFAULT NULL COMMENT '审核人',
+  `audit_time` datetime(6) DEFAULT NULL COMMENT '审核时间',
+  `balance_after` decimal(38,2) DEFAULT NULL COMMENT '交易后余额',
+  `balance_before` decimal(38,2) DEFAULT NULL COMMENT '交易前余额',
+  `flow_time` datetime(6) DEFAULT NULL COMMENT '交易时间',
+  `remarks` varchar(255) DEFAULT NULL COMMENT '备注',
+  `user_id` bigint DEFAULT NULL COMMENT '操作人Id',
+  `voucher_id` bigint DEFAULT NULL COMMENT '单据Id',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_account_flow
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for s_account_type
+-- ----------------------------
+DROP TABLE IF EXISTS `s_account_type`;
+CREATE TABLE `s_account_type` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `cost_type` varchar(32) DEFAULT '收入' COMMENT '收支类别',
+  `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
+  `merchant_id` bigint NOT NULL,
+  `name` varchar(32) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UKh07vonilujq485owg0jdscibs` (`merchant_id`,`account_book_id`,`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_account_type
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for s_admin
@@ -69,9 +133,9 @@ DROP TABLE IF EXISTS `s_checkout`;
 CREATE TABLE `s_checkout` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `account_book_id` bigint NOT NULL,
-  `check_date` date DEFAULT NULL,
+  `check_date` date DEFAULT NULL COMMENT '结账日期',
   `check_id` bigint DEFAULT NULL COMMENT '结账人',
-  `create_date` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
   `merchant_id` bigint NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UKqpanwltshydnp8du0steoo29p` (`check_date`,`account_book_id`,`merchant_id`)
@@ -88,16 +152,17 @@ DROP TABLE IF EXISTS `s_customer`;
 CREATE TABLE `s_customer` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `account_book_id` bigint NOT NULL,
-  `code` varchar(255) DEFAULT NULL,
-  `contact_person` varchar(255) DEFAULT NULL,
-  `customer_category_id` bigint NOT NULL,
-  `customer_level_id` bigint NOT NULL,
+  `code` varchar(255) DEFAULT NULL COMMENT '编码',
+  `contact` varchar(255) DEFAULT NULL COMMENT '联系人',
+  `customer_category_id` bigint NOT NULL COMMENT '客户分类ID',
+  `customer_level_id` bigint NOT NULL COMMENT '客户等级ID',
+  `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
   `merchant_id` bigint NOT NULL,
-  `name` varchar(32) NOT NULL,
-  `phone` varchar(255) DEFAULT NULL,
-  `remark` varchar(255) DEFAULT NULL,
+  `name` varchar(32) NOT NULL COMMENT '名称',
+  `phone` varchar(255) DEFAULT NULL COMMENT '电话',
+  `remarks` varchar(255) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uc_customer_code` (`merchant_id`,`account_book_id`,`code`)
+  UNIQUE KEY `UKm4hkkend5xhf5s8xdgmfyre32` (`merchant_id`,`account_book_id`,`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
@@ -112,9 +177,9 @@ CREATE TABLE `s_customer_category` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `account_book_id` bigint NOT NULL,
   `merchant_id` bigint NOT NULL,
-  `name` varchar(32) NOT NULL,
+  `name` varchar(32) NOT NULL COMMENT '名称',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uc_customer_category_name` (`merchant_id`,`account_book_id`,`name`)
+  UNIQUE KEY `UKhh5mp4a4c6r73lq4r2fs228n3` (`merchant_id`,`account_book_id`,`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
@@ -131,7 +196,7 @@ CREATE TABLE `s_customer_level` (
   `merchant_id` bigint NOT NULL,
   `name` varchar(32) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uc_customer_level_name` (`merchant_id`,`account_book_id`,`name`)
+  UNIQUE KEY `UK69dbar392i8122s24nxu1uo9f` (`merchant_id`,`account_book_id`,`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
@@ -145,14 +210,14 @@ DROP TABLE IF EXISTS `s_customer_level_price`;
 CREATE TABLE `s_customer_level_price` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `account_book_id` bigint NOT NULL,
-  `customer_level_id` bigint DEFAULT NULL,
+  `auxiliary_unit_prices` json DEFAULT NULL COMMENT '客户单位辅助价格',
+  `customer_level_id` bigint DEFAULT NULL COMMENT '客户等级ID',
   `merchant_id` bigint NOT NULL,
   `price` decimal(38,2) DEFAULT NULL COMMENT '基础单位价格',
-  `product_id` bigint DEFAULT NULL,
+  `product_id` bigint DEFAULT NULL COMMENT '产品ID',
   `unit_id` bigint DEFAULT NULL COMMENT '基础单位',
-  `unit_price` json DEFAULT NULL COMMENT '客户单位辅助价格',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uc_customer_level_price` (`merchant_id`,`account_book_id`,`product_id`,`customer_level_id`)
+  UNIQUE KEY `UK4acgpx67ktcp094v7jb8irx0` (`merchant_id`,`account_book_id`,`product_id`,`customer_level_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
@@ -277,21 +342,23 @@ CREATE TABLE `s_merchant` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `address` varchar(255) DEFAULT NULL COMMENT '地址',
   `code` varchar(255) DEFAULT NULL COMMENT '商户编码',
-  `create_date` datetime(6) DEFAULT NULL COMMENT '创建日期',
   `email` varchar(255) DEFAULT NULL COMMENT '邮箱',
   `enabled` bit(1) DEFAULT NULL COMMENT '是否启用',
-  `linkman` varchar(255) DEFAULT NULL COMMENT '联系人',
   `mobile` varchar(255) DEFAULT NULL COMMENT '电话号码',
   `name` varchar(255) DEFAULT NULL COMMENT '商户名称',
   `service_end_date` date DEFAULT NULL COMMENT '服务结束时间',
   `service_start_date` date DEFAULT NULL COMMENT '服务开始时间',
+  `costing_method` smallint DEFAULT NULL COMMENT '存货计价方式',
+  `stock_field` bit(1) DEFAULT NULL COMMENT '允许负库存',
+  `contact` varchar(255) DEFAULT NULL COMMENT '联系人',
+  `created_at` datetime(6) DEFAULT NULL COMMENT '创建日期',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
 -- Records of s_merchant
 -- ----------------------------
-INSERT INTO `s_merchant` VALUES ('1', '杭州', '32f90df1-c739-463b-8218-715437765807', '2024-12-29 18:54:06.747190', null, '', '李泽龙', '13944878765', '纷析云', '2024-12-01', '2024-12-01');
+INSERT INTO `s_merchant` VALUES ('1', '杭州', '32f90df1-c739-463b-8218-715437765807', null, '', '13944878765', '纷析云', '2024-12-01', '2024-12-01', null, null, null, null);
 
 -- ----------------------------
 -- Table structure for s_merchant_menu
@@ -399,7 +466,28 @@ CREATE TABLE `s_merchant_user` (
 -- ----------------------------
 -- Records of s_merchant_user
 -- ----------------------------
-INSERT INTO `s_merchant_user` VALUES ('1', '', '2024-12-30 15:27:24.721899', '李泽龙', '$2a$10$MPZ4oROTiWvlKqiq79Sk7.TMcY3D8p8edgUpO5UarsCMroUeChSQC', '', '13944878765');
+INSERT INTO `s_merchant_user` VALUES ('1', '', '2024-12-31 13:31:51.643050', '李泽龙', '$2a$10$MPZ4oROTiWvlKqiq79Sk7.TMcY3D8p8edgUpO5UarsCMroUeChSQC', '', '13944878765');
+
+-- ----------------------------
+-- Table structure for s_pricing_strategy
+-- ----------------------------
+DROP TABLE IF EXISTS `s_pricing_strategy`;
+CREATE TABLE `s_pricing_strategy` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
+  `merchant_id` bigint NOT NULL,
+  `name` varchar(32) NOT NULL,
+  `price_source` varchar(255) NOT NULL COMMENT '价格来源',
+  `price_type` varchar(255) NOT NULL COMMENT '价格类型',
+  `priority` int DEFAULT NULL COMMENT '优先级',
+  `remarks` varchar(255) DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_pricing_strategy
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for s_product
@@ -408,22 +496,27 @@ DROP TABLE IF EXISTS `s_product`;
 CREATE TABLE `s_product` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `account_book_id` bigint NOT NULL,
-  `category_id` bigint NOT NULL,
-  `code` varchar(64) NOT NULL COMMENT '产品编码',
-  `create_date` datetime(6) DEFAULT NULL COMMENT '创建时间',
-  `enable_multi_unit` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否启动辅助单位',
-  `enabled` bit(1) DEFAULT NULL,
+  `alert_quantity` int DEFAULT NULL COMMENT '预警库存',
+  `auxiliary_unit_prices` json DEFAULT NULL COMMENT '辅助单位价格',
+  `barcode` varchar(32) DEFAULT NULL COMMENT '条码',
+  `code` varchar(64) NOT NULL COMMENT '编码',
+  `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `enable_auxiliary_unit` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否启用辅助单位',
+  `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
   `img_path` varchar(255) DEFAULT NULL COMMENT '商品图片',
   `merchant_id` bigint NOT NULL,
-  `multi_unit` json DEFAULT NULL COMMENT '辅助单位',
   `name` varchar(64) NOT NULL COMMENT '名称',
-  `pinyin` varchar(32) DEFAULT NULL,
-  `remark` varchar(255) DEFAULT NULL,
+  `pinyin` varchar(32) DEFAULT NULL COMMENT '拼音',
+  `product_category_id` bigint NOT NULL COMMENT '产品分类',
+  `purchase_price` decimal(38,2) NOT NULL COMMENT '预计进货价（基础单位）',
+  `remarks` varchar(255) DEFAULT NULL COMMENT '备注',
   `sort` int DEFAULT NULL COMMENT '排序',
-  `specification` varchar(255) DEFAULT NULL,
-  `unit_id` bigint NOT NULL,
+  `specification` varchar(255) DEFAULT NULL COMMENT '规格',
+  `stock_quantity` int DEFAULT NULL COMMENT '库存数量',
+  `unit_id` bigint NOT NULL COMMENT '基础单位',
+  `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uc_product_code` (`merchant_id`,`account_book_id`,`code`)
+  UNIQUE KEY `UKned9ta6s8ormce3qpx4qdplou` (`merchant_id`,`account_book_id`,`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
@@ -444,11 +537,207 @@ CREATE TABLE `s_product_category` (
   `pid` bigint DEFAULT NULL COMMENT '父级ID',
   `sort` bigint DEFAULT NULL COMMENT '排序号',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uc_product_category_code` (`merchant_id`,`account_book_id`,`code`)
+  UNIQUE KEY `UKah8t0d655vjgr864ata6tkw6u` (`merchant_id`,`account_book_id`,`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
 -- Records of s_product_category
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for s_purchase_inbound
+-- ----------------------------
+DROP TABLE IF EXISTS `s_purchase_inbound`;
+CREATE TABLE `s_purchase_inbound` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `approved_at` datetime(6) DEFAULT NULL COMMENT '审核时间',
+  `approved_by` bigint DEFAULT NULL COMMENT '审核人',
+  `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `created_by` bigint DEFAULT NULL COMMENT '创建人',
+  `discount_amount` decimal(38,2) DEFAULT NULL COMMENT '折扣金额',
+  `final_amount` decimal(38,2) DEFAULT NULL COMMENT '折后金额',
+  `inbound_date` datetime(6) DEFAULT NULL COMMENT '入库日期',
+  `merchant_id` bigint NOT NULL,
+  `order_id` bigint DEFAULT NULL COMMENT '采购订单ID',
+  `order_status` varchar(20) NOT NULL DEFAULT '已保存' COMMENT '订单状态',
+  `remarks` varchar(255) DEFAULT NULL COMMENT '备注',
+  `supplier_id` bigint DEFAULT NULL COMMENT '供货商ID',
+  `total_amount` decimal(38,2) DEFAULT NULL COMMENT '订单金额',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_purchase_inbound
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for s_purchase_inbound_item
+-- ----------------------------
+DROP TABLE IF EXISTS `s_purchase_inbound_item`;
+CREATE TABLE `s_purchase_inbound_item` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `base_unit_id` bigint DEFAULT NULL COMMENT '基本单位ID',
+  `conversion_rate` decimal(38,2) DEFAULT NULL COMMENT '换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)',
+  `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `created_by` bigint DEFAULT NULL COMMENT '创建人',
+  `discount_rate` decimal(38,2) DEFAULT NULL COMMENT '折扣率',
+  `discount_value` decimal(38,2) DEFAULT NULL COMMENT '折扣金额',
+  `merchant_id` bigint NOT NULL,
+  `product_id` bigint DEFAULT NULL COMMENT '产品ID',
+  `purchase_inbound_id` bigint DEFAULT NULL COMMENT '采购入库主表ID',
+  `quantity` double DEFAULT NULL COMMENT '数量（以基本单位计）',
+  `secondary_quantity` double DEFAULT NULL COMMENT '辅助单位数量 (可为空',
+  `secondary_unit_id` bigint DEFAULT NULL COMMENT '辅助单位ID(可为空)',
+  `subtotal` decimal(38,2) DEFAULT NULL COMMENT '小计 (quantity * unit_price * (1 - discount_value/100) 或 quantity * unit_price - discount_value，根据折扣类型计算)',
+  `unit_price` decimal(38,2) DEFAULT NULL COMMENT '单价（以基本单位计）',
+  `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_purchase_inbound_item
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for s_purchase_order
+-- ----------------------------
+DROP TABLE IF EXISTS `s_purchase_order`;
+CREATE TABLE `s_purchase_order` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `approved_at` datetime(6) DEFAULT NULL COMMENT '审核时间',
+  `approved_by` bigint DEFAULT NULL COMMENT '审核人',
+  `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `created_by` bigint DEFAULT NULL COMMENT '创建人',
+  `discount_amount` decimal(38,2) DEFAULT NULL COMMENT '折扣金额',
+  `final_amount` decimal(38,2) DEFAULT NULL COMMENT '折后金额',
+  `merchant_id` bigint NOT NULL,
+  `order_date` date DEFAULT NULL COMMENT '下单日期',
+  `order_status` varchar(20) NOT NULL DEFAULT '已保存' COMMENT '订单状态',
+  `remarks` varchar(255) DEFAULT NULL COMMENT '备注',
+  `supplier_id` bigint DEFAULT NULL COMMENT '供货商ID',
+  `total_amount` decimal(38,2) DEFAULT NULL COMMENT '订单金额',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_purchase_order
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for s_purchase_order_item
+-- ----------------------------
+DROP TABLE IF EXISTS `s_purchase_order_item`;
+CREATE TABLE `s_purchase_order_item` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `base_unit_id` bigint DEFAULT NULL COMMENT '基本单位ID',
+  `conversion_rate` decimal(38,2) DEFAULT NULL COMMENT '换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)',
+  `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `created_by` bigint DEFAULT NULL COMMENT '创建人',
+  `discount_rate` decimal(38,2) DEFAULT NULL COMMENT '折扣率',
+  `discount_value` decimal(38,2) DEFAULT NULL COMMENT '折扣金额',
+  `merchant_id` bigint NOT NULL,
+  `product_id` bigint DEFAULT NULL COMMENT '产品ID',
+  `purchase_order_id` bigint DEFAULT NULL COMMENT '采购订单主表ID',
+  `quantity` double DEFAULT NULL COMMENT '数量（以基本单位计）',
+  `secondary_quantity` double DEFAULT NULL COMMENT '辅助单位数量 (可为空',
+  `secondary_unit_id` bigint DEFAULT NULL COMMENT '辅助单位ID(可为空)',
+  `subtotal` decimal(38,2) DEFAULT NULL COMMENT '小计 (quantity * unit_price * (1 - discount_value/100) 或 quantity * unit_price - discount_value，根据折扣类型计算)',
+  `unit_price` decimal(38,2) DEFAULT NULL COMMENT '单价（以基本单位计）',
+  `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_purchase_order_item
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for s_purchase_price_record
+-- ----------------------------
+DROP TABLE IF EXISTS `s_purchase_price_record`;
+CREATE TABLE `s_purchase_price_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `base_unit_id` bigint DEFAULT NULL COMMENT '基本单位ID',
+  `conversion_rate` decimal(38,2) DEFAULT NULL COMMENT '换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)',
+  `merchant_id` bigint NOT NULL,
+  `product_id` bigint DEFAULT NULL COMMENT '产品ID',
+  `purchase_date` datetime(6) DEFAULT NULL COMMENT '采购日期',
+  `purchase_inbound_id` bigint DEFAULT NULL COMMENT '采购入库主表ID',
+  `quantity` double DEFAULT NULL COMMENT '数量（以基本单位计）',
+  `secondary_quantity` double DEFAULT NULL COMMENT '辅助单位数量 (可为空',
+  `secondary_unit_id` bigint DEFAULT NULL COMMENT '辅助单位ID(可为空)',
+  `secondary_unit_price` decimal(38,2) DEFAULT NULL COMMENT '单价（辅助单位）',
+  `supplier_id` bigint DEFAULT NULL COMMENT '货商ID',
+  `unit_price` decimal(38,2) DEFAULT NULL COMMENT '单价（以基本单位计）',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_purchase_price_record
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for s_purchase_return
+-- ----------------------------
+DROP TABLE IF EXISTS `s_purchase_return`;
+CREATE TABLE `s_purchase_return` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `approved_at` datetime(6) DEFAULT NULL COMMENT '审核时间',
+  `approved_by` bigint DEFAULT NULL COMMENT '审核人',
+  `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `created_by` bigint DEFAULT NULL COMMENT '创建人',
+  `merchant_id` bigint NOT NULL,
+  `order_status` varchar(20) NOT NULL DEFAULT '已保存' COMMENT '订单状态',
+  `purchase_inbound_id` bigint DEFAULT NULL COMMENT '采购入库主表ID',
+  `refund_amount` decimal(38,2) DEFAULT NULL COMMENT '退款金额',
+  `remarks` varchar(255) DEFAULT NULL COMMENT '备注',
+  `return_date` date DEFAULT NULL COMMENT '退单日期',
+  `return_reason` varchar(255) DEFAULT NULL COMMENT '退单原因',
+  `supplier_id` bigint DEFAULT NULL COMMENT '供货商ID',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_purchase_return
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for s_purchase_return_item
+-- ----------------------------
+DROP TABLE IF EXISTS `s_purchase_return_item`;
+CREATE TABLE `s_purchase_return_item` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `base_unit_id` bigint DEFAULT NULL COMMENT '基本单位ID',
+  `conversion_rate` decimal(38,2) DEFAULT NULL COMMENT '换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)',
+  `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `created_by` bigint DEFAULT NULL COMMENT '创建人',
+  `discount_rate` decimal(38,2) DEFAULT NULL COMMENT '折扣率',
+  `discount_value` decimal(38,2) DEFAULT NULL COMMENT '折扣金额',
+  `merchant_id` bigint NOT NULL,
+  `product_id` bigint DEFAULT NULL COMMENT '产品ID',
+  `purchase_return_id` bigint DEFAULT NULL COMMENT '采购入库单ID',
+  `quantity` double DEFAULT NULL COMMENT '数量（以基本单位计）',
+  `return_reason` varchar(255) DEFAULT NULL COMMENT '退货原因',
+  `secondary_quantity` double DEFAULT NULL COMMENT '辅助单位数量 (可为空',
+  `secondary_unit_id` bigint DEFAULT NULL COMMENT '辅助单位ID(可为空)',
+  `subtotal` decimal(38,2) DEFAULT NULL COMMENT '小计 (quantity * unit_price * (1 - discount_value/100) 或 quantity * unit_price - discount_value，根据折扣类型计算)',
+  `unit_price` decimal(38,2) DEFAULT NULL COMMENT '单价（以基本单位计）',
+  `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_purchase_return_item
 -- ----------------------------
 
 -- ----------------------------
@@ -470,6 +759,24 @@ CREATE TABLE `s_role` (
 INSERT INTO `s_role` VALUES ('1', '1', '商户管理员', '');
 
 -- ----------------------------
+-- Table structure for s_settlement_method
+-- ----------------------------
+DROP TABLE IF EXISTS `s_settlement_method`;
+CREATE TABLE `s_settlement_method` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
+  `merchant_id` bigint NOT NULL,
+  `name` varchar(32) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK2avg7rb2ik5r4kfcp7ppxdaq5` (`merchant_id`,`account_book_id`,`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_settlement_method
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for s_supplier
 -- ----------------------------
 DROP TABLE IF EXISTS `s_supplier`;
@@ -477,13 +784,13 @@ CREATE TABLE `s_supplier` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `account_book_id` bigint NOT NULL,
   `code` varchar(255) DEFAULT NULL,
-  `contact_person` varchar(255) DEFAULT NULL COMMENT '联系人',
+  `contact` varchar(255) DEFAULT NULL COMMENT '联系人',
   `merchant_id` bigint NOT NULL,
   `name` varchar(32) NOT NULL,
   `phone` varchar(255) DEFAULT NULL COMMENT '电话',
   `supplier_category_id` bigint DEFAULT NULL COMMENT '货商分类ID',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uc_supplier_name` (`merchant_id`,`account_book_id`,`name`)
+  UNIQUE KEY `UK22r49jgn5b10vxosngqsv11jp` (`merchant_id`,`account_book_id`,`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
@@ -500,11 +807,29 @@ CREATE TABLE `s_supplier_category` (
   `merchant_id` bigint NOT NULL,
   `name` varchar(32) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uc_supplierCategory_name` (`merchant_id`,`account_book_id`,`name`)
+  UNIQUE KEY `UK65c4r889v41h4uiwrk6llth88` (`merchant_id`,`account_book_id`,`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
 -- Records of s_supplier_category
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for s_system_config
+-- ----------------------------
+DROP TABLE IF EXISTS `s_system_config`;
+CREATE TABLE `s_system_config` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `config_type` varchar(255) NOT NULL COMMENT '参数类型',
+  `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
+  `merchant_id` bigint NOT NULL,
+  `name` varchar(32) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ----------------------------
+-- Records of s_system_config
 -- ----------------------------
 
 -- ----------------------------
@@ -517,7 +842,7 @@ CREATE TABLE `s_unit` (
   `merchant_id` bigint NOT NULL,
   `name` varchar(32) NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uc_unit_name` (`merchant_id`,`account_book_id`,`name`)
+  UNIQUE KEY `UKnj6xfuqeuvwg8pobbs4s40pi6` (`merchant_id`,`account_book_id`,`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
@@ -535,7 +860,7 @@ CREATE TABLE `s_warehouse` (
   `name` varchar(32) NOT NULL,
   `system_default` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否默认',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uc_warehouse_name` (`merchant_id`,`account_book_id`,`name`)
+  UNIQUE KEY `UKimc9dqlylg45qf23aftyty438` (`merchant_id`,`account_book_id`,`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------

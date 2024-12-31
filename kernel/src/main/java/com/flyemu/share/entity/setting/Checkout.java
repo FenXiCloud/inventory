@@ -31,11 +31,12 @@ public class Checkout implements Serializable {
     @Comment("创建时间")
     @CreationTimestamp
     @Column(updatable = false)
-    private LocalDateTime createDate;
+    private LocalDateTime createdAt;
 
     @Comment("结账人")
     private Long checkId;
 
+    @Comment("结账日期")
     private LocalDate checkDate;
 
     @Column(nullable = false)

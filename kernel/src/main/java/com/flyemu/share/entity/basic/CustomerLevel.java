@@ -17,7 +17,7 @@ import lombok.Setter;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "uc_customer_level_name", columnNames = {"merchantId", "accountBookId", "name"}),
+        @UniqueConstraint( columnNames = {"merchantId", "accountBookId", "name"}),
 })
 public class CustomerLevel {
 

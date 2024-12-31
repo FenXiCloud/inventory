@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Comment;
 
 /**
  * @功能描述: 客户分类
@@ -17,7 +18,7 @@ import lombok.Setter;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "uc_customer_category_name", columnNames = {"merchantId", "accountBookId", "name"}),
+        @UniqueConstraint( columnNames = {"merchantId", "accountBookId", "name"}),
 })
 public class CustomerCategory {
 
@@ -25,6 +26,7 @@ public class CustomerCategory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("名称")
     @Column(length = 32, nullable = false)
     private String name;
 

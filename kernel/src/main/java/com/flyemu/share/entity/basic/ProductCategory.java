@@ -21,7 +21,7 @@ import org.hibernate.annotations.DynamicUpdate;
 @Entity
 @DynamicUpdate
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "uc_product_category_code", columnNames = {"merchantId", "accountBookId", "code"}),
+        @UniqueConstraint( columnNames = {"merchantId", "accountBookId", "code"}),
 })
 public class ProductCategory {
 

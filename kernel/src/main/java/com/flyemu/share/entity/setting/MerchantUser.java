@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
@@ -29,6 +30,7 @@ public class MerchantUser implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("姓名")
     @Column(nullable = false)
     private String name;
 
@@ -41,10 +43,14 @@ public class MerchantUser implements Serializable {
     @JsonIgnore
     private String password;
 
-    @Comment("是否启用")
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
     private Boolean enabled;
 
     @Comment("是否系统默认")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
     private Boolean systemDefault;
 
     @Comment("最后登录时间")

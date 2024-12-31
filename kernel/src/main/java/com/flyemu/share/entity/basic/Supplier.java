@@ -18,7 +18,7 @@ import org.hibernate.annotations.Comment;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "uc_supplier_name", columnNames = {"merchantId","accountBookId","name"})
+        @UniqueConstraint( columnNames = {"merchantId","accountBookId","name"})
 })
 public class Supplier {
 
@@ -32,7 +32,7 @@ public class Supplier {
     private String name;
 
     @Comment("联系人")
-    private String contactPerson;
+    private String contact;
 
     @Comment("电话")
     private String phone;

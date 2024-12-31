@@ -13,18 +13,20 @@ import java.math.BigDecimal;
  */
 @Data
 @NoArgsConstructor
-public class UnitPrice {
-    private Long unitId;
-    private String unitName;
-    private Boolean isDefault = false;
-    private Double num = 1d; //换算值
-    private BigDecimal price = BigDecimal.ZERO;
+public class AuxiliaryUnitPrice {
 
-    public UnitPrice(Long unitId, String unitName, Boolean isDefault, Double num, BigDecimal price) {
+    private Long unitId;
+
+    private String unitName;
+
+    private Double conversionRate = 1d; //换算值
+
+    private BigDecimal unitPrice = BigDecimal.ZERO;
+
+    public AuxiliaryUnitPrice(Long unitId, String unitName, Double conversionRate, BigDecimal unitPrice) {
         this.unitId = unitId;
         this.unitName = unitName;
-        this.isDefault = isDefault;
-        this.num = num;
-        this.price = price;
+        this.conversionRate = conversionRate;
+        this.unitPrice = unitPrice;
     }
 }

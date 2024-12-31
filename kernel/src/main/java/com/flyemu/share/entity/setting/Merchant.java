@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -43,19 +44,16 @@ public class Merchant implements Serializable {
     @Comment("创建日期")
     @CreationTimestamp
     @Column(updatable = false)
-    private LocalDateTime createDate;
+    private LocalDateTime createdAt;
 
     @Comment("联系人")
-    private String linkman;
+    private String contact;
 
     @Comment("邮箱")
     private String email;
 
     @Comment("电话号码")
     private String mobile;
-
-    @Comment("是否启用")
-    private Boolean enabled;
 
     @Comment("服务开始时间")
     private LocalDate serviceStartDate;
@@ -68,6 +66,11 @@ public class Merchant implements Serializable {
 
     @Comment("允许负库存")
     private Boolean stockField;
+
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
+    private Boolean enabled;
 
     public enum CostingMethod {
         移动平均法,先进先出法

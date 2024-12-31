@@ -10,8 +10,8 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.common.PinYinUtil;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.ProductDto;
-import com.flyemu.share.dto.UnitPrice;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.repository.CustomerLevelPriceRepository;
@@ -61,7 +61,7 @@ public class ProductService extends AbsService {
         PagedList<Tuple> pagedList = bqf.selectFrom(qProduct)
                 .select(qProduct, qUnit.name, qProductCategory.name)
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
-                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.categoryId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(query.builders())
                 .orderBy(qProduct.id.desc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -77,11 +77,11 @@ public class ProductService extends AbsService {
     @Transactional
     public void save(ProductForm productForm, Long merchantId, Long accountBookId) {
         Product product = productForm.getProduct();
-        if (product.getEnableMultiUnit()) {
-            Assert.isTrue(CollUtil.isNotEmpty(product.getMultiUnit()), "开启多单位,必须选择一个副单位");
+        if (product.getEnableAuxiliaryUnit()) {
+            Assert.isTrue(CollUtil.isNotEmpty(product.getAuxiliaryUnitPrices()), "开启多单位,必须选择一个副单位");
             Set<Long> checkUnit = new HashSet<>();
             checkUnit.add(product.getUnitId());
-            for (UnitPrice up : product.getMultiUnit()) {
+            for (AuxiliaryUnitPrice up : product.getAuxiliaryUnitPrices()) {
                 if (up.getUnitId() != null) {
                     Assert.isFalse(checkUnit.contains(up.getUnitId()), up.getUnitName() + "单位,不能一致");
                 }
@@ -90,15 +90,15 @@ public class ProductService extends AbsService {
         if (product.getId() != null) {
             Product original = productRepository.getById(product.getId());
 
-            if (original.getEnableMultiUnit()) {
+            if (original.getEnableAuxiliaryUnit()) {
                 List<Long> unitIds;
-                if (!product.getEnableMultiUnit()) { //关闭多单位需要去检测
-                    unitIds = original.getMultiUnit().stream().map(UnitPrice::getUnitId).collect(Collectors.toList());
+                if (!product.getEnableAuxiliaryUnit()) { //关闭多单位需要去检测
+                    unitIds = original.getAuxiliaryUnitPrices().stream().map(AuxiliaryUnitPrice::getUnitId).collect(Collectors.toList());
                 } else {//取有变动的单位去校验
                     unitIds = new ArrayList<>();
-                    if (!original.getMultiUnit().equals(product.getMultiUnit())) {
-                        List<UnitPrice> prices = product.getMultiUnit();
-                        original.getMultiUnit().forEach(item -> {
+                    if (!original.getAuxiliaryUnitPrices().equals(product.getAuxiliaryUnitPrices())) {
+                        List<AuxiliaryUnitPrice> prices = product.getAuxiliaryUnitPrices();
+                        original.getAuxiliaryUnitPrices().forEach(item -> {
                             if (!prices.contains(item)) {
                                 unitIds.add(item.getUnitId());
                             }
@@ -132,16 +132,16 @@ public class ProductService extends AbsService {
                 levelPrice.setMerchantId(merchantId);
                 levelPrice.setAccountBookId(accountBookId);
                 levelPrice.setCustomerLevelId(cp.getLong("customerLeveId"));
-                if (product.getEnableMultiUnit()) {
-                    List<UnitPrice> ups = new ArrayList<>();
-                    for (UnitPrice multiUnit : product.getMultiUnit()) {
-                        UnitPrice up = new UnitPrice();
+                if (product.getEnableAuxiliaryUnit()) {
+                    List<AuxiliaryUnitPrice> ups = new ArrayList<>();
+                    for (AuxiliaryUnitPrice multiUnit : product.getAuxiliaryUnitPrices()) {
+                        AuxiliaryUnitPrice up = new AuxiliaryUnitPrice();
                         up.setUnitName(multiUnit.getUnitName());
                         up.setUnitId(multiUnit.getUnitId());
-                        up.setPrice(cp.getBigDecimal(multiUnit.getUnitId() + ""));
+                        up.setUnitPrice(cp.getBigDecimal(multiUnit.getUnitId() + ""));
                         ups.add(up);
                     }
-                    levelPrice.setUnitPrice(ups);
+                    levelPrice.setAuxiliaryUnitPrices(ups);
                 }
                 cps.add(levelPrice);
             }
@@ -152,37 +152,37 @@ public class ProductService extends AbsService {
             List<CustomerLevelPrice> priceList = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(product.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).fetch();
             for (CustomerLevelPrice price : priceList) {
                 price.setUnitId(product.getUnitId());
-                if (product.getEnableMultiUnit()) {
-                    for (int i = 0; i < product.getMultiUnit().size(); i++) {
-                        UnitPrice gp = product.getMultiUnit().get(i);
-                        if (CollUtil.isNotEmpty(price.getUnitPrice())) {
-                            UnitPrice unitPrice = null;
-                            if (price.getUnitPrice() != null && price.getUnitPrice().size() > i) {
-                                unitPrice = price.getUnitPrice().get(i);
+                if (product.getEnableAuxiliaryUnit()) {
+                    for (int i = 0; i < product.getAuxiliaryUnitPrices().size(); i++) {
+                        AuxiliaryUnitPrice gp = product.getAuxiliaryUnitPrices().get(i);
+                        if (CollUtil.isNotEmpty(price.getAuxiliaryUnitPrices())) {
+                            AuxiliaryUnitPrice auxiliaryUnitPrice = null;
+                            if (price.getAuxiliaryUnitPrices() != null && price.getAuxiliaryUnitPrices().size() > i) {
+                                auxiliaryUnitPrice = price.getAuxiliaryUnitPrices().get(i);
                             }
-                            if (unitPrice != null) {
-                                unitPrice.setUnitId(gp.getUnitId());
-                                unitPrice.setUnitName(gp.getUnitName());
-                                unitPrice.setNum(gp.getNum());
+                            if (auxiliaryUnitPrice != null) {
+                                auxiliaryUnitPrice.setUnitId(gp.getUnitId());
+                                auxiliaryUnitPrice.setUnitName(gp.getUnitName());
+                                auxiliaryUnitPrice.setConversionRate(gp.getConversionRate());
                             } else {
-                                UnitPrice up = new UnitPrice();
+                                AuxiliaryUnitPrice up = new AuxiliaryUnitPrice();
                                 up.setUnitId(gp.getUnitId());
                                 up.setUnitName(gp.getUnitName());
-                                up.setNum(gp.getNum());
-                                up.setPrice(BigDecimal.ZERO);
-                                price.getUnitPrice().add(up);
+                                up.setConversionRate(gp.getConversionRate());
+                                up.setUnitPrice(BigDecimal.ZERO);
+                                price.getAuxiliaryUnitPrices().add(up);
                             }
                         } else {
-                            List<UnitPrice> ups = new ArrayList<>();
-                            for (UnitPrice multiUnit : product.getMultiUnit()) {
-                                UnitPrice up = new UnitPrice();
+                            List<AuxiliaryUnitPrice> ups = new ArrayList<>();
+                            for (AuxiliaryUnitPrice multiUnit : product.getAuxiliaryUnitPrices()) {
+                                AuxiliaryUnitPrice up = new AuxiliaryUnitPrice();
                                 up.setUnitName(multiUnit.getUnitName());
                                 up.setUnitId(multiUnit.getUnitId());
-                                up.setNum(gp.getNum());
-                                up.setPrice(BigDecimal.ZERO);
+                                up.setConversionRate(gp.getConversionRate());
+                                up.setUnitPrice(BigDecimal.ZERO);
                                 ups.add(up);
                             }
-                            price.setUnitPrice(ups);
+                            price.setAuxiliaryUnitPrices(ups);
                         }
                     }
                 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
@@ -21,7 +22,7 @@ import java.io.Serializable;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "u_settlement_method_name", columnNames = {"merchantId", "accountBookId", "name"})
+        @UniqueConstraint( columnNames = {"merchantId", "accountBookId", "name"})
 })
 @DynamicUpdate
 public class SettlementMethod implements Serializable {
@@ -33,7 +34,9 @@ public class SettlementMethod implements Serializable {
     @Column(length = 32, nullable = false)
     private String name;
 
-    @Comment("是否启用")
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
     private Boolean enabled;
 
     @Column(nullable = false)

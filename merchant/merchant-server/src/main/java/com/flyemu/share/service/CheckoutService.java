@@ -47,14 +47,14 @@ public class CheckoutService extends AbsService {
      */
     public PageResults<Dict> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qCheckout)
-                .select(qAdmin.name, qCheckout.checkDate, qCheckout.createDate).where(query.builder)
+                .select(qAdmin.name, qCheckout.checkDate, qCheckout.createdAt).where(query.builder)
                 .leftJoin(qAdmin).on(qCheckout.checkId.eq(qAdmin.id))
                 .orderBy(qCheckout.id.desc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
         ArrayList<Dict> dicts = fetchPage.stream().collect(ArrayList::new, (list, tuple) -> {
             Dict dict = new Dict().set("checkName", tuple.get(qAdmin.name))
                     .set("checkDate", tuple.get(qCheckout.checkDate))
-                    .set("createDate", tuple.get(qCheckout.createDate));
+                    .set("createDate", tuple.get(qCheckout.createdAt));
             list.add(dict);
         }, List::addAll);
         return new PageResults<>(dicts, page, fetchPage.getTotalSize());

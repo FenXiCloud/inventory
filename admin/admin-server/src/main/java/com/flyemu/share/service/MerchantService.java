@@ -58,8 +58,8 @@ public class MerchantService extends AbsService {
             merchant.setCode(UUID.randomUUID().toString());
             merchant.setName("纷析云");
             merchant.setAddress("杭州");
-            merchant.setCreateDate(LocalDateTime.now());
-            merchant.setLinkman("李泽龙");
+            merchant.setCreatedAt(LocalDateTime.now());
+            merchant.setContact("李泽龙");
             merchant.setMobile("13944878765");
             merchant.setEnabled(true);
             LocalDate now = LocalDate.now();
@@ -88,7 +88,7 @@ public class MerchantService extends AbsService {
             return merchantRepository.save(original);
         } else {
             merchant.setEnabled(true);
-            merchant.setCreateDate(LocalDateTime.now());
+            merchant.setCreatedAt(LocalDateTime.now());
             merchantRepository.save(merchant);
 
             //创建默认角色和管理员账号
@@ -99,7 +99,7 @@ public class MerchantService extends AbsService {
             roleRepository.save(role);
 
             Admin admin = new Admin();
-            admin.setName(merchant.getLinkman());
+            admin.setName(merchant.getContact());
             admin.setMobile(merchant.getMobile());
             admin.setUsername(merchant.getMobile());
             admin.setPassword(DigestUtil.bcrypt(merchant.getMobile().substring(5)));

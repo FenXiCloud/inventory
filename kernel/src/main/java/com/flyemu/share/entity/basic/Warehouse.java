@@ -19,7 +19,7 @@ import org.hibernate.annotations.Comment;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "uc_warehouse_name", columnNames = {"merchantId","accountBookId","name"})
+        @UniqueConstraint( columnNames = {"merchantId","accountBookId","name"})
 })
 public class Warehouse {
     @Id

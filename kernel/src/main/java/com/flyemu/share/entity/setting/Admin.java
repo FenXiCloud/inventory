@@ -37,6 +37,7 @@ public class Admin implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("姓名")
     @Column(nullable = false)
     private String name;
 
@@ -59,11 +60,14 @@ public class Admin implements Serializable {
     private Boolean enabled;
 
     @Comment("是否系统默认")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
     private Boolean systemDefault;
 
     @Comment("最后登录时间")
     private LocalDateTime lastLoginDate;
 
+    @Comment("角色ID")
     private Long roleId;
 
     @Column(nullable = false)

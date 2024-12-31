@@ -77,7 +77,7 @@ public class ProductCategoryService extends AbsService {
 
         List<Long> ids = bqf.selectFrom(qProductCategory).select(qProductCategory.id).where((qProductCategory.merchantId.eq(merchantId)).and(qProductCategory.accountBookId.eq(accountBookId))).fetch();
 
-        Assert.isFalse(bqf.selectFrom(qProduct).where(qProduct.categoryId.in(ids).and(qProduct.merchantId.eq(merchantId)).and(qProduct.accountBookId.eq(accountBookId))).fetchCount() > 0, "商品已使用，不能删除");
+        Assert.isFalse(bqf.selectFrom(qProduct).where(qProduct.productCategoryId.in(ids).and(qProduct.merchantId.eq(merchantId)).and(qProduct.accountBookId.eq(accountBookId))).fetchCount() > 0, "商品已使用，不能删除");
 
         if (productCategory.getPid() != null) {
             long count = bqf.selectFrom(qProductCategory).where(qProductCategory.pid.eq(productCategory.getPid()).and(qProductCategory.merchantId.eq(merchantId)).and(qProductCategory.accountBookId.eq(accountBookId))).fetchCount();

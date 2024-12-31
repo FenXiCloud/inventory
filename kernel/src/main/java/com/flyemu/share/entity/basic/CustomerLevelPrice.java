@@ -1,6 +1,6 @@
 package com.flyemu.share.entity.basic;
 
-import com.flyemu.share.dto.UnitPrice;
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,7 +25,7 @@ import java.util.List;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "uc_customer_level_price", columnNames = {"merchantId","accountBookId", "productId", "customerLevelId"})
+        @UniqueConstraint(columnNames = {"merchantId","accountBookId", "productId", "customerLevelId"})
 })
 public class CustomerLevelPrice implements Serializable {
 
@@ -33,8 +33,10 @@ public class CustomerLevelPrice implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("产品ID")
     private Long productId;
 
+    @Comment("客户等级ID")
     private Long customerLevelId;
 
     @Comment("基础单位")
@@ -45,7 +47,7 @@ public class CustomerLevelPrice implements Serializable {
 
     @Comment("客户单位辅助价格")
     @JdbcTypeCode(SqlTypes.JSON)
-    private List<UnitPrice> unitPrice;
+    private List<AuxiliaryUnitPrice> auxiliaryUnitPrices;
 
     @Column(nullable = false)
     private Long accountBookId;

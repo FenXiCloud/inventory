@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.poi.hpsf.Decimal;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
@@ -24,7 +25,7 @@ import java.math.BigDecimal;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "u_account_name", columnNames = {"merchantId", "accountBookId", "name"})
+        @UniqueConstraint( columnNames = {"merchantId", "accountBookId", "name"})
 })
 @DynamicUpdate
 public class Account implements Serializable {
@@ -33,13 +34,17 @@ public class Account implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("编码")
     @Column(length = 32, nullable = false)
     private String code;
 
+    @Comment("名称")
     @Column(length = 32, nullable = false)
     private String name;
 
     @Comment("是否系统默认")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
     private Boolean systemDefault;
 
     @Comment("账户类别")
@@ -47,7 +52,9 @@ public class Account implements Serializable {
     @Column(length = 32,columnDefinition = "varchar(32)  default '银行存款'")
     private Account.AccountType accountType;
 
-    @Comment("是否启用")
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
     private Boolean enabled;
 
     @Comment("账户余额")

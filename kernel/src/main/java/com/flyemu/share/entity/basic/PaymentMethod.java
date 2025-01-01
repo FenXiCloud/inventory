@@ -25,7 +25,7 @@ import java.io.Serializable;
         @UniqueConstraint( columnNames = {"merchantId", "accountBookId", "name"})
 })
 @DynamicUpdate
-public class SettlementMethod implements Serializable {
+public class PaymentMethod implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

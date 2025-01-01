@@ -34,8 +34,8 @@
 </template>
 
 <script>
-import SettlementMethod from "@js/api/SettlementMethod";
-import SettlementMethodForm from "./SettlementMethodForm.vue";
+import PaymentMethod from "@js/api/PaymentMethod";
+import PaymentMethodForm from "./PaymentMethodForm.vue";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
@@ -48,7 +48,7 @@ import {h} from "vue";
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 export default {
-  name: "SettlementMethodList",
+  name: "PaymentMethodList",
   data() {
     return {
       loading: false,
@@ -66,7 +66,7 @@ export default {
         shadeClose: false,
         closeBtn: false,
         area: ['400px', '230px'],
-        content: h(SettlementMethodForm, {
+        content: h(PaymentMethodForm, {
           entity, type,
           onClose: () => {
             layer.close(layerId);
@@ -83,7 +83,7 @@ export default {
     },
     loadList() {
       this.loading = true;
-      SettlementMethod.list(this.params).then(({data}) => {
+      PaymentMethod.list(this.params).then(({data}) => {
         this.dataList = data;
       }).finally(() => this.loading = false);
     },
@@ -92,7 +92,7 @@ export default {
         title: "系统提示",
         content: `确认删除：${row.name}?`,
         onConfirm: () => {
-          SettlementMethod.remove(row.id).then(() => {
+          PaymentMethod.remove(row.id).then(() => {
             message("删除成功~");
             this.loadList();
           })

@@ -26,12 +26,12 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import SettlementMethod from "@js/api/SettlementMethod";
+import PaymentMethod from "@js/api/PaymentMethod";
 import {message} from "heyui.ext";
 import {CopyObj} from "@common/utils";
 
 export default {
-  name: "SettlementMethodForm",
+  name: "PaymentMethodForm",
   props: {
     entity: Object,
   },
@@ -50,7 +50,7 @@ export default {
       let validResult = this.$refs.form.valid();
       if (validResult.result) {
         this.loading = true;
-        SettlementMethod.save(this.model).then(() => {
+        PaymentMethod.save(this.model).then(() => {
           message("保存成功~");
           this.$emit('success');
         }).finally(() => this.loading = false);

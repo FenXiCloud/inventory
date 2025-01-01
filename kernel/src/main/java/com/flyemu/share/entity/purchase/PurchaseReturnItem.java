@@ -35,6 +35,9 @@ public class PurchaseReturnItem {
     @Comment("产品ID")
     private Long productId;
 
+    @Comment("批次号")
+    private String batchNumber;
+
     @Comment("基本单位ID")
     private Long baseUnitId;
 

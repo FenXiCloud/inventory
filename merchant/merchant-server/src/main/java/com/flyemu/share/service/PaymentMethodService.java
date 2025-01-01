@@ -50,9 +50,9 @@ public class PaymentMethodService extends AbsService {
     }
 
     @Transactional
-    public void delete(Long PaymentMethodId, Long merchantId, Long accountBookId) {
+    public void delete(Long paymentMethodId, Long merchantId, Long accountBookId) {
         jqf.delete(qPaymentMethod)
-                .where(qPaymentMethod.id.eq(PaymentMethodId).and(qPaymentMethod.merchantId.eq(merchantId)).and(qPaymentMethod.accountBookId.eq(accountBookId)))
+                .where(qPaymentMethod.id.eq(paymentMethodId).and(qPaymentMethod.merchantId.eq(merchantId)).and(qPaymentMethod.accountBookId.eq(accountBookId)))
                 .execute();
     }
 

@@ -51,7 +51,7 @@ public class PurchaseOrderItem {
     private BigDecimal conversionRate;
 
     @Comment("单价（以基本单位计）")
-    private BigDecimal unit_price;
+    private BigDecimal unitPrice;
 
     @Comment("折扣率")
     private BigDecimal discountRate;
@@ -59,7 +59,7 @@ public class PurchaseOrderItem {
     @Comment("折扣金额")
     private BigDecimal discountValue;
 
-    @Comment("小计 (quantity * unit_price * (1 - discount_value/100) 或 quantity * unit_price - discount_value，根据折扣类型计算)")
+    @Comment("小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)")
     private BigDecimal subtotal;
 
     @Comment("仓库ID")

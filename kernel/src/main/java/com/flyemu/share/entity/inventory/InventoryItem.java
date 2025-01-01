@@ -30,6 +30,9 @@ public class InventoryItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("关联单据ID")
+    private Long orderId;
+
     @Comment("产品ID")
     private Long productId;
 

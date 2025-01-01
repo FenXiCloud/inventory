@@ -31,6 +31,9 @@ public class SalesOutbound {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("单据编号")
+    private String orderNo;
+
     @Comment("销售订单ID")
     private Long orderId;
 

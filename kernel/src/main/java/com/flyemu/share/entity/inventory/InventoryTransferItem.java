@@ -36,9 +36,6 @@ public class InventoryTransferItem {
     @Comment("产品ID")
     private Long productId;
 
-    @Comment("基本单位ID")
-    private Long baseUnitId;
-
     @Comment("数量（以基本单位计）")
     private Double quantity;
 

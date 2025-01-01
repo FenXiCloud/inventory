@@ -31,6 +31,9 @@ public class PurchaseInbound {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("单据编号")
+    private String orderNo;
+
     @Comment("采购订单ID")
     private Long orderId;
 

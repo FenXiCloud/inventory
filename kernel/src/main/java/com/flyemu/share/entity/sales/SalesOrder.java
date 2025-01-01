@@ -31,6 +31,9 @@ public class SalesOrder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("单据编号")
+    private String orderNo;
+
     @Comment("客户ID")
     private Long customerId;
 

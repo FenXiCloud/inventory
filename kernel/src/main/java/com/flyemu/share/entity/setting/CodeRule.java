@@ -47,11 +47,6 @@ public class CodeRule implements Serializable {
     @Comment("起始值")
     private Integer  startValue;
 
-    @Comment("重置周期")
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private ResetCycle resetCycle;
-
     @Comment("单据类型")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

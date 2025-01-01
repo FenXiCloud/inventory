@@ -4,13 +4,11 @@
 
 #### 系统演示
 系统重构中。。。。
-
-- https://jxc.fenxi365.com  商户后台
-- 账号：13944878765
-- 密码：878765
-- https://jadmin.fenxi365.com  管理后台
-- 账号：13944878765
-- 密码：878765
+![项目演示](demo/img.png)
+![项目演示](demo/img_1.png)
+![项目演示](demo/img_2.png)
+![项目演示](demo/img_3.png)
+![项目演示](demo/img_4.png)
 
 #### 技术架构
 
@@ -26,16 +24,16 @@
 - Redis: 6.0+
 
 #### 本地部署
-1.初始化根目录数据库脚本jxc.sql
-2.修改项目jdk版本17
-3.修改Gradle jdk版本17
-4.前端运行
-cd admin-front  yarn install
-cd merchant-front  yarn install
-5.配置数据库kernel/src/resources/application.yml
-6.启动项目 
-admin初始账号密码：13944878765 878765
-merchant 初始账号密码：13944878765 878765
+- 1.初始化根目录数据库脚本jxc.sql
+- 2.修改项目jdk版本17
+- 3.修改Gradle jdk版本17
+- 4.前端运行
+  - cd admin-front  yarn install
+  - cd merchant-front  yarn install
+- 5.配置数据库kernel/src/resources/application.yml
+- 6.启动项目 
+  - admin初始账号密码：13944878765 878765
+  - merchant 初始账号密码：13944878765 878765
 
 #### 数据字典
 - 设置
@@ -111,7 +109,7 @@ merchant 初始账号密码：13944878765 878765
 
 
 #### 如何支持
-- 开源不易，坚持更难！如果您觉得纷析云进销存不错，不用请作者喝咖啡。
+- 开源不易，坚持更难！如果您觉得纷析云进销存不错，请给个star支持下。
 - 如果您有任何问题可以添加客服进群
 <img src="https://f3.fenxi365.com/api/assets/logo/4d6614c2-4384-487f-ba73-d8a4439f2033.png" height="150px" width="150px"/>
 

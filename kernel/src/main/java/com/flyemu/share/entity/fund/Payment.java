@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
+
+import java.time.LocalDate;
 
 /**
  * @功能描述: 付款单
@@ -23,4 +26,9 @@ public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    private Long supplierId;
+
+    @Comment("单据日期")
+    private LocalDate orderDate;
 }

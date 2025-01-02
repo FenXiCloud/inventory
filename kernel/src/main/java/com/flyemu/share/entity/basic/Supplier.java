@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
+
+import java.math.BigDecimal;
 
 /**
  * @功能描述: 供货商
@@ -39,6 +42,14 @@ public class Supplier {
 
     @Comment("货商分类ID")
     private Long supplierCategoryId;
+
+    @Comment("货商余额,应付账款")
+    private BigDecimal balance;
+
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
+    private Boolean enabled;
 
     @Column(nullable = false)
     private Long accountBookId;

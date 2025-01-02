@@ -34,6 +34,11 @@ public class Warehouse {
     @ColumnDefault("b'0'")
     private Boolean systemDefault;
 
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
+    private Boolean enabled;
+
     @Column(nullable = false)
     private Long accountBookId;
 

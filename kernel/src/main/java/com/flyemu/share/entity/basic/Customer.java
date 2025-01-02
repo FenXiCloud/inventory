@@ -7,6 +7,8 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 
+import java.math.BigDecimal;
+
 /**
  * @功能描述: 客户管理
  * @创建时间: 2024年04月28日
@@ -49,6 +51,9 @@ public class Customer {
     @Comment("客户等级ID")
     @Column(nullable = false)
     private Long customerLevelId;
+
+    @Comment("客户余额,应收账款")
+    private BigDecimal balance;
 
     @Comment("状态")
     @Column(nullable = false)

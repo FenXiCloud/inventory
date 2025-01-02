@@ -47,6 +47,11 @@ public class CodeRule implements Serializable {
     @Comment("起始值")
     private Integer  startValue;
 
+    @Comment("流水号清零")
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private ResetPeriod resetPeriod;
+
     @Comment("单据类型")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -63,6 +68,9 @@ public class CodeRule implements Serializable {
     @Column(nullable = false)
     private Long merchantId;
 
+    public enum ResetPeriod {
+        日, 月,季,年
+    }
 
 }
 

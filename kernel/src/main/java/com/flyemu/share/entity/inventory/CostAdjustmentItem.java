@@ -38,14 +38,14 @@ public class CostAdjustmentItem {
     @Comment("基本单位ID")
     private Long baseUnitId;
 
-    @Comment("调整前的产品单位成本")
-    private BigDecimal originalCost;
+    @Comment("库存数量")
+    private Integer currentQuantity;
+
+    @Comment("调整前的产品总成本")
+    private BigDecimal totalCost;
 
     @Comment("调整金额：本次调整的总金额（调整数量 * (调整后成本 - 调整前成本)）")
     private BigDecimal adjustmentAmount;
-
-    @Comment("调整后的产品单位成本")
-    private BigDecimal newCost;
 
     @Comment("备注")
     private String remarks;

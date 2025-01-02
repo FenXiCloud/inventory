@@ -45,7 +45,7 @@ public class CostAdjustment {
     private BigDecimal adjustmentAmount;
 
     @Comment("调整类型")
-    @Column(nullable = false,length = 32, columnDefinition = "varchar(20) default '采购成本调整'")
+    @Column(nullable = false,length = 32, columnDefinition = "varchar(20) default '入库调整'")
     @Enumerated(EnumType.STRING)
     private AdjustmentType adjustmentType;
 

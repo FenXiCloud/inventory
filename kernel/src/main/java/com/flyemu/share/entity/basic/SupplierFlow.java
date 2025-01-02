@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * @功能描述: 账户流水
+ * @功能描述: 供货商应付，预付流水
  * @创建时间: 2024年04月28日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -24,15 +24,15 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table
 @DynamicUpdate
-public class AccountFlow implements Serializable {
+public class SupplierFlow implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Comment("账户Id")
+    @Comment("货商Id")
     @Column(nullable = false)
-    private Long accountId;
+    private Long supplierId;
 
     @Comment("单据Id")
     private Long voucherId;
@@ -40,12 +40,11 @@ public class AccountFlow implements Serializable {
     @Comment("操作类型")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private AccountFlowType accountFlowType;
+    private SupplierFlowType supplierFlowType;
 
     @Comment("金额")
     @Column(nullable = false)
     private BigDecimal amount;
-
 
     @Comment("交易前余额")
     private BigDecimal balanceBefore;
@@ -62,8 +61,8 @@ public class AccountFlow implements Serializable {
     @Comment("备注")
     private String remarks;
 
-    public enum AccountFlowType {
-        支出, 收入, 转账
+    public enum SupplierFlowType {
+        加, 减, 平
     }
 
 }

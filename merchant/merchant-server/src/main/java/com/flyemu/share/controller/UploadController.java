@@ -4,13 +4,10 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.file.FileNameUtil;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.StrUtil;
-import com.flyemu.share.aliyuncs.OssService;
-import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.config.AppConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -27,7 +24,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 
 @Slf4j
 @Controller
@@ -36,9 +32,6 @@ import java.util.Date;
 public class UploadController {
 
     private final AppConfig appConfig;
-
-    @Autowired
-    private OssService ossService;
 
     @Value("${aliyun.bucketName}")
     private String bucketName;
@@ -140,22 +133,6 @@ public class UploadController {
                     .data("path", "/attachment/" + type + "/" + name);
         } catch (Exception e) {
             log.error("上传图片失败,请检查配置路径~", e);
-            return JsonResult.failure(e.getMessage());
-        }
-    }
-
-
-
-    @PostMapping("/oss/upload/{type}")
-    @ResponseBody
-    public JsonResult ossUpload(@RequestParam("file") MultipartFile file,@RequestParam(value = "name", required = false) String name,
-                                       @PathVariable String type,@SaMerchantId Long merchantId) {
-        try {
-            String path = (merchantId+"/chapters/"+type).toLowerCase() + "/" + sdf.format(new Date()) + "/" + file.getOriginalFilename();
-            OssService.UploadBody body = new OssService.UploadBody(bucketName, file.getInputStream(), path);
-            ossService.upload(body);
-            return JsonResult.successful(body.getUrl());
-        } catch (Exception e) {
             return JsonResult.failure(e.getMessage());
         }
     }

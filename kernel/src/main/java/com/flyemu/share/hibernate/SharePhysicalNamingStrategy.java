@@ -18,6 +18,6 @@ public class SharePhysicalNamingStrategy extends CamelCaseToUnderscoresNamingStr
     @Override
     public Identifier toPhysicalTableName(Identifier name, JdbcEnvironment jdbcEnvironment) {
         Identifier identifier = super.toPhysicalTableName(name, jdbcEnvironment);
-        return new Identifier("s_" + identifier.getText(), identifier.isQuoted());
+        return new Identifier("jxc_" + identifier.getText(), identifier.isQuoted());
     }
 }

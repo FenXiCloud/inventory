@@ -24,7 +24,7 @@
     "vue-cropperjs": "^5.0.0",
     "vue-router": "^4.0.13",
     "vuex": "^4.0.2",
-    "vxe-table": "^4.5.10",
+    "vxe-table": "4.5.10",
     "wangeditor": "^3.1.1",
     "x-data-spreadsheet": "^1.1.9",
     "xe-utils": "^3.5.13",

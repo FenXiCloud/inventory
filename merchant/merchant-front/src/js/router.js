@@ -1,4 +1,3 @@
-
 import {defineAsyncComponent} from "vue";
 
 const groupRoutes = [
@@ -38,7 +37,7 @@ const groupRoutes = [
 
 	{name: 'AccountTypeList', component: defineAsyncComponent(() => import('@views/basic/AccountTypeList'))},
 
-	{name: 'SettlementMethodList', component: defineAsyncComponent(() => import('@views/basic/PaymentMethodList.vue'))},
+	{name: 'PaymentMethodList', component: defineAsyncComponent(() => import('@views/basic/PaymentMethodList.vue'))},
 
 ]
 

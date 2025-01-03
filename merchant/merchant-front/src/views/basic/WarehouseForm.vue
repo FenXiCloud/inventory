@@ -14,7 +14,7 @@
         <Radio v-model="model.enabled" dict="enableRadios"/>
       </FormItem>
       <FormItem label="是否默认" prop="isDefault" single>
-        <Radio v-model="model.isDefault" dict="defaultRadios"/>
+        <Radio v-model="model.systemDefault" dict="defaultRadios"/>
       </FormItem>
     </Form>
   </div>
@@ -47,7 +47,7 @@ export default {
         code:null,
         address:null,
         enabled:true,
-        isDefault:0,
+        systemDefault: 0,
       },
       validationRules: {
       }

@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.DynamicUpdate;
 
 /**
  * @功能描述: 仓库管理
@@ -19,15 +21,25 @@ import org.hibernate.annotations.Comment;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint( columnNames = {"merchantId","accountBookId","name"})
+        @UniqueConstraint(columnNames = {"merchantId", "accountBookId", "code"})
 })
+@DynamicUpdate
+@DynamicInsert
 public class Warehouse {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("编码")
+    @Column(length = 32, nullable = false)
+    private String code;
+
+    @Comment("名称")
     @Column(length = 32, nullable = false)
     private String name;
+
+    @Comment("地址")
+    private String address;
 
     @Comment("是否默认")
     @Column(nullable = false)

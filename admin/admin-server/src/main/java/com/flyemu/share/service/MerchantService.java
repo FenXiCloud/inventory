@@ -8,10 +8,8 @@ import cn.hutool.crypto.digest.DigestUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.entity.setting.Admin;
-import com.flyemu.share.entity.setting.Merchant;
-import com.flyemu.share.entity.setting.QMerchant;
-import com.flyemu.share.entity.setting.Role;
+import com.flyemu.share.entity.setting.*;
+import com.flyemu.share.repository.AccountBookRepository;
 import com.flyemu.share.repository.AdminRepository;
 import com.flyemu.share.repository.MerchantRepository;
 import com.flyemu.share.repository.RoleRepository;
@@ -49,6 +47,8 @@ public class MerchantService extends AbsService {
 
     private final RoleRepository roleRepository;
 
+    private final AccountBookRepository accountBookRepository;
+
 
     @PostConstruct
     public void initDefaultUser() {
@@ -65,6 +65,13 @@ public class MerchantService extends AbsService {
             LocalDate now = LocalDate.now();
             LocalDate firstDay = now.with(TemporalAdjusters.firstDayOfMonth());
             this.save(merchant);
+
+            AccountBook accountBook = new AccountBook();
+            accountBook.setMerchantId(merchant.getId());
+            accountBook.setCurrent(true);
+            accountBook.setName("纷析云");
+            accountBook.setEnabled(true);
+            accountBookRepository.save(accountBook);
 
             log.info("测试商户账号：13944878765，密码：878765");
         }

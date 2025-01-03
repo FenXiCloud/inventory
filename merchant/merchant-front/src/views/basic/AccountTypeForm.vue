@@ -2,8 +2,14 @@
   <div class="modal-column">
     <div class="modal-column-full-body">
       <Form ref="form" :model="model" :rules="validationRules" mode="block">
+        <FormItem label="编码" required prop="code">
+          <Input placeholder="请输入编码" maxlength="10" v-model="model.code"/>
+        </FormItem>
         <FormItem label="名称" required prop="name">
           <Input placeholder="请输入名称" maxlength="10" v-model="model.name"/>
+        </FormItem>
+        <FormItem label="收支类别" required prop="costType">
+          <Select placeholder="请选择收支类别" v-model="model.costType" dict="costTypes"/>
         </FormItem>
       </Form>
     </div>
@@ -41,6 +47,7 @@ export default {
       model: {
         id: null,
         name: null,
+        costType: '收入'
       },
       validationRules: {}
     }

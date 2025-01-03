@@ -2,10 +2,7 @@
   <div class="m-16px">
     <Form ref="form" :model="model" :rules="validationRules" :labelWidth="120" mode="twocolumn">
       <FormItem label="名称" required prop="name">
-        <Input placeholder="请输入门店名称" v-model="model.name"/>
-      </FormItem>
-      <FormItem label="编码" prop="code">
-        <Input :readonly="model.id" placeholder="门店编码" v-model="model.code"/>
+        <Input placeholder="请输入名称" v-model="model.name"/>
       </FormItem>
     </Form>
   </div>

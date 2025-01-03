@@ -6,10 +6,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 
 /**
  * @功能描述: 收支类别
@@ -26,11 +26,15 @@ import java.math.BigDecimal;
         @UniqueConstraint(columnNames = {"merchantId", "accountBookId", "name"})
 })
 @DynamicUpdate
+@DynamicInsert
 public class AccountType implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(length = 32, nullable = false)
+    private String code;
 
     @Column(length = 32, nullable = false)
     private String name;

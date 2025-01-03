@@ -21,7 +21,9 @@
                  :row-config="{height: 48}"
                  :loading="loading">
         <vxe-column type="seq" width="40" title="#"/>
+        <vxe-column title="编码" field="code"/>
         <vxe-column title="名称" field="name"/>
+        <vxe-column title="账户类型" field="accountType"/>
         <vxe-column title="操作" align="center" width="300">
           <template #default="{row}">
             <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
@@ -65,7 +67,7 @@ export default {
         title: "账户信息",
         shadeClose: false,
         closeBtn: false,
-        area: ['400px', '230px'],
+        area: ['600px', '480px'],
         content: h(AccountForm, {
           entity, type,
           onClose: () => {

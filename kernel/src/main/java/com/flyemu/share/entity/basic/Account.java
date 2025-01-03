@@ -1,13 +1,12 @@
 package com.flyemu.share.entity.basic;
 
-import com.flyemu.share.entity.setting.Menu;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.apache.poi.hpsf.Decimal;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.io.Serializable;
@@ -28,6 +27,7 @@ import java.math.BigDecimal;
         @UniqueConstraint( columnNames = {"merchantId", "accountBookId", "name"})
 })
 @DynamicUpdate
+@DynamicInsert
 public class Account implements Serializable {
 
     @Id

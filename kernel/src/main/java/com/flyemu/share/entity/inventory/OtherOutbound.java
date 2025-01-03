@@ -36,9 +36,6 @@ public class OtherOutbound {
     @Comment("单据编号")
     private String orderNo;
 
-    @Comment("供货商ID")
-    private Long supplierId;
-
     @Comment("客户ID")
     private Long customerId;
 
@@ -54,6 +51,9 @@ public class OtherOutbound {
 
     @Comment("折后金额")
     private BigDecimal finalAmount;
+
+    @Comment("已核销金额，客户id不为空时有效")
+    private BigDecimal verifiedAmount;
 
     @Comment("备注")
     private String remarks;

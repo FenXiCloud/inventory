@@ -46,6 +46,15 @@ public class PurchaseReturn {
     @Comment("退款金额")
     private BigDecimal refundAmount;
 
+    @Comment("已核销金额")
+    private BigDecimal verifiedAmount;
+
+    @Comment("收款金额")
+    private BigDecimal collectionAmount;
+
+    @Comment("账户ID")
+    private Long accountId;
+
     @Comment("退单原因")
     private String returnReason;
 

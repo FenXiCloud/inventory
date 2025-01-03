@@ -53,6 +53,15 @@ public class SalesOutbound {
     @Comment("折后金额")
     private BigDecimal finalAmount;
 
+    @Comment("已核销金额")
+    private BigDecimal verifiedAmount;
+
+    @Comment("收款金额")
+    private BigDecimal collectionAmount;
+
+    @Comment("账户ID")
+    private Long accountId;
+
     @Comment("备注")
     private String remarks;
 

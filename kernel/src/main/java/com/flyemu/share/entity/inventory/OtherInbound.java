@@ -37,9 +37,6 @@ public class OtherInbound {
     @Comment("供货商ID")
     private Long supplierId;
 
-    @Comment("客户ID")
-    private Long customerId;
-
     @Comment("入库日期")
     @CreationTimestamp
     private Date inboundDate;
@@ -52,6 +49,9 @@ public class OtherInbound {
 
     @Comment("折后金额")
     private BigDecimal finalAmount;
+
+    @Comment("已核销金额，当货商ID不为空有效")
+    private BigDecimal verifiedAmount;
 
     @Comment("备注")
     private String remarks;

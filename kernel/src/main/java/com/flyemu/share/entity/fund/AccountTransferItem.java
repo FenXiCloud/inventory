@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
+
+import java.math.BigDecimal;
 
 /**
  * @功能描述: 账户内部转账明细
@@ -23,4 +26,23 @@ public class AccountTransferItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Comment("转出账户ID")
+    private Long fromAccountId;
+
+    @Comment("转入账户ID")
+    private Long toAccountId;
+
+    @Comment("金额")
+    private BigDecimal amount;
+
+    @Comment("结算方式")
+    private Long paymentMethod;
+
+    @Column(nullable = false)
+    private Long accountBookId;
+
+    @Column(nullable = false)
+    private Long merchantId;
+
 }

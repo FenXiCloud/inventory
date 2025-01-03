@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
+
+import java.math.BigDecimal;
 
 /**
  * @功能描述: 收款单明细
@@ -23,4 +26,25 @@ public class ReceiptItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Comment("收款单ID")
+    private Long receiptId;
+
+    @Comment("账户ID")
+    private Long accountId;
+
+    @Comment("收入金额")
+    private BigDecimal amount;
+
+    @Comment("结算方式")
+    private Long paymentMethodId;
+
+    @Comment("备注")
+    private String remarks;
+
+    @Column(nullable = false)
+    private Long accountBookId;
+
+    @Column(nullable = false)
+    private Long merchantId;
 }

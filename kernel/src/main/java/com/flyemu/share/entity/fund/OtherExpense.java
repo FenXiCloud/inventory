@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * @功能描述: 付款单
+ * @功能描述: 其他支出单
  * @创建时间: 2024年04月28日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -25,13 +25,12 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table
 @DynamicUpdate
-public class Payment {
-
+public class OtherExpense {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Comment("货商ID")
+    @Comment("供货商ID")
     private Long supplierId;
 
     @Comment("单据日期")
@@ -40,11 +39,17 @@ public class Payment {
     @Comment("单据编号")
     private String orderNo;
 
-    @Comment("折扣金额")
-    private BigDecimal discountAmount;
+    @Comment("金额")
+    private BigDecimal amount;
+
+    @Comment("已核销金额")
+    private BigDecimal verifiedAmount;
 
     @Comment("付款金额")
     private BigDecimal paymentAmount;
+
+    @Comment("付款账户ID")
+    private Long accountId;
 
     @Comment("状态")
     @Column(nullable = false,length = 32, columnDefinition = "varchar(20) default '已保存'")

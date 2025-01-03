@@ -15,12 +15,16 @@
   - **高效集成**
   - 系统能够无缝集成其他企业管理系统（如ERP、CRM、财务管理等），实现跨系统的数据流动和业务联动，减少重复录入，避免信息孤岛。
 
-## 为什么选择我们？
-- 专注进销存领域： 我们拥有专业的团队和丰富的行业经验，深入了解企业在进销存管理方面的需求。
-- 活跃的开源社区： 我们致力于构建一个开放、协作、互助的开发者社区，共同推动项目发展。
-- 有偿开发机制： 我们提供具有竞争力的报酬，鼓励开发者积极参与项目贡献。
-- 商业授权机会： 参与项目的开发者将有机会获得该系统的永久商业授权，实现商业价值。
-
+## 开发文档
+- https://fenxi365.feishu.cn/wiki/BxkFwrGhvilJ41ke6DOc2mCinah?from=from_copylink
+- 1.设置项目jdk17
+- 2.设置gradle jdk17
+- 3.运行前端saas管理端 
+  cd admin/admin-front  yarn install
+  cd merchant/merchant-front yarn install
+  IEDA配置npm run serve
+- 4.配置数据库 kernel/src/resources/application.yml
+- 5.初始账号密码：13944878765 / 878765
 ## 参与方式
 - gitee地址：https://gitee.com/chcm/inventory
 

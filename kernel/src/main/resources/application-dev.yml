@@ -2,11 +2,11 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 120s
   profiles:
-    include: app,dev
+    include: app
   datasource:
-    url: jdbc:mysql://139.159.132.75:3306/jxc?characterEncoding=UTF-8&useUnicode=true&useSSL=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true
-    username: jxc
-    password: Ycs0h7KL2k6I1ijV
+    url: jdbc:mysql://localhost:3306/financial?characterEncoding=UTF-8&useUnicode=true&useSSL=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true
+    password: 12qwaszx
+    username: root
 
     hikari:
       keepalive-time: 60000

@@ -1,9 +1,8 @@
 apply plugin: 'com.github.node-gradle.node'
 
 node {
-    version = '18.9.0'
+    version = '16.6.2'
     yarnVersion = '1.22.11'
-    pnpmVersion = '8.5.1'
     download = true
     distBaseUrl = 'https://npmmirror.com/mirrors/node'
 }

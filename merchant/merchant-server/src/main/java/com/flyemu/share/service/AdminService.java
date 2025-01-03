@@ -137,7 +137,7 @@ public class AdminService extends AbsService {
 
         AccountBook accountBook = bqf.selectFrom(qAccountBook).where(qAccountBook.merchantId.eq(admin.getMerchantId()).and(qAccountBook.current.isTrue())).fetchFirst();
 
-        return new AccountDto(admin, merchant, role);
+        return new AccountDto(admin, merchant, role,accountBook);
 
 
     }

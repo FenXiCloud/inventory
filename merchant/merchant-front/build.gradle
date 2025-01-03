@@ -4,7 +4,7 @@ node {
     version = '16.6.2'
     yarnVersion = '1.22.11'
     download = true
-    distBaseUrl = 'https://npm.taobao.org/mirrors/node'
+    distBaseUrl = 'https://npmmirror.com/mirrors/node'
 }
 
 task registry(type: YarnTask, dependsOn: 'yarn'){

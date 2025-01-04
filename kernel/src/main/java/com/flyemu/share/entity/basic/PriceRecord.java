@@ -1,4 +1,4 @@
-package com.flyemu.share.entity.purchase;
+package com.flyemu.share.entity.basic;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 /**
- * @功能描述: 采购产品价格记录
+ * @功能描述: 产品价格记录
  * @创建时间: 2024年12月31日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -24,24 +24,27 @@ import java.util.Date;
 @NoArgsConstructor
 @DynamicUpdate
 @Table
-public class PurchasePriceRecord {
+public class PriceRecord {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Comment("采购入库主表ID")
-    private Long purchaseInboundId;
+    @Comment("单据主表ID")
+    private Long orderId;
 
-    @Comment("采购日期")
+    @Comment("单据日期")
     @CreationTimestamp
-    private Date purchaseDate;
+    private Date orderDate;
 
     @Comment("产品ID")
     private Long productId;
 
     @Comment("货商ID")
     private Long supplierId;
+
+    @Comment("客户ID")
+    private Long customerId;
 
     @Comment("基本单位ID")
     private Long baseUnitId;
@@ -64,10 +67,19 @@ public class PurchasePriceRecord {
     @Comment("单价（辅助单位）")
     private BigDecimal secondaryUnitPrice;
 
+    @Comment("价格类别")
+    @Enumerated(EnumType.STRING)
+    @Column(length = 32, columnDefinition = "varchar(32)  default '入库'")
+    private PriceType priceType;
+
     @Column(nullable = false)
     private Long accountBookId;
 
     @Column(nullable = false)
     private Long merchantId;
+
+    public enum PriceType {
+        入库, 出库
+    }
 
 }

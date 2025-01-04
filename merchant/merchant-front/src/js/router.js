@@ -55,6 +55,8 @@ const groupRoutes = [
 		name: 'InventoryInitialList',
 		component: defineAsyncComponent(() => import('@views/basic/InventoryInitialList.vue'))
 	},
+
+	{name: 'PriceRecordList', component: defineAsyncComponent(() => import('@views/basic/PriceRecordList.vue'))},
 ]
 
 /**

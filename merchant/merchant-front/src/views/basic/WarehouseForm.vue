@@ -19,10 +19,10 @@
     </Form>
   </div>
   <div class="layui-layer-btn layui-layer-btn-r">
-    <Button icon="fa fa-close" @click="$emit('close')" :loading="loading">
+    <Button @click="$emit('close')" :loading="loading">
       取消
     </Button>
-    <Button icon="fa fa-save" color="primary" @click="confirm" :loading="loading">
+    <Button color="primary" @click="confirm" :loading="loading">
       保存
     </Button>
   </div>

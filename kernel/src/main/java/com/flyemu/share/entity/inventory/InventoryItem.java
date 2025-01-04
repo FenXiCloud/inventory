@@ -1,6 +1,5 @@
 package com.flyemu.share.entity.inventory;
 
-import com.blazebit.persistence.spi.SetOperationType;
 import com.flyemu.share.enums.OperationType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -39,7 +38,7 @@ public class InventoryItem {
     @Comment("仓库ID")
     private Long warehouseId;
 
-    @Comment("操作类型：入库、出库、调拨")
+    @Comment("操作类型：期初、入库、出库、调拨")
     private OperationType operationType;
 
     @Comment("正数为入库，负数为出库")

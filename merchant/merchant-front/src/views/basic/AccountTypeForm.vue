@@ -1,7 +1,7 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules" mode="block">
+      <Form ref="form" :model="model" :rules="validationRules" :labelWidth="120" mode="single">
         <FormItem label="编码" required prop="code">
           <Input placeholder="请输入编码" maxlength="10" v-model="model.code"/>
         </FormItem>
@@ -46,8 +46,9 @@ export default {
       loading: false,
       model: {
         id: null,
+        code: null,
         name: null,
-        costType: '收入'
+        costType: '收入类别'
       },
       validationRules: {}
     }

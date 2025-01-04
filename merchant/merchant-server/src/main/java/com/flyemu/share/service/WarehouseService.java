@@ -3,9 +3,6 @@ package com.flyemu.share.service;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
-import com.blazebit.persistence.PagedList;
-import com.flyemu.share.controller.Page;
-import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.QWarehouse;
 import com.flyemu.share.entity.basic.Warehouse;
 import com.flyemu.share.repository.WarehouseRepository;
@@ -14,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 @Service
@@ -25,11 +23,9 @@ public class WarehouseService extends AbsService {
     private static final QWarehouse qWarehouse = QWarehouse.warehouse;
     private final WarehouseRepository warehouseRepository;
 
-    public PageResults<Warehouse> query(Page page, Query query) {
-        PagedList<Warehouse> fetchPage = bqf.selectFrom(qWarehouse).where(query.builder).orderBy(qWarehouse.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
-        return new PageResults<>(fetchPage, page);
+    public List<Warehouse> query(Query query) {
+        return bqf.selectFrom(qWarehouse).where(query.builder).orderBy(qWarehouse.id.desc()).fetch();
     }
-
 
     @Transactional
     public Warehouse save(Warehouse warehouse) {

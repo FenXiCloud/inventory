@@ -16,6 +16,6 @@ heyuiConfig.initDict({
   statusRadios: [{key: true, title: '上架'}, {key: false, title: '下架'}],
   enableRadios: [{key: true, title: '启用'}, {key: false, title: '禁用'}],
   relationRadios: [{key: true, title: '关联'}, {key: false, title: '不关联'}],
-  costTypes: [{key: '收入', title: '收入'}, {key: '支出', title: '支出'}],
+  costTypes: [{key: '收入类别', title: '收入类别'}, {key: '支出类别', title: '支出类别'}],
   accountTypes: [{key: '现金', title: '现金'}, {key: '银行存款', title: '银行存款'}],
 });

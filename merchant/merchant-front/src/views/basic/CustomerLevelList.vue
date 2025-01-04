@@ -1,34 +1,27 @@
 <template>
   <div class="frame-page flex flex-column">
-  <vxe-toolbar>
-    <template #buttons>
-      <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-              show-search-button class="w-260px"
-              placeholder="请输入等级名称" @search="doSearch">
-        <i class="h-icon-search"/>
-      </Search>
-    </template>
-    <template #tools>
-      <Button @click="showForm()" color="primary">新 增</Button>
-    </template>
-  </vxe-toolbar>
+    <vxe-toolbar>
+      <template #buttons>
+        <Button @click="showForm()" color="primary">新 增</Button>
+      </template>
+      <template #tools>
+        <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入名称"/>
+        <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
+      </template>
+    </vxe-toolbar>
   <div class="flex1">
       <vxe-table row-id="id"
                  ref="table"
                  :data="dataList"
                  highlight-hover-row
                  show-overflow
+                 stripe
                  :row-config="{height: 48}"
+                 :column-config="{resizable: true}"
                  :loading="loading">
         <vxe-column type="seq" width="60" title="#"/>
         <vxe-column title="名称" field="name"/>
-<!--        <vxe-column title="是否默认" field="systemDefault" width="100">-->
-<!--          <template #default="{row}">-->
-<!--            <Tag color="green" v-if="row.systemDefault">是</Tag>-->
-<!--            <Tag color="gray" v-else >否</Tag>-->
-<!--          </template>-->
-<!--        </vxe-column>-->
-        <vxe-column title="操作" align="center" width="200">
+        <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
             <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
             <i class="primary-color h-icon-trash ml-10px" v-if="!row.systemDefault" @click="doRemove(row)"></i>
@@ -71,7 +64,7 @@ export default {
         title: "客户等级",
         shadeClose: false,
         closeBtn: false,
-        area: ['400px', '230px'],
+        area: ['300px', '230px'],
         content: h(CustomerLevelForm, {
           entity, type,
           onClose: () => {

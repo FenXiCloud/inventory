@@ -2,14 +2,11 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-260px"
-                placeholder="请输入名称" @search="doSearch">
-          <i class="h-icon-search"/>
-        </Search>
+        <Button @click="showForm()" color="primary">新 增</Button>
       </template>
       <template #tools>
-        <Button @click="showForm()" color="primary">新 增</Button>
+        <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入名称"/>
+        <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
       </template>
     </vxe-toolbar>
     <div class="flex1">
@@ -18,13 +15,15 @@
                  :data="dataList"
                  highlight-hover-row
                  show-overflow
+                 stripe
                  :row-config="{height: 48}"
+                 :column-config="{resizable: true}"
                  :loading="loading">
         <vxe-column type="seq" width="40" title="#"/>
-        <vxe-column title="编码" field="code"/>
+        <vxe-column title="账户类型" field="accountType" width="200"/>
+        <vxe-column title="编码" field="code" width="200"/>
         <vxe-column title="名称" field="name"/>
-        <vxe-column title="账户类型" field="accountType"/>
-        <vxe-column title="操作" align="center" width="300">
+        <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
             <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
             <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
@@ -67,7 +66,7 @@ export default {
         title: "账户信息",
         shadeClose: false,
         closeBtn: false,
-        area: ['600px', '480px'],
+        area: ['500px', '380px'],
         content: h(AccountForm, {
           entity, type,
           onClose: () => {

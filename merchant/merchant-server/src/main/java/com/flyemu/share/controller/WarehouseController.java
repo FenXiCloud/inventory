@@ -19,10 +19,10 @@ public class WarehouseController {
     private final WarehouseService warehouseService;
 
     @GetMapping
-    public JsonResult list(Page page, WarehouseService.Query query , @SaAccountVal AccountDto accountDto) {
+    public JsonResult list(WarehouseService.Query query, @SaAccountVal AccountDto accountDto) {
         query.setAccountBookId(accountDto.getAccountBookId());
         query.setMerchantId(accountDto.getMerchantId());
-        return JsonResult.successful(warehouseService.query(page,query));
+        return JsonResult.successful(warehouseService.query(query));
     }
 
     @PostMapping

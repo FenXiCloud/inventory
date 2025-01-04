@@ -1,7 +1,7 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules" mode="block">
+      <Form :label-width="110" ref="form" :model="model" :rules="validationRules" mode="single">
         <FormItem label="编码" required prop="code">
           <Input placeholder="请输入编码" maxlength="10" v-model="model.code"/>
         </FormItem>

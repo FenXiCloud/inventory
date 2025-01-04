@@ -39,6 +39,22 @@ const groupRoutes = [
 
 	{name: 'PaymentMethodList', component: defineAsyncComponent(() => import('@views/basic/PaymentMethodList.vue'))},
 
+	{name: 'PricingPolicyList', component: defineAsyncComponent(() => import('@views/basic/PricingPolicyList.vue'))},
+
+	{
+		name: 'CustomerInitialList',
+		component: defineAsyncComponent(() => import('@views/basic/CustomerInitialList.vue'))
+	},
+
+	{
+		name: 'SupplierInitialList',
+		component: defineAsyncComponent(() => import('@views/basic/SupplierInitialList.vue'))
+	},
+
+	{
+		name: 'InventoryInitialList',
+		component: defineAsyncComponent(() => import('@views/basic/InventoryInitialList.vue'))
+	},
 ]
 
 /**

@@ -9,15 +9,15 @@ import Ajax from "@common/Request";
 
 export default {
 	save(param) {
-		return Ajax[param.id ? 'put' : 'post']('/customer/category', param)
+		return Ajax[param.id ? 'put' : 'post']('/customerCategory', param)
 	},
 	list(param) {
-		return Ajax.get('/customer/category', param)
+		return Ajax.get('/customerCategory', param)
 	},
 	remove(customerCategoryId) {
-		return Ajax.delete('/customer/category/' + customerCategoryId);
+		return Ajax.delete('/customerCategory/' + customerCategoryId);
 	},
 	select(param) {
-		return Ajax.get('/customer/category/select', param)
+		return Ajax.get('/customerCategory/select', param)
 	},
 }

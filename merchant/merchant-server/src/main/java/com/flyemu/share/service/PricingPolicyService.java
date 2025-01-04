@@ -2,10 +2,8 @@ package com.flyemu.share.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
-import com.flyemu.share.entity.basic.PaymentMethod;
-import com.flyemu.share.entity.setting.PricingPolicy;
-import com.flyemu.share.entity.setting.QPricingPolicy;
-import com.flyemu.share.repository.PaymentMethodRepository;
+import com.flyemu.share.entity.basic.PricingPolicy;
+import com.flyemu.share.entity.basic.QPricingPolicy;
 import com.flyemu.share.repository.PricingPolicyRepository;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;

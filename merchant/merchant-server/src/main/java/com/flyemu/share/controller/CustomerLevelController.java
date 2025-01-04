@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 @RestController
-@RequestMapping("/customer/level")
+@RequestMapping("/customerLevel")
 @RequiredArgsConstructor
 @SaCheckLogin
 public class CustomerLevelController {

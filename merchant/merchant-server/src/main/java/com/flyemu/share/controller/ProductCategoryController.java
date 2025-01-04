@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @Slf4j
-@RequestMapping("/product/category")
+@RequestMapping("/productCategory")
 @RequiredArgsConstructor
 public class ProductCategoryController {
 

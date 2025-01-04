@@ -35,7 +35,7 @@ public class SupplierFlow implements Serializable {
     private Long supplierId;
 
     @Comment("单据Id")
-    private Long voucherId;
+    private Long orderId;
 
     @Comment("操作类型")
     @Column(nullable = false)
@@ -61,8 +61,14 @@ public class SupplierFlow implements Serializable {
     @Comment("备注")
     private String remarks;
 
+    @Column(nullable = false)
+    private Long accountBookId;
+
+    @Column(nullable = false)
+    private Long merchantId;
+
     public enum SupplierFlowType {
-        加, 减, 平
+        期初, 入库, 出库
     }
 
 }

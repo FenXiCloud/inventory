@@ -1,4 +1,4 @@
-package com.flyemu.share.entity.setting;
+package com.flyemu.share.entity.basic;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -29,9 +29,6 @@ public class PricingPolicy implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 32, nullable = false)
-    private String name;
-
     @Comment("优先级")
     private Integer priority;
 
@@ -61,11 +58,12 @@ public class PricingPolicy implements Serializable {
 
     //客户等级售价 ： 取的是当前客户级别的商品档案定价
     public enum PriceSource {
-        最近售价,客户等级售价, 最近采购价,预计采购价,最近销售成本
+        客户等级售价, 最近销售单价, 预计采购单价, 最近采购单价, 上次入库成本, 上次出库成本
     }
 
+    //异常成本处理：（当负库存出库、负结存出库等情形导致商品发出成本小于等于零时会采用本规则）
     public enum PriceType {
-       销售类取价,采购类取价, 异常成本处理
+        销售价格取数, 采购价格取数, 异常成本处理
     }
 
 }

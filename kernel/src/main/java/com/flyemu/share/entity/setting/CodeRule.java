@@ -1,16 +1,17 @@
 package com.flyemu.share.entity.setting;
 
 import com.flyemu.share.enums.DocumentType;
-import com.flyemu.share.enums.ResetCycle;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
  * @功能描述: 编码规则
@@ -25,6 +26,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @Table
 @DynamicUpdate
+@DynamicInsert
 public class CodeRule implements Serializable {
 
     @Id
@@ -38,8 +40,8 @@ public class CodeRule implements Serializable {
     @Comment("前缀")
     private String prefix;
 
-    @Comment("日期格式")
-    private String dateFormat;
+    @Comment("日期格式/分类编码")
+    private String format;
 
     @Comment("流水号位数")
     private Integer serialNumberLength;
@@ -61,6 +63,9 @@ public class CodeRule implements Serializable {
     @Column(nullable = false)
     @ColumnDefault("b'1'")
     private Boolean systemDefault;
+
+    @Comment("创建时间")
+    private LocalDateTime createdAt;
 
     @Column(nullable = false)
     private Long accountBookId;

@@ -138,7 +138,7 @@ export default {
       height: @sys-tabs-height - 10px;
       padding: 0 15px 0 15px;
       position: relative;
-      max-width: 120px;
+      max-width: 130px;
       flex: 1;
       margin-left: -4px;
       margin-right: -4px;

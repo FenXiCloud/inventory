@@ -5,67 +5,68 @@ const groupRoutes = [
 
 	{name: 'AccountBasic', component: defineAsyncComponent(() => import("@views/common/AccountBasic"))},
 
-	{name: 'ProductCategoryList', component: defineAsyncComponent(() => import('@views/basic/ProductCategoryList'))},
+    {name: 'AccountBookList', component: defineAsyncComponent(() => import('@views/setting/AccountBookList'))},
 
-	{name: 'CustomerList', component: defineAsyncComponent(() => import('@views/basic/CustomerList'))},
+    {name: 'MerchantInfo', component: defineAsyncComponent(() => import('@views/setting/MerchantInfo'))},
 
-	{name: 'CustomerLevelList', component: defineAsyncComponent(() => import('@views/basic/CustomerLevelList'))},
+    {name: 'AdminList', component: defineAsyncComponent(() => import('@views/setting/AdminList'))},
 
-	{name: 'CustomerCategoryList', component: defineAsyncComponent(() => import('@views/basic/CustomerCategoryList'))},
+    {name: 'RoleList', component: defineAsyncComponent(() => import('@views/setting/RoleList'))},
 
-	{name: 'SupplierCategoryList', component: defineAsyncComponent(() => import('@views/basic/SupplierCategoryList'))},
+    {name: 'CheckoutList', component: defineAsyncComponent(() => import('@views/setting/CheckoutList'))},
 
-	{name: 'SupplierList', component: defineAsyncComponent(() => import('@views/basic/SupplierList'))},
+    {name: 'CodeRuleList', component: defineAsyncComponent(() => import('@views/setting/CodeRuleList.vue'))},
 
-	{name: 'WarehouseList', component: defineAsyncComponent(() => import('@views/basic/WarehouseList'))},
+    {name: 'ProductCategoryList', component: defineAsyncComponent(() => import('@views/basic/ProductCategoryList'))},
 
-	{name: 'UnitList', component: defineAsyncComponent(() => import('@views/basic/UnitList'))},
+    {name: 'CustomerList', component: defineAsyncComponent(() => import('@views/basic/CustomerList'))},
 
-	{name: 'ProductList', component: defineAsyncComponent(() => import('@views/basic/ProductList'))},
+    {name: 'CustomerLevelList', component: defineAsyncComponent(() => import('@views/basic/CustomerLevelList'))},
 
-	{name: 'AccountBookList', component: defineAsyncComponent(() => import('@views/setting/AccountBookList'))},
+    {name: 'CustomerCategoryList', component: defineAsyncComponent(() => import('@views/basic/CustomerCategoryList'))},
 
-	{name: 'MerchantInfo', component: defineAsyncComponent(() => import('@views/setting/MerchantInfo'))},
+    {name: 'SupplierCategoryList', component: defineAsyncComponent(() => import('@views/basic/SupplierCategoryList'))},
 
-	{name: 'AdminList', component: defineAsyncComponent(() => import('@views/setting/AdminList'))},
+    {name: 'SupplierList', component: defineAsyncComponent(() => import('@views/basic/SupplierList'))},
 
-	{name: 'RoleList', component: defineAsyncComponent(() => import('@views/setting/RoleList'))},
+    {name: 'WarehouseList', component: defineAsyncComponent(() => import('@views/basic/WarehouseList'))},
 
-	{name: 'CheckoutList', component: defineAsyncComponent(() => import('@views/setting/CheckoutList'))},
+    {name: 'UnitList', component: defineAsyncComponent(() => import('@views/basic/UnitList'))},
 
-	{name: 'AccountList', component: defineAsyncComponent(() => import('@views/basic/AccountList'))},
+    {name: 'ProductList', component: defineAsyncComponent(() => import('@views/basic/ProductList'))},
 
-	{name: 'AccountTypeList', component: defineAsyncComponent(() => import('@views/basic/AccountTypeList'))},
+    {name: 'AccountList', component: defineAsyncComponent(() => import('@views/basic/AccountList'))},
 
-	{name: 'PaymentMethodList', component: defineAsyncComponent(() => import('@views/basic/PaymentMethodList.vue'))},
+    {name: 'AccountTypeList', component: defineAsyncComponent(() => import('@views/basic/AccountTypeList'))},
 
-	{name: 'PricingPolicyList', component: defineAsyncComponent(() => import('@views/basic/PricingPolicyList.vue'))},
+    {name: 'PaymentMethodList', component: defineAsyncComponent(() => import('@views/basic/PaymentMethodList.vue'))},
 
-	{
-		name: 'CustomerInitialList',
-		component: defineAsyncComponent(() => import('@views/basic/CustomerInitialList.vue'))
-	},
+    {name: 'PricingPolicyList', component: defineAsyncComponent(() => import('@views/basic/PricingPolicyList.vue'))},
 
-	{
-		name: 'SupplierInitialList',
-		component: defineAsyncComponent(() => import('@views/basic/SupplierInitialList.vue'))
-	},
+    {
+        name: 'CustomerInitialList',
+        component: defineAsyncComponent(() => import('@views/basic/CustomerInitialList.vue'))
+    },
 
-	{
-		name: 'InventoryInitialList',
-		component: defineAsyncComponent(() => import('@views/basic/InventoryInitialList.vue'))
-	},
+    {
+        name: 'SupplierInitialList',
+        component: defineAsyncComponent(() => import('@views/basic/SupplierInitialList.vue'))
+    },
 
-	{name: 'PriceRecordList', component: defineAsyncComponent(() => import('@views/basic/PriceRecordList.vue'))},
-]
+    {
+        name: 'InventoryInitialList',
+        component: defineAsyncComponent(() => import('@views/basic/InventoryInitialList.vue'))
+    },
+
+    {name: 'PriceRecordList', component: defineAsyncComponent(() => import('@views/basic/PriceRecordList.vue'))},]
 
 /**
  * 加载组件
  */
 export default {
-	install: (app) => {
-		groupRoutes.forEach(item => app.component(item.name, item.component))
-	}
+    install: (app) => {
+        groupRoutes.forEach(item => app.component(item.name, item.component))
+    }
 
 }
 

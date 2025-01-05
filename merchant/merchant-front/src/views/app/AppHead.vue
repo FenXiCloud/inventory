@@ -31,8 +31,8 @@
  */
 import {onMounted, onUnmounted} from 'vue';
 import {mapMutations, mapState} from 'vuex';
-import {loading, confirm, message} from 'heyui.ext';
-import { Logout} from "@js/api/App";
+import {confirm, loading, message} from 'heyui.ext';
+import {Logout} from "@js/api/App";
 import AccountBook from "@js/api/AccountBook";
 
 export default {
@@ -231,7 +231,7 @@ export default {
   }
 }
 
-.accountBook {
+.account {
   min-width: 150px;
 
   li, dt {

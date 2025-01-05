@@ -5,11 +5,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Comment;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
-import java.util.Date;
 
 /**
  * @功能描述: 付款单明细
@@ -29,28 +27,24 @@ public class OrderPaymentItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Comment("订单ID")
-    private Long orderId;
+    @Comment("付款单ID")
+    private Long paymentId;
 
-    @Comment("业务类型")
+    @Comment("账户ID")
+    private Long accountId;
+
+    @Comment("收入金额")
+    private BigDecimal amount;
+
+    @Comment("结算方式")
+    private Long paymentMethodId;
+
+    @Comment("备注")
+    private String remarks;
+
     @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private OrderType orderType;
+    private Long accountBookId;
 
-    @Comment("单据日期")
-    @CreationTimestamp
-    private Date orderDate;
-
-    @Comment("单据金额")
-    private BigDecimal orderAmount;
-
-    @Comment("已核销金额")
-    private BigDecimal verifiedAmount;
-
-    @Comment("本次核销金额")
-    private BigDecimal oneTimeVerifiedAmount;
-
-    public enum OrderType {
-        采购入库,采购退货,其他支出单
-    }
+    @Column(nullable = false)
+    private Long merchantId;
 }

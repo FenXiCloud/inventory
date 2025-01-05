@@ -58,7 +58,20 @@ const groupRoutes = [
         component: defineAsyncComponent(() => import('@views/basic/InventoryInitialList.vue'))
     },
 
-    {name: 'PriceRecordList', component: defineAsyncComponent(() => import('@views/basic/PriceRecordList.vue'))},]
+    {name: 'PriceRecordList', component: defineAsyncComponent(() => import('@views/basic/PriceRecordList.vue'))},
+    {name: 'SalesOrderList', component: defineAsyncComponent(() => import('@views/sales/SalesOrderList.vue'))},
+    {name: 'SalesReturnList', component: defineAsyncComponent(() => import('@views/sales/SalesReturnList.vue'))},
+    {name: 'SalesOutboundList', component: defineAsyncComponent(() => import('@views/sales/SalesOutboundList.vue'))},
+    {name: 'PurchaseOrderList', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderList.vue'))},
+    {
+        name: 'PurchaseReturnList',
+        component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnList.vue'))
+    },
+    {
+        name: 'PurchaseInboundList',
+        component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundList.vue'))
+    },]
+
 
 /**
  * 加载组件

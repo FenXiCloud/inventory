@@ -58,6 +58,7 @@ export default {
       warehouseList: [],
       model: {
         id: null,
+        name: null,
         prefix: null,
         code: null,
         format: null,

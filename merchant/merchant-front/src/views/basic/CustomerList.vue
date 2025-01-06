@@ -57,7 +57,7 @@
 
 <script>
 import CustomerForm from "./CustomerForm.vue";
-import Customer from "@js/api/Customer";
+import Customer from "@js/api/basic/Customer";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";

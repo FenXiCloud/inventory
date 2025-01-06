@@ -23,7 +23,7 @@
 
 <script>
 
-import SupplierCategory from "@js/api/SupplierCategory";
+import SupplierCategory from "@js/api/basic/SupplierCategory";
 import {message} from "heyui.ext";
 import {CopyObj} from "@common/utils";
 

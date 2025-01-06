@@ -29,7 +29,7 @@
 </template>
 
 <script>
-import Warehouse from "@js/api/Warehouse";
+import Warehouse from "@js/api/basic/Warehouse";
 import {message} from "heyui.ext";
 import {CopyObj} from "@common/utils";
 

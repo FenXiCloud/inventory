@@ -52,4 +52,10 @@ public class Inventory {
 
     @Comment("更新时间")
     private LocalDateTime updatedAt;
+
+    @Column(nullable = false)
+    private Long accountBookId;
+
+    @Column(nullable = false)
+    private Long merchantId;
 }

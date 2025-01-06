@@ -40,7 +40,7 @@
 </template>
 
 <script>
-import CodeRule from "@js/api/CodeRule";
+import CodeRule from "@js/api/setting/CodeRule";
 import {confirm, message} from "heyui.ext";
 import CodeRuleForm from "./CodeRuleForm.vue";
 import {layer} from "@layui/layer-vue";

@@ -33,10 +33,8 @@
 </template>
 
 <script>
-import PricingPolicy from "@js/api/PricingPolicy";
+import PricingPolicy from "@js/api/basic/PricingPolicy";
 import {confirm, message} from "heyui.ext";
-import {layer} from "@layui/layer-vue";
-import {h} from "vue";
 
 /**
  * @功能描述: 价格策略

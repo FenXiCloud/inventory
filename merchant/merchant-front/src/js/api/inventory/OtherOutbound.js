@@ -1,5 +1,5 @@
 /**
- * @功能描述: 客户交易流水
+ * @功能描述: 其他出库单
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -9,15 +9,15 @@ import Ajax from "@common/Request";
 
 export default {
     save(param) {
-        return Ajax[param.id ? 'put' : 'post']('/inventoryInitial', param)
+        return Ajax[param.id ? 'put' : 'post']('/otherOutbound', param)
     },
     list(param) {
-        return Ajax.get('/inventoryInitial', param)
+        return Ajax.get('/otherOutbound', param)
     },
-    remove(inventoryInitialId) {
-        return Ajax.delete('/inventoryInitial/' + inventoryInitialId);
+    remove(otherOutboundId) {
+        return Ajax.delete('/otherOutbound/' + otherOutboundId);
     },
     select(param) {
-        return Ajax.get('/inventoryInitial/select', param)
+        return Ajax.get('/otherOutbound/select', param)
     },
 }

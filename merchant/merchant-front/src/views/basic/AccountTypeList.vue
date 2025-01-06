@@ -41,7 +41,7 @@
 </template>
 
 <script>
-import AccountType from "@js/api/AccountType";
+import AccountType from "@js/api/basic/AccountType";
 import AccountTypeForm from "./AccountTypeForm.vue";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";

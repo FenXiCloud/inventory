@@ -35,7 +35,7 @@
 </template>
 
 <script>
-import Account from "@js/api/Account";
+import Account from "@js/api/basic/Account";
 import AccountForm from "./AccountForm.vue";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";

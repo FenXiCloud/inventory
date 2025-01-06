@@ -108,10 +108,10 @@
  */
 import {confirm, message} from "heyui.ext";
 import {CopyObj} from "@common/utils";
-import Product from "@js/api/Product";
-import ProductCategory from "@js/api/ProductCategory";
-import CustomerLevel from "@js/api/CustomerLevel";
-import Unit from "@js/api/Unit";
+import Product from "@js/api/basic/Product";
+import ProductCategory from "@js/api/basic/ProductCategory";
+import CustomerLevel from "@js/api/basic/CustomerLevel";
+import Unit from "@js/api/basic/Unit";
 import {OssUpload} from "@js/api/App";
 
 export default {

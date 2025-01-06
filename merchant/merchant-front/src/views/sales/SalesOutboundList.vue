@@ -69,7 +69,7 @@
 </template>
 <script>
 import manba from "manba";
-import SalesOutbound from "@js/api/SalesOutbound";
+import SalesOutbound from "@js/api/sales/SalesOutbound";
 import {mapMutations} from "vuex";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");

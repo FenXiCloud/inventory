@@ -22,10 +22,10 @@
 </template>
 
 <script>
-import Role from "@js/api/Role";
+import Role from "@js/api/setting/Role";
 import {message} from "heyui.ext";
 import {mapState} from "vuex";
-import Menu from "@js/api/Menu";
+import Menu from "@js/api/setting/Menu";
 
 /**
  * @功能描述: 授权菜单

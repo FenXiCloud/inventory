@@ -31,10 +31,8 @@
 </template>
 
 <script>
-import CustomerInitial from "@js/api/CustomerInitial";
+import CustomerInitial from "@js/api/basic/CustomerInitial";
 import {confirm, message} from "heyui.ext";
-import {layer} from "@layui/layer-vue";
-import {h} from "vue";
 
 /**
  * @功能描述: 客户交易流水/期初

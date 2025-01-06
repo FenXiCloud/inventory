@@ -35,7 +35,7 @@
 </template>
 
 <script>
-import SupplierCategory from "@js/api/SupplierCategory";
+import SupplierCategory from "@js/api/basic/SupplierCategory";
 import SupplierCategoryForm from "./SupplierCategoryForm.vue";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";

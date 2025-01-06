@@ -63,7 +63,7 @@
 
 <script>
 import AdminForm from "./AdminForm.vue";
-import Admin from "@js/api/Admin";
+import Admin from "@js/api/setting/Admin";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";

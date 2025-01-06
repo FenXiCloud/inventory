@@ -32,7 +32,7 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import AccountType from "@js/api/AccountType";
+import AccountType from "@js/api/basic/AccountType";
 import {message} from "heyui.ext";
 import {CopyObj} from "@common/utils";
 

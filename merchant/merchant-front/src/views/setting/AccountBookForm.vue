@@ -20,7 +20,7 @@
 
 <script>
 
-import AccountBook from "@js/api/AccountBook";
+import AccountBook from "@js/api/setting/AccountBook";
 import {message} from "heyui.ext";
 import {CopyObj} from "@common/utils";
 import manba from "manba";

@@ -35,7 +35,7 @@
 
 <script>
 
-import CodeRule from "@js/api/CodeRule";
+import CodeRule from "@js/api/setting/CodeRule";
 import {message} from "heyui.ext";
 import {CopyObj} from "@common/utils";
 import manba from "manba";

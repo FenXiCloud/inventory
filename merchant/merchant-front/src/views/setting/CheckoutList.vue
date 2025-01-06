@@ -46,7 +46,7 @@
 </template>
 <script>
 import {confirm, message} from "heyui.ext";
-import Checkout from "@js/api/Checkout";
+import Checkout from "@js/api/setting/Checkout";
 import manba from "manba";
 import {mapState} from 'vuex';
 

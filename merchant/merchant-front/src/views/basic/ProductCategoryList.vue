@@ -64,8 +64,7 @@
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
-import {downloadBlob} from "download.js";
-import ProductCategory from "@js/api/ProductCategory";
+import ProductCategory from "@js/api/basic/ProductCategory";
 import ProductCategoryForm from "@views/basic/ProductCategoryForm.vue";
 
 export default {

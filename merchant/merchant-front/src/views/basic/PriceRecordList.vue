@@ -40,7 +40,7 @@
 </template>
 
 <script>
-import PriceRecord from "@js/api/PriceRecord";
+import PriceRecord from "@js/api/basic/PriceRecord";
 import {confirm, message} from "heyui.ext";
 
 /**

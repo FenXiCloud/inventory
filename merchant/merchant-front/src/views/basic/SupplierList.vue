@@ -62,7 +62,7 @@
 </template>
 
 <script>
-import Supplier from "@js/api/Supplier";
+import Supplier from "@js/api/basic/Supplier";
 import SupplierForm from "./SupplierForm.vue";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";

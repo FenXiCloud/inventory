@@ -41,7 +41,7 @@
 import {mapState} from "vuex"
 import {clone} from "xe-utils"
 import {message} from "heyui.ext";
-import Merchant from "@js/api/Merchant";
+import Merchant from "@js/api/setting/Merchant";
 
 export default {
   name: "MerchantInfo",

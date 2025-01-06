@@ -113,8 +113,8 @@
 import {confirm, loading, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
-import Product from "@js/api/Product";
-import ProductCategory from "@js/api/ProductCategory";
+import Product from "@js/api/basic/Product";
+import ProductCategory from "@js/api/basic/ProductCategory";
 import ProductForm from "@views/basic/ProductForm.vue";
 
 /**

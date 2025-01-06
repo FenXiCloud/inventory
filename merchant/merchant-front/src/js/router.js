@@ -68,8 +68,49 @@ const groupRoutes = [
         component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnList.vue'))
     },
     {
-        name: 'PurchaseInboundList',
-        component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundList.vue'))
+        name: 'CostAdjustmentList',
+        component: defineAsyncComponent(() => import('@views/inventory/CostAdjustmentList.vue'))
+    },
+    {
+        name: 'InventoryItemList',
+        component: defineAsyncComponent(() => import('@views/inventory/InventoryItemList.vue'))
+    },
+    {
+        name: 'InventoryList',
+        component: defineAsyncComponent(() => import('@views/inventory/InventoryList.vue'))
+    },
+    {
+        name: 'InventoryTransferList',
+        component: defineAsyncComponent(() => import('@views/inventory/InventoryTransferList.vue'))
+    },
+    {
+        name: 'StockTakeList',
+        component: defineAsyncComponent(() => import('@views/inventory/StockTakeList.vue'))
+    },
+    {
+        name: 'OtherInboundList',
+        component: defineAsyncComponent(() => import('@views/inventory/OtherInboundList.vue'))
+    }, {
+        name: 'OtherOutboundList',
+        component: defineAsyncComponent(() => import('@views/inventory/OtherOutboundList.vue'))
+    }, {
+        name: 'OtherIncomeList',
+        component: defineAsyncComponent(() => import('@views/fund/OtherIncomeList.vue'))
+    }, {
+        name: 'OtherExpenseList',
+        component: defineAsyncComponent(() => import('@views/fund/OtherExpenseList.vue'))
+    }, {
+        name: 'OrderReceiptList',
+        component: defineAsyncComponent(() => import('@views/fund/OrderReceiptList.vue'))
+    }, {
+        name: 'OrderPaymentList',
+        component: defineAsyncComponent(() => import('@views/fund/OrderPaymentList.vue'))
+    }, {
+        name: 'VerificationList',
+        component: defineAsyncComponent(() => import('@views/fund/VerificationList.vue'))
+    }, {
+        name: 'AccountTransferList',
+        component: defineAsyncComponent(() => import('@views/fund/AccountTransferList.vue'))
     },]
 
 

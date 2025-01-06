@@ -46,7 +46,7 @@
 </template>
 
 <script>
-import Role from "@js/api/Role";
+import Role from "@js/api/setting/Role";
 import RoleForm from "./RoleForm.vue";
 import GrantMenu from "./GrantMenu.vue";
 import {confirm, message} from "heyui.ext";

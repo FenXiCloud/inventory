@@ -1,4 +1,3 @@
-
 import Ajax from "@common/Request";
 
 export default {

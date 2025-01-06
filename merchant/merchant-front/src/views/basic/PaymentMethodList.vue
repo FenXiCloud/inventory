@@ -33,7 +33,7 @@
 </template>
 
 <script>
-import PaymentMethod from "@js/api/PaymentMethod";
+import PaymentMethod from "@js/api/basic/PaymentMethod";
 import PaymentMethodForm from "./PaymentMethodForm.vue";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";

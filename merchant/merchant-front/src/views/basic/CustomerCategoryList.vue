@@ -47,7 +47,7 @@
 </template>
 
 <script>
-import CustomerCategory from "@js/api/CustomerCategory";
+import CustomerCategory from "@js/api/basic/CustomerCategory";
 import CustomerCategoryForm from "./CustomerCategoryForm.vue";
 import {confirm, message} from "heyui.ext";
 import {h} from "vue";

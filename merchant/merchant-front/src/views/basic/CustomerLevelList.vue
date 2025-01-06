@@ -33,7 +33,7 @@
 </template>
 
 <script>
-import CustomerLevel from "@js/api/CustomerLevel";
+import CustomerLevel from "@js/api/basic/CustomerLevel";
 import CustomerLevelForm from "./CustomerLevelForm.vue";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";

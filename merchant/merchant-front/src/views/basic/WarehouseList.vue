@@ -51,7 +51,7 @@
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 import WarehouseForm from "@views/basic/WarehouseForm";
-import Warehouse from "@js/api/Warehouse";
+import Warehouse from "@js/api/basic/Warehouse";
 import {confirm, message} from "heyui.ext";
 
 

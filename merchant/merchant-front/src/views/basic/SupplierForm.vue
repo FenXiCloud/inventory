@@ -49,10 +49,10 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import Supplier from "@js/api/Supplier";
+import Supplier from "@js/api/basic/Supplier";
 import {message} from "heyui.ext";
 import {CopyObj} from "@common/utils";
-import SupplierCategory from "@js/api/SupplierCategory";
+import SupplierCategory from "@js/api/basic/SupplierCategory";
 
 export default {
   name: "SupplierForm",

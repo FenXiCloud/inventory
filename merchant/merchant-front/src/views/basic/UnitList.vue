@@ -33,7 +33,7 @@
 </template>
 
 <script>
-import Unit from "@js/api/Unit";
+import Unit from "@js/api/basic/Unit";
 import UnitForm from "./UnitForm.vue";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";

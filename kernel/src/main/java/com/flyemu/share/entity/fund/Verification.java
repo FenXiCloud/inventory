@@ -23,4 +23,10 @@ public class Verification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
+    private Long accountBookId;
+
+    @Column(nullable = false)
+    private Long merchantId;
 }

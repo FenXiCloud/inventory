@@ -31,10 +31,8 @@
 </template>
 
 <script>
-import InventoryInitial from "@js/api/InventoryInitial";
+import InventoryInitial from "@js/api/basic/InventoryInitial";
 import {confirm, message} from "heyui.ext";
-import {layer} from "@layui/layer-vue";
-import {h} from "vue";
 
 /**
  * @功能描述: 产品交易流水/期初

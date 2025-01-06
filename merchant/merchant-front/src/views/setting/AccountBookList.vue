@@ -54,7 +54,7 @@
 </template>
 
 <script>
-import AccountBook from "@js/api/AccountBook";
+import AccountBook from "@js/api/setting/AccountBook";
 import {confirm, message} from "heyui.ext";
 import AccountBookForm from "./AccountBookForm.vue";
 import {layer} from "@layui/layer-vue";

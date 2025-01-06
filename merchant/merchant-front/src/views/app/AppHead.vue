@@ -33,7 +33,7 @@ import {onMounted, onUnmounted} from 'vue';
 import {mapMutations, mapState} from 'vuex';
 import {confirm, loading, message} from 'heyui.ext';
 import {Logout} from "@js/api/App";
-import AccountBook from "@js/api/AccountBook";
+import AccountBook from "@js/api/setting/AccountBook";
 
 export default {
   name: "AppHead",

@@ -41,7 +41,7 @@
 import {mapState} from "vuex"
 import {clone} from "xe-utils"
 import {message} from "heyui.ext";
-import Admin from "@js/api/Admin";
+import Admin from "@js/api/setting/Admin";
 
 export default {
   name: "AccountBasic",

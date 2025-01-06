@@ -69,14 +69,14 @@
 </template>
 <script>
 import manba from "manba";
-import Inventory from "@js/api/inventory/Inventory";
+import SalesOutbound from "@js/api/sales/SalesOutbound";
 import {mapMutations} from "vuex";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
 
 export default {
-  name: "InventoryList",
+  name: "SalesProfitReport",
   data() {
     return {
       dataList: [],
@@ -134,7 +134,7 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      Inventory.list(this.queryParams).then(({data: {results, total}}) => {
+      SalesOutbound.list(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);

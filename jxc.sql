@@ -10,7 +10,7 @@ Target Server Type    : MYSQL
 Target Server Version : 80300
 File Encoding         : 65001
 
-Date: 2025-01-03 22:38:32
+Date: 2025-01-06 12:56:05
 */
 
 SET FOREIGN_KEY_CHECKS=0;
@@ -25,10 +25,10 @@ CREATE TABLE `jxc_account`
   `account_book_id` bigint NOT NULL,
   `account_type` varchar(32) COLLATE utf8mb4_general_ci DEFAULT '银行存款' COMMENT '账户类别',
   `balance` decimal(38,2) DEFAULT NULL COMMENT '账户余额',
-  `code`         varchar(32) COLLATE utf8mb4_general_ci NOT NULL COMMENT '编码',
+  `code` varchar(32) COLLATE utf8mb4_general_ci NOT NULL COMMENT '编码',
   `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
   `merchant_id` bigint NOT NULL,
-  `name`         varchar(32) COLLATE utf8mb4_general_ci NOT NULL COMMENT '名称',
+  `name` varchar(32) COLLATE utf8mb4_general_ci NOT NULL COMMENT '名称',
   `system_default` bit(1) NOT NULL DEFAULT b'1' COMMENT '是否系统默认',
   PRIMARY KEY (`id`),
   UNIQUE KEY `UKe2l13ts6x87l689bwd3jm8g81` (`merchant_id`,`account_book_id`,`name`)
@@ -37,8 +37,6 @@ CREATE TABLE `jxc_account`
 -- ----------------------------
 -- Records of jxc_account
 -- ----------------------------
-INSERT INTO `jxc_account`
-VALUES ('1', '1', '银行存款', null, '12', '', '1', '12', '');
 INSERT INTO `jxc_account`
 VALUES ('2', '1', '银行存款', null, '213', '', '1', '123', '');
 
@@ -78,9 +76,9 @@ CREATE TABLE `jxc_account_flow`
   `amount` decimal(38,2) NOT NULL COMMENT '金额',
   `balance_after` decimal(38,2) DEFAULT NULL COMMENT '交易后余额',
   `balance_before` decimal(38,2) DEFAULT NULL COMMENT '交易前余额',
-  `created_at`        datetime(6) DEFAULT NULL COMMENT '创建时间',
-  `created_by`        bigint                                  DEFAULT NULL COMMENT '创建人',
-  `remarks`           varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
+  `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
+  `created_by` bigint                                  DEFAULT NULL COMMENT '创建人',
+  `remarks`    varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
   `voucher_id` bigint DEFAULT NULL COMMENT '单据Id',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -144,17 +142,19 @@ CREATE TABLE `jxc_account_type`
   `cost_type` varchar(32) COLLATE utf8mb4_general_ci DEFAULT '收入' COMMENT '收支类别',
   `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
   `merchant_id` bigint NOT NULL,
-  `name`      varchar(32) COLLATE utf8mb4_general_ci NOT NULL,
-  `code`      varchar(32) COLLATE utf8mb4_general_ci NOT NULL,
+  `name` varchar(32) COLLATE utf8mb4_general_ci NOT NULL,
+  `code` varchar(32) COLLATE utf8mb4_general_ci NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UKs0gpnbygsm5bj4o71qtinnkh2` (`merchant_id`,`account_book_id`,`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ----------------------------
 -- Records of jxc_account_type
 -- ----------------------------
 INSERT INTO `jxc_account_type`
-VALUES ('1', '1', '收入', '', '1', '1221', '1');
+VALUES ('3', '1', '收入类别', '', '1', '营业收入', '01');
+INSERT INTO `jxc_account_type`
+VALUES ('4', '1', '支出类别', '', '1', '管理费用', '02');
 
 -- ----------------------------
 -- Table structure for jxc_admin
@@ -212,21 +212,25 @@ CREATE TABLE `jxc_code_rule`
 (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `account_book_id` bigint NOT NULL,
-  `date_format`   varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '日期格式',
+  `date_format`  varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '日期格式',
   `document_type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '单据类型',
   `merchant_id` bigint NOT NULL,
-  `name`          varchar(32) COLLATE utf8mb4_general_ci  NOT NULL COMMENT '规则名称',
-  `prefix`        varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '前缀',
-  `reset_period`  varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '流水号清零',
+  `name`         varchar(32) COLLATE utf8mb4_general_ci  NOT NULL COMMENT '规则名称',
+  `prefix`       varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '前缀',
+  `reset_period` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '流水号清零',
   `serial_number_length` int DEFAULT NULL COMMENT '流水号位数',
   `start_value` int DEFAULT NULL COMMENT '起始值',
   `system_default` bit(1) NOT NULL DEFAULT b'1' COMMENT '是否系统默认',
+  `format`       varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '日期格式/分类编码',
+  `created_at`   datetime(6) DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ----------------------------
 -- Records of jxc_code_rule
 -- ----------------------------
+INSERT INTO `jxc_code_rule`
+VALUES ('1', '1', null, '采购订单', '1', '12312', '122121', '月', '1221', '12', '', '1212', null);
 
 -- ----------------------------
 -- Table structure for jxc_cost_adjustment
@@ -244,9 +248,9 @@ CREATE TABLE `jxc_cost_adjustment`
   `created_by` bigint DEFAULT NULL COMMENT '创建人',
   `djustment_date` datetime(6) DEFAULT NULL COMMENT '调整日期',
   `merchant_id` bigint NOT NULL,
-  `order_no`        varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '单据编号',
-  `order_status`    varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '已保存' COMMENT '订单状态',
-  `remarks`         varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '备注',
+  `order_no`     varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '单据编号',
+  `order_status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '已保存' COMMENT '订单状态',
+  `remarks`      varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -331,6 +335,7 @@ DROP TABLE IF EXISTS `jxc_customer_flow`;
 CREATE TABLE `jxc_customer_flow`
 (
     `id`                 bigint                                  NOT NULL AUTO_INCREMENT,
+    `account_book_id`    bigint                                  NOT NULL,
     `amount`             decimal(38, 2)                          NOT NULL COMMENT '金额',
     `balance_after`      decimal(38, 2)                          DEFAULT NULL COMMENT '交易后余额',
     `balance_before`     decimal(38, 2)                          DEFAULT NULL COMMENT '交易前余额',
@@ -338,8 +343,10 @@ CREATE TABLE `jxc_customer_flow`
     `created_by`         bigint                                  DEFAULT NULL COMMENT '创建人',
     `customer_flow_type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '操作类型',
     `customer_id`        bigint                                  NOT NULL COMMENT '客户Id',
+    `is_initial`         bit(1)                                  DEFAULT NULL COMMENT '是否期初',
+    `merchant_id`        bigint                                  NOT NULL,
+    `order_id`           bigint                                  DEFAULT NULL COMMENT '单据Id',
     `remarks`            varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
-    `voucher_id`         bigint                                  DEFAULT NULL COMMENT '单据Id',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -404,6 +411,8 @@ CREATE TABLE `jxc_inventory`
   `total_cost` decimal(38,2) DEFAULT NULL COMMENT '成本总计',
   `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
   `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
+  `account_book_id` bigint NOT NULL,
+  `merchant_id`     bigint NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -425,7 +434,7 @@ CREATE TABLE `jxc_inventory_item`
   `created_by` bigint DEFAULT NULL COMMENT '创建人',
   `merchant_id` bigint NOT NULL,
   `operation_type` smallint DEFAULT NULL COMMENT '操作类型：入库、出库、调拨',
-  `order_id`     bigint                                  DEFAULT NULL COMMENT '关联单据ID',
+  `order_id` bigint DEFAULT NULL COMMENT '关联单据ID',
   `product_id` bigint DEFAULT NULL COMMENT '产品ID',
   `quantity` int DEFAULT NULL COMMENT '正数为入库，负数为出库',
   `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
@@ -452,9 +461,9 @@ CREATE TABLE `jxc_inventory_transfer`
   `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
   `created_by` bigint DEFAULT NULL COMMENT '创建人',
   `merchant_id` bigint NOT NULL,
-  `order_no`     varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '单据编号',
+  `order_no` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '单据编号',
   `order_status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '已保存' COMMENT '订单状态',
-  `remarks`      varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '备注',
+  `remarks`  varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
   `transfer_date` datetime(6) DEFAULT NULL COMMENT '调拨日期',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -505,7 +514,7 @@ CREATE TABLE `jxc_menu`
   `pos` int DEFAULT NULL COMMENT '位置',
   `require_auth` bit(1) DEFAULT NULL COMMENT '是否要求权限',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=86 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=87 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ----------------------------
 -- Records of jxc_menu
@@ -515,17 +524,17 @@ VALUES ('1', 'basic', '', 'h-icon-task', 'MERCHANT', 'MERCHANT', 'MENU', '基�
 INSERT INTO `jxc_menu`
 VALUES ('6', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '基础资料', '1', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('7', 'CustomerList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '客户', '6', '1', '');
+VALUES ('7', 'CustomerList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '客户档案', '6', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('8', 'SupplierList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '供货商', '6', '2', '');
+VALUES ('8', 'SupplierList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '货商档案', '6', '2', '');
 INSERT INTO `jxc_menu`
-VALUES ('9', 'WarehouseList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '仓库', '6', '3', '');
+VALUES ('9', 'WarehouseList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '仓库管理', '6', '3', '');
 INSERT INTO `jxc_menu`
 VALUES ('10', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '辅助资料', '1', '2', '');
 INSERT INTO `jxc_menu`
 VALUES ('12', 'CustomerLevelList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '客户等级', '10', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('14', '', '', 'h-icon-setting', 'MERCHANT', 'MERCHANT', 'MENU', '系统设置', null, '10', '');
+VALUES ('14', 'Setting', '', 'h-icon-setting', 'MERCHANT', 'MERCHANT', 'MENU', '系统设置', null, '10', '');
 INSERT INTO `jxc_menu`
 VALUES ('15', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '系统设置', '14', '0', '');
 INSERT INTO `jxc_menu`
@@ -537,33 +546,33 @@ VALUES ('18', 'RoleList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '角色权�
 INSERT INTO `jxc_menu`
 VALUES ('19', 'AdminList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '员工账号', '15', '3', '');
 INSERT INTO `jxc_menu`
-VALUES ('20', 'ProductList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '产品', '6', '0', '');
+VALUES ('20', 'ProductList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '产品档案', '6', '0', '');
 INSERT INTO `jxc_menu`
 VALUES ('23', 'AccountTypeList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '收支类型', '10', '3', '');
 INSERT INTO `jxc_menu`
 VALUES ('24', 'PaymentMethodList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '结算方式', '10', '4', '');
 INSERT INTO `jxc_menu`
-VALUES ('25', null, '', 'h-icon-plus', 'MERCHANT', 'MERCHANT', 'MENU', '采购管理', null, '1', '');
+VALUES ('25', 'Purchase', '', 'h-icon-plus', 'MERCHANT', 'MERCHANT', 'MENU', '采购管理', null, '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('26', null, '', 'h-icon-complete', 'MERCHANT', 'MERCHANT', 'MENU', '销售管理', null, '2', '');
+VALUES ('26', 'Sales', '', 'h-icon-complete', 'MERCHANT', 'MERCHANT', 'MENU', '销售管理', null, '2', '');
 INSERT INTO `jxc_menu`
-VALUES ('27', null, '', 'h-icon-check', 'MERCHANT', 'MERCHANT', 'MENU', '库存管理', null, '3', '');
+VALUES ('27', 'Inventory', '', 'h-icon-check', 'MERCHANT', 'MERCHANT', 'MENU', '库存管理', null, '3', '');
 INSERT INTO `jxc_menu`
-VALUES ('28', null, '', 'h-icon-bell', 'MERCHANT', 'MERCHANT', 'MENU', '资金账户', null, '4', '');
+VALUES ('28', 'Fund', '', 'h-icon-bell', 'MERCHANT', 'MERCHANT', 'MENU', '资金账户', null, '4', '');
 INSERT INTO `jxc_menu`
 VALUES ('29', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '资金单据', '28', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('30', 'ReceiptVoucher ', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '收款单', '29', '0', '');
+VALUES ('30', 'OrderReceiptList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '收款单', '29', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('31', 'PaymentVoucher ', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '付款单', '29', '1', '');
+VALUES ('31', 'OrderPaymentList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '付款单', '29', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('32', 'WriteOff', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '核销单', '29', '2', '');
+VALUES ('32', 'VerificationList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '核销单', '29', '2', '');
 INSERT INTO `jxc_menu`
-VALUES ('33', 'AccountTransfer', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '资金转账', '29', '3', '');
+VALUES ('33', 'AccountTransferList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '资金转账', '29', '3', '');
 INSERT INTO `jxc_menu`
-VALUES ('34', 'OtherIncome', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他收款单', '29', '4', '');
+VALUES ('34', 'OtherIncomeList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他收入单', '29', '4', '');
 INSERT INTO `jxc_menu`
-VALUES ('35', 'OtherExpense', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他付款单', '29', '5', '');
+VALUES ('35', 'OtherExpenseList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他支出单', '29', '5', '');
 INSERT INTO `jxc_menu`
 VALUES ('36', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '资金报表', '28', '1', '');
 INSERT INTO `jxc_menu`
@@ -583,11 +592,11 @@ VALUES ('43', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '价格设置', '
 INSERT INTO `jxc_menu`
 VALUES ('44', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '产品价格资料', '43', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('45', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '产品价格记录', '43', '1', '');
+VALUES ('45', 'PriceRecordList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '产品价格记录', '43', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('46', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '编码规则设置', '15', '4', '');
+VALUES ('46', 'CodeRuleList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '编码规则', '15', '4', '');
 INSERT INTO `jxc_menu`
-VALUES ('47', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '结账/反结账', '15', '5', '');
+VALUES ('47', 'CheckoutList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '结账/反结账', '15', '5', '');
 INSERT INTO `jxc_menu`
 VALUES ('48', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '打印模板', '15', '6', '');
 INSERT INTO `jxc_menu`
@@ -597,73 +606,69 @@ VALUES ('50', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '操作日志', '
 INSERT INTO `jxc_menu`
 VALUES ('51', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购单据', '25', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('52', 'PurchaseOrder', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购订单', '51', '0', '');
+VALUES ('52', 'PurchaseOrderList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购订单', '51', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('53', 'PurchaseInbound', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购入库单', '51', '1', '');
+VALUES ('53', 'PurchaseInboundList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购入库单', '51', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('54', 'PurchaseReturn', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购退货单', '51', '2', '');
+VALUES ('54', 'PurchaseReturnList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购退货单', '51', '2', '');
 INSERT INTO `jxc_menu`
 VALUES ('55', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购报表', '25', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('56', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购明细表', '55', '0', '');
+VALUES ('56', 'PurchaseItemReport', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购明细表', '55', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('57', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购汇总表', '55', '1', '');
+VALUES ('57', 'PurchaseSummaryReport', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '采购汇总表', '55', '1', '');
 INSERT INTO `jxc_menu`
 VALUES ('58', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售单据', '26', '0', '');
 INSERT INTO `jxc_menu`
 VALUES ('59', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售报表', '26', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('60', 'SalesOrder ', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售订单', '58', '0', '');
+VALUES ('60', 'SalesOrderList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售订单', '58', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('61', 'SalesOutbound', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售出库单', '58', '1', '');
+VALUES ('61', 'SalesOutboundList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售出库单', '58', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('62', 'SalesReturn ', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售退货单', '58', '2', '');
+VALUES ('62', 'SalesReturnList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售退货单', '58', '2', '');
 INSERT INTO `jxc_menu`
-VALUES ('63', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售明细表', '59', '0', '');
+VALUES ('63', 'SalesItemReport', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售明细表', '59', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('64', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售汇总表', '59', '1', '');
+VALUES ('64', 'SalesSummaryReport', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售汇总表', '59', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('65', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售利润表', '59', '2', '');
+VALUES ('65', 'SalesProfitReport', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售利润表', '59', '2', '');
 INSERT INTO `jxc_menu`
-VALUES ('66', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售排行表', '59', '3', '');
+VALUES ('66', 'SalesRankingReport', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '销售排行表', '59', '3', '');
 INSERT INTO `jxc_menu`
 VALUES ('67', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '库存单据', '27', '0', '');
 INSERT INTO `jxc_menu`
 VALUES ('68', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '库存报表', '27', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('69', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '库存核算', '27', '2', '');
+VALUES ('72', 'InventoryReport', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '库存余额表', '68', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('70', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '成本调整单', '69', '0', '');
+VALUES ('73', 'InventoryItemReport', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '进销存明细表', '68', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('71', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '重算成本', '69', '1', '');
+VALUES ('74', 'InventorySummaryReport', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '进销存汇总表', '68', '2', '');
 INSERT INTO `jxc_menu`
-VALUES ('72', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '库存余额表', '68', '0', '');
+VALUES ('75', 'InventoryTransferList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '调拨单', '67', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('73', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '进销存明细表', '68', '1', '');
+VALUES ('76', 'StockTakeList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '盘点单', '67', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('74', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '进销存汇总表', '68', '2', '');
+VALUES ('77', 'OtherOutboundList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他出库单', '67', '2', '');
 INSERT INTO `jxc_menu`
-VALUES ('75', 'InventoryTransfer', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '调拨单', '67', '0', '');
-INSERT INTO `jxc_menu`
-VALUES ('76', 'StockTake ', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '盘点单', '67', '1', '');
-INSERT INTO `jxc_menu`
-VALUES ('77', 'OtherOutbound', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他出库单', '67', '2', '');
-INSERT INTO `jxc_menu`
-VALUES ('78', 'OtherInbound', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他入库单', '67', '3', '');
+VALUES ('78', 'OtherInboundList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '其他入库单', '67', '3', '');
 INSERT INTO `jxc_menu`
 VALUES ('79', 'AccountList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '账户管理', '6', '4', '');
 INSERT INTO `jxc_menu`
 VALUES ('80', 'UnitList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '计量单位', '6', '6', '');
 INSERT INTO `jxc_menu`
-VALUES ('81', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '价格取数规则', '43', '2', '');
+VALUES ('81', 'PricingPolicyList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '价格取数规则', '43', '2', '');
 INSERT INTO `jxc_menu`
 VALUES ('82', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '期初录入', '1', '4', '');
 INSERT INTO `jxc_menu`
-VALUES ('83', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '产品库存期初录入', '82', '0', '');
+VALUES ('83', 'InventoryInitialList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '库存期初录入', '82', '0', '');
 INSERT INTO `jxc_menu`
-VALUES ('84', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '客户期初录入', '82', '1', '');
+VALUES ('84', 'CustomerInitialList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '客户期初录入', '82', '1', '');
 INSERT INTO `jxc_menu`
-VALUES ('85', null, '', null, 'MERCHANT', 'MERCHANT', 'MENU', '供货商期初录入', '82', '2', '');
+VALUES ('85', 'SupplierInitialList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '货商期初录入', '82', '2', '');
+INSERT INTO `jxc_menu`
+VALUES ('86', 'CostAdjustmentList', '', null, 'MERCHANT', 'MERCHANT', 'MENU', '成本调整单', '67', '5', '');
 
 -- ----------------------------
 -- Table structure for jxc_menu_role
@@ -846,12 +851,6 @@ VALUES ('59', '67', '1');
 INSERT INTO `jxc_merchant_menu`
 VALUES ('60', '68', '1');
 INSERT INTO `jxc_merchant_menu`
-VALUES ('61', '69', '1');
-INSERT INTO `jxc_merchant_menu`
-VALUES ('62', '70', '1');
-INSERT INTO `jxc_merchant_menu`
-VALUES ('63', '71', '1');
-INSERT INTO `jxc_merchant_menu`
 VALUES ('64', '72', '1');
 INSERT INTO `jxc_merchant_menu`
 VALUES ('65', '73', '1');
@@ -905,23 +904,82 @@ VALUES ('1', '', '2025-01-03 21:47:52.361420', '李泽龙',
         '$2a$10$xdLpsVBapIN7wYcW8xpbFeg9kYKAV/UbDnr1zqC5uREe/ysbTpG1a', '', '13944878765');
 
 -- ----------------------------
+-- Table structure for jxc_order_payment
+-- ----------------------------
+DROP TABLE IF EXISTS `jxc_order_payment`;
+CREATE TABLE `jxc_order_payment`
+(
+    `id`              bigint                                 NOT NULL AUTO_INCREMENT,
+    `account_book_id` bigint                                 NOT NULL,
+    `approved_at`     datetime(6) DEFAULT NULL COMMENT '审核时间',
+    `approved_by`     bigint                                          DEFAULT NULL COMMENT '审核人',
+    `created_at`      datetime(6) DEFAULT NULL COMMENT '创建时间',
+    `created_by`      bigint                                          DEFAULT NULL COMMENT '创建人',
+    `discount_amount` decimal(38, 2)                                  DEFAULT NULL COMMENT '折扣金额',
+    `merchant_id`     bigint                                 NOT NULL,
+    `order_date`      date                                            DEFAULT NULL COMMENT '单据日期',
+    `order_no`        varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '单据编号',
+    `order_status`    varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '已保存' COMMENT '状态',
+    `payment_amount`  decimal(38, 2)                                  DEFAULT NULL COMMENT '付款金额',
+    `supplier_id`     bigint                                          DEFAULT NULL COMMENT '货商ID',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ----------------------------
+-- Records of jxc_order_payment
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for jxc_order_payment_item
 -- ----------------------------
 DROP TABLE IF EXISTS `jxc_order_payment_item`;
 CREATE TABLE `jxc_order_payment_item`
 (
     `id`                       bigint                                  NOT NULL AUTO_INCREMENT,
-    `one_time_verified_amount` decimal(38, 2) DEFAULT NULL COMMENT '本次核销金额',
-    `order_amount`             decimal(38, 2) DEFAULT NULL COMMENT '单据金额',
+    `one_time_verified_amount` decimal(38, 2)                          DEFAULT NULL COMMENT '本次核销金额',
+    `order_amount`             decimal(38, 2)                          DEFAULT NULL COMMENT '单据金额',
     `order_date`               datetime(6) DEFAULT NULL COMMENT '单据日期',
-    `order_id`                 bigint         DEFAULT NULL COMMENT '订单ID',
+    `order_id`                 bigint                                  DEFAULT NULL COMMENT '订单ID',
     `order_type`               varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '业务类型',
-    `verified_amount`          decimal(38, 2) DEFAULT NULL COMMENT '已核销金额',
+    `verified_amount`          decimal(38, 2)                          DEFAULT NULL COMMENT '已核销金额',
+    `account_book_id`          bigint                                  NOT NULL,
+    `account_id`               bigint                                  DEFAULT NULL COMMENT '账户ID',
+    `amount`                   decimal(38, 2)                          DEFAULT NULL COMMENT '收入金额',
+    `merchant_id`              bigint                                  NOT NULL,
+    `payment_id`               bigint                                  DEFAULT NULL COMMENT '付款单ID',
+    `payment_method_id`        bigint                                  DEFAULT NULL COMMENT '结算方式',
+    `remarks`                  varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ----------------------------
 -- Records of jxc_order_payment_item
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for jxc_order_receipt
+-- ----------------------------
+DROP TABLE IF EXISTS `jxc_order_receipt`;
+CREATE TABLE `jxc_order_receipt`
+(
+    `id`                bigint                                 NOT NULL AUTO_INCREMENT,
+    `account_book_id`   bigint                                 NOT NULL,
+    `approved_at`       datetime(6) DEFAULT NULL COMMENT '审核时间',
+    `approved_by`       bigint                                          DEFAULT NULL COMMENT '审核人',
+    `collection_amount` decimal(38, 2)                                  DEFAULT NULL COMMENT '收款金额',
+    `created_at`        datetime(6) DEFAULT NULL COMMENT '创建时间',
+    `created_by`        bigint                                          DEFAULT NULL COMMENT '创建人',
+    `customer_id`       bigint                                          DEFAULT NULL COMMENT '客户ID',
+    `discount_amount`   decimal(38, 2)                                  DEFAULT NULL COMMENT '折扣金额',
+    `merchant_id`       bigint                                 NOT NULL,
+    `order_date`        date                                            DEFAULT NULL COMMENT '单据日期',
+    `order_no`          varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '单据编号',
+    `order_status`      varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '已保存' COMMENT '状态',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ----------------------------
+-- Records of jxc_order_receipt
 -- ----------------------------
 
 -- ----------------------------
@@ -931,12 +989,19 @@ DROP TABLE IF EXISTS `jxc_order_receipt_item`;
 CREATE TABLE `jxc_order_receipt_item`
 (
     `id`                       bigint                                  NOT NULL AUTO_INCREMENT,
-    `one_time_verified_amount` decimal(38, 2) DEFAULT NULL COMMENT '本次核销金额',
-    `order_amount`             decimal(38, 2) DEFAULT NULL COMMENT '单据金额',
+    `one_time_verified_amount` decimal(38, 2)                          DEFAULT NULL COMMENT '本次核销金额',
+    `order_amount`             decimal(38, 2)                          DEFAULT NULL COMMENT '单据金额',
     `order_date`               datetime(6) DEFAULT NULL COMMENT '单据日期',
-    `order_id`                 bigint         DEFAULT NULL COMMENT '订单ID',
+    `order_id`                 bigint                                  DEFAULT NULL COMMENT '订单ID',
     `order_type`               varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '业务类型',
-    `verified_amount`          decimal(38, 2) DEFAULT NULL COMMENT '已核销金额',
+    `verified_amount`          decimal(38, 2)                          DEFAULT NULL COMMENT '已核销金额',
+    `account_book_id`          bigint                                  NOT NULL,
+    `account_id`               bigint                                  DEFAULT NULL COMMENT '账户ID',
+    `amount`                   decimal(38, 2)                          DEFAULT NULL COMMENT '收入金额',
+    `merchant_id`              bigint                                  NOT NULL,
+    `payment_method_id`        bigint                                  DEFAULT NULL COMMENT '结算方式',
+    `receipt_id`               bigint                                  DEFAULT NULL COMMENT '收款单ID',
+    `remarks`                  varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -1223,13 +1288,46 @@ CREATE TABLE `jxc_payment_method`
   `name` varchar(32) COLLATE utf8mb4_general_ci NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UKosnhjd4mkycfpdywo2wxdnqy3` (`merchant_id`,`account_book_id`,`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ----------------------------
 -- Records of jxc_payment_method
 -- ----------------------------
 INSERT INTO `jxc_payment_method`
+VALUES ('2', '1', '1', '微信');
+INSERT INTO `jxc_payment_method`
+VALUES ('3', '1', '1', '支付宝');
+INSERT INTO `jxc_payment_method`
 VALUES ('1', '1', '1', '银行转账');
+
+-- ----------------------------
+-- Table structure for jxc_price_record
+-- ----------------------------
+DROP TABLE IF EXISTS `jxc_price_record`;
+CREATE TABLE `jxc_price_record`
+(
+    `id`                   bigint NOT NULL AUTO_INCREMENT,
+    `account_book_id`      bigint NOT NULL,
+    `base_unit_id`         bigint                                 DEFAULT NULL COMMENT '基本单位ID',
+    `conversion_rate`      decimal(38, 2)                         DEFAULT NULL COMMENT '换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)',
+    `customer_id`          bigint                                 DEFAULT NULL COMMENT '客户ID',
+    `merchant_id`          bigint NOT NULL,
+    `order_date`           datetime(6) DEFAULT NULL COMMENT '单据日期',
+    `order_id`             bigint                                 DEFAULT NULL COMMENT '单据主表ID',
+    `price_type`           varchar(32) COLLATE utf8mb4_general_ci DEFAULT '采购入库' COMMENT '价格类别',
+    `product_id`           bigint                                 DEFAULT NULL COMMENT '产品ID',
+    `quantity` double DEFAULT NULL COMMENT '数量（以基本单位计）',
+    `secondary_quantity` double DEFAULT NULL COMMENT '辅助单位数量 (可为空',
+    `secondary_unit_id`    bigint                                 DEFAULT NULL COMMENT '辅助单位ID(可为空)',
+    `secondary_unit_price` decimal(38, 2)                         DEFAULT NULL COMMENT '单价（辅助单位）',
+    `supplier_id`          bigint                                 DEFAULT NULL COMMENT '货商ID',
+    `unit_price`           decimal(38, 2)                         DEFAULT NULL COMMENT '单价（以基本单位计）',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ----------------------------
+-- Records of jxc_price_record
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for jxc_pricing_policy
@@ -1241,17 +1339,18 @@ CREATE TABLE `jxc_pricing_policy`
   `account_book_id` bigint NOT NULL,
   `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
   `merchant_id` bigint NOT NULL,
-  `name`         varchar(32) COLLATE utf8mb4_general_ci  NOT NULL,
   `price_source` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '价格来源',
-  `price_type`   varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '价格类型',
+  `price_type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '价格类型',
   `priority` int DEFAULT NULL COMMENT '优先级',
-  `remarks`      varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
+  `remarks`    varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ----------------------------
 -- Records of jxc_pricing_policy
 -- ----------------------------
+INSERT INTO `jxc_pricing_policy`
+VALUES ('1', '1', '', '1', '客户等级售价', '销售价格取数', '1', '取自商品的价格策略，根据客户等级设置价格');
 
 -- ----------------------------
 -- Table structure for jxc_product
@@ -1263,18 +1362,18 @@ CREATE TABLE `jxc_product`
   `account_book_id` bigint NOT NULL,
   `alert_quantity` int DEFAULT NULL COMMENT '预警库存',
   `auxiliary_unit_prices` json DEFAULT NULL COMMENT '辅助单位价格',
-  `barcode`       varchar(32) COLLATE utf8mb4_general_ci  DEFAULT NULL COMMENT '条码',
-  `code`          varchar(64) COLLATE utf8mb4_general_ci NOT NULL COMMENT '编码',
+  `barcode`  varchar(32) COLLATE utf8mb4_general_ci  DEFAULT NULL COMMENT '条码',
+  `code`     varchar(64) COLLATE utf8mb4_general_ci NOT NULL COMMENT '编码',
   `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
   `enable_auxiliary_unit` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否启用辅助单位',
   `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
-  `img_path`      varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '商品图片',
+  `img_path` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '商品图片',
   `merchant_id` bigint NOT NULL,
-  `name`          varchar(64) COLLATE utf8mb4_general_ci NOT NULL COMMENT '名称',
-  `pinyin`        varchar(32) COLLATE utf8mb4_general_ci  DEFAULT NULL COMMENT '拼音',
+  `name`     varchar(64) COLLATE utf8mb4_general_ci NOT NULL COMMENT '名称',
+  `pinyin`   varchar(32) COLLATE utf8mb4_general_ci  DEFAULT NULL COMMENT '拼音',
   `product_category_id` bigint NOT NULL COMMENT '产品分类',
   `purchase_price` decimal(38,2) NOT NULL COMMENT '预计进货价（基础单位）',
-  `remarks`       varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
+  `remarks`  varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
   `sort` int DEFAULT NULL COMMENT '排序',
   `specification` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '规格',
   `stock_quantity` int DEFAULT NULL COMMENT '库存数量',
@@ -1363,7 +1462,7 @@ CREATE TABLE `jxc_purchase_inbound_item`
   `quantity` double DEFAULT NULL COMMENT '数量（以基本单位计）',
   `secondary_quantity` double DEFAULT NULL COMMENT '辅助单位数量 (可为空',
   `secondary_unit_id` bigint DEFAULT NULL COMMENT '辅助单位ID(可为空)',
-  `subtotal`     decimal(38, 2)                          DEFAULT NULL COMMENT '小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)',
+  `subtotal` decimal(38, 2) DEFAULT NULL COMMENT '小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)',
   `unit_price` decimal(38,2) DEFAULT NULL COMMENT '单价（以基本单位计）',
   `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
   `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
@@ -1390,9 +1489,9 @@ CREATE TABLE `jxc_purchase_order`
   `final_amount` decimal(38,2) DEFAULT NULL COMMENT '折后金额',
   `merchant_id` bigint NOT NULL,
   `order_date` date DEFAULT NULL COMMENT '下单日期',
-  `order_no`     varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '单据编号',
+  `order_no` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '单据编号',
   `order_status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '已保存' COMMENT '订单状态',
-  `remarks`      varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '备注',
+  `remarks`  varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
   `supplier_id` bigint DEFAULT NULL COMMENT '供货商ID',
   `total_amount` decimal(38,2) DEFAULT NULL COMMENT '订单金额',
   PRIMARY KEY (`id`)
@@ -1500,7 +1599,7 @@ CREATE TABLE `jxc_purchase_return_item`
   `id` bigint NOT NULL AUTO_INCREMENT,
   `account_book_id` bigint NOT NULL,
   `base_unit_id` bigint DEFAULT NULL COMMENT '基本单位ID',
-  `batch_number`  varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '批次号',
+  `batch_number` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '批次号',
   `conversion_rate` decimal(38,2) DEFAULT NULL COMMENT '换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)',
   `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
   `created_by` bigint DEFAULT NULL COMMENT '创建人',
@@ -1513,7 +1612,7 @@ CREATE TABLE `jxc_purchase_return_item`
   `return_reason` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '退货原因',
   `secondary_quantity` double DEFAULT NULL COMMENT '辅助单位数量 (可为空',
   `secondary_unit_id` bigint DEFAULT NULL COMMENT '辅助单位ID(可为空)',
-  `subtotal`      decimal(38, 2)                          DEFAULT NULL COMMENT '小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)',
+  `subtotal`     decimal(38, 2)                          DEFAULT NULL COMMENT '小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)',
   `unit_price` decimal(38,2) DEFAULT NULL COMMENT '单价（以基本单位计）',
   `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
   `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
@@ -1608,16 +1707,19 @@ CREATE TABLE `jxc_sales_order`
   `final_amount` decimal(38,2) DEFAULT NULL COMMENT '折后金额',
   `merchant_id` bigint NOT NULL,
   `order_date` date DEFAULT NULL COMMENT '下单日期',
-  `order_no`     varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '单据编号',
+  `order_no` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '单据编号',
   `order_status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '已保存' COMMENT '订单状态',
-  `remarks`      varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '备注',
+  `remarks`  varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
   `total_amount` decimal(38,2) DEFAULT NULL COMMENT '订单金额',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ----------------------------
 -- Records of jxc_sales_order
 -- ----------------------------
+INSERT INTO `jxc_sales_order`
+VALUES ('1', '1', '2025-01-05 21:53:43.000000', '1', '2025-01-05 21:53:50.000000', '1', '1', '20.00', '200.00', '1',
+        '2025-01-05', '21554877', '已保存', null, '220.00');
 
 -- ----------------------------
 -- Table structure for jxc_sales_order_item
@@ -1817,9 +1919,9 @@ CREATE TABLE `jxc_stock_take`
   `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
   `created_by` bigint DEFAULT NULL COMMENT '创建人',
   `merchant_id` bigint NOT NULL,
-  `order_no`     varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '单据编号',
+  `order_no` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '单据编号',
   `order_status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '已保存' COMMENT '订单状态',
-  `remarks`      varchar(255) COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '备注',
+  `remarks`  varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
   `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -1900,15 +2002,18 @@ DROP TABLE IF EXISTS `jxc_supplier_flow`;
 CREATE TABLE `jxc_supplier_flow`
 (
     `id`                 bigint                                  NOT NULL AUTO_INCREMENT,
+    `account_book_id`    bigint                                  NOT NULL,
     `amount`             decimal(38, 2)                          NOT NULL COMMENT '金额',
     `balance_after`      decimal(38, 2)                          DEFAULT NULL COMMENT '交易后余额',
     `balance_before`     decimal(38, 2)                          DEFAULT NULL COMMENT '交易前余额',
     `created_at`         datetime(6) DEFAULT NULL COMMENT '创建时间',
     `created_by`         bigint                                  DEFAULT NULL COMMENT '创建人',
+    `is_initial`         bit(1)                                  DEFAULT NULL COMMENT '是否期初',
+    `merchant_id`        bigint                                  NOT NULL,
+    `order_id`           bigint                                  DEFAULT NULL COMMENT '单据Id',
     `remarks`            varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
     `supplier_flow_type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '操作类型',
     `supplier_id`        bigint                                  NOT NULL COMMENT '货商Id',
-    `voucher_id`         bigint                                  DEFAULT NULL COMMENT '单据Id',
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -1927,7 +2032,7 @@ CREATE TABLE `jxc_system_config`
   `config_type` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '参数类型',
   `enabled` bit(1) NOT NULL DEFAULT b'1' COMMENT '状态',
   `merchant_id` bigint NOT NULL,
-  `name`        varchar(32) COLLATE utf8mb4_general_ci  NOT NULL,
+  `name` varchar(32) COLLATE utf8mb4_general_ci NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -1962,6 +2067,8 @@ DROP TABLE IF EXISTS `jxc_verification`;
 CREATE TABLE `jxc_verification`
 (
   `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `merchant_id`     bigint NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -1976,6 +2083,8 @@ DROP TABLE IF EXISTS `jxc_verification_item`;
 CREATE TABLE `jxc_verification_item`
 (
   `id` bigint NOT NULL AUTO_INCREMENT,
+  `account_book_id` bigint NOT NULL,
+  `merchant_id`     bigint NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -2000,10 +2109,10 @@ CREATE TABLE `jxc_warehouse`
   PRIMARY KEY (`id`),
   UNIQUE KEY `UKthbgvaxdw8s6ko243r2djfc0e` (`merchant_id`,`account_book_id`,`name`),
   UNIQUE KEY `UKtepf0b4kaobx6cnucq5yaetyh` (`merchant_id`,`account_book_id`,`code`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ----------------------------
 -- Records of jxc_warehouse
 -- ----------------------------
 INSERT INTO `jxc_warehouse`
-VALUES ('1', '1', '', '1', '12', '\0', '12', '12');
+VALUES ('5', '1', '', '1', '213213', '', '123213', '2122');

@@ -17,7 +17,13 @@ const groupRoutes = [
 
     {name: 'CodeRuleList', component: defineAsyncComponent(() => import('@views/setting/CodeRuleList.vue'))},
 
+    {name: 'PrintTemplateList', component: defineAsyncComponent(() => import('@views/setting/PrintTemplateList.vue'))},
+
+    {name: 'SystemLogList', component: defineAsyncComponent(() => import('@views/setting/SystemLogList.vue'))},
+
     {name: 'ProductCategoryList', component: defineAsyncComponent(() => import('@views/basic/ProductCategoryList'))},
+
+    {name: 'ProductPriceList', component: defineAsyncComponent(() => import('@views/basic/ProductPriceList'))},
 
     {name: 'CustomerList', component: defineAsyncComponent(() => import('@views/basic/CustomerList'))},
 
@@ -62,22 +68,42 @@ const groupRoutes = [
     {name: 'SalesOrderList', component: defineAsyncComponent(() => import('@views/sales/SalesOrderList.vue'))},
     {name: 'SalesReturnList', component: defineAsyncComponent(() => import('@views/sales/SalesReturnList.vue'))},
     {name: 'SalesOutboundList', component: defineAsyncComponent(() => import('@views/sales/SalesOutboundList.vue'))},
+    {name: 'SalesItemReport', component: defineAsyncComponent(() => import('@views/sales/SalesItemReport.vue'))},
+    {name: 'SalesSummaryReport', component: defineAsyncComponent(() => import('@views/sales/SalesSummaryReport.vue'))},
+    {name: 'SalesProfitReport', component: defineAsyncComponent(() => import('@views/sales/SalesProfitReport.vue'))},
+    {name: 'SalesRankingReport', component: defineAsyncComponent(() => import('@views/sales/SalesRankingReport.vue'))},
     {name: 'PurchaseOrderList', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderList.vue'))},
+    {
+        name: 'PurchaseInboundList',
+        component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundList.vue'))
+    },
     {
         name: 'PurchaseReturnList',
         component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnList.vue'))
+    },
+    {
+        name: 'PurchaseItemReport',
+        component: defineAsyncComponent(() => import('@views/purchase/PurchaseItemReport.vue'))
+    },
+    {
+        name: 'PurchaseSummaryReport',
+        component: defineAsyncComponent(() => import('@views/purchase/PurchaseSummaryReport.vue'))
     },
     {
         name: 'CostAdjustmentList',
         component: defineAsyncComponent(() => import('@views/inventory/CostAdjustmentList.vue'))
     },
     {
-        name: 'InventoryItemList',
-        component: defineAsyncComponent(() => import('@views/inventory/InventoryItemList.vue'))
+        name: 'InventoryItemReport',
+        component: defineAsyncComponent(() => import('@views/inventory/InventoryItemReport.vue'))
     },
     {
-        name: 'InventoryList',
-        component: defineAsyncComponent(() => import('@views/inventory/InventoryList.vue'))
+        name: 'InventorySummaryReport',
+        component: defineAsyncComponent(() => import('@views/inventory/InventorySummaryReport.vue'))
+    },
+    {
+        name: 'InventoryReport',
+        component: defineAsyncComponent(() => import('@views/inventory/InventoryReport.vue'))
     },
     {
         name: 'InventoryTransferList',
@@ -111,6 +137,15 @@ const groupRoutes = [
     }, {
         name: 'AccountTransferList',
         component: defineAsyncComponent(() => import('@views/fund/AccountTransferList.vue'))
+    }, {
+        name: 'OtherIncomeExpenseReport',
+        component: defineAsyncComponent(() => import('@views/fund/OtherIncomeExpenseReport.vue'))
+    }, {
+        name: 'CustomerFlowReport',
+        component: defineAsyncComponent(() => import('@views/fund/CustomerFlowReport.vue'))
+    }, {
+        name: 'SupplierFlowReport',
+        component: defineAsyncComponent(() => import('@views/fund/SupplierFlowReport.vue'))
     },]
 
 

@@ -13,7 +13,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * @功能描述: 编码规则
+ * @功能描述: 打印模板
  * @创建时间: 2024年04月28日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -26,32 +26,15 @@ import java.time.LocalDateTime;
 @Table
 @DynamicUpdate
 @DynamicInsert
-public class CodeRule implements Serializable {
+public class PrintTemplate implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Comment("规则名称")
+    @Comment("名称")
     @Column(length = 32, nullable = false)
     private String name;
-
-    @Comment("前缀")
-    private String prefix;
-
-    @Comment("日期格式/分类编码")
-    private String format;
-
-    @Comment("流水号位数")
-    private Integer serialNumberLength;
-
-    @Comment("起始值")
-    private Integer  startValue;
-
-    @Comment("流水号清零")
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private ResetPeriod resetPeriod;
 
     @Comment("单据类型")
     @Column(nullable = false)
@@ -72,12 +55,8 @@ public class CodeRule implements Serializable {
     @Column(nullable = false)
     private Long merchantId;
 
-    public enum ResetPeriod {
-        日, 月,季,年
-    }
-
     public enum DocumentType {
-        采购订单, 采购入库单, 采购退货单, 销售订单, 销售出库单, 销售退货单, 调拨单, 盘点单, 其他入库单, 其他出库单, 成本调整单, 收款单, 付款单, 核销单, 其他收款单, 其他付款单, 转帐单, 商品, 仓库, 客户, 供货商
+        采购订单, 采购入库单, 采购退货单, 销售订单, 销售出库单, 销售退货单, 调拨单, 盘点单, 其他入库单, 其他出库单, 成本调整单, 收款单, 付款单, 核销单, 其他收款单, 其他付款单, 转帐单
     }
 
 }

@@ -34,6 +34,7 @@ public class PaymentMethodController {
     public JsonResult save(@RequestBody @Valid PaymentMethod paymentMethod, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         paymentMethod.setMerchantId(merchantId);
         paymentMethod.setAccountBookId(accountBookId);
+        paymentMethod.setEnabled(true);
         paymentMethodService.save(paymentMethod);
         return JsonResult.successful();
     }

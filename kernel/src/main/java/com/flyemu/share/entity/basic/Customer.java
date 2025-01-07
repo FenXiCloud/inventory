@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
 
@@ -23,6 +25,8 @@ import java.math.BigDecimal;
 @Table(uniqueConstraints = {
         @UniqueConstraint(columnNames = {"merchantId", "accountBookId", "code"}),
 })
+@DynamicUpdate
+@DynamicInsert
 public class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

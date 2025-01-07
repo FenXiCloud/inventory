@@ -1,91 +1,131 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
-        <Search
-            v-model.trim="params.filter"
-            search-button-theme="h-btn-default"
-            show-search-button
-            class="w-360px"
-            placeholder="请输入名称/编码/联系人/电话"
-            @search="doSearch">
-          <i class="h-icon-search"/>
-        </Search>
-      </template>
-      <template #tools>
-        <Button @click="showForm()" color="primary">新 增</Button>
-        <Button @click="addCategoryForm()" >新增分类</Button>
-      </template>
-    </vxe-toolbar>
-    <div class="flex-1">
-      <vxe-table row-id="id"
-                 ref="table"
-                 height="auto"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :loading="loading">
-        <vxe-column title="序号" type="seq" width="60" align="center" />
-        <vxe-column title="分类" field="categoryName" width="100"/>
-        <vxe-column title="编码" field="code" width="80"/>
-        <vxe-column title="名称" field="name" min-width="150"/>
-        <vxe-column title="联系人" field="linkman" width="100"/>
-        <vxe-column title="电话" field="phone" width="150"/>
-        <vxe-column title="地址" field="address" min-width="100"/>
-        <vxe-column title="状态" field="enabled" width="60">
-          <template #default="{row}">
-            <Tag color="primary" v-if="row.enabled">启用</Tag>
-            <Tag color="red" v-else>禁用</Tag>
+  <div class="container">
+    <Layout>
+      <!-- header start -->
+      <HHeader>
+        <vxe-toolbar>
+          <template #buttons>
+            <Button class="ml-10px" @click="addOrEditForm()" color="primary">新 增</Button>
+            <Button @click="addOrEditCategoryForm()">新增分类</Button>
           </template>
-        </vxe-column>
-        <vxe-column title="操作" align="center" width="150" fixed="right">
-          <template #default="{row}">
-            <span class="primary-color h-icon-edit text-hover ml-10px" @click="showForm(row)"></span>
-            <span class="primary-color h-icon-trash text-hover ml-10px" @click="doRemove(row)"></span>
+          <template #tools>
+            <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+                    show-search-button class="w-300px"
+                    placeholder="请输入供货商名称" @search="doSearch">查询
+            </Search>
           </template>
-        </vxe-column>
-      </vxe-table>
-    </div>
-    <vxe-pager perfect @page-change="loadList"
-               v-model:current-page="pagination.page"
-               v-model:page-size="pagination.pageSize"
-               :total="pagination.total"
-               :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'FullJump', 'Total']">
-      <template #left>
-        <vxe-button @click="loadList()" type="text" size="mini" icon="fa fa-refresh"
-                    :loading="loading"></vxe-button>
-      </template>
-    </vxe-pager>
+        </vxe-toolbar>
+      </HHeader>
+      <!-- header end -->
+
+      <Layout>
+        <!-- Sider start -->
+        <Sider>
+          <div style="width: 200px" class="tree-vue">
+            <Tree
+                ref="demo"
+                :option="categoryParams"
+                filterable="true"
+                select-on-click
+                class-name="h-tree-theme-row-selected">
+              <template #item="{ item }">
+                <div class="tree-show-custom">
+                  <span class="tree-show-title">{{ item.name }}</span>
+                  <span v-if="item.code!='ALL'" class="tree-edit-part">
+                    <i class="h-icon-edit" @click.stop="addOrEditCategoryForm(item)"/>
+                    <i class="h-icon-trash" @click.stop="doRemoveCategory(item)"/>
+                  </span>
+                </div>
+              </template>
+            </Tree>
+          </div>
+        </Sider>
+        <!-- Sider end -->
+
+        <!-- Content start -->
+        <Content>
+          <vxe-table row-id="id"
+                     ref="table"
+                     :data="dataList"
+                     highlight-hover-row
+                     show-overflow
+                     :row-config="{height: 48}"
+                     :column-config="{resizable: true}"
+                     :loading="loading">
+            <vxe-column type="seq" width="40" title="#"/>
+            <vxe-column title="编码" field="code" width="120"/>
+            <vxe-column title="供货商名称" field="name" min-width="200"/>
+            <vxe-column title="联系人" field="contact" width="120"/>
+            <vxe-column title="电话" field="phone" width="120"/>
+            <vxe-column title="分类" field="categoryName" width="120"/>
+            <vxe-column title="操作" align="center" width="160">
+              <template #default="{row}">
+                <i class="primary-color h-icon-edit ml-10px" @click="addOrEditForm(row)"></i>
+                <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
+              </template>
+            </vxe-column>
+          </vxe-table>
+          <vxe-pager perfect @page-change="loadData(false)"
+                     v-model:current-page="pagination.page"
+                     v-model:page-size="pagination.pageSize"
+                     :total="pagination.total"
+                     :layouts="[ 'PrevPage', 'Number', 'NextPage', 'Sizes', 'Total']">
+            <template #left>
+              <vxe-button @click="loadData(false)" type="text" size="mini" icon="h-icon-refresh"
+                          :loading="loading"></vxe-button>
+            </template>
+          </vxe-pager>
+        </Content>
+        <!-- Content end -->
+      </Layout>
+    </Layout>
   </div>
 </template>
 
 <script>
-import Supplier from "@js/api/basic/Supplier";
+
 import SupplierForm from "./SupplierForm.vue";
+import Supplier from "@js/api/basic/Supplier";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 import SupplierCategoryForm from "@views/basic/SupplierCategoryForm.vue";
+import SupplierCategory from "@js/api/basic/SupplierCategory";
 
+/**
+ * @功能描述: 供货商管理
+ * @创建时间: 2023年08月08日
+ * @公司官网: www.fenxi365.com
+ * @公司信息: 纷析云（杭州）科技有限公司
+ * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
+ */
 export default {
   name: "SupplierList",
+  components: {SupplierForm},
   data() {
     return {
       loading: false,
-      dataList: [],
       params: {
-        filter: null,
+        name: null,
       },
+      dataList: [],
       pagination: {
         page: 1,
-        pageSize: 20,
+        size: 20,
         total: 0
+      },
+      categoryParams: {
+        keyName: 'id',
+        parentName: 'pid',
+        titleName: 'name',
+        dataMode: 'list',
+        datas: []
       },
     }
   },
   computed: {
+
+    //查询货商参数
     queryParams() {
       return Object.assign(this.params, {
         page: this.pagination.page,
@@ -94,30 +134,65 @@ export default {
     }
   },
   methods: {
-    addCategoryForm(entity) {
-      let type = 0;
+
+    //添加或编辑供货商分类Form
+    addOrEditCategoryForm(entity) {
       let layerId = layer.open({
-        title: "货商分类信息",
+        title: "供货商分类",
         shadeClose: false,
         closeBtn: false,
-        area: ['400px', '330px'],
+        area: ['400px', '230px'],
         content: h(SupplierCategoryForm, {
-          entity, type,
+          entity,
           onClose: () => {
             layer.close(layerId);
           },
           onSuccess: () => {
-            this.doSearch();
+            this.loadCategoryData();
             layer.close(layerId);
           }
         })
       });
     },
-    showForm(entity) {
+
+    //删除供货商分类
+    doRemoveCategory(row) {
+      confirm({
+        title: "系统提示",
+        content: `确认删除供货商：${row.name}?`,
+        onConfirm: () => {
+          SupplierCategory.remove(row.id).then(() => {
+            message("删除成功~");
+            this.loadCategoryData();
+          })
+        }
+      })
+    },
+
+    //查询供货商分类
+    loadCategoryData() {
+      Promise.all([
+        SupplierCategory.select(),
+      ]).then((results) => {
+        let data = results[0].data || [];
+        data.unshift({id: null, code: 'ALL', parentId: null, name: '全部分类'})
+        this.categoryParams.datas = data;
+      });
+    },
+
+    //查询供货商按钮
+    doSearch() {
+      this.pagination.page = 1;
+      this.loadData();
+    },
+
+    //添加或编辑供货商Form
+    addOrEditForm(entity) {
       let layerId = layer.open({
-        title: "货商信息",
+        title: "供货商信息",
         shadeClose: false,
-        area: ['800px', 'auto'],
+        closeBtn: false,
+        area: ['700px', '500px'],
         content: h(SupplierForm, {
           entity,
           onClose: () => {
@@ -130,31 +205,100 @@ export default {
         })
       });
     },
-    doSearch() {
-      this.loadList();
-    },
-    loadList() {
-      this.loading = true;
-      Supplier.list(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results;
-        this.pagination.total = total;
-      }).finally(() => this.loading = false);
-    },
+
+    //删除供货商
     doRemove(row) {
       confirm({
         title: "系统提示",
-        content: `确认删除：${row.name}?`,
+        content: `确认删除供货商：${row.name}?`,
         onConfirm: () => {
           Supplier.remove(row.id).then(() => {
             message("删除成功~");
-            this.loadList();
+            this.loadData();
           })
         }
       })
-    }
+    },
+
+    //加载供货商列表
+    loadData() {
+      this.loading = true;
+      Supplier.list(this.queryParams).then(({data: {results, total}}) => {
+        this.dataList = results || [];
+        this.pagination.total = total;
+      }).finally(() => this.loading = false);
+    },
   },
   created() {
-    this.loadList();
+    //初始化供货商分类列表
+    this.loadCategoryData();
+
+    //初始化供货商列表
+    this.loadData();
   }
 }
 </script>
+<style lang="less">
+.container {
+  .h-layout-header {
+    height: @layout-header-height;
+    text-align: center;
+  }
+
+  .h-layout-content {
+
+    text-align: center;
+  }
+
+  .h-layout-sider {
+    transition: all 0.2s;
+    position: relative;
+    flex: 0 0 200px;
+    max-width: @layout-sider-width;
+    min-width: @layout-sider-width;
+    width: @layout-sider-width;
+    z-index: 1;
+  }
+}
+
+.tree-vue {
+  .h-tree-show {
+    .h-tree-show-desc {
+      display: none;
+    }
+
+    .tree-show-custom {
+      display: inline-block;
+      padding: 5px 0;
+
+      .tree-show-title {
+        font-size: 13px;
+      }
+    }
+
+    .tree-edit-part {
+      position: absolute;
+      right: 5px;
+      top: 7px;
+      opacity: 0;
+
+      i {
+        font-size: 12px;
+        vertical-align: middle;
+        margin-right: 10px;
+        cursor: pointer;
+
+        &:hover {
+          color: @primary-color;
+        }
+      }
+    }
+
+    &:hover {
+      .tree-edit-part {
+        opacity: 1;
+      }
+    }
+  }
+}
+</style>

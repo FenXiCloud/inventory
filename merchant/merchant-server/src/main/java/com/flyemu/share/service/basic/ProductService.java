@@ -78,7 +78,7 @@ public class ProductService extends AbsService {
     @Transactional
     public void save(ProductForm productForm, Long merchantId, Long accountBookId) {
         Product product = productForm.getProduct();
-        if (product.getEnableAuxiliaryUnit()) {
+        if (product.getEnableMultiUnit()) {
             Assert.isTrue(CollUtil.isNotEmpty(product.getAuxiliaryUnitPrices()), "开启多单位,必须选择一个副单位");
             Set<Long> checkUnit = new HashSet<>();
             checkUnit.add(product.getUnitId());
@@ -91,9 +91,9 @@ public class ProductService extends AbsService {
         if (product.getId() != null) {
             Product original = productRepository.getById(product.getId());
 
-            if (original.getEnableAuxiliaryUnit()) {
+            if (original.getEnableMultiUnit()) {
                 List<Long> unitIds;
-                if (!product.getEnableAuxiliaryUnit()) { //关闭多单位需要去检测
+                if (!product.getEnableMultiUnit()) { //关闭多单位需要去检测
                     unitIds = original.getAuxiliaryUnitPrices().stream().map(AuxiliaryUnitPrice::getUnitId).collect(Collectors.toList());
                 } else {//取有变动的单位去校验
                     unitIds = new ArrayList<>();
@@ -123,9 +123,9 @@ public class ProductService extends AbsService {
             productRepository.save(product);
         }
 
-        if (CollUtil.isNotEmpty(productForm.getLevelPriceList())) {
+        if (CollUtil.isNotEmpty(productForm.getCustomerLevelPriceList())) {
             List<CustomerLevelPrice> cps = new ArrayList<>();
-            for (JSONObject cp : productForm.getLevelPriceList()) {
+            for (JSONObject cp : productForm.getCustomerLevelPriceList()) {
                 CustomerLevelPrice levelPrice = new CustomerLevelPrice();
                 levelPrice.setProductId(product.getId());
                 levelPrice.setUnitId(product.getUnitId());
@@ -133,7 +133,7 @@ public class ProductService extends AbsService {
                 levelPrice.setMerchantId(merchantId);
                 levelPrice.setAccountBookId(accountBookId);
                 levelPrice.setCustomerLevelId(cp.getLong("customerLeveId"));
-                if (product.getEnableAuxiliaryUnit()) {
+                if (product.getEnableMultiUnit()) {
                     List<AuxiliaryUnitPrice> ups = new ArrayList<>();
                     for (AuxiliaryUnitPrice multiUnit : product.getAuxiliaryUnitPrices()) {
                         AuxiliaryUnitPrice up = new AuxiliaryUnitPrice();
@@ -153,7 +153,7 @@ public class ProductService extends AbsService {
             List<CustomerLevelPrice> priceList = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(product.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).fetch();
             for (CustomerLevelPrice price : priceList) {
                 price.setUnitId(product.getUnitId());
-                if (product.getEnableAuxiliaryUnit()) {
+                if (product.getEnableMultiUnit()) {
                     for (int i = 0; i < product.getAuxiliaryUnitPrices().size(); i++) {
                         AuxiliaryUnitPrice gp = product.getAuxiliaryUnitPrices().get(i);
                         if (CollUtil.isNotEmpty(price.getAuxiliaryUnitPrices())) {
@@ -215,7 +215,7 @@ public class ProductService extends AbsService {
     }
 
     //TODO 命名
-    public Map<Long, CustomerLevelPrice> levelPrice(Long productId, Long merchantId, Long accountBookId) {
+    public Map<Long, CustomerLevelPrice> customerLevelPrice(Long productId, Long merchantId, Long accountBookId) {
         return jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(productId).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).fetch().stream().collect(Collectors.toMap(c -> c.getCustomerLevelId(), b -> b));
     }
 

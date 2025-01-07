@@ -59,10 +59,10 @@ public class ProductController {
 //        return JsonResult.successful(productService.loadToOrder(merchantId,accountBookId));
 //    }
 
-//    @GetMapping("/level/price/{productsId}")
-//    public JsonResult levelPrice(@PathVariable Long productsId, @SaMerchantId Long merchantId,@SaAccountBookId Long accountBookId) {
-//        return JsonResult.successful(productService.levelPrice(productsId, merchantId, accountBookId));
-//    }
+    @GetMapping("/customerLevel/price/{productId}")
+    public JsonResult customerLevelPrice(@PathVariable Long productId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(productService.customerLevelPrice(productId, merchantId, accountBookId));
+    }
 
 //    @GetMapping("/goods/price/{customersId}")
 //    public JsonResult goodsPrice(@PathVariable Long customersId, @SaMerchantId Long merchantId,@SaAccountBookId Long accountBookId) {

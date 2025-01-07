@@ -1,19 +1,8 @@
 <template>
   <div class="modal-column" style="background: #f5f5f5">
-    <div class="flex justify-between py-5px px-5px bg-white-color">
-      <Button class="ml-10px" @click="$emit('close')" :loading="loading">
-        取 消
-      </Button>
-      <Button class="mr-10px" color="primary" @click="save" :loading="loading">
-        保 存
-      </Button>
-    </div>
-    <div class="flex goods-form flex1">
-      <div class="flex1">
-        <div class="h-panel m-10px ">
-          <div class="flex p-8px border-bottom">
-            <span class="font-bold">商品信息</span>
-          </div>
+    <div class="modal-column-full-body">
+      <Row>
+        <Cell width="14">
           <div class="flex pt-15px">
             <Form ref="form" class="mr-10px" :model="model" :rules="validationRules" mode="twocolumn" :label-width="90">
               <FormItem label="商品编码" prop="code">
@@ -22,77 +11,98 @@
               <FormItem label="商品名称" required prop="name">
                 <Input placeholder="长度<64" v-model="model.name" maxlength="64"/>
               </FormItem>
-              <FormItem label="商品分类" required prop="categoryId">
-                <CategoryPicker :option="categoryOption" type="key" filterable v-model="model.categoryId"></CategoryPicker>
+              <FormItem label="商品分类" required prop="productCategoryId">
+                <CategoryPicker :option="categoryParams" type="key" filterable
+                                v-model="model.productCategoryId"></CategoryPicker>
               </FormItem>
-              <FormItem label="规格" required prop="specification">
+              <FormItem label="规格" prop="specification">
                 <Input placeholder="请输入规格" v-model="model.specification" maxlength="120"/>
-              </FormItem>
-              <FormItem label="是否启用" prop="enabled">
-                <Radio v-model="model.enabled" dict="statusRadios"/>
               </FormItem>
               <FormItem label="排序号" required prop="sort">
                 <Input placeholder="请输入排序号" v-model="model.sort"/>
               </FormItem>
               <FormItem label="计量单位" required prop="unitId">
                 <div class="h-input-group">
-                  <Select :datas="unitList" keyName="id" titleName="name" :deletable="false" v-model="model.unitId" placeholder="基本单位"/>
-                  <span class="h-input-addon">  <Checkbox v-model="model.enableMultiUnit" :trueValue="true" :falseValue="false">启用多单位</Checkbox></span>
+                  <Select :datas="unitList" keyName="id" titleName="name" :deletable="false" v-model="model.unitId"
+                          placeholder="单位"/>
+                  <span class="h-input-addon">
+                <Checkbox v-model="model.enableMultiUnit" :trueValue="true" :falseValue="false">多单位</Checkbox></span>
                 </div>
               </FormItem>
               <template v-if="model.enableMultiUnit && model.unitId">
                 <FormItem :label="`单位`+(index+1)" v-for="(mu,index) in model.multiUnit" :required="index===0">
                   <div class="h-input-group">
-                    <Select :datas="unitList" keyName="id" v-model="mu.unitId" @change="multiUnitChange" filterable titleName="name" :placeholder="`选择单位`+(index+1)"/>
+                    <Select :datas="unitList" keyName="id" v-model="mu.unitId" @change="multiUnitChange" filterable
+                            titleName="name" :placeholder="`单位`+(index+1)"/>
                     <span class="ml-10px mr-10px">=</span>
                     <NumberInput type="number" :min="0.01" v-model.number="mu.num"/>
                     <span class="h-input-addon">{{ unitName }}</span>
                   </div>
                 </FormItem>
               </template>
+              <FormItem label="是否启用" prop="enabled">
+                <Radio v-model="model.enabled" dict="enableRadios"/>
+              </FormItem>
+              <FormItem label="进货价">
+                <Input placeholder="请输入进货价" v-model="model.purchasePrice"/>
+              </FormItem>
               <FormItem label="商品描述" prop="remarks" single>
                 <Textarea v-wordcount="150" rows="2" placeholder="商品描述" v-model="model.remarks"/>
               </FormItem>
               <FormItem label="商品图片" prop="imgPath" single>
                 <div class="h-uploader-image-empty h-uploader-browse-button" @click="$refs.uploads.click()">
                   <div class="h-uploader-image" v-if="model.imgPath">
-                    <img :src="model.imgPath" v-if="model.imgPath" style="height: 70px;width: 70px" />
+                    <img :src="model.imgPath" v-if="model.imgPath" style="height: 70px;width: 70px"/>
                   </div>
-                  <i class="h-icon-plus" v-else style="font-size: 25px; position: absolute;  top: 50%;  left: 50%; transform: translate(-50%,-50%);"></i>
-                  <input type="file" id="uploads" style="position:absolute; clip:rect(0 0 0 0);" ref="uploads" accept="image/png, image/jpeg, image/gif, image/jpg"
+                  <i class="h-icon-plus" v-else
+                     style="font-size: 25px; position: absolute;  top: 50%;  left: 50%; transform: translate(-50%,-50%);"></i>
+                  <input type="file" id="uploads" style="position:absolute; clip:rect(0 0 0 0);" ref="uploads"
+                         accept="image/png, image/jpeg, image/gif, image/jpg"
                          @change="selectImg($event)">
                 </div>
               </FormItem>
               <div style="clear: both"></div>
             </Form>
           </div>
-        </div>
-        <div class="h-panel m-10px">
-          <div class="flex p-8px border-bottom">
-            <span class="font-bold">客户级别定价</span>
-          </div>
-          <div style="height:calc(100vh - 665px); overflow-y:auto;">
-            <vxe-table height="auto" row-id="customerLeveId" ref="tableCustomLevelPrice" :data="customerLevelPriceList"
-                       highlight-hover-row show-overflow border :row-config="{height: 48}" >
-              <vxe-column title="客户级别" field="customLeveName" width="130"/>
-              <vxe-column :title="`订货价${unitName?'('+unitName+')':''}`" field="name" align="right">
-                <template #default="{ row }">
-                  <Input class="tnumber" type="text" v-model.number="row.price"/>
+        </Cell>
+        <Cell width="10">
+          <div class="h-panel m-10px">
+            <div class="flex p-8px border-bottom">
+              <span class="font-bold">客户级别定价</span>
+            </div>
+            <div style="height:calc(100vh - 665px); overflow-y:auto;">
+              <vxe-table height="auto" row-id="customerLeveId" ref="tableCustomLevelPrice"
+                         :data="customerLevelPriceList"
+                         highlight-hover-row show-overflow border :row-config="{height: 48}">
+                <vxe-column title="客户级别" field="customLeveName" width="130"/>
+                <vxe-column :title="`订货价${unitName?'('+unitName+')':''}`" field="name" align="right">
+                  <template #default="{ row }">
+                    <Input class="tnumber" type="text" v-model.number="row.price"/>
+                  </template>
+                </vxe-column>
+                <template v-if=" model.enableMultiUnit && model.multiUnit">
+                  <template v-for="mu in model.multiUnit">
+                    <vxe-column :title="`订货价(${getUnitName(mu.unitId)})`" v-if="mu.unitId" :field="mu.unitId"
+                                align="right">
+                      <template #default="{ row }">
+                        <Input class="tnumber" type="text" v-model.number="row[mu.unitId]"/>
+                      </template>
+                    </vxe-column>
+                  </template>
                 </template>
-              </vxe-column>
-              <template v-if=" model.enableMultiUnit && model.multiUnit">
-                <template v-for="mu in model.multiUnit">
-                  <vxe-column :title="`订货价(${getUnitName(mu.unitId)})`" v-if="mu.unitId" :field="mu.unitId" align="right">
-                    <template #default="{ row }">
-                      <Input class="tnumber" type="text" v-model.number="row[mu.unitId]"/>
-                    </template>
-                  </vxe-column>
-                </template>
-              </template>
-            </vxe-table>
-          </div>
+              </vxe-table>
+            </div>
         </div>
-      </div>
+        </Cell>
+      </Row>
+    </div>
+    <div class="flex justify-between py-5px px-5px bg-white-color">
+      <Button class="ml-10px" @click="$emit('close')" :loading="loading">
+        取 消
+      </Button>
+      <Button class="mr-10px" color="primary" @click="save" :loading="loading">
+        保 存
+      </Button>
     </div>
     <Loading text="运行中" :loading="loading"></Loading>
   </div>
@@ -122,7 +132,7 @@ export default {
   data() {
     return {
       loading: false,
-      categoryOption: {
+      categoryParams: {
         keyName: 'id',
         titleName: 'name',
         dataMode: 'list',
@@ -136,7 +146,8 @@ export default {
         id: null,
         code: null,
         name: null,
-        categoryId: null,
+        productCategoryId: null,
+        purchasePrice: 0.00,
         imgPath: null,
         unitId: null,
         enableMultiUnit: false,
@@ -244,7 +255,7 @@ export default {
           }
           if (this.model.enableMultiUnit) {
             this.model.multiUnit.forEach(mu => {
-              if (mu.unitId ) {
+              if (mu.unitId) {
                 if (Number(val[mu.unitId] || 0) === 0) {
                   val[mu.unitId] = 0;
                   checkPrice = true;
@@ -268,7 +279,7 @@ export default {
     },
     confirm() {
       this.loading = true;
-      Product.save({product: this.model, levelPriceList: this.customerLevelPriceList}).then(() => {
+      Product.save({product: this.model, customerLevelPriceList: this.customerLevelPriceList}).then(() => {
         message("保存成功~");
         this.$emit('success');
       }).finally(() => this.loading = false);
@@ -296,18 +307,18 @@ export default {
       Unit.select(),
       CustomerLevel.select(),
     ]).then((results) => {
-      let categoryOptionList = results[0].data || [];
-      this.categoryOption.datas = categoryOptionList;
+      let categoryParamsList = results[0].data || [];
+      this.categoryParams.datas = categoryParamsList;
       this.unitList = results[1].data;
       if (this.entity) {
-        Product.levelPrice(this.entity.id).then(({data}) => {
-          let levelPrice = data;
+        Product.customerLevelPrice(this.entity.id).then(({data}) => {
+          let customerLevelPrice = data;
           if (results[2].data) {
-            let customLevelPriceList = [];
+            let customerLevelPriceList = [];
             results[2].data.forEach(cl => {
               let cp = {customerLeveId: cl.id, customerLeveName: cl.name, price: 0};
-              if (levelPrice) {
-                let lp = levelPrice[cl.id];
+              if (customerLevelPrice) {
+                let lp = customerLevelPrice[cl.id];
                 if (lp) {
                   cp.price = lp.price;
                   if (this.entity.enableMultiUnit) {
@@ -317,15 +328,14 @@ export default {
                   }
                 }
               }
-              customLevelPriceList.push(cp);
+              customerLevelPriceList.push(cp);
             })
-            console.log(customLevelPriceList)
             this.customerLevelPriceList = customerLevelPriceList;
           }
         })
       } else {
         if (results[2].data) {
-          let customLevelPriceList = [];
+          let customerLevelPriceList = [];
           results[2].data.forEach(cl => {
             let cp = {customerLeveId: cl.id, customLeveName: cl.name, price: 0};
             customerLevelPriceList.push(cp);

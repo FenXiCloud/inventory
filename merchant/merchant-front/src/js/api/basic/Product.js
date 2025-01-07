@@ -26,9 +26,9 @@ export default {
 	// loadToOrder(param) {
 	// 	return Ajax.get('/product/loadTo/order', param)
 	// },
-	// levelPrice(productsId) {
-	// 	return Ajax.get('/product/level/price/' + productsId)
-	// },
+    customerLevelPrice(productId) {
+        return Ajax.get('/product/customerLevel/price/' + productId)
+    },
 	// goodsPrice(customersId) {
 	// 	return Ajax.get('/product/goods/price/' + customersId)
 	// },

@@ -11,5 +11,5 @@ public class ProductForm {
 
     private Product product;
 
-    private List<JSONObject> levelPriceList;
+    private List<JSONObject> customerLevelPriceList;
 }

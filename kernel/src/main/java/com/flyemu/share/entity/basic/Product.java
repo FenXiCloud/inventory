@@ -2,11 +2,13 @@ package com.flyemu.share.entity.basic;
 
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import jakarta.persistence.*;
-import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.*;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
@@ -71,7 +73,7 @@ public class Product {
     @JdbcTypeCode(SqlTypes.BOOLEAN)
     @Column(nullable = false)
     @ColumnDefault("b'0'")
-    private Boolean enableAuxiliaryUnit;
+    private Boolean enableMultiUnit;
 
     @Comment("辅助单位价格")
     @JdbcTypeCode(SqlTypes.JSON)

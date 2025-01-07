@@ -8,9 +8,10 @@
             ref="documentTypeGridRef"
             size="mini"
             :data="documentTypeDataList"
+            @radio-change="handleDocumentTypeChange"
             :rowConfig="{isCurrent: true,isHover: true}"
-            :radio-config="{trigger: 'row',labelField: 'name',highlight: true}">
-          <vxe-column field="name" title="单据类型"></vxe-column>
+            :radio-config="{trigger: 'row',labelField: 'documentType',highlight: true}">
+          <vxe-column field="documentType" title="单据类型"></vxe-column>
         </vxe-table>
       </div>
 
@@ -20,7 +21,7 @@
             <Button @click="showForm()" color="primary">新 增</Button>
           </template>
           <template #tools>
-            <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入规则名称"/>
+            <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入规则名称"/>
             <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
           </template>
         </vxe-toolbar>
@@ -33,6 +34,7 @@
                    :loading="loading">
           <vxe-column type="seq" width="60" align="center"/>
           <vxe-column title="规则名称" field="name" width="200"/>
+          <vxe-column title="单据类型" field="documentType"/>
           <vxe-column title="编码规则" field="format"/>
           <vxe-column title="流水号位数" field="serialNumberLength" width="120"/>
           <vxe-column title="创建时间" field="createdAt" width="120"/>
@@ -46,6 +48,7 @@
             <template #default="{row}">
               <div class="flex items-center justify-center">
                 <span class=" primary-color text-hover ml-10px" @click="showForm(row)" size="s">编辑</span>
+                <span class=" primary-color text-hover ml-10px" @click="doRemove(row)" size="s">删除</span>
               </div>
             </template>
           </vxe-column>
@@ -70,32 +73,32 @@ export default {
   data() {
     return {
       documentTypeDataList: [
-        {id: 1, name: '采购订单', type: 1},
-        {id: 2, name: '采购入库单', type: 1},
-        {id: 3, name: '采购退货单', type: 1},
-        {id: 4, name: '销售订单', type: 1},
-        {id: 5, name: '销售出库单', type: 1},
-        {id: 6, name: '销售退货单', type: 1},
-        {id: 7, name: '调拨单', type: 1},
-        {id: 8, name: '盘点单', type: 1},
-        {id: 9, name: '其他入库单', type: 1},
-        {id: 10, name: '其他出库单', type: 1},
-        {id: 11, name: '成本调整单', type: 1},
-        {id: 12, name: '收款单', type: 1},
-        {id: 13, name: '付款单', type: 1},
-        {id: 14, name: '核销单', type: 1},
-        {id: 15, name: '其他收款单', type: 1},
-        {id: 16, name: '转帐单', type: 1},
-        {id: 17, name: '商品', type: 2},
-        {id: 18, name: '仓库', type: 2},
-        {id: 19, name: '客户', type: 2},
-        {id: 20, name: '供货商', type: 2}
+        {id: 1, documentType: '采购订单', type: 1},
+        {id: 2, documentType: '采购入库单', type: 1},
+        {id: 3, documentType: '采购退货单', type: 1},
+        {id: 4, documentType: '销售订单', type: 1},
+        {id: 5, documentType: '销售出库单', type: 1},
+        {id: 6, documentType: '销售退货单', type: 1},
+        {id: 7, documentType: '调拨单', type: 1},
+        {id: 8, documentType: '盘点单', type: 1},
+        {id: 9, documentType: '其他入库单', type: 1},
+        {id: 10, documentType: '其他出库单', type: 1},
+        {id: 11, documentType: '成本调整单', type: 1},
+        {id: 12, documentType: '收款单', type: 1},
+        {id: 13, documentType: '付款单', type: 1},
+        {id: 14, documentType: '核销单', type: 1},
+        {id: 15, documentType: '其他收款单', type: 1},
+        {id: 16, documentType: '转帐单', type: 1},
+        {id: 17, documentType: '商品', type: 2},
+        {id: 18, documentType: '仓库', type: 2},
+        {id: 19, documentType: '客户', type: 2},
+        {id: 20, documentType: '供货商', type: 2}
       ],
       opened: true,
       loading: false,
       params: {
-        name: null,
-        merchantId: null,
+        name:null,
+        documentType: null,
       },
       checkedRows: [],
       dataList: [],
@@ -114,23 +117,22 @@ export default {
     }
   },
   mounted() {
-    // 默认选中第一个单据类型
-    this.selectFirstDocumentType();
+
   },
   methods: {
-    selectFirstDocumentType() {
-      // 默认选中第一个单据类型
-      const table = this.$refs.documentTypeGridRef;
-      table.setRadioRow(this.documentTypeDataList[0]);
-    },
+    handleDocumentTypeChange(data) {
+      // 单选框变化时的处理函数
+      console.log(data.row.documentType);
+      this.params.documentType = data.row.documentType;
+      this.loadList();
 
+    },
     showForm(CodeRule) {
       const table = this.$refs.documentTypeGridRef;
-      console.log("123");
       if (table) {
         const currRow = table.getRadioRecord();
-        if (!CodeRule){
-          CodeRule =  {documentType: currRow.name};
+        if (!CodeRule && currRow){
+          CodeRule =  {documentType: currRow.documentType};
         }
       }
 
@@ -155,9 +157,6 @@ export default {
       CodeRule.list(this.queryParams).then(({data}) => {
         this.dataList = data;
       }).finally(() => this.loading = false);
-    },
-    pageChange() {
-      this.loadList();
     },
     doSearch() {
       this.loadList();

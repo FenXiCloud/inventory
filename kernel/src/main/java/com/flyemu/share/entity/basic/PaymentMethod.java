@@ -34,6 +34,11 @@ public class PaymentMethod implements Serializable {
     @Column(length = 32, nullable = false)
     private String name;
 
+    @Comment("状态")
+    @Column(nullable = false)
+    @ColumnDefault("b'1'")
+    private Boolean enabled;
+
     @Column(nullable = false)
     private Long accountBookId;
 

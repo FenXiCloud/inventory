@@ -63,6 +63,11 @@ public class AccountTypeService extends AbsService {
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
+        public void setName(String  name) {
+            if (name != null&&name!="") {
+                builder.and(qAccountType.name.like("%" + name + "%"));
+            }
+        }
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {

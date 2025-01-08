@@ -5,11 +5,23 @@
         <FormItem label="编码" required prop="code">
           <Input placeholder="请输入编码" maxlength="10" v-model="model.code"/>
         </FormItem>
-        <FormItem label="名称" required prop="name">
+        <FormItem label="类别名称" required prop="name">
           <Input placeholder="请输入名称" maxlength="10" v-model="model.name"/>
         </FormItem>
         <FormItem label="收支类别" required prop="costType">
           <Select placeholder="请选择收支类别" v-model="model.costType" dict="costTypes"/>
+        </FormItem>
+        <FormItem label="分类" required prop="accountTypeCategory">
+          <Select v-if="model.costType=='支出类别'" :datas="disburseAccountTypeCategory"
+                  placeholder="请选择分类"
+                  v-model="model.accountTypeCategory"
+                  :deletable="false"
+          />
+          <Select v-else :datas="incomeAccountTypeCategory"
+                  placeholder="请选择分类"
+                  v-model="model.accountTypeCategory"
+                  :deletable="false"
+          />
         </FormItem>
       </Form>
     </div>
@@ -48,8 +60,20 @@ export default {
         id: null,
         code: null,
         name: null,
-        costType: '收入类别'
+        costType: '收入类别',
+        accountTypeCategory: null,
       },
+      incomeAccountTypeCategory: [
+        '未分类',
+        '其他收入'
+      ],
+      disburseAccountTypeCategory: [
+        '未定义',
+        '费用支出',
+        '薪酬支出',
+        '税费支出',
+        '其他支出'
+      ],
       validationRules: {}
     }
   },

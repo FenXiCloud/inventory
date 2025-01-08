@@ -5,7 +5,7 @@
         <Button @click="showForm()" color="primary">新 增</Button>
       </template>
       <template #tools>
-        <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入名称"/>
+        <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入名称"/>
         <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
       </template>
     </vxe-toolbar>
@@ -21,6 +21,12 @@
                  :loading="loading">
         <vxe-column type="seq" width="40" title="#"/>
         <vxe-column title="名称" field="name"/>
+        <vxe-column title="状态" field="enabled" width="120" align="center">
+          <template #default="{row}">
+            <Tag color="primary" @click="trigger(row)"  v-if="row.enabled">启用</Tag>
+            <Tag color="red" @click="trigger(row)"  v-else>禁用</Tag>
+          </template>
+        </vxe-column>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
             <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
@@ -55,6 +61,10 @@ export default {
       params: {
         filter: null,
       },
+      param: [
+        {title: '启用', key: 'enabled'},
+        {title: '禁用', key: 'disabled'},
+      ]
     }
   },
   methods: {
@@ -93,6 +103,19 @@ export default {
         onConfirm: () => {
           PaymentMethod.remove(row.id).then(() => {
             message("删除成功~");
+            this.loadList();
+          })
+        }
+      })
+    },
+    trigger(row) {
+      let enabled = !row.enabled;
+      confirm({
+        title: "系统提示",
+        content: `确认要「${enabled ? "启用" : "禁用"}」结算方式：${row.name}?`,
+        onConfirm: () => {
+          PaymentMethod.save({id: row.id, enabled}).then(() => {
+            message("操作成功~");
             this.loadList();
           })
         }

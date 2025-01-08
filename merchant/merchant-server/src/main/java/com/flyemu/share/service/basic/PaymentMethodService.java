@@ -47,6 +47,7 @@ public class PaymentMethodService extends AbsService {
             BeanUtil.copyProperties(paymentMethod, original, CopyOptions.create().ignoreNullValue());
             return paymentMethodRepository.save(original);
         }
+
         return paymentMethodRepository.save(paymentMethod);
     }
 
@@ -64,6 +65,11 @@ public class PaymentMethodService extends AbsService {
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
+        public void setName(String  name) {
+            if (name != null&&name!="") {
+                builder.and(qPaymentMethod.name.like("%" + name + "%"));
+            }
+        }
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qPaymentMethod.merchantId.eq(merchantId));

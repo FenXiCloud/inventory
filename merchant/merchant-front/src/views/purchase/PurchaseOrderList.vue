@@ -112,6 +112,9 @@ export default {
   },
   methods: {
     ...mapMutations(['pushTab']),
+    addForm(type = 'add', orderId = null) {
+      this.pushTab({key: 'PurchaseOrderForm', title: '新增采购订单', params: {type: type, orderId: orderId}});
+    },
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {

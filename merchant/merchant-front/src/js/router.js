@@ -1,9 +1,9 @@
 import {defineAsyncComponent} from "vue";
 
 const groupRoutes = [
-	{name: 'DashboardMain', component: defineAsyncComponent(() => import("@views/dashboard/DashboardMain"))},
+    {name: 'DashboardMain', component: defineAsyncComponent(() => import("@views/dashboard/DashboardMain"))},
 
-	{name: 'AccountBasic', component: defineAsyncComponent(() => import("@views/common/AccountBasic"))},
+    {name: 'AccountBasic', component: defineAsyncComponent(() => import("@views/common/AccountBasic"))},
 
     {name: 'AccountBookList', component: defineAsyncComponent(() => import('@views/setting/AccountBookList'))},
 
@@ -73,6 +73,7 @@ const groupRoutes = [
     {name: 'SalesProfitReport', component: defineAsyncComponent(() => import('@views/sales/SalesProfitReport.vue'))},
     {name: 'SalesRankingReport', component: defineAsyncComponent(() => import('@views/sales/SalesRankingReport.vue'))},
     {name: 'PurchaseOrderList', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderList.vue'))},
+    {name: 'PurchaseOrderForm', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderForm.vue'))},
     {
         name: 'PurchaseInboundList',
         component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundList.vue'))

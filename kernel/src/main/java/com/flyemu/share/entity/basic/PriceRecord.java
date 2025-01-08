@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.basic;
 
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -7,9 +8,12 @@ import lombok.Setter;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 /**
  * @功能描述: 产品价格记录
@@ -52,20 +56,12 @@ public class PriceRecord {
     @Comment("数量（以基本单位计）")
     private Double quantity;
 
-    @Comment("辅助单位ID(可为空)")
-    private Long secondaryUnitId;
-
-    @Comment("辅助单位数量 (可为空")
-    private Double secondaryQuantity;
-
-    @Comment("换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)")
-    private BigDecimal conversionRate;
-
     @Comment("单价（以基本单位计）")
     private BigDecimal unitPrice;
 
-    @Comment("单价（辅助单位）")
-    private BigDecimal secondaryUnitPrice;
+    @Comment("辅助单位价格")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<AuxiliaryUnitPrice> auxiliaryUnitPrices;
 
     @Comment("价格类别")
     @Enumerated(EnumType.STRING)

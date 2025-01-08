@@ -40,6 +40,10 @@ public class ProductCategory {
     @Comment("父级ID")
     private Long pid;
 
+    private String path;
+
+    private String imgPath;
+
     @Comment("排序号")
     private Long sort;
 

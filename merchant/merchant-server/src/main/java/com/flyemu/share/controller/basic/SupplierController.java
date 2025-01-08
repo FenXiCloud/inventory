@@ -64,8 +64,8 @@ public class SupplierController {
     }
 
 
-//    @GetMapping("/products/select/{supplierId}")
-//    public JsonResult select(@PathVariable Long supplierId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-//        return JsonResult.successful(supplierService.selectProducts(supplierId, merchantId,accountBookId));
-//    }
+    @GetMapping("/product/select/{supplierId}")
+    public JsonResult select(@PathVariable Long supplierId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        return JsonResult.successful(supplierService.selectProducts(supplierId, merchantId, accountBookId));
+    }
 }

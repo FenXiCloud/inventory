@@ -2,10 +2,13 @@ package com.flyemu.share.service.basic;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
+import com.flyemu.share.dto.SelectProductDto;
 import com.flyemu.share.dto.SupplierDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.exception.ServiceException;
@@ -44,6 +47,8 @@ public class SupplierService extends AbsService {
 
     private final static QSupplierCategory qSupplierCategory = QSupplierCategory.supplierCategory;
 
+    private final static QPriceRecord qPriceRecord = QPriceRecord.priceRecord;
+
     private final SupplierRepository supplierRepository;
 
 
@@ -74,12 +79,55 @@ public class SupplierService extends AbsService {
     }
 
     @Transactional
-    public void delete(Long vendorsId, Long merchantId) {
-        jqf.delete(qSupplier).where(qSupplier.id.eq(vendorsId).and(qSupplier.merchantId.eq(merchantId))).execute();
+    public void delete(Long supplierId, Long merchantId) {
+        jqf.delete(qSupplier).where(qSupplier.id.eq(supplierId).and(qSupplier.merchantId.eq(merchantId))).execute();
     }
 
     public List<Supplier> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qSupplier).where(qSupplier.merchantId.eq(merchantId).and(qSupplier.accountBookId.eq(accountBookId))).fetch();
+    }
+
+    public List<SelectProductDto> selectProducts(Long supplierId, Long merchantId, Long organizationId) {
+        List<SelectProductDto> dtoList = bqf.selectFrom(qProduct)
+                .select(qProduct.name, qProduct.code, qPriceRecord.unitPrice, qPriceRecord.unitPrice, qProduct.specification, qProduct.id, qProductCategory.path, qProduct.imgPath, qProduct.enableMultiUnit, qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name)
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .leftJoin(qPriceRecord).on(qPriceRecord.productId.eq(qProduct.id).and(qPriceRecord.supplierId.eq(supplierId)).and(qPriceRecord.merchantId.eq(merchantId)).and(qPriceRecord.accountBookId.eq(organizationId)))
+                .where(qProduct.merchantId.eq(merchantId).and(qProduct.enabled.isTrue()).and(qProduct.accountBookId.eq(organizationId)))
+                .orderBy(qProduct.sort.desc(), qProduct.id.desc())
+                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
+                    SelectProductDto dto = new SelectProductDto();
+                    dto.setProductId(tuple.get(qProduct.id));
+                    dto.setImgPath(tuple.get(qProduct.imgPath));
+                    dto.setProductCode(tuple.get(qProduct.code));
+                    dto.setProductName(tuple.get(qProduct.name));
+                    dto.setPath(tuple.get(qProductCategory.path));
+                    dto.setSpec(tuple.get(qProduct.specification));
+                    dto.setUnitName(tuple.get(qUnit.name));
+                    dto.setUnitId(tuple.get(qProduct.unitId));
+                    dto.setPrice(tuple.get(qPriceRecord.unitPrice));
+                    List<AuxiliaryUnitPrice> units = tuple.get(qProduct.auxiliaryUnitPrices);
+
+
+                    if (CollUtil.isNotEmpty(units) && tuple.get(qProduct.enableMultiUnit)) {
+                        units.add(0, new AuxiliaryUnitPrice(dto.getUnitId(), dto.getUnitName(), 1d, dto.getPrice()));
+                        List<AuxiliaryUnitPrice> finalUnits = units;
+                        if (tuple.get(qPriceRecord.auxiliaryUnitPrices) != null && CollUtil.isNotEmpty(tuple.get(qPriceRecord.auxiliaryUnitPrices))) {
+                            tuple.get(qPriceRecord.auxiliaryUnitPrices).forEach(item -> {
+                                finalUnits.forEach(unitPrice -> {
+                                    if (item.getUnitId().equals(unitPrice.getUnitId())) {
+                                        unitPrice.setUnitPrice(item.getUnitPrice());
+                                    }
+                                });
+                            });
+                        }
+                        dto.setAuxiliaryUnitPrices(finalUnits);
+                    }
+                    dto.setTitle();
+                    list.add(dto);
+                }, List::addAll);
+
+        return dtoList;
     }
 
     public static class Query {

@@ -2,11 +2,14 @@ package com.flyemu.share.service.setting;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.util.StrUtil;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QCodeRule;
+import com.flyemu.share.enums.DocumentType;
 import com.flyemu.share.repository.CodeRuleRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.dsl.EnumPath;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -63,6 +66,18 @@ public class CodeRuleService extends AbsService {
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
+
+        public void setName(String name) {
+            if (StrUtil.isNotEmpty(name)) {
+                builder.and(qCodeRule.name.contains(name));
+            }
+        }
+        public void setDocumentType(String documentType) {
+            if (StrUtil.isNotEmpty(documentType)) {
+                EnumPath<DocumentType> documentTypeEnumPath = qCodeRule.documentType;
+                builder.and(documentTypeEnumPath.eq(DocumentType.valueOf(documentType)));
+            }
+        }
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {

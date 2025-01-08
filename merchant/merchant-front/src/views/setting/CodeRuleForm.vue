@@ -11,14 +11,14 @@
         <FormItem label="格式化" required prop="format">
           <Input v-model="model.format"/>
         </FormItem>
-        <FormItem label="流水号" required prop="serialNumberLength">
-          <Input placeholder="请输入流水号" v-model="model.serialNumberLength"/>
+        <FormItem label="流水号位数" required prop="serialNumberLength">
+          <Input placeholder="请输入流水号位数" v-model="model.serialNumberLength"/>
         </FormItem>
         <FormItem label="起始值" required prop="startValue">
           <Input placeholder="起始值" v-model="model.startValue"/>
         </FormItem>
         <FormItem label="流水号清零" required prop="resetPeriod">
-          <Input placeholder="流水号清零" v-model="model.resetPeriod"/>
+          <Select placeholder="流水号清零" v-model="model.resetPeriod" :datas="resetPeriodValueList"/>
         </FormItem>
         <FormItem label="单据类型" required prop="documentType">
           <Input placeholder="单据类型" v-model="model.documentType"/>
@@ -56,8 +56,10 @@ export default {
       areaList: [],
       levelList: [],
       warehouseList: [],
+      resetPeriodValueList: [{ title: '年', key: '年' }, { title: '月', key: '月'}, { title: '日', key: '日' }, { title: '季', key: '季' }],
       model: {
         id: null,
+        name: null,
         prefix: null,
         code: null,
         format: null,

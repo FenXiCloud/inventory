@@ -5,7 +5,6 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QCodeRule;
-import com.flyemu.share.enums.DocumentType;
 import com.flyemu.share.repository.CodeRuleRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -74,8 +73,8 @@ public class CodeRuleService extends AbsService {
         }
         public void setDocumentType(String documentType) {
             if (StrUtil.isNotEmpty(documentType)) {
-                EnumPath<DocumentType> documentTypeEnumPath = qCodeRule.documentType;
-                builder.and(documentTypeEnumPath.eq(DocumentType.valueOf(documentType)));
+                EnumPath<CodeRule.DocumentType> documentTypeEnumPath = qCodeRule.documentType;
+                builder.and(documentTypeEnumPath.eq(CodeRule.DocumentType.valueOf(documentType)));
             }
         }
 

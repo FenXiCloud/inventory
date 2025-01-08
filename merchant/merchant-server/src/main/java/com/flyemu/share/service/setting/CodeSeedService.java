@@ -5,10 +5,9 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import com.flyemu.share.common.RedisLock;
 import com.flyemu.share.entity.setting.CodeRule;
+import com.flyemu.share.entity.setting.CodeSeed;
 import com.flyemu.share.entity.setting.QCodeRule;
 import com.flyemu.share.entity.setting.QCodeSeed;
-import com.flyemu.share.entity.setting.CodeSeed;
-import com.flyemu.share.enums.DocumentType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.CodeSeedRepository;
 import com.flyemu.share.service.AbsService;
@@ -50,8 +49,8 @@ public class CodeSeedService extends AbsService {
     public  String generateCode(Long merchantId, String documentType) {
         String resultCode = "";
 
-        DocumentType documentTypeForQuery = DocumentType.valueOf(documentType);
-        EnumPath<DocumentType> documentTypeEnumPath = qCodeRule.documentType;
+        CodeRule.DocumentType documentTypeForQuery = CodeRule.DocumentType.valueOf(documentType);
+        EnumPath<CodeRule.DocumentType> documentTypeEnumPath = qCodeRule.documentType;
         CodeRule codeRule = bqf.selectFrom(qCodeRule).where(
                 qCodeRule.merchantId.eq(merchantId).and(documentTypeEnumPath.eq(documentTypeForQuery))
         ).fetchFirst();

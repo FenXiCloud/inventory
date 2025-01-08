@@ -11,8 +11,8 @@
         <FormItem label="格式化" required prop="format">
           <Input v-model="model.format"/>
         </FormItem>
-        <FormItem label="流水号" required prop="serialNumberLength">
-          <Input placeholder="请输入流水号" v-model="model.serialNumberLength"/>
+        <FormItem label="流水号位数" required prop="serialNumberLength">
+          <Input placeholder="请输入流水号位数" v-model="model.serialNumberLength"/>
         </FormItem>
         <FormItem label="起始值" required prop="startValue">
           <Input placeholder="起始值" v-model="model.startValue"/>

@@ -22,7 +22,7 @@
         <vxe-column type="seq" width="40" title="#"/>
         <vxe-column title="收支类型" field="costType" width="150"/>
         <vxe-column title="编码" field="code" width="150"/>
-        <vxe-column title="分类" field="accountTypeCategory"width="150"/>
+        <vxe-column title="分类" field="accountTypeCategory" width="150"/>
         <vxe-column title="类别名称" field="name"/>
         <vxe-column title="状态" field="enabled" width="120" align="center">
           <template #default="{row}">

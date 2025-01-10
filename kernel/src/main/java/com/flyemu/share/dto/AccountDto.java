@@ -61,7 +61,6 @@ public class AccountDto implements Serializable {
         return merchant.getId();
     }
 
-    //TODO
     public Long getAccountBookId() {
         if (accountBook != null){
             return accountBook.getId();

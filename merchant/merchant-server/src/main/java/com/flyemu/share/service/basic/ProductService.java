@@ -68,7 +68,7 @@ public class ProductService extends AbsService {
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
         ArrayList<ProductDto> collect = pagedList.stream().collect(ArrayList::new, (list, tuple) -> {
             ProductDto dto = BeanUtil.toBean(tuple.get(qProduct), ProductDto.class);
-            dto.setCategoryName(tuple.get(qProductCategory.name));
+            dto.setProductCategoryName(tuple.get(qProductCategory.name));
             dto.setUnitName(tuple.get(qUnit.name));
             list.add(dto);
         }, List::addAll);
@@ -214,7 +214,6 @@ public class ProductService extends AbsService {
         return jqf.selectFrom(qProduct).where(qProduct.id.eq(productId).and(qProduct.merchantId.eq(merchantId))).fetchFirst();
     }
 
-    //TODO 命名
     public Map<Long, CustomerLevelPrice> customerLevelPrice(Long productId, Long merchantId, Long accountBookId) {
         return jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(productId).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).fetch().stream().collect(Collectors.toMap(c -> c.getCustomerLevelId(), b -> b));
     }

@@ -2,8 +2,9 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Button @click="addForm()" color="primary">新 增</Button>
-        <Button>审 核</Button>
+        <Button @click="addForm()" color="primary">新增</Button>
+        <Button>审核</Button>
+        <Button>反审核</Button>
       </template>
       <template #tools>
         <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"

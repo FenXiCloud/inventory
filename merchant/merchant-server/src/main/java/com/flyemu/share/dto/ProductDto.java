@@ -2,6 +2,8 @@ package com.flyemu.share.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -16,9 +18,11 @@ public class ProductDto {
 
     private String title;
 
-    private Integer categoryId;
+    private BigDecimal purchasePrice;
 
-    private String categoryName;
+    private Integer productCategoryId;
+
+    private String productCategoryName;
 
     private String specification;
 
@@ -41,4 +45,12 @@ public class ProductDto {
     private String remarks;
     
     private String pinyin;
+
+    private Integer stockQuantity;
+
+    private Integer alertQuantity;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
 }

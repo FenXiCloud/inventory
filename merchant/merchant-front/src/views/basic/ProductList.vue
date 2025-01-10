@@ -52,18 +52,31 @@
                      :row-config="{height: 48}"
                      :column-config="{resizable: true}"
                      :loading="loading">
-            <vxe-column type="seq" width="40" title="#"/>
-            <vxe-column title="编码" field="code" width="120"/>
-            <vxe-column title="产品名称" field="name" min-width="200"/>
-            <vxe-column title="分类" field="categoryName" width="120"/>
-            <vxe-column title="进货价" field="purchasePrice" min-width="200"/>
-            <vxe-column title="备注" field="remarks" min-width="120"/>
-            <vxe-column title="操作" align="center" width="160">
+            <vxe-column title="操作" align="center" width="100" fixed="left">
               <template #default="{row}">
                 <i class="primary-color h-icon-edit ml-10px" @click="addOrEditForm(row)"></i>
                 <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
               </template>
             </vxe-column>
+            <vxe-column title="编码" field="code" width="80"/>
+            <vxe-column title="产品名称" field="name" min-width="200"/>
+            <vxe-column title="分类" field="productCategoryName" width="100"/>
+            <vxe-column title="规格" field="specification" width="100"/>
+            <vxe-column title="单位" field="unitName" width="80"/>
+            <vxe-column title="参考进价" field="purchasePrice" width="80"/>
+            <vxe-column title="当前库存" field="stockQuantity" width="80"/>
+            <vxe-column title="预警库存" field="alertQuantity" width="80"/>
+            <vxe-column title="创建时间" field="createdAt" width="120"/>
+            <vxe-column title="更新时间" field="updatedAt" width="120"/>
+            <vxe-column title="备注" field="remarks" min-width="120"/>
+            <vxe-column title="排序号" field="sort" width="80"/>
+            <vxe-column title="状态" field="enabled" width="100" align="center" fixed="right">
+              <template #default="{row}">
+                <Tag color="primary" @click="trigger(row)" v-if="row.enabled">启用</Tag>
+                <Tag color="red" @click="trigger(row)" v-else>禁用</Tag>
+              </template>
+            </vxe-column>
+
           </vxe-table>
           <vxe-pager perfect @page-change="loadData(false)"
                      v-model:current-page="pagination.page"
@@ -134,6 +147,20 @@ export default {
     }
   },
   methods: {
+    //启用/禁用产品
+    trigger(row) {
+      let enabled = !row.enabled;
+      confirm({
+        title: "系统提示",
+        content: `确认要「${enabled ? "启用" : "禁用"}」名称：${row.name}?`,
+        onConfirm: () => {
+          Product.save({id: row.id, enabled}).then(() => {
+            message("操作成功~");
+            this.loadList();
+          })
+        }
+      })
+    },
 
     //添加或编辑产品分类Form
     addOrEditCategoryForm(entity) {

@@ -1,12 +1,13 @@
 package com.flyemu.share.entity.purchase;
 
+import com.flyemu.share.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
-import com.flyemu.share.enums.OrderStatus;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,6 +42,9 @@ public class PurchaseOrder {
 
     @Comment("订单金额")
     private BigDecimal totalAmount;
+
+    @Comment("折扣率")
+    private BigDecimal discountRate;
 
     @Comment("折扣金额")
     private BigDecimal discountAmount;

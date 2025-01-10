@@ -2,7 +2,7 @@
   <div class="modal-column" style="background: #f5f5f5">
     <div class="modal-column-full-body">
       <Row>
-        <Cell width="14">
+        <Cell width="16">
           <div class="flex pt-15px">
             <Form ref="form" class="mr-10px" :model="model" :rules="validationRules" mode="twocolumn" :label-width="90">
               <FormItem label="商品编码" prop="code">
@@ -30,9 +30,11 @@
                 </div>
               </FormItem>
               <template v-if="model.enableMultiUnit && model.unitId">
-                <FormItem :label="`单位`+(index+1)" v-for="(mu,index) in model.multiUnit" :required="index===0">
+                <FormItem :label="`单位`+(index+1)" v-for="(mu,index) in model.auxiliaryUnitPrices"
+                          :required="index===0">
                   <div class="h-input-group">
-                    <Select :datas="unitList" keyName="id" v-model="mu.unitId" @change="multiUnitChange" filterable
+                    <Select :datas="unitList" keyName="id" v-model="mu.unitId" @change="auxiliaryUnitPricesChange"
+                            filterable
                             titleName="name" :placeholder="`单位`+(index+1)"/>
                     <span class="ml-10px mr-10px">=</span>
                     <NumberInput type="number" :min="0.01" v-model.number="mu.num"/>
@@ -65,7 +67,7 @@
             </Form>
           </div>
         </Cell>
-        <Cell width="10">
+        <Cell width="8">
           <div class="h-panel m-10px">
             <div class="flex p-8px border-bottom">
               <span class="font-bold">客户级别定价</span>
@@ -74,15 +76,15 @@
               <vxe-table height="auto" row-id="customerLeveId" ref="tableCustomLevelPrice"
                          :data="customerLevelPriceList"
                          highlight-hover-row show-overflow border :row-config="{height: 48}">
-                <vxe-column title="客户级别" field="customLeveName" width="130"/>
-                <vxe-column :title="`订货价${unitName?'('+unitName+')':''}`" field="name" align="right">
+                <vxe-column title="客户级别" field="customerLeveName" width="130"/>
+                <vxe-column :title="`价格${unitName?'('+unitName+')':''}`" field="name" align="right">
                   <template #default="{ row }">
                     <Input class="tnumber" type="text" v-model.number="row.price"/>
                   </template>
                 </vxe-column>
-                <template v-if=" model.enableMultiUnit && model.multiUnit">
-                  <template v-for="mu in model.multiUnit">
-                    <vxe-column :title="`订货价(${getUnitName(mu.unitId)})`" v-if="mu.unitId" :field="mu.unitId"
+                <template v-if=" model.enableMultiUnit && model.auxiliaryUnitPrices">
+                  <template v-for="mu in model.auxiliaryUnitPrices">
+                    <vxe-column :title="`价格(${getUnitName(mu.unitId)})`" v-if="mu.unitId" :field="mu.unitId"
                                 align="right">
                       <template #default="{ row }">
                         <Input class="tnumber" type="text" v-model.number="row[mu.unitId]"/>
@@ -151,7 +153,7 @@ export default {
         imgPath: null,
         unitId: null,
         enableMultiUnit: false,
-        multiUnit: [],
+        auxiliaryUnitPrices: [],
         specification: null,
         sort: 0,
         remarks: null,
@@ -163,20 +165,20 @@ export default {
   watch: {
     'model.enableMultiUnit'(val) {
       if (val) {
-        let multiUnit = [];
-        if (this.model.multiUnit) {
+        let auxiliaryUnitPrices = [];
+        if (this.model.auxiliaryUnitPrices) {
           for (let i = 0; i < 2; i++) {
-            if (this.model.multiUnit[i]) {
-              multiUnit.push(this.model.multiUnit[i]);
+            if (this.model.auxiliaryUnitPrices[i]) {
+              auxiliaryUnitPrices.push(this.model.auxiliaryUnitPrices[i]);
             } else {
-              multiUnit.push({unitId: null, unitName: null, price: 0.0, isDefault: false, num: null});
+              auxiliaryUnitPrices.push({unitId: null, unitName: null, price: 0.0, isDefault: false, num: null});
             }
           }
-          this.model.multiUnit = multiUnit;
-        } else if (!this.model.multiUnit || this.model.multiUnit.length === 0) {
-          multiUnit.push({unitId: null, unitName: null, price: 0.0, isDefault: false, num: null});
-          multiUnit.push({unitId: null, unitName: null, price: 0.0, isDefault: false, num: null});
-          this.model.multiUnit = multiUnit;
+          this.model.auxiliaryUnitPrices = auxiliaryUnitPrices;
+        } else if (!this.model.auxiliaryUnitPrices || this.model.auxiliaryUnitPrices.length === 0) {
+          auxiliaryUnitPrices.push({unitId: null, unitName: null, price: 0.0, isDefault: false, num: null});
+          auxiliaryUnitPrices.push({unitId: null, unitName: null, price: 0.0, isDefault: false, num: null});
+          this.model.auxiliaryUnitPrices = auxiliaryUnitPrices;
         }
       }
     },
@@ -232,12 +234,12 @@ export default {
       let validResult = this.$refs.form.valid();
       if (validResult.result) {
         if (!this.model.enableMultiUnit) {
-          this.model.multiUnit = [];
+          this.model.auxiliaryUnitPrices = [];
         } else {
           let mus = [];
           mus.push(this.model.unitId);
-          for (let i = 0; i < this.model.multiUnit.length; i++) {
-            let val = this.model.multiUnit[i];
+          for (let i = 0; i < this.model.auxiliaryUnitPrices.length; i++) {
+            let val = this.model.auxiliaryUnitPrices[i];
             if (val.unitId) {
               val.unitName = this.getUnitName(val.unitId);
               if (mus.includes(val.unitId)) {
@@ -246,7 +248,7 @@ export default {
               }
             }
           }
-          this.model.multiUnit = this.model.multiUnit.filter(val => val.unitId);
+          this.model.auxiliaryUnitPrices = this.model.auxiliaryUnitPrices.filter(val => val.unitId);
         }
         let checkPrice = false;
         this.customerLevelPriceList.forEach(val => {
@@ -254,7 +256,7 @@ export default {
             checkPrice = true;
           }
           if (this.model.enableMultiUnit) {
-            this.model.multiUnit.forEach(mu => {
+            this.model.auxiliaryUnitPrices.forEach(mu => {
               if (mu.unitId) {
                 if (Number(val[mu.unitId] || 0) === 0) {
                   val[mu.unitId] = 0;
@@ -267,7 +269,7 @@ export default {
         if (checkPrice) {
           confirm({
             title: "系统提示",
-            content: `检测到部分商品订货价为0，是否继续?`,
+            content: `检测到产品价格为0，是否继续?`,
             onConfirm: () => {
               this.confirm();
             }
@@ -284,12 +286,12 @@ export default {
         this.$emit('success');
       }).finally(() => this.loading = false);
     },
-    multiUnitChange(data) {
+    auxiliaryUnitPricesChange(data) {
       if (data) {
         if (this.model.unitId === data.id) {
           message.error("基础单位和辅助单位不能一致~");
         }
-        if (this.model.multiUnit.filter(val => val.unitId === data.id).length > 1) {
+        if (this.model.auxiliaryUnitPrices.filter(val => val.unitId === data.id).length > 1) {
           message.error("辅助单位不能一致~");
         }
       }
@@ -322,7 +324,7 @@ export default {
                 if (lp) {
                   cp.price = lp.price;
                   if (this.entity.enableMultiUnit) {
-                    lp.unitPrice.forEach(mu => {
+                    lp.auxiliaryUnitPrices.forEach(mu => {
                       cp[mu.unitId] = mu.price || 0;
                     })
                   }
@@ -337,7 +339,7 @@ export default {
         if (results[2].data) {
           let customerLevelPriceList = [];
           results[2].data.forEach(cl => {
-            let cp = {customerLeveId: cl.id, customLeveName: cl.name, price: 0};
+            let cp = {customerLeveId: cl.id, customerLeveName: cl.name, price: 0};
             customerLevelPriceList.push(cp);
           })
           this.customerLevelPriceList = customerLevelPriceList;
@@ -349,22 +351,22 @@ export default {
     if (this.entity) {
       CopyObj(this.model, this.entity);
       if (this.model.enableMultiUnit) {
-        if (this.model.multiUnit && this.model.multiUnit.length > 0 && this.model.multiUnit.length < 3) {
-          let multiUnit = []
+        if (this.model.auxiliaryUnitPrices && this.model.auxiliaryUnitPrices.length > 0 && this.model.auxiliaryUnitPrices.length < 3) {
+          let auxiliaryUnitPrices = []
           let unitPrice = null
           for (let i = 0; i < 2; i++) {
-            if (this.model.multiUnit[i]) {
-              multiUnit.push(this.model.multiUnit[i])
+            if (this.model.auxiliaryUnitPrices[i]) {
+              auxiliaryUnitPrices.push(this.model.auxiliaryUnitPrices[i])
             } else {
-              multiUnit.push({unitId: null, unitName: null, price: 0.0, isDefault: false, num: null});
+              auxiliaryUnitPrices.push({unitId: null, unitName: null, price: 0.0, isDefault: false, num: null});
             }
           }
           if (unitPrice) {
-            multiUnit.push(unitPrice);
+            auxiliaryUnitPrices.push(unitPrice);
           } else {
-            multiUnit.push({unitId: null, unitName: null, price: 0.0, isDefault: false, num: null});
+            auxiliaryUnitPrices.push({unitId: null, unitName: null, price: 0.0, isDefault: false, num: null});
           }
-          this.model.multiUnit = multiUnit;
+          this.model.auxiliaryUnitPrices = auxiliaryUnitPrices;
         }
       }
     }

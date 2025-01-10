@@ -111,18 +111,41 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
           <label class="mr-16px  w-80px">备注说明：</label>
-          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remark"/>
+          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
+        </div>
+      </div>
+      <div class="filler-panel">
+        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+          <label class="mr-16px  w-80px">优惠率：</label>
+          <Input v-model="form.discountRate"/>
+          <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
+          <Input v-model="form.discountAmount"/>
+          <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
+          <Input v-model="form.finalAmount"/>
         </div>
       </div>
     </div>
     <div class="modal-column-between bg-white-color  border">
 
-      <Button icon="fa fa-close" @click="closeWindow" :loading="loading">
+      <Button @click="closeWindow" :loading="loading">
         取消
       </Button>
-      <Button icon="fa fa-save" color="primary" @click="saveOrder" :loading="loading">
-        保存
+      <div>
+        <Button color="primary" @click="saveOrder" :loading="loading">
+          保存并新增
+        </Button>
+        <Button @click="saveOrder" :loading="loading">
+          保存
+        </Button>
+        <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
+        <Button @click="saveOrder" :loading="loading">
+          审核
+        </Button>
+        <!-- 仅当状态为审核时显示 -->
+        <Button @click="saveOrder" :loading="loading">
+          反审核
       </Button>
+      </div>
     </div>
   </div>
 </template>
@@ -170,7 +193,10 @@ export default {
         id: null,
         orderDate: manba().format("YYYY-MM-dd"),
         supplierId: null,
-        remark: null,
+        discountAmount: 0.00,
+        discountRate: 0.00,
+        finalAmount: 0.00,
+        remarks: null,
       },
       productData: [],
     }

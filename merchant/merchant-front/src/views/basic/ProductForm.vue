@@ -37,7 +37,7 @@
                             filterable
                             titleName="name" :placeholder="`单位`+(index+1)"/>
                     <span class="ml-10px mr-10px">=</span>
-                    <NumberInput type="number" :min="0.01" v-model.number="mu.num"/>
+                    <NumberInput type="number" :min="0.01" v-model.number="mu.conversionRate"/>
                     <span class="h-input-addon">{{ unitName }}</span>
                   </div>
                 </FormItem>
@@ -321,11 +321,12 @@ export default {
               let cp = {customerLeveId: cl.id, customerLeveName: cl.name, price: 0};
               if (customerLevelPrice) {
                 let lp = customerLevelPrice[cl.id];
+                console.log(lp)
                 if (lp) {
                   cp.price = lp.price;
                   if (this.entity.enableMultiUnit) {
                     lp.auxiliaryUnitPrices.forEach(mu => {
-                      cp[mu.unitId] = mu.price || 0;
+                      cp[mu.unitId] = mu.unitPrice || 0;
                     })
                   }
                 }

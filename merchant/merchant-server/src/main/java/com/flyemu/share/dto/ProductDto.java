@@ -38,7 +38,7 @@ public class ProductDto {
 
     private Date createDate;
 
-    private List<AuxiliaryUnitPrice> multiUnit;
+    private List<AuxiliaryUnitPrice> auxiliaryUnitPrices;
 
     private Integer sort;
 

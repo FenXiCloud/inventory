@@ -40,8 +40,7 @@ public class PurchaseOrderService extends AbsService {
 
         List<PurchaseOrder> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            PurchaseOrder purchaseOrder1 = tuple;
-            PurchaseOrder purchaseOrder = BeanUtil.toBean(purchaseOrder1, PurchaseOrder.class);
+            PurchaseOrder purchaseOrder = BeanUtil.toBean(tuple, PurchaseOrder.class);
             dtos.add(purchaseOrder);
         });
 

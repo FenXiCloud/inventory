@@ -48,8 +48,8 @@
         <vxe-column title="采购单位" field="orderUnitName" align="center" width="80">
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
-              <Select v-if="row.unitPrice" :deletable="false" @change="changeProductUnit($event,row)"
-                      v-model="row.orderUnitId" :datas="row.unitPrice" filterable placeholder="输入编码/名称"
+              <Select v-if="row.auxiliaryUnitPrices" :deletable="false" @change="changeProductUnit($event,row)"
+                      v-model="row.orderUnitId" :datas="row.auxiliaryUnitPrices" filterable placeholder="输入采购单位"
                       keyName="unitId" titleName="unitName"/>
               <span v-else>{{ row.orderUnitName }}</span>
             </template>

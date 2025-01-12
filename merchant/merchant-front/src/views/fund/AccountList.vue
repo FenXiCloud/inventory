@@ -20,9 +20,23 @@
                  :column-config="{resizable: true}"
                  :loading="loading">
         <vxe-column type="seq" width="40" title="#"/>
-        <vxe-column title="账户类型" field="accountType" width="200"/>
-        <vxe-column title="编码" field="code" width="200"/>
+        <vxe-column title="账户类型" field="accountType" width="80"/>
+        <vxe-column title="账户类型名称" field="accountTypeItem" width="100"/>
         <vxe-column title="名称" field="name"/>
+        <vxe-column title="币别" field="currency" width="80"/>
+        <vxe-column title="账户余额" field="balance" width="100"/>
+        <vxe-column title="是否默认" field="systemDefault" width="80">
+          <template #default="{row}">
+            <Tag color="primary" v-if="row.systemDefault">是</Tag>
+            <Tag color="red" v-else>否</Tag>
+          </template>
+        </vxe-column>
+        <vxe-column title="状态" field="enabled" width="80" align="center">
+          <template #default="{row}">
+            <Tag color="primary" @click="trigger(row)" v-if="row.enabled">启用</Tag>
+            <Tag color="red" @click="trigger(row)" v-else>禁用</Tag>
+          </template>
+        </vxe-column>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
             <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
@@ -40,6 +54,7 @@ import AccountForm from "./AccountForm.vue";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
+import Product from "@js/api/basic/Product";
 
 /**
  * @功能描述: 账户管理
@@ -60,6 +75,19 @@ export default {
     }
   },
   methods: {
+    trigger(row) {
+      let enabled = !row.enabled;
+      confirm({
+        title: "系统提示",
+        content: `确认要「${enabled ? "启用" : "禁用"}」名称：${row.name}?`,
+        onConfirm: () => {
+          Product.save({id: row.id, enabled}).then(() => {
+            message("操作成功~");
+            this.loadList();
+          })
+        }
+      })
+    },
     showForm(entity) {
       let type = 0;
       let layerId = layer.open({

@@ -34,9 +34,6 @@ public class AccountType implements Serializable {
     private Long id;
 
     @Column(length = 32, nullable = false)
-    private String code;
-
-    @Column(length = 32, nullable = false)
     private String name;
 
     @Comment("收支类别")

@@ -34,10 +34,6 @@ public class Account implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Comment("编码")
-    @Column(length = 32, nullable = false)
-    private String code;
-
     @Comment("名称")
     @Column(length = 32, nullable = false)
     private String name;
@@ -49,8 +45,13 @@ public class Account implements Serializable {
 
     @Comment("账户类别")
     @Enumerated(EnumType.STRING)
-    @Column(length = 32,columnDefinition = "varchar(32)  default '银行存款'")
+    @Column(length = 32, columnDefinition = "varchar(32)  default '资产'")
     private Account.AccountType accountType;
+
+    @Comment("账户类别名称")
+    @Enumerated(EnumType.STRING)
+    @Column(length = 32, columnDefinition = "varchar(32)  default '银行账户'")
+    private Account.AccountTypeItem accountTypeItem;
 
     @Comment("状态")
     @Column(nullable = false)
@@ -70,7 +71,11 @@ public class Account implements Serializable {
     private Long merchantId;
 
     public enum AccountType {
-        现金, 银行存款, 虚拟账户, 数字货币, 负债账户
+        资产, 负债
+    }
+
+    public enum AccountTypeItem {
+        现金账户, 银行账户, 虚拟账户, 数字货币, 信用账户
     }
 
 }

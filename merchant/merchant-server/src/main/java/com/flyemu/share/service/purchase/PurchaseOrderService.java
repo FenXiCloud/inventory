@@ -7,6 +7,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.purchase.PurchaseOrder;
 import com.flyemu.share.entity.purchase.QPurchaseOrder;
+import com.flyemu.share.form.PurchaseOrderForm;
 import com.flyemu.share.repository.PurchaseOrderRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -48,14 +49,14 @@ public class PurchaseOrderService extends AbsService {
     }
 
     @Transactional
-    public PurchaseOrder save(PurchaseOrder purchaseOrder) {
-        if (purchaseOrder.getId() != null) {
+    public PurchaseOrder save(PurchaseOrderForm purchaseOrderForm) {
+        if (purchaseOrderForm.getPurchaseOrder().getId() != null) {
             //更新
-            PurchaseOrder original = purchaseOrderRepository.getById(purchaseOrder.getId());
-            BeanUtil.copyProperties(purchaseOrder, original, CopyOptions.create().ignoreNullValue());
+            PurchaseOrder original = purchaseOrderRepository.getById(purchaseOrderForm.getPurchaseOrder().getId());
+            BeanUtil.copyProperties(purchaseOrderForm.getPurchaseOrder(), original, CopyOptions.create().ignoreNullValue());
             return purchaseOrderRepository.save(original);
         }
-        return purchaseOrderRepository.save(purchaseOrder);
+        return purchaseOrderRepository.save(purchaseOrderForm.getPurchaseOrder());
     }
 
     @Transactional

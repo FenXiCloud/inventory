@@ -1,9 +1,9 @@
-package com.flyemu.share.service.basic;
+package com.flyemu.share.service.fund;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.flyemu.share.entity.basic.QSupplierFlow;
-import com.flyemu.share.entity.basic.SupplierFlow;
+import com.flyemu.share.entity.fund.SupplierFlow;
 import com.flyemu.share.repository.SupplierFlowRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;

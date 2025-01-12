@@ -1,4 +1,4 @@
-package com.flyemu.share.entity.basic;
+package com.flyemu.share.entity.fund;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * @功能描述: 供货商应付，预付流水
+ * @功能描述: 客户应收，预付流水
  * @创建时间: 2024年04月28日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -24,15 +24,15 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table
 @DynamicUpdate
-public class SupplierFlow implements Serializable {
+public class CustomerFlow implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Comment("货商Id")
+    @Comment("客户Id")
     @Column(nullable = false)
-    private Long supplierId;
+    private Long customerId;
 
     @Comment("单据Id")
     private Long orderId;
@@ -40,7 +40,7 @@ public class SupplierFlow implements Serializable {
     @Comment("操作类型")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private SupplierFlowType supplierFlowType;
+    private CustomerFlowType customerFlowType;
 
     @Comment("金额")
     @Column(nullable = false)
@@ -67,7 +67,7 @@ public class SupplierFlow implements Serializable {
     @Column(nullable = false)
     private Long merchantId;
 
-    public enum SupplierFlowType {
+    public enum CustomerFlowType {
         期初, 入库, 出库
     }
 

@@ -1,4 +1,4 @@
-package com.flyemu.share.entity.basic;
+package com.flyemu.share.entity.fund;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -57,6 +57,9 @@ public class Account implements Serializable {
     @ColumnDefault("b'1'")
     private Boolean enabled;
 
+    @Comment("币别")
+    private String currency;
+
     @Comment("账户余额")
     private BigDecimal balance;
 
@@ -67,7 +70,7 @@ public class Account implements Serializable {
     private Long merchantId;
 
     public enum AccountType {
-        现金, 银行存款
+        现金, 银行存款, 虚拟账户, 数字货币, 负债账户
     }
 
 }

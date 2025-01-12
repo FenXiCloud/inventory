@@ -52,6 +52,9 @@ public class AccountBook implements Serializable {
     @Comment("默认仓库")
     private Long warehouseId;
 
+    @Comment("币别")
+    private String currency;
+
     @Column(nullable = false)
     private Long merchantId;
 

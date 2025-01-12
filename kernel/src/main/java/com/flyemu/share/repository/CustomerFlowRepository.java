@@ -1,7 +1,6 @@
 package com.flyemu.share.repository;
 
-import com.flyemu.share.entity.basic.CustomerFlow;
-import com.flyemu.share.entity.basic.CustomerLevel;
+import com.flyemu.share.entity.fund.CustomerFlow;
 import org.springframework.data.jpa.repository.support.JpaRepositoryImplementation;
 
 

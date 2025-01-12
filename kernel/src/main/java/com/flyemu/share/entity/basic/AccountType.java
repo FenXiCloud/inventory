@@ -44,8 +44,8 @@ public class AccountType implements Serializable {
     @Column(length = 32, columnDefinition = "varchar(32)  default '收入类别'")
     private CostType costType;
 
-    @Column(length = 32, nullable = false)
-    private String accountTypeCategory;
+    @Comment("父级ID")
+    private Long pid;
 
     @Comment("状态")
     @Column(nullable = false)

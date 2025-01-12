@@ -1,16 +1,16 @@
-package com.flyemu.share.controller.basic;
+package com.flyemu.share.controller.fund;
 
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
-import com.flyemu.share.entity.basic.SupplierFlow;
-import com.flyemu.share.service.basic.SupplierFlowService;
+import com.flyemu.share.entity.fund.SupplierFlow;
+import com.flyemu.share.service.fund.SupplierFlowService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * @功能描述: 供货商交易流水/期初
+ * @功能描述: 应付账款明细
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司

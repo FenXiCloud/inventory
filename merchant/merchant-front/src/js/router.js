@@ -41,7 +41,7 @@ const groupRoutes = [
 
     {name: 'ProductList', component: defineAsyncComponent(() => import('@views/basic/ProductList'))},
 
-    {name: 'AccountList', component: defineAsyncComponent(() => import('@views/basic/AccountList'))},
+    {name: 'AccountList', component: defineAsyncComponent(() => import('@views/fund/AccountList'))},
 
     {name: 'AccountTypeList', component: defineAsyncComponent(() => import('@views/basic/AccountTypeList'))},
 

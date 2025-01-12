@@ -1,10 +1,10 @@
-package com.flyemu.share.controller.basic;
+package com.flyemu.share.controller.fund;
 
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
-import com.flyemu.share.entity.basic.Account;
-import com.flyemu.share.service.basic.AccountService;
+import com.flyemu.share.entity.fund.Account;
+import com.flyemu.share.service.fund.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

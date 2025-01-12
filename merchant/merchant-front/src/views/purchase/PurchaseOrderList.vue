@@ -8,7 +8,7 @@
       </template>
       <template #tools>
         <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
-                placeholder="审核状态："/>
+                placeholder="审核状态"/>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
@@ -41,26 +41,26 @@
           </template>
         </vxe-column>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="code" width="200"/>
-        <vxe-column title="关联销售出库单" field="code" width="200"/>
-        <vxe-column title="客户" field="customerName" min-width="120"/>
+        <vxe-column title="订单编号" field="orderNo" width="200"/>
+        <vxe-column title="关联入库单" field="purchaseInboundId" width="200"/>
+        <vxe-column title="供货商" field="supplierId" min-width="120"/>
         <vxe-column title="销售金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        <vxe-column title="制单人" field="createDate" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createDate" align="center" width="100"/>
+        <vxe-column title="制单人" field="createdBy" align="center" width="100"/>
+        <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
         <vxe-column title="审核状态" field="orderStatus" width="80"/>
 
       </vxe-table>
     </div>
-    <div class="flex justify-between items-center pt-5px">
+    <div class="justify-between pt-5px">
       <vxe-pager perfect @page-change="loadList(false)"
                  v-model:current-page="pagination.page"
                  v-model:page-size="pagination.pageSize"
                  :total="pagination.total"
-                 :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
+                 :layouts="[ 'PrevPage', 'Number', 'NextPage',  'Sizes', 'Total']">
         <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
+          <span class="mr-12px text-14px">合计金额：{{ amountTotal }}元</span>
           <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>

@@ -329,7 +329,7 @@ export default {
       PurchaseOrder.save({
         order: Object.assign(this.form, {finalAmount: this.finalAmount}),
         type: this.type,
-        detailList: productData
+        purchaseOrderItemList: productData
       }).then((success) => {
         if (success) {
           message("保存成功~");

@@ -12,5 +12,8 @@ export default {
     },
     select(param) {
         return Ajax.get('/purchaseOrder/select', param)
-    }
+    },
+    load(id) {
+        return Ajax.get('/purchaseOrder/load/' + id);
+    },
 }

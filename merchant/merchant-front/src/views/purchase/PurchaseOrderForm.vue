@@ -327,13 +327,13 @@ export default {
         return
       }
       PurchaseOrder.save({
-        order: Object.assign(this.form, {finalAmount: this.finalAmount}),
+        purchaseOrder: Object.assign(this.form, {finalAmount: this.finalAmount}),
         type: this.type,
         purchaseOrderItemList: productData
       }).then((success) => {
         if (success) {
           message("保存成功~");
-          this.clear()
+          this.clearForm()
         }
       }).finally(() =>
           loading.close());
@@ -492,20 +492,20 @@ export default {
       this.supplierList = results[0].data || [];
       this.warehouseList = results[1].data || [];
       if (this.warehouseList != null) {
-        this.warehouseId = this.warehouseList.find(val => val.isDefault).id
+        this.warehouseId = this.warehouseList.find(val => val.isDefault)?.id
       }
       //订单详情/编辑订单
       if (this.orderId) {
-        PurchaseOrder.load(this.orderId).then(({data: {order, productData}}) => {
-          if (order) {
-            CopyObj(this.form, order);
-            this.supplierId = order.supplierId
+        PurchaseOrder.load(this.orderId).then(({data: {purchaseOrder, purchaseOrderItemList}}) => {
+          if (purchaseOrder) {
+            CopyObj(this.form, purchaseOrder);
+            this.supplierId = purchaseOrder.supplierId
             if ('copy' === this.type) {
               this.form.id = null;
             }
           }
           this.loadProductsBySupplier();
-          this.productData = productData || [];
+          this.productData = purchaseOrderItemList || [];
           this.productData.push({isNew: true});
         })
       }

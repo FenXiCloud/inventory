@@ -36,19 +36,19 @@
         <vxe-column type="checkbox" width="40" align="center"/>
         <vxe-column title="操作" align="center" width="120">
           <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="showForm('add',row.id)">编辑</span>
+            <span class="primary-color  text-hover ml-10px" @click="addForm('edit',row.id)">编辑</span>
             <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
           </template>
         </vxe-column>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="关联入库单" field="purchaseInboundId" width="200"/>
-        <vxe-column title="供货商" field="supplierId" min-width="120"/>
+        <vxe-column title="供货商" field="supplierName" min-width="120"/>
         <vxe-column title="销售金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        <vxe-column title="制单人" field="createdBy" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
+        <vxe-column title="制单人" field="createdName" align="center" width="100"/>
+        <vxe-column title="制单时间" field="orderDate" align="center" width="100"/>
         <vxe-column title="审核状态" field="orderStatus" width="80"/>
 
       </vxe-table>
@@ -72,6 +72,7 @@
 import manba from "manba";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import {mapMutations} from "vuex";
+import {message, confirm} from "heyui.ext";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -114,7 +115,12 @@ export default {
   methods: {
     ...mapMutations(['pushTab']),
     addForm(type = 'add', orderId = null) {
-      this.pushTab({key: 'PurchaseOrderForm', title: '新增采购订单', params: {type: type, orderId: orderId}});
+      console.log(type, orderId);
+      this.pushTab({
+        key: 'PurchaseOrderForm',
+        title: type == 'edit' ? '编辑采购订单' : '新增采购订单',
+        params: {type: type, orderId: orderId}
+      });
     },
     footerMethod({columns, data}) {
       let sums = [];
@@ -142,6 +148,19 @@ export default {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
+    },
+    doRemove(row) {
+      console.log(row)
+      confirm({
+        title: "系统提示",
+        content: `确认删除：${row.orderNo}?`,
+        onConfirm: () => {
+          PurchaseOrder.remove(row.id).then(() => {
+            message("删除成功~");
+            this.loadList();
+          })
+        }
+      })
     },
   },
   created() {

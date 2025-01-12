@@ -1,6 +1,7 @@
 package com.flyemu.share.controller.purchase;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
@@ -33,17 +34,18 @@ public class PurchaseOrderController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+        purchaseOrderForm.getPurchaseOrder().setCreatedBy(adminId);
         purchaseOrderForm.getPurchaseOrder().setMerchantId(merchantId);
         purchaseOrderForm.getPurchaseOrder().setAccountBookId(accountBookId);
         purchaseOrderForm.getPurchaseOrder().setOrderStatus(OrderStatus.已保存);
-        purchaseOrderService.save(purchaseOrderForm);
+        purchaseOrderService.save(purchaseOrderForm,merchantId);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm) {
-        purchaseOrderService.save(purchaseOrderForm);
+    public JsonResult update(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm,@SaMerchantId Long merchantId) {
+        purchaseOrderService.save(purchaseOrderForm,merchantId);
         return JsonResult.successful();
     }
 
@@ -56,6 +58,19 @@ public class PurchaseOrderController {
     @GetMapping("select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(purchaseOrderService.select(merchantId, accountBookId));
+    }
+
+
+    /**
+     * 入库单详情
+     *
+     * @param merchantId
+     * @param orderId
+     * @return
+     */
+    @GetMapping("load/{orderId}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long orderId) {
+        return JsonResult.successful(purchaseOrderService.load(merchantId, orderId));
     }
 
 }

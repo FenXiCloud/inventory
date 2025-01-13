@@ -2,15 +2,22 @@
   <div class="modal-column">
     <div class="modal-column-full-body">
       <Form :label-width="110" ref="form" :model="model" :rules="validationRules" mode="single">
-        <FormItem label="编码" required prop="code">
-          <Input placeholder="请输入编码" maxlength="10" v-model="model.code"/>
+        <FormItem label="账户类别" required prop="accountType">
+          <Select placeholder="请选择账户类别" v-model="model.accountType" dict="accountTypes"/>
+        </FormItem>
+        <FormItem label="账户类别名称" required prop="accountTypeItem">
+          <Select placeholder="请选择账户类别名称" v-model="model.accountTypeItem" dict="accountTypeItems"/>
         </FormItem>
         <FormItem label="名称" required prop="name">
           <Input placeholder="请输入名称" maxlength="10" v-model="model.name"/>
         </FormItem>
-        <FormItem label="账户类别" required prop="accountType">
-          <Select placeholder="请选择账户类别" v-model="model.accountType" dict="accountTypes"/>
+        <FormItem label="币别" required prop="currency">
+          <Input placeholder="请输入币别" v-model="model.currency"/>
         </FormItem>
+        <FormItem label="账户余额" prop="balance">
+          <Input placeholder="账户余额" disabled v-model="model.balance"/>
+        </FormItem>
+
       </Form>
     </div>
     <div class="modal-column-between">
@@ -46,9 +53,11 @@ export default {
       loading: false,
       model: {
         id: null,
-        code: null,
         name: null,
-        accountType: '银行存款'
+        currency: 'RMB',
+        accountType: '资产',
+        accountTypeItem: '银行账户',
+        balance: 0.00,
       },
       validationRules: {}
     }

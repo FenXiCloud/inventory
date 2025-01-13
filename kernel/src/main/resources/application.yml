@@ -4,9 +4,9 @@ spring:
   profiles:
     include: app,dev
   datasource:
-    url: jdbc:mysql://139.159.132.75:3306/jxc?characterEncoding=UTF-8&useUnicode=true&useSSL=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true
-    username: jxc
-    password: Ycs0h7KL2k6I1ijV
+    url: jdbc:mysql://127.0.0.1:3306/jxc?characterEncoding=UTF-8&useUnicode=true&useSSL=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
 
     hikari:
       keepalive-time: 60000

@@ -25,12 +25,6 @@
         <vxe-column title="名称" field="name"/>
         <vxe-column title="币别" field="currency" width="80"/>
         <vxe-column title="账户余额" field="balance" width="100"/>
-        <vxe-column title="是否默认" field="systemDefault" width="80">
-          <template #default="{row}">
-            <Tag color="primary" v-if="row.systemDefault">是</Tag>
-            <Tag color="red" v-else>否</Tag>
-          </template>
-        </vxe-column>
         <vxe-column title="状态" field="enabled" width="80" align="center">
           <template #default="{row}">
             <Tag color="primary" @click="trigger(row)" v-if="row.enabled">启用</Tag>
@@ -39,6 +33,7 @@
         </vxe-column>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
+            <i class="primary-color ml-10px" @click="addForm(row)">明细账</i>
             <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
             <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
           </template>
@@ -51,10 +46,12 @@
 <script>
 import Account from "@js/api/fund/Account";
 import AccountForm from "./AccountForm.vue";
+import AccountFlowReport from "./AccountFlowReport.vue";
 import {confirm, message} from "heyui.ext";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 import Product from "@js/api/basic/Product";
+import {mapMutations} from "vuex";
 
 /**
  * @功能描述: 账户管理
@@ -75,6 +72,14 @@ export default {
     }
   },
   methods: {
+    ...mapMutations(['pushTab']),
+    addForm(accountId) {
+      this.pushTab({
+        key: 'AccountFlowReport',
+        title: '资金明细表',
+        params: {accountId: accountId}
+      });
+    },
     trigger(row) {
       let enabled = !row.enabled;
       confirm({
@@ -94,7 +99,7 @@ export default {
         title: "账户信息",
         shadeClose: false,
         closeBtn: false,
-        area: ['500px', '380px'],
+        area: ['600px', '480px'],
         content: h(AccountForm, {
           entity, type,
           onClose: () => {

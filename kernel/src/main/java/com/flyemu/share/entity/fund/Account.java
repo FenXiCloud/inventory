@@ -38,11 +38,6 @@ public class Account implements Serializable {
     @Column(length = 32, nullable = false)
     private String name;
 
-    @Comment("是否系统默认")
-    @Column(nullable = false)
-    @ColumnDefault("b'1'")
-    private Boolean systemDefault;
-
     @Comment("账户类别")
     @Enumerated(EnumType.STRING)
     @Column(length = 32, columnDefinition = "varchar(32)  default '资产'")

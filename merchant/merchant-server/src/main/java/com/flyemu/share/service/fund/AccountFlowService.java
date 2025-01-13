@@ -70,9 +70,9 @@ public class AccountFlowService extends AbsService {
             }
         }
 
-        public void setAccountFlowBookId(Long accountFlowBookId) {
-            if (accountFlowBookId != null) {
-                builder.and(qAccountFlow.accountBookId.eq(accountFlowBookId));
+        public void setAccountBookId(Long accountBookId) {
+            if (accountBookId != null) {
+                builder.and(qAccountFlow.accountBookId.eq(accountBookId));
             }
         }
     }

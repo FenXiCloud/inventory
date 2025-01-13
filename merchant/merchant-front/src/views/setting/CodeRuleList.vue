@@ -98,7 +98,7 @@ export default {
       loading: false,
       params: {
         name:null,
-        documentType: null,
+        documentType: '采购订单',
       },
       checkedRows: [],
       dataList: [],
@@ -117,9 +117,16 @@ export default {
     }
   },
   mounted() {
-
+    // 默认选中第一个单据类型
+    this.selectFirstDocumentType();
   },
   methods: {
+    selectFirstDocumentType() {
+      // 默认选中第一个单据类型
+      const table = this.$refs.documentTypeGridRef;
+      table.setRadioRow(this.documentTypeDataList[0]);
+    },
+
     handleDocumentTypeChange(data) {
       // 单选框变化时的处理函数
       console.log(data.row.documentType);

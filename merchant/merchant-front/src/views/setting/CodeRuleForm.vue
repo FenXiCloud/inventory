@@ -52,7 +52,7 @@ export default {
   },
   data() {
     return {
-      documentTypes: ['商品', '仓库', '客户', '供应商'],
+      documentTypes: ['商品', '仓库', '客户', '供货商'],
       documentTypeDisabled: true,
       loading: false,
       merchantList: [],

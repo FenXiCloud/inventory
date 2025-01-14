@@ -10,13 +10,13 @@
         </FormItem>
         <FormItem label="格式化" required prop="format">
           <Select v-if="['商品', '仓库', '客户', '供应商'].includes(model.documentType)"   placeholder="类别编码" v-model="model.format"    @change="formatValueChange" :datas="codeBusinessValueList"/>
-          <Select v-else  placeholder="请输入流水号位数" v-model="model.format"    @change="formatValueChange" :datas="formatValueList"/>
+          <Select v-else  placeholder="请选择日期格式" v-model="model.format"    @change="formatValueChange" :datas="formatValueList"/>
         </FormItem>
         <FormItem label="流水号位数" required prop="serialNumberLength">
           <Select placeholder="请输入流水号位数" v-model="model.serialNumberLength"  @change="serialNumberLengthValueChange" :datas="serialNumberLengthValueList"/>
         </FormItem>
         <FormItem label="起始值" required prop="startValue">
-          <Input placeholder="起始值" v-model="model.startValue"/>
+          <NumberInput  placeholder="起始值" v-model="model.startValue" @blur="handleBlurForStartValue"  :min="0"/>
         </FormItem>
         <FormItem label="流水号清零" required prop="resetPeriod">
           <Select placeholder="流水号清零" v-model="model.resetPeriod" :datas="resetPeriodValueList"/>
@@ -52,6 +52,7 @@ export default {
   },
   data() {
     return {
+      documentTypes: ['商品', '仓库', '客户', '供应商'],
       documentTypeDisabled: true,
       loading: false,
       merchantList: [],
@@ -62,7 +63,7 @@ export default {
       formatValueList:[
         { title: 'yyyyMMdd', key: 'yyyyMMdd' }, { title: 'yyMMdd', key: 'yyMMdd'}
       ],
-      resetPeriodValueList: [{ title: '年', key: '年' }, { title: '月', key: '月'}, { title: '日', key: '日' }, { title: '季', key: '季' }],
+      resetPeriodValueList: [{ title: '日', key: '日' }, { title: '月', key: '月'}, { title: '季', key: '季' },{ title: '年', key: '年' }],
       serialNumberLengthValueList: [
         { title: '3位', key: '3' },
         { title: '4位', key: '4'},
@@ -100,9 +101,9 @@ export default {
         prefix: null,
         code: null,
         format: null,
-        serialNumberLength: 3,
-        startValue:'001',
-        resetPeriod: null,
+        serialNumberLength: 5,
+        startValue: 1,
+        resetPeriod: '日',
         documentType: null,
         systemDefault: null,
       },
@@ -111,18 +112,27 @@ export default {
   },
   methods: {
 
+
+    handleBlurForStartValue(event) {
+      let startValue = parseInt(this.model.startValue);
+      let serialNumberLength = parseInt(this.model.serialNumberLength);
+      this.formatSerialNumber(startValue,serialNumberLength);
+    },
+
     formatValueChange(){
        console.log("formatValueChange: "+this.model.format);
     },
 
     serialNumberLengthValueChange(){
       console.log("formatValueChange: "+this.model.serialNumberLength);
-      let num = parseInt(this.model.startValue);
-      let len = parseInt(this.model.serialNumberLength);
-      let formattedValue = num.toString().padStart(len, '0');
-      this.model.startValue = formattedValue;
+      let startValue = parseInt(this.model.startValue);
+      let serialNumberLength = parseInt(this.model.serialNumberLength);
+      this.formatSerialNumber(startValue,serialNumberLength);
     },
 
+    formatSerialNumber(startValue, serialNumberLength) {
+      this.model.startValue = startValue.toString().padStart(serialNumberLength, '0');
+    },
 
     confirm() {
       let validResult = this.$refs.form.valid();
@@ -155,6 +165,36 @@ export default {
   },
   created() {
     this.init();
+
+    // 界面默认值设置 begin
+    if (!this.CodeRule.serialNumberLength){
+      this.CodeRule.serialNumberLength = this.model.serialNumberLength;
+    }
+
+    if (!this.CodeRule.startValue){
+      this.CodeRule.startValue = this.model.startValue;
+    }
+
+    if (!this.CodeRule.resetPeriod){
+      this.CodeRule.resetPeriod = this.model.resetPeriod;
+    }
+
+    // 新增情况下 设置默认值
+    if (this.CodeRule.id == null || typeof this.CodeRule.id == 'undefined' ){
+      if (this.documentTypes.includes(this.CodeRule.documentType)  ){
+        this.CodeRule.format = '所属分类编码';
+      }else {
+        this.CodeRule.format = 'yyyyMMdd';
+      }
+    }
+
+    // 把数字 startValue 按 长度 serialNumberLength 格式化，长度不够补 0
+    let num = parseInt(this.CodeRule.startValue);
+    let len = parseInt(this.CodeRule.serialNumberLength);
+    this.CodeRule.startValue = num.toString().padStart(len, '0');
+
+    // 界面默认值设置 end
+
     CopyObj(this.model, this.CodeRule);
   }
 }

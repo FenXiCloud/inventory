@@ -129,7 +129,6 @@ export default {
 
     handleDocumentTypeChange(data) {
       // 单选框变化时的处理函数
-      console.log(data.row.documentType);
       this.params.documentType = data.row.documentType;
       this.loadList();
 

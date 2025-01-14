@@ -9,7 +9,8 @@
           <Input placeholder="请输入规则前缀" v-model="model.prefix"/>
         </FormItem>
         <FormItem label="格式化" required prop="format">
-          <Select placeholder="请输入流水号位数" v-model="model.format"    @change="formatValueChange" :datas="formatValueList"/>
+          <Select v-if="['商品', '仓库', '客户', '供应商'].includes(model.documentType)"   placeholder="类别编码" v-model="model.format"    @change="formatValueChange" :datas="codeBusinessValueList"/>
+          <Select v-else  placeholder="请输入流水号位数" v-model="model.format"    @change="formatValueChange" :datas="formatValueList"/>
         </FormItem>
         <FormItem label="流水号位数" required prop="serialNumberLength">
           <Select placeholder="请输入流水号位数" v-model="model.serialNumberLength"  @change="serialNumberLengthValueChange" :datas="serialNumberLengthValueList"/>
@@ -57,6 +58,7 @@ export default {
       areaList: [],
       levelList: [],
       warehouseList: [],
+      codeBusinessValueList:[{ title: '所属分类编码', key: '所属分类编码' }],
       formatValueList:[
         { title: 'yyyyMMdd', key: 'yyyyMMdd' }, { title: 'yyMMdd', key: 'yyMMdd'}
       ],

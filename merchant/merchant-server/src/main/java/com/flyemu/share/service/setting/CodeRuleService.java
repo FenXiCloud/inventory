@@ -41,6 +41,16 @@ public class CodeRuleService extends AbsService {
         return codeRules;
     }
 
+    public List<CodeRule> queryEnable(CodeRule codeRule, Long accountBookId, Long merchantId) {
+        return bqf.selectFrom(qCodeRule).where(qCodeRule.merchantId.eq(merchantId)
+                .and(qCodeRule.accountBookId.eq(accountBookId))
+                .and(qCodeRule.documentType.eq(codeRule.getDocumentType()))
+                .and(qCodeRule.systemDefault.eq(codeRule.getSystemDefault()))
+                .and(qCodeRule.id.ne(codeRule.getId()))
+        ).fetch();
+    }
+
+
     @Transactional
     public CodeRule save(CodeRule codeRule) {
         if (codeRule.getId() != null) {
@@ -89,5 +99,12 @@ public class CodeRuleService extends AbsService {
                 builder.and(qCodeRule.accountBookId.eq(accountBookId));
             }
         }
+
+        public void setSystemDefault(Boolean systemDefault) {
+            if (systemDefault != null) {
+                builder.and(qCodeRule.systemDefault.eq(systemDefault));
+            }
+        }
+
     }
 }

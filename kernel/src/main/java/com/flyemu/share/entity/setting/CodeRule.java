@@ -60,7 +60,7 @@ public class CodeRule implements Serializable {
 
     @Comment("是否系统默认")
     @Column(nullable = false)
-    @ColumnDefault("b'1'")
+    @ColumnDefault("b'0'")
     private Boolean systemDefault;
 
     @Comment("创建时间")

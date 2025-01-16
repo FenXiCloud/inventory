@@ -46,7 +46,7 @@ export default {
         id: null,
         pid: null,
         name: null,
-        costType: '收入类别',
+        costType: '支出',
       },
       validationRules: {}
     }

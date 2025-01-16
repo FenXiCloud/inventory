@@ -38,7 +38,7 @@ public class AccountType implements Serializable {
 
     @Comment("收支类别")
     @Enumerated(EnumType.STRING)
-    @Column(length = 32, columnDefinition = "varchar(32)  default '收入类别'")
+    @Column(length = 32, columnDefinition = "varchar(32)  default '收入'")
     private CostType costType;
 
     @Comment("父级ID")
@@ -56,7 +56,7 @@ public class AccountType implements Serializable {
     private Long merchantId;
 
     public enum CostType {
-        收入类别, 支出类别
+        收入, 支出
     }
 
 }

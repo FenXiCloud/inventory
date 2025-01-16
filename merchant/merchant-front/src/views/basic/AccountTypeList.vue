@@ -64,11 +64,11 @@ export default {
       dataList: [],
       params: {
         name: null,
-        costType: '收入类型',
+        costType: '支出',
       },
       costTypes: [
-        {title: '收入类型', key: '收入类型'},
-        {title: '支出类型', key: '支出类型'},
+        {title: '收入', key: '收入'},
+        {title: '支出', key: '支出'},
       ],
       param: [
         {title: '启用', key: 'enabled'},
@@ -81,7 +81,7 @@ export default {
       let layerId = layer.open({
         title: "收入类别信息",
         shadeClose: false,
-        area: ['450px', '420px'],
+        area: ['400px', '300px'],
         content: h(AccountTypeForm, {
           entity, parent, list: this.dataList,
           onClose: () => {

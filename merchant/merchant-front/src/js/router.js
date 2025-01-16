@@ -148,8 +148,8 @@ const groupRoutes = [
         name: 'SupplierFlowReport',
         component: defineAsyncComponent(() => import('@views/fund/SupplierFlowReport.vue'))
     }, {
-        name: 'AccountFlowReport',
-        component: defineAsyncComponent(() => import('@views/fund/AccountFlowReport.vue'))
+        name: 'AccountFlowList',
+        component: defineAsyncComponent(() => import('@views/fund/AccountFlowList.vue'))
     },]
 
 

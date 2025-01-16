@@ -9,7 +9,7 @@
       </HHeader>
       <SysTabs :homePage="currentTab"/>
       <Content>
-        <div class="app-frame-content h-full p-10px pt-10px">
+        <div class="app-frame-content h-full p-20px pt-20px">
           <Suspense>
             <component is="DashboardMain" v-show="'DashboardMain'===currentTab"/>
             <template #fallback>

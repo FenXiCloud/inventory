@@ -46,7 +46,7 @@ import AccountFlow from "@js/api/fund/AccountFlow";
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 export default {
-  name: "AccountFlowReport",
+  name: "AccountFlowList",
   data() {
     return {
       loading: false,

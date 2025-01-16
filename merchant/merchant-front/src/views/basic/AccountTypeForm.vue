@@ -3,7 +3,7 @@
     <div class="modal-column-full-body">
       <Form ref="form" :model="model" :rules="validationRules" :labelWidth="120" mode="single">
         <FormItem label="收支类别" required prop="costType">
-          <Select placeholder="请选择收支类别" v-model="model.costType" dict="costTypes"/>
+          <Select placeholder="请选择收支类别" v-model="model.costType" dict="costTypes" :deletable="false"/>
         </FormItem>
         <FormItem label="名称" required prop="name">
           <Input placeholder="请输入名称" maxlength="10" v-model="model.name"/>

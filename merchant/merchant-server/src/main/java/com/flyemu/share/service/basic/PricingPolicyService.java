@@ -64,6 +64,14 @@ public class PricingPolicyService extends AbsService {
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
+        public void setPriceType(PricingPolicy.PriceType priceType) {
+            if (priceType != null) {
+                builder.and(qPricingPolicy.priceType.eq(priceType));
+            } else {
+                builder.and(qPricingPolicy.priceType.isNotNull());
+            }
+        }
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qPricingPolicy.merchantId.eq(merchantId));

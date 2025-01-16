@@ -1,5 +1,9 @@
 <template>
   <div class="frame-page flex flex-column">
+    <div align="center">
+      <Tabs :datas="param" v-model="selected" @change="change"></Tabs>
+    </div>
+
     <vxe-toolbar>
 
     </vxe-toolbar>
@@ -49,12 +53,22 @@ export default {
     return {
       loading: false,
       dataList: [],
-      params: {
-        filter: null,
+      param: {
+        module1: '销售价格取数',
+        module2: '采购价格取数',
+        module3: '异常成本处理'
       },
+      selected: '销售价格取数',
+      params: {
+        priceType: '销售价格取数',
+      }
     }
   },
   methods: {
+    change(data) {
+      console.log(data)
+      this.params.priceType = data.title;
+    },
     doSearch() {
       this.loadList();
     },

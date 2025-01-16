@@ -3,7 +3,8 @@
     <vxe-toolbar>
       <template #buttons>
         <Button class="mr-20px" @click="showForm()" color="primary">新 增</Button>
-        类型： <Select v-model="params.costType" :datas="costTypes"/>
+        类型： <Select v-model="params.costType" @change="change" :datas="costTypes" style="width: 120px"
+                      :deletable="false"/>
       </template>
       <template #tools>
         <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入名称"/>
@@ -114,6 +115,10 @@ export default {
           })
         }
       })
+    },
+    change(data) {
+      this.params.costType = data.key;
+      this.loadList();
     },
     trigger(row) {
       let enabled = !row.enabled;

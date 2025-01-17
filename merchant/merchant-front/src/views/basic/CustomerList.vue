@@ -3,14 +3,23 @@
     <div class="parent_container">
       <div class="left">
         <vxe-table
-            border
             ref="customerTypeGridRef"
             size="mini"
             :data="customerTypeDataList"
+            highlight-hover-row
+            show-overflow
             @radio-change="handleCustomerTypeChange"
             :rowConfig="{isCurrent: true,isHover: true}"
             :radio-config="{trigger: 'row',labelField: 'name',highlight: true}">
           <vxe-column field="name" title="客户类型"></vxe-column>
+          <vxe-column title="" align="center" width="120">
+            <template #default="{row}">
+              <template v-if="row.id !=null">
+                <i class="primary-color h-icon-edit ml-10px" @click="addOrEditCategoryForm(row)"></i>
+                <i class="primary-color h-icon-trash ml-10px" @click="doRemoveCategory(row)"></i>
+              </template>
+            </template>
+          </vxe-column>
         </vxe-table>
       </div>
       <div class="right">
@@ -155,11 +164,13 @@ export default {
     doRemoveCategory(row) {
       confirm({
         title: "系统提示",
-        content: `确认删除客户：${row.name}?`,
+        content: `确认删除客户类型：${row.name}?`,
         onConfirm: () => {
           CustomerCategory.remove(row.id).then(() => {
             message("删除成功~");
             this.loadCategoryData();
+            this.params.customerCategoryId = null;
+            this.loadData();
           })
         }
       })

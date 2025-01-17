@@ -16,14 +16,14 @@
           <Select :datas="customerLevelList" keyName="id" titleName="name" v-model="model.customerLevelId"
                   placeholder="请选择客户等级" :deletable="false"/>
         </FormItem>
-        <FormItem label="联系人" prop="linkman">
-          <Input placeholder="联系人" v-model.trim="model.linkman"/>
+        <FormItem label="联系人" prop="contact">
+          <Input placeholder="联系人" v-model.trim="model.contact"/>
         </FormItem>
         <FormItem label="电话" prop="phone">
           <Input placeholder="电话" v-model.trim="model.phone"/>
         </FormItem>
-        <FormItem label="客户描述" prop="remark" single>
-          <Textarea v-wordcount="150" rows="3" placeholder="客户描述" v-model="model.remark"/>
+        <FormItem label="客户描述" prop="remarks" single>
+          <Textarea v-wordcount="150" rows="3" placeholder="客户描述" v-model="model.remarks"/>
         </FormItem>
       </Form>
     </div>
@@ -67,11 +67,11 @@ export default {
         id: null,
         code: null,
         name: null,
-        linkman: null,
+        contact: null,
         phone: null,
         customerCategoryId: null,
         customerLevelId: null,
-        remark: null
+        remarks: null
       },
       validationRules: {}
     }

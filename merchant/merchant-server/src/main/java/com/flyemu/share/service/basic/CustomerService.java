@@ -117,6 +117,12 @@ public class CustomerService extends AbsService {
                 builder.and(qCustomer.accountBookId.eq(accountBookId));
             }
         }
+
+        public void setCustomerCategoryId(Long customerCategoryId) {
+            if (customerCategoryId != null) {
+                builder.and(qCustomer.customerCategoryId.eq(customerCategoryId));
+            }
+        }
     }
 
 }

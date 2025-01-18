@@ -12,5 +12,8 @@ export default {
     },
     select(param) {
         return Ajax.get('/salesOrder/select', param)
-    }
+    },
+    getInfo(id) {
+        return Ajax.get('/salesOrder/getInfo/' + id);
+    },
 }

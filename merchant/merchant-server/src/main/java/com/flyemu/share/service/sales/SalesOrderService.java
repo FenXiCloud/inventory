@@ -70,6 +70,11 @@ public class SalesOrderService extends AbsService {
         return bqf.selectFrom(qSalesOrder).where(qSalesOrder.merchantId.eq(merchantId).and(qSalesOrder.accountBookId.eq(accountBookId))).fetch();
     }
 
+    public SalesOrder getById(SalesOrder query) {
+        SalesOrder salesOrder = salesOrderRepository.getById(query.getId());
+        return salesOrder;
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 

@@ -56,4 +56,24 @@ public class SalesOrderController {
         return JsonResult.successful(salesOrderService.select(merchantId, accountBookId));
     }
 
+    /**
+     * 入库单详情
+     * @param merchantId
+     * @param accountBookId
+     * @param orderId
+     * @return
+     */
+    @GetMapping("/getInfo/{orderId}")
+    public JsonResult getInfo(
+            @SaMerchantId Long merchantId,
+            @SaAccountBookId Long accountBookId,
+            @PathVariable Long orderId
+    ) {
+        SalesOrder query = new SalesOrder();
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        query.setId(orderId);
+        return JsonResult.successful(salesOrderService.getById(query));
+    }
+
 }

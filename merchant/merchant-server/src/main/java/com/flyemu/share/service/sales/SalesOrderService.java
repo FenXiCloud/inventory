@@ -5,17 +5,23 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.SalesOrderDTO;
+import com.flyemu.share.entity.basic.QCustomer;
+import com.flyemu.share.entity.basic.QSupplier;
 import com.flyemu.share.entity.sales.QSalesOrder;
 import com.flyemu.share.entity.sales.QSalesOrderItem;
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOrderItem;
+import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.repository.PurchaseOrderItemRepository;
 import com.flyemu.share.repository.SalesOrderItemRepository;
 import com.flyemu.share.repository.SalesOrderRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,17 +49,24 @@ public class SalesOrderService extends AbsService {
 
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderItemRepository salesOrderItemRepository;
+    private final CodeSeedService codeSeedService;
+    private final static QCustomer qCustomer = QCustomer.customer;
+    private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
 
-    public PageResults<SalesOrder> query(Page page, SalesOrderService.Query query) {
-        PagedList<SalesOrder> fetchPage = bqf.selectFrom(qSalesOrder).where(query.builder).orderBy(qSalesOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+    public PageResults<SalesOrderDTO> query(Page page, SalesOrderService.Query query) {
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
+                .select(qSalesOrder, qCustomer.name, qMerchantUser.name)
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
+                .where(query.builder).orderBy(qSalesOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
-        List<SalesOrder> dtos = new ArrayList<>();
+        List<SalesOrderDTO> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            SalesOrder salesOrder1 = tuple;
-            SalesOrder salesOrder = BeanUtil.toBean(salesOrder1, SalesOrder.class);
-            dtos.add(salesOrder);
+            SalesOrderDTO salesOrderDTO = BeanUtil.toBean(tuple.get(qSalesOrder), SalesOrderDTO.class);
+            salesOrderDTO.setCustomerName(tuple.get(qCustomer.name));
+            salesOrderDTO.setCreatedName(tuple.get(qMerchantUser.name));
+            dtos.add(salesOrderDTO);
         });
-
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
@@ -79,7 +92,10 @@ public class SalesOrderService extends AbsService {
             }
             return update;
         }else{
+            //销售订单状态初始化
             salesOrder.setOrderStatus(OrderStatus.已保存);
+            //销售订单编号
+            salesOrder.setOrderNo(codeSeedService.generateCode(salesOrder.getMerchantId(), "销售订单"));
             //保存销售订单
             SalesOrder save = salesOrderRepository.save(salesOrder);
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {

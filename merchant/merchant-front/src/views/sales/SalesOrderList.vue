@@ -40,15 +40,15 @@
           </template>
         </vxe-column>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="code" width="200"/>
+        <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="关联销售出库单" field="code" width="200"/>
         <vxe-column title="客户" field="customerName" min-width="120"/>
         <vxe-column title="销售金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        <vxe-column title="制单人" field="createDate" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createDate" align="center" width="100"/>
-        <vxe-column title="审核状态" field="orderStatus" width="80"/>
+        <vxe-column title="制单人" field="createdName" align="center" width="100"/>
+        <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
+        <vxe-column title="状态" field="orderStatus" width="80"/>
 
       </vxe-table>
     </div>

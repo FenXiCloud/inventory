@@ -143,7 +143,6 @@
 import {confirm, loading, message} from "heyui.ext";
 import manba from "manba";
 import {CopyObj} from "@common/utils";
-import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapState} from "vuex";
@@ -320,10 +319,9 @@ export default {
         loading.close()
         return
       }
-      PurchaseOrder.save({
-        purchaseOrder: Object.assign(this.form, {finalAmount: this.finalAmount}),
-        type: this.type,
-        purchaseOrderItemList: productData
+      SalesOrder.save({
+        salesOrder: Object.assign(this.form, {finalAmount: this.finalAmount}),
+        salesOrderItemList: productData
       }).then((success) => {
         if (success) {
           message("保存成功~");

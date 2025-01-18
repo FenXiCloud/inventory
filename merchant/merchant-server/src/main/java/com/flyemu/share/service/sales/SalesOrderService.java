@@ -7,6 +7,11 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.sales.QSalesOrder;
 import com.flyemu.share.entity.sales.SalesOrder;
+import com.flyemu.share.entity.sales.SalesOrderItem;
+import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.form.SalesOrderForm;
+import com.flyemu.share.repository.PurchaseOrderItemRepository;
+import com.flyemu.share.repository.SalesOrderItemRepository;
 import com.flyemu.share.repository.SalesOrderRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -14,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +40,7 @@ public class SalesOrderService extends AbsService {
     private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
 
     private final SalesOrderRepository salesOrderRepository;
+    private final SalesOrderItemRepository salesOrderItemRepository;
 
     public PageResults<SalesOrder> query(Page page, SalesOrderService.Query query) {
         PagedList<SalesOrder> fetchPage = bqf.selectFrom(qSalesOrder).where(query.builder).orderBy(qSalesOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -49,14 +56,42 @@ public class SalesOrderService extends AbsService {
     }
 
     @Transactional
-    public SalesOrder save(SalesOrder salesOrder) {
-        if (salesOrder.getId() != null) {
-            //更新
-            SalesOrder original = salesOrderRepository.getById(salesOrder.getId());
-            BeanUtil.copyProperties(salesOrder, original, CopyOptions.create().ignoreNullValue());
-            return salesOrderRepository.save(original);
+    public SalesOrder save(SalesOrderForm salesOrderForm) {
+        SalesOrder salesOrder = salesOrderForm.getSalesOrder();
+        Long id = salesOrder.getId();
+        List<SalesOrderItem> salesOrderItemList = salesOrderForm.getSalesOrderItemList();
+        if (id != null) {
+            //查询
+            SalesOrder original = salesOrderRepository.getById(id);
+            //租户隔离
+            Long merchantId = original.getMerchantId();
+            Long accountBookId = original.getAccountBookId();
+            if(!salesOrder.getAccountBookId().equals(accountBookId) || !salesOrder.getMerchantId().equals(merchantId)){
+                throw new RuntimeException("参数错误!!");
+            }
+            //修改销售订单
+            SalesOrder update = salesOrderRepository.save(original);
+            if (!CollectionUtils.isEmpty(salesOrderItemList)) {
+                //批量修改销售订单商品
+                salesOrderItemRepository.saveAll(salesOrderItemList);
+            }
+            return update;
+        }else{
+            salesOrder.setOrderStatus(OrderStatus.已保存);
+            //保存销售订单
+            SalesOrder save = salesOrderRepository.save(salesOrder);
+            if (!CollectionUtils.isEmpty(salesOrderItemList)) {
+                salesOrderItemList.forEach(item -> {
+                    item.setAccountBookId(salesOrder.getAccountBookId());
+                    item.setMerchantId(salesOrder.getMerchantId());
+                    item.setCreatedBy(salesOrder.getCreatedBy());
+                    item.setCreatedAt(salesOrder.getCreatedAt());
+                });
+                //批量添加销售订单商品
+                salesOrderItemRepository.saveAll(salesOrderItemList);
+            }
+            return save;
         }
-        return salesOrderRepository.save(salesOrder);
     }
 
     @Transactional

@@ -1,14 +1,18 @@
 package com.flyemu.share.controller.sales;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.sales.SalesOrder;
+import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.service.sales.SalesOrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 
 /**
  * @功能描述: 销售订单
@@ -32,16 +36,23 @@ public class SalesOrderController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid SalesOrder salesOrder, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        salesOrder.setMerchantId(merchantId);
-        salesOrder.setAccountBookId(accountBookId);
-        salesOrderService.save(salesOrder);
+    public JsonResult save(
+            @RequestBody @Valid SalesOrderForm salesOrderForm,
+            @SaAccountBookId Long accountBookId,
+            @SaMerchantId Long merchantId,
+            @SaAdminId Long adminId
+    ) {
+        salesOrderForm.getSalesOrder().setMerchantId(merchantId);
+        salesOrderForm.getSalesOrder().setAccountBookId(accountBookId);
+        salesOrderForm.getSalesOrder().setCreatedBy(adminId);
+        salesOrderForm.getSalesOrder().setCreatedAt(LocalDateTime.now());
+        salesOrderService.save(salesOrderForm);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid SalesOrder salesOrder) {
-        salesOrderService.save(salesOrder);
+    public JsonResult update(@RequestBody @Valid SalesOrderForm salesOrderForm) {
+        salesOrderService.save(salesOrderForm);
         return JsonResult.successful();
     }
 

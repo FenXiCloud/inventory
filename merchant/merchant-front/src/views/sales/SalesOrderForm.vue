@@ -30,9 +30,8 @@
         <vxe-column title="商品信息" width="300">
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,rowIndex)" v-model="product" :datas="productList"
-                      filterable
-                      placeholder="输入编码/名称" keyName="productId">
+              <Select ref="ms" @change="selectProduct($event,rowIndex)" :datas="productList" v-model="product"
+                      keyName="id" titleName="name" filterable placeholder="输入编码/名称">
                 <template v-slot:item="{ item }">
                   <div>{{ item.code }} {{ item.name }}</div>
                 </template>
@@ -462,6 +461,7 @@ export default {
       this.customerList = results[0].data || [];
       this.warehouseList = results[1].data || [];
       this.productList = results[2].data || [];
+      console.log("this.productList", this.productList);
       //订单详情/编辑订单
       if (this.orderId) {
         SalesOrder.getInfo(this.orderId).then(({data: {purchaseOrder, purchaseOrderItemList}}) => {

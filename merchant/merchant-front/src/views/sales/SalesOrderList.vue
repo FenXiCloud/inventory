@@ -71,6 +71,8 @@
 import manba from "manba";
 import SalesOrder from "@js/api/sales/SalesOrder";
 import {mapMutations} from "vuex";
+import {confirm, message} from "heyui.ext";
+import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -120,6 +122,19 @@ export default {
         title: type == 'edit' ? '编辑销售订单' : '新增销售订单',
         params: {type: type, orderId: orderId}
       });
+    },
+    doRemove(row) {
+      console.log(row)
+      confirm({
+        title: "系统提示",
+        content: `确认删除：${row.id}?`,
+        onConfirm: () => {
+          SalesOrder.remove(row.id).then(() => {
+            message("删除成功~");
+            this.loadList();
+          })
+        }
+      })
     },
     footerMethod({columns, data}) {
       let sums = [];

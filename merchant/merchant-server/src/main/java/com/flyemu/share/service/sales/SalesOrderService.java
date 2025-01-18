@@ -6,6 +6,7 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.sales.QSalesOrder;
+import com.flyemu.share.entity.sales.QSalesOrderItem;
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOrderItem;
 import com.flyemu.share.enums.OrderStatus;
@@ -38,6 +39,7 @@ import java.util.List;
 public class SalesOrderService extends AbsService {
 
     private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
+    private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
 
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderItemRepository salesOrderItemRepository;
@@ -96,8 +98,14 @@ public class SalesOrderService extends AbsService {
 
     @Transactional
     public void delete(Long SalesOrderId, Long merchantId, Long accountBookId) {
+        //删除销售订单
         jqf.delete(qSalesOrder)
                 .where(qSalesOrder.id.eq(SalesOrderId).and(qSalesOrder.merchantId.eq(merchantId)).and(qSalesOrder.accountBookId.eq(accountBookId)))
+                .execute();
+
+        //删除销售订单商品
+        jqf.delete(qSalesOrderItem)
+                .where(qSalesOrderItem.salesOrderId.eq(SalesOrderId).and(qSalesOrderItem.merchantId.eq(merchantId)).and(qSalesOrderItem.accountBookId.eq(accountBookId)))
                 .execute();
     }
 

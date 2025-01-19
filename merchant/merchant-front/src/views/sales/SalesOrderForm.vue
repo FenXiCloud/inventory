@@ -54,7 +54,7 @@
         </vxe-column>
         <vxe-column title="数量" field="orderQuantity" width="90">
           <template #default="{row,rowIndex,columnIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3" @keyup="handleEnter($event,rowIndex,3)"
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3"
                        @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.orderQuantity" type="float"
                        min="0" :controls="false"></vxe-input>
           </template>
@@ -62,35 +62,35 @@
         <vxe-column title="单位" field="unitName" align="center" width="80"/>
         <vxe-column title="单价" field="orderPrice" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4"
                        @blur="updatePrice(row)" v-model.number="row.orderPrice" type="float" min="0"
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="折扣率(%)" field="discount" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5" @keyup="handleEnter($event,rowIndex,5)"
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5"
                        @blur="updateDiscount(row)" v-model.number="row.discount" type="float" min="0"
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="折扣额" field="discountAmount" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+6" @keyup="handleEnter($event,rowIndex,6)"
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+6"
                        @blur="updateDiscountAmount(row)" v-model.number="row.discountAmount" type="float" min="0"
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="金额" field="finalAmount" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+7" @keyup="handleEnter($event,rowIndex,7)"
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+7"
                        @blur="updateFinalAmount(row)" v-model.number="row.finalAmount" type="float" min="0"
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="备注" field="remark">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8" @keyup="handleEnter($event,rowIndex,8)"
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8"
                        v-model="row.remark" placeholder="输入备注" :controls="false"></vxe-input>
           </template>
         </vxe-column>
@@ -104,12 +104,12 @@
       </div>
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
-          <label class="mr-16px  w-80px">优惠率：</label>
-          <Input v-model="form.discountRate"/>
+          <label class="mr-16px  w-100px">优惠率(%)：</label>
+          <Input v-model="form.discountRate" readonly/>
           <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
-          <Input v-model="form.discountAmount"/>
+          <Input v-model="form.discountAmount" readonly/>
           <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
-          <Input v-model="form.finalAmount"/>
+          <Input v-model="form.finalAmount" readonly/>
         </div>
       </div>
     </div>
@@ -156,15 +156,15 @@ export default {
   },
   computed: {
     ...mapState(['accountBook']),
-    finalAmount() {
-      let total = 0;
-      this.productData.forEach(val => {
-        if (val.sysQuantity > 0) {
-          total += parseFloat(val.finalAmount);
-        }
-      });
-      return total.toFixed(2);
-    },
+    // finalAmount() {
+    //   let total = 0;
+    //   this.productData.forEach(val => {
+    //     if (val.sysQuantity > 0) {
+    //       total += parseFloat(val.finalAmount);
+    //     }
+    //   });
+    //   return total.toFixed(2);
+    // },
     isDeleting() {
       return this.productData.length > 1;
     }
@@ -191,47 +191,6 @@ export default {
     }
   },
   methods: {
-    handleEnter(e, index, num) {
-      e.$event.stopPropagation();
-      if (e.$event.keyCode === 13) {
-        //回车
-        e.$input.blur()
-        if (num === 8) {
-          if (index >= this.productData.length - 2) {
-            this.$refs.ms.$el.querySelector('input').click()
-            this.$refs.ms.$el.querySelector('input').select()
-          } else {
-            let str = 'r' + (index + 1) + '' + 3
-            document.getElementById(str).querySelector('input').focus()
-            document.getElementById(str).querySelector('input').select()
-          }
-        } else {
-          let str = 'r' + index + '' + (num + 1)
-          document.getElementById(str).querySelector('input').focus()
-          document.getElementById(str).querySelector('input').select()
-        }
-      } else if (e.$event.keyCode === 38) {
-        //按上
-        if (index > 0) {
-          e.$input.blur()
-          let str = 'r' + (index - 1) + '' + num
-          document.getElementById(str).querySelector('input').focus()
-          document.getElementById(str).querySelector('input').select()
-        }
-      } else if (e.$event.keyCode === 40) {
-        //按下
-        e.$input.blur()
-        if (index < this.productData.length - 2) {
-          let str = 'r' + (index + 1) + '' + num
-          document.getElementById(str).querySelector('input').focus()
-          document.getElementById(str).querySelector('input').select()
-        } else {
-          this.$refs.ms.$el.querySelector('input').click()
-          this.$refs.ms.$el.querySelector('input').select()
-        }
-      }
-    },
-
     //footer合计
     footerMethod({columns, data}) {
       let orderQuantity = 0;
@@ -246,12 +205,12 @@ export default {
               if (rd) {
                 orderQuantity += Number(rd || 0);
               }
-            } else if (column.property !== 'discountAmount') {
+            } else if (column.property === 'discountAmount') {
               let rd = row[column.property];
               if (rd) {
                 discountAmount += Number(rd || 0);
               }
-            } else if (column.property !== 'finalAmount') {
+            } else if (column.property === 'finalAmount') {
               let rd = row[column.property];
               if (rd) {
                 finalAmount += Number(rd || 0);
@@ -260,7 +219,13 @@ export default {
           });
         }
       })
-      return [["", "", "", "", orderQuantity.toFixed(2), "", "", "",discountAmount,finalAmount]];
+      this.form.orderQuantity = orderQuantity;
+      this.form.discountAmount = discountAmount;
+      this.form.finalAmount = finalAmount;
+      this.form.totalAmount = discountAmount+finalAmount;
+      this.form.discountRate = (discountAmount/this.form.totalAmount)*100;
+
+      return [["", "", "", "", orderQuantity.toFixed(2), "", "", "",discountAmount,finalAmount,""]];
     },
 
     //选择商品
@@ -319,7 +284,7 @@ export default {
         return
       }
       SalesOrder.save({
-        salesOrder: Object.assign(this.form, {finalAmount: this.finalAmount}),
+        salesOrder: Object.assign(this.form),
         salesOrderItemList: productData
       }).then((success) => {
         if (success) {

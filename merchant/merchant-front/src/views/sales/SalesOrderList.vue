@@ -35,7 +35,7 @@
         <vxe-column type="checkbox" width="40" align="center"/>
         <vxe-column title="操作" align="center" width="120">
           <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="addForm('add',row.id)">编辑</span>
+            <span class="primary-color  text-hover ml-10px" @click="addForm('edit',row.id)">编辑</span>
             <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
           </template>
         </vxe-column>
@@ -116,11 +116,10 @@ export default {
     ...mapMutations(['pushTab']),
 
     addForm(type = 'add', orderId = null) {
-      console.log(type, orderId);
+      this.$store.commit('SET_TAB_DATA', { type, orderId });
       this.pushTab({
         key: 'SalesOrderForm',
-        title: type == 'edit' ? '编辑销售订单' : '新增销售订单',
-        params: {type: type, orderId: orderId}
+        title: type === 'edit' ? '编辑销售订单' : '新增销售订单',
       });
     },
     doRemove(row) {

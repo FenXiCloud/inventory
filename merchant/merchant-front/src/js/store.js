@@ -13,6 +13,7 @@ export default createStore({
     granted: [],
     tabs: [],
     currentTab:  'DashboardMain',
+    currentTabData: null
   },
   mutations: {
     updateMenus(state, data) {
@@ -69,6 +70,9 @@ export default createStore({
       state.tabs.splice(index, 1);
       state.currentTab = index - 1 > -1 ? state.tabs[index - 1].key : 'DashboardMain';
     },
+    SET_TAB_DATA(state, data) {
+      state.currentTabData = data;
+    }
   },
   actions: {
     init({commit}) {

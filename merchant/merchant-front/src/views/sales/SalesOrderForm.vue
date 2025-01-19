@@ -5,7 +5,7 @@
         <template #buttons>
           <label class="mr-20px" style="font-size: 16px !important;">客户:</label>
           <Select class="w-300px" filterable required :datas="customerList" keyName="id" titleName="name"
-                  :deletable="false" @change="changeCustomer($event)" v-model="supplierId" placeholder="请选择客户"/>
+                  :deletable="false" @change="changeCustomer($event)" v-model="customerId" placeholder="请选择客户"/>
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">单据日期:</label>
           <DatePicker v-model="form.orderDate" :option="{start:accountBook.checkoutDate}"
                       :clearable="false"></DatePicker>
@@ -150,21 +150,8 @@ import Product from "@js/api/basic/Product";
 
 export default {
   name: "PurchaseOrderForm",
-  props: {
-    orderId: [String, Number],
-    type: String,
-  },
   computed: {
     ...mapState(['accountBook']),
-    // finalAmount() {
-    //   let total = 0;
-    //   this.productData.forEach(val => {
-    //     if (val.sysQuantity > 0) {
-    //       total += parseFloat(val.finalAmount);
-    //     }
-    //   });
-    //   return total.toFixed(2);
-    // },
     isDeleting() {
       return this.productData.length > 1;
     }
@@ -176,7 +163,7 @@ export default {
       product: null,
       warehouseList: [],
       customerList: [],
-      supplierId: null,
+      customerId: null,
       warehouseId: null,
       form: {
         id: null,
@@ -188,6 +175,8 @@ export default {
         remarks: null,
       },
       productData: [],
+      orderId:null,
+      type:null,
     }
   },
   methods: {
@@ -300,12 +289,12 @@ export default {
       this.form = {
         id: null,
         orderDate: manba().format("YYYY-MM-dd"),
-        supplierId: null,
+        customerId: null,
         remark: null,
         finalAmount: null
       }
       this.productData = []
-      this.supplierId = null
+      this.customerId = null
     },
 
     //添加行或减少行
@@ -428,18 +417,21 @@ export default {
       this.productList = results[2].data || [];
       console.log("this.productList", this.productList);
       //订单详情/编辑订单
+      const tabData = this.$store.state.currentTabData;
+      console.log("tabData", tabData)
+      this.type = tabData?.type;
+      this.orderId = tabData?.orderId;
       if (this.orderId) {
-        SalesOrder.getInfo(this.orderId).then(({data: {purchaseOrder, purchaseOrderItemList}}) => {
-          if (purchaseOrder) {
-            CopyObj(this.form, purchaseOrder);
-            this.supplierId = purchaseOrder.supplierId
-            if ('copy' === this.type) {
-              this.form.id = null;
-            }
-          }
-          this.productData = purchaseOrderItemList || [];
-          this.productData.push({isNew: true});
-        })
+        SalesOrder.getInfo(this.orderId).then(response => {
+          let salesOrder = response.data;
+          console.log("response.data", salesOrder)
+          this.form = salesOrder;
+          this.customerId = salesOrder.customerId;
+          this.form.discountRate = (this.form.discountAmount/this.form.totalAmount)*100;
+          console.log("this.form", this.form)
+          // this.productData = salesOrder.salesOrderItemList || [];
+          // this.productData.push({isNew: true});
+        });
       }
     }).finally(() => loading.close());
   },

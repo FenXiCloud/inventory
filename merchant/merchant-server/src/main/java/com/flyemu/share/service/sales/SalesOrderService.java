@@ -7,8 +7,11 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.PurchaserOrderDto;
 import com.flyemu.share.dto.SalesOrderDTO;
+import com.flyemu.share.dto.SalesOrderItemDTO;
 import com.flyemu.share.entity.basic.QCustomer;
+import com.flyemu.share.entity.basic.QProduct;
 import com.flyemu.share.entity.basic.QSupplier;
+import com.flyemu.share.entity.basic.QWarehouse;
 import com.flyemu.share.entity.sales.QSalesOrder;
 import com.flyemu.share.entity.sales.QSalesOrderItem;
 import com.flyemu.share.entity.sales.SalesOrder;
@@ -53,6 +56,8 @@ public class SalesOrderService extends AbsService {
     private final CodeSeedService codeSeedService;
     private final static QCustomer qCustomer = QCustomer.customer;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
+    private final static QProduct qProduct = QProduct.product;
+    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
 
     public PageResults<SalesOrderDTO> query(Page page, SalesOrderService.Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
@@ -137,8 +142,18 @@ public class SalesOrderService extends AbsService {
         //订单数据转换
         SalesOrderDTO dto = BeanUtil.toBean(salesOrder, SalesOrderDTO.class);
         //查询销售订单商品
-        List<SalesOrderItem> salesOrderItemList = jqf.selectFrom(qSalesOrderItem).where(qSalesOrderItem.salesOrderId.eq(query.getId())).orderBy(qSalesOrderItem.id.asc()).fetch();
-        dto.setSalesOrderItemList(salesOrderItemList);
+        List<Tuple> fetch = jqf.selectFrom(qSalesOrderItem)
+                .select(qSalesOrderItem, qProduct.code, qProduct.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qSalesOrderItem.productId))
+                .where(qSalesOrderItem.salesOrderId.eq(query.getId())).orderBy(qSalesOrderItem.id.asc()).fetch();
+        List<SalesOrderItemDTO> salesOrderItemDTOS = new ArrayList<>();
+        fetch.forEach(tuple -> {
+            SalesOrderItemDTO salesOrderItemDTO = BeanUtil.toBean(tuple.get(qSalesOrderItem), SalesOrderItemDTO.class);
+            salesOrderItemDTO.setProductName(tuple.get(qProduct.name));
+            salesOrderItemDTO.setProductCode(tuple.get(qProduct.code));
+            salesOrderItemDTOS.add(salesOrderItemDTO);
+        });
+        dto.setSalesOrderItemList(salesOrderItemDTOS);
         return dto;
     }
 

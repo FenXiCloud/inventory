@@ -72,5 +72,5 @@ public class SalesOrderDTO {
     @Column(nullable = false)
     private Long merchantId;
 
-    private List<SalesOrderItem> salesOrderItemList;
+    private List<SalesOrderItemDTO> salesOrderItemList;
 }

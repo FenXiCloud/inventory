@@ -39,7 +39,7 @@
             </div>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
-                <div>{{ row.code }}--{{ row.name }}</div>
+                <div>{{ row.productCode }}--{{ row.productName }}</div>
               </div>
             </div>
           </template>
@@ -221,20 +221,21 @@ export default {
     selectProduct(d, index) {
       if (d) {
         let g = {
-          sysQuantity: 1,
           orderQuantity: 1,
           orderPrice: d.price || 0,
           warehouseId: this.warehousesId,
-          price: d.price || 0,
           discountAmount: 0.00,
           discount: 0.00,
           finalAmount: d.price || 0,
-          num: 1,
-          orderUnitId: d.unitId,
-          orderUnitName: d.unitName,
-          remark: ""
+          unitId: d.unitId,
+          unitName: d.unitName,
+          productId: d.id,
+          productCode: d.code,
+          productName: d.name,
+          remark: "",
         };
-        this.productData[index] = Object.assign(Object.assign(g, d), d);
+        this.productData[index] = g;
+        console.log("this.productData",this.productData)
         if (!this.productData[index + 1]) {
           this.productData.push({isNew: true});
         }
@@ -260,7 +261,7 @@ export default {
         loading.close()
         return
       }
-      let productData = this.productData.filter(c => c.sysQuantity > 0);
+      let productData = this.productData.filter(c => c.orderQuantity > 0);
       if (productData.length <= 0) {
         message.error("请选择商品~");
         loading.close()
@@ -272,6 +273,18 @@ export default {
         loading.close()
         return
       }
+      this.productData.forEach((item, index) => {
+        //单价
+        item.unitPrice = item.orderPrice;
+        //基础单位id
+        item.baseUnitId = item.unitId;
+        //折扣金额
+        item.discountValue = item.discountAmount;
+        //数量
+        item.quantity = item.finalAmount;
+        //小计
+        item.subtotal = item.finalAmount;
+      })
       SalesOrder.save({
         salesOrder: Object.assign(this.form),
         salesOrderItemList: productData
@@ -429,8 +442,8 @@ export default {
           this.customerId = salesOrder.customerId;
           this.form.discountRate = (this.form.discountAmount/this.form.totalAmount)*100;
           console.log("this.form", this.form)
-          // this.productData = salesOrder.salesOrderItemList || [];
-          // this.productData.push({isNew: true});
+          this.productData = salesOrder.salesOrderItemList || [];
+          this.productData.push({isNew: true});
         });
       }
     }).finally(() => loading.close());

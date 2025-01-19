@@ -126,7 +126,7 @@ export default {
       console.log(row)
       confirm({
         title: "系统提示",
-        content: `确认删除：${row.id}?`,
+        content: `确认删除：${row.orderNo}?`,
         onConfirm: () => {
           SalesOrder.remove(row.id).then(() => {
             message("删除成功~");

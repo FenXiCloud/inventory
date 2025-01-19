@@ -5,6 +5,7 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.PurchaserOrderDto;
 import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.entity.basic.QCustomer;
 import com.flyemu.share.entity.basic.QSupplier;
@@ -100,6 +101,7 @@ public class SalesOrderService extends AbsService {
             SalesOrder save = salesOrderRepository.save(salesOrder);
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
+                    item.setSalesOrderId(save.getId());
                     item.setAccountBookId(salesOrder.getAccountBookId());
                     item.setMerchantId(salesOrder.getMerchantId());
                     item.setCreatedBy(salesOrder.getCreatedBy());
@@ -129,9 +131,15 @@ public class SalesOrderService extends AbsService {
         return bqf.selectFrom(qSalesOrder).where(qSalesOrder.merchantId.eq(merchantId).and(qSalesOrder.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public SalesOrder getById(SalesOrder query) {
+    public SalesOrderDTO getById(SalesOrder query) {
+        //查询销售订单
         SalesOrder salesOrder = salesOrderRepository.getById(query.getId());
-        return salesOrder;
+        //订单数据转换
+        SalesOrderDTO dto = BeanUtil.toBean(salesOrder, SalesOrderDTO.class);
+        //查询销售订单商品
+        List<SalesOrderItem> salesOrderItemList = jqf.selectFrom(qSalesOrderItem).where(qSalesOrderItem.salesOrderId.eq(query.getId())).orderBy(qSalesOrderItem.id.asc()).fetch();
+        dto.setSalesOrderItemList(salesOrderItemList);
+        return dto;
     }
 
     public static class Query {

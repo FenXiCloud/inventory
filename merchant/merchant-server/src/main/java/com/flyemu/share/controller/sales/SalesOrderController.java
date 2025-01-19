@@ -29,7 +29,10 @@ public class SalesOrderController {
     private final SalesOrderService salesOrderService;
 
     @GetMapping
-    public JsonResult list(Page page, SalesOrderService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, SalesOrderService.Query query,
+                           @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId
+    ) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(salesOrderService.query(page, query));

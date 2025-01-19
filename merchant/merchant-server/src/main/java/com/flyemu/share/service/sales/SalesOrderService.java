@@ -28,6 +28,7 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -169,6 +170,18 @@ public class SalesOrderService extends AbsService {
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
                 builder.and(qSalesOrder.accountBookId.eq(accountBookId));
+            }
+        }
+
+        public void setFilter(String filter) {
+            if (StringUtils.isNotBlank(filter)) {
+                builder.and(qSalesOrder.orderNo.like(filter));
+            }
+        }
+
+        public void setState(String state) {
+            if (StringUtils.isNotBlank(state)) {
+                builder.and(qSalesOrder.orderStatus.eq(OrderStatus.valueOf(state)));
             }
         }
     }

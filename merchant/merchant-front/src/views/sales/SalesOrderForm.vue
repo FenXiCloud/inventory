@@ -421,20 +421,7 @@ export default {
 
     //关闭窗口
     closeWindow() {
-      let cache = localStorage.getItem("SYS_TABS");
-      let tagList = cache ? JSON.parse(cache) : [];
-      if (tagList) {
-        let index = tagList.findIndex(val => val.name === "NewPurchaserOrder")
-        tagList.splice(index, 1);
-        let newRoute;
-        if (tagList.length > 0) {
-          newRoute = tagList[index - 1];
-        } else {
-          this.$router.push({name: 'DashboardMain'});
-        }
-        if (newRoute) this.$router.replace(newRoute);
-        localStorage.setItem("SYS_TABS", JSON.stringify(newRoute))
-      }
+      window.close();
     }
   },
   beforeDestroy() {

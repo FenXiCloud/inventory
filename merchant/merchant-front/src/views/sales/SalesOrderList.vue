@@ -3,7 +3,7 @@
     <vxe-toolbar>
       <template #buttons>
         <Button @click="addForm()" color="primary">新 增</Button>
-        <Button>审 核</Button>
+        <Button @click="batchAudit()" > 审 核</Button>
       </template>
       <template #tools>
         <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
@@ -121,6 +121,31 @@ export default {
         key: 'SalesOrderForm',
         title: type === 'edit' ? '编辑销售订单' : '新增销售订单',
       });
+    },
+
+    batchAudit(){
+      const selectedRows = this.$refs.table.getCheckboxRecords();
+      console.log(selectedRows);
+      if (selectedRows.length === 0) {
+        message.error("请选择至少一个订单进行审核");
+        return;
+      }
+
+      const orderIds = selectedRows.map(row => row.id);
+      console.log(orderIds)
+
+      // try {
+      //   const response = SalesOrder.batchAudit({ orderIds });
+      //   if (response.success) {
+      //     message.success("批量审核成功");
+      //     this.loadList(); // Refresh the list
+      //   } else {
+      //     message.error("批量审核失败");
+      //   }
+      // } catch (error) {
+      //   console.error("批量审核出错", error);
+      //   message.error("批量审核出错");
+      // }
     },
     doRemove(row) {
       console.log(row)

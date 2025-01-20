@@ -136,20 +136,32 @@ export default {
       })
     },
     footerMethod({columns, data}) {
-      let sums = [];
+      let totalAmount = 0;
+      let discountAmount = 0;
+      let finalAmount = 0;
       columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
-          let total = 0;
+        if (column.property && ['totalAmount','discountAmount','finalAmount'].includes(column.property)) {
+
           data.forEach((row) => {
             let rd = row[column.property];
-            if (rd) {
-              total += Number(rd || 0);
+            if (column.property === 'totalAmount') {
+              if (rd) {
+                totalAmount += Number(rd || 0);
+              }
+            } else if (column.property === 'discountAmount') {
+              if (rd) {
+                discountAmount += Number(rd || 0);
+              }
+            }
+            else if (column.property === 'finalAmount') {
+              if (rd) {
+                finalAmount += Number(rd || 0);
+              }
             }
           });
-          sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", "", ""].concat(sums)];
+      return [["", "", "", "", "", "",totalAmount,discountAmount,finalAmount]];
     },
     doSearch() {
       this.pagination.page = 1;

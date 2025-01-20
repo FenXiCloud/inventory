@@ -33,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -161,6 +162,9 @@ public class SalesOrderService extends AbsService {
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
+        private String start;
+        private String end;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qSalesOrder.merchantId.eq(merchantId));
@@ -175,13 +179,25 @@ public class SalesOrderService extends AbsService {
 
         public void setFilter(String filter) {
             if (StringUtils.isNotBlank(filter)) {
-                builder.and(qSalesOrder.orderNo.like(filter));
+                builder.and(qSalesOrder.orderNo.like("%" + filter + "%"));
             }
         }
 
         public void setState(String state) {
             if (StringUtils.isNotBlank(state)) {
                 builder.and(qSalesOrder.orderStatus.eq(OrderStatus.valueOf(state)));
+            }
+        }
+
+        public void setStart(String start) {
+            if (StringUtils.isNotBlank(start)) {
+                builder.and(qSalesOrder.orderDate.goe(LocalDate.parse(start)));
+            }
+        }
+
+        public void setEnd(String end) {
+            if (StringUtils.isNotBlank(end)) {
+                builder.and(qSalesOrder.orderDate.loe(LocalDate.parse(end)));
             }
         }
     }

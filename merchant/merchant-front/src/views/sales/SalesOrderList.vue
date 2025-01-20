@@ -161,6 +161,7 @@ export default {
           });
         }
       })
+      this.amountTotal = totalAmount;
       return [["", "", "", "", "", "",totalAmount,discountAmount,finalAmount]];
     },
     doSearch() {

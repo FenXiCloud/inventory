@@ -86,6 +86,7 @@ public class SalesOrderService extends AbsService {
         if (id != null) {
             //查询
             SalesOrder original = salesOrderRepository.getById(id);
+            BeanUtil.copyProperties(salesOrder, original, CopyOptions.create().ignoreNullValue());
             //租户隔离
             Long merchantId = original.getMerchantId();
             Long accountBookId = original.getAccountBookId();

@@ -126,7 +126,7 @@
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="saveOrder" :loading="loading">
+        <Button @click="auditOrder()" :loading="loading">
           审核
         </Button>
         <!-- 仅当状态为审核时显示 -->
@@ -254,6 +254,44 @@ export default {
       this.product = null;
     },
 
+    auditOrder(){
+      confirm({
+        content: `确定审核订单？`,
+        onConfirm: () => {
+          loading("保存中....");
+          if (!this.form.customerId) {
+            message.error("请选择客户~");
+            loading.close()
+            return
+          }
+          let productData = this.productData.filter(c => c.quantity > 0);
+          if (productData.length <= 0) {
+            message.error("请选择商品~");
+            loading.close()
+            return
+          }
+          let warehouse = this.productData.filter(c => c.warehouseId === null);
+          if (warehouse.length > 0) {
+            message.error("请选择仓库~");
+            loading.close()
+            return
+          }
+          let salesOrder = Object.assign(this.form);
+          salesOrder.orderStatus = '已审核'
+          SalesOrder.save({
+            salesOrder: salesOrder,
+          }).then((success) => {
+            if (success) {
+              message("审核成功~");
+              this.clearForm()
+            }
+          }).finally(() =>
+              loading.close()
+          );
+        }
+      })
+    },
+
     //保存订单
     saveOrder() {
       loading("保存中....");
@@ -283,7 +321,8 @@ export default {
           this.clearForm()
         }
       }).finally(() =>
-          loading.close());
+          loading.close()
+      );
     },
 
     //清除Form

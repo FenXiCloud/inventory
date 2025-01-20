@@ -212,7 +212,9 @@ export default {
       this.form.discountAmount = discountValue;
       this.form.finalAmount = subtotal;
       this.form.totalAmount = discountValue+subtotal;
-      this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
+      if(!!this.form.discountAmount && !!this.form.totalAmount){
+        this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
+      }
       console.log("subtotal",subtotal)
 
       return [["", "", "", "", quantity.toFixed(2), "", "", "",discountValue,subtotal,""]];

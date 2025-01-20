@@ -126,11 +126,11 @@
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="auditOrder()" :loading="loading">
+        <Button @click="auditOrder('已审核')" v-if="form.orderStatus === '已保存' " :loading="loading">
           审核
         </Button>
         <!-- 仅当状态为审核时显示 -->
-        <Button @click="saveOrder" :loading="loading">
+        <Button @click="auditOrder('已保存')" v-if="form.orderStatus === '已审核' " :loading="loading">
           反审核
       </Button>
       </div>
@@ -254,7 +254,7 @@ export default {
       this.product = null;
     },
 
-    auditOrder(){
+    auditOrder(orderStatus){
       confirm({
         content: `确定审核订单？`,
         onConfirm: () => {
@@ -277,7 +277,7 @@ export default {
             return
           }
           let salesOrder = Object.assign(this.form);
-          salesOrder.orderStatus = '已审核'
+          salesOrder.orderStatus = orderStatus
           SalesOrder.save({
             salesOrder: salesOrder,
           }).then((success) => {

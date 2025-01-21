@@ -226,7 +226,7 @@ export default {
           discountValue: 0.00,
           discountRate: 0.00,
           subtotal: d.price || 0,
-          baseUnitId: d.baseUnitId,
+          baseUnitId: d.unitId,
           unitName: d.unitName,
           productId: d.id,
           productCode: d.code,

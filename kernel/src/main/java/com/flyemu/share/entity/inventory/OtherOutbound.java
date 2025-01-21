@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.inventory;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.OutboundType;
 import jakarta.persistence.*;
@@ -41,6 +42,7 @@ public class OtherOutbound {
 
     @Comment("入库日期")
     @CreationTimestamp
+    @JsonFormat(locale = "zh", timezone = "GMT+8", pattern = "yyyy-MM-dd")
     private Date inboundDate;
 
     @Comment("订单金额")

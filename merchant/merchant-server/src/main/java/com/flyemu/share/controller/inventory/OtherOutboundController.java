@@ -1,10 +1,14 @@
 package com.flyemu.share.controller.inventory;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.inventory.OtherOutbound;
+import com.flyemu.share.enums.ApproveType;
+import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.form.OtherOutboundForm;
 import com.flyemu.share.service.inventory.OtherOutboundService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,16 +36,20 @@ public class OtherOutboundController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid OtherOutbound otherOutbound, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid OtherOutboundForm otherOutboundForm, @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+        OtherOutbound otherOutbound = otherOutboundForm.getOtherOutbound();
         otherOutbound.setMerchantId(merchantId);
         otherOutbound.setAccountBookId(accountBookId);
-        otherOutboundService.save(otherOutbound);
+        otherOutbound.setOrderStatus(OrderStatus.已保存);
+        otherOutbound.setCreatedBy(adminId);
+        otherOutboundService.save(otherOutboundForm);
         return JsonResult.successful();
     }
 
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid OtherOutbound otherOutbound) {
-        otherOutboundService.save(otherOutbound);
+    @GetMapping("approve")
+    public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        otherOutboundService.approve(id, type, adminId);
         return JsonResult.successful();
     }
 
@@ -56,4 +64,14 @@ public class OtherOutboundController {
         return JsonResult.successful(otherOutboundService.select(merchantId, accountBookId));
     }
 
+    @DeleteMapping("/delete/{id}")
+    public JsonResult delete(@PathVariable Long id) {
+        otherOutboundService.delete(id);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("load/{id}")
+    public JsonResult load(@PathVariable Long id) {
+        return JsonResult.successful(otherOutboundService.load(id));
+    }
 }

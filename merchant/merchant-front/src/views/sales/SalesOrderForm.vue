@@ -252,6 +252,66 @@ export default {
       this.product = null;
     },
 
+    checkHttp() {
+      console.log("this.productData.length",this.productData.length)
+      if (this.productData.length === 0) {
+        message.error("请选择商品~");
+        loading.close()
+        return false
+      }
+      if (this.productData.length === 1) {
+        let item = this.productData[0]
+        if (item.isNew) {
+          message.error("请选择商品~");
+          loading.close()
+          return false
+        }
+      }
+      let quantityFlag = false
+      let unitPriceFlag = false
+      let subtotalFlag = false
+      let warehouseFlag = false
+      this.productData.map(item => {
+        console.log("item",item)
+        if (item.isNew) {
+          return;
+        }
+        if (item.quantity === 0 || !item.quantity) {
+          quantityFlag = true
+          loading.close()
+        }
+        if (item.unitPrice === 0 || !item.unitPrice) {
+          unitPriceFlag = true
+          loading.close()
+        }
+        if (item.subtotal === 0 || !item.subtotal) {
+          subtotalFlag = true
+          loading.close()
+        }
+        if (!item.warehouseId) {
+          warehouseFlag = true
+          loading.close()
+        }
+      })
+      if (quantityFlag) {
+        message.error("请填写数量~");
+        return false
+      }
+      if (unitPriceFlag) {
+        message.error("请填写单价~");
+        return false
+      }
+      if (subtotalFlag) {
+        message.error("金额不能为空~");
+        return false
+      }
+      if (warehouseFlag) {
+        message.error("请选择仓库~");
+        return false
+      }
+      return true
+    },
+
     auditOrder(orderStatus){
       confirm({
         content: `确定审核订单？`,
@@ -262,16 +322,7 @@ export default {
             loading.close()
             return
           }
-          let productData = this.productData.filter(c => c.quantity > 0);
-          if (productData.length <= 0) {
-            message.error("请选择商品~");
-            loading.close()
-            return
-          }
-          let warehouse = this.productData.filter(c => c.warehouseId === null);
-          if (warehouse.length > 0) {
-            message.error("请选择仓库~");
-            loading.close()
+          if (!this.checkHttp()) {
             return
           }
           let salesOrder = Object.assign(this.form);
@@ -298,18 +349,10 @@ export default {
         loading.close()
         return
       }
+      if (!this.checkHttp()) {
+        return
+      }
       let productData = this.productData.filter(c => c.quantity > 0);
-      if (productData.length <= 0) {
-        message.error("请选择商品~");
-        loading.close()
-        return
-      }
-      let warehouse = this.productData.filter(c => c.warehouseId === null);
-      if (warehouse.length > 0) {
-        message.error("请选择仓库~");
-        loading.close()
-        return
-      }
       SalesOrder.save({
         salesOrder: Object.assign(this.form),
         salesOrderItemList: productData

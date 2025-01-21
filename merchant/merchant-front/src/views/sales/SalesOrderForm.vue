@@ -113,11 +113,7 @@
         </div>
       </div>
     </div>
-    <div class="modal-column-between bg-white-color  border">
-
-      <Button @click="closeWindow" :loading="loading">
-        取消
-      </Button>
+    <div class="modal-column-right bg-white-color  border">
       <div>
         <Button color="primary" @click="saveOrder" :loading="loading">
           保存并新增

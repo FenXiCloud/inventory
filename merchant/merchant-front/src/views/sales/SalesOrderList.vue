@@ -71,7 +71,7 @@
 import manba from "manba";
 import SalesOrder from "@js/api/sales/SalesOrder";
 import {mapMutations} from "vuex";
-import {confirm, message} from "heyui.ext";
+import {confirm, loading, message} from "heyui.ext";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
@@ -124,28 +124,33 @@ export default {
     },
 
     batchAudit(){
-      const selectedRows = this.$refs.table.getCheckboxRecords();
-      console.log(selectedRows);
-      if (selectedRows.length === 0) {
-        message.error("请选择至少一个订单进行审核");
-        return;
-      }
 
-      const orderIds = selectedRows.map(row => row.id);
-      console.log(orderIds)
 
-      // try {
-      //   const response = SalesOrder.batchAudit({ orderIds });
-      //   if (response.success) {
-      //     message.success("批量审核成功");
-      //     this.loadList(); // Refresh the list
-      //   } else {
-      //     message.error("批量审核失败");
-      //   }
-      // } catch (error) {
-      //   console.error("批量审核出错", error);
-      //   message.error("批量审核出错");
-      // }
+      confirm({
+        content: `确定批量审核订单？`,
+        onConfirm: () => {
+          const selectedRows = this.$refs.table.getCheckboxRecords();
+          console.log(selectedRows);
+          if (selectedRows.length === 0) {
+            message.error("请选择至少一个订单进行审核");
+            return;
+          }
+          const orderIds = selectedRows.map(row => row.id);
+
+          let params = {
+            orderIds: orderIds
+          };
+
+          SalesOrder.batchAudit(params).then((success) => {
+            if (success) {
+              message.success("批量审核成功");
+              this.loadList(); // Refresh the list
+            }
+          }).finally(() =>
+              loading.close()
+          );
+        }
+      })
     },
     doRemove(row) {
       console.log(row)

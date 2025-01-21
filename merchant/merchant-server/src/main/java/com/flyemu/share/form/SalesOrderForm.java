@@ -15,4 +15,6 @@ public class SalesOrderForm {
     private SalesOrder salesOrder;
 
     private List<SalesOrderItem> salesOrderItemList;
+
+    private List<Long> orderIds;
 }

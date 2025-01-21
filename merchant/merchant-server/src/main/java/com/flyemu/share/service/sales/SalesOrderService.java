@@ -87,12 +87,6 @@ public class SalesOrderService extends AbsService {
             //查询
             SalesOrder original = salesOrderRepository.getById(id);
             BeanUtil.copyProperties(salesOrder, original, CopyOptions.create().ignoreNullValue());
-            //租户隔离
-            Long merchantId = original.getMerchantId();
-            Long accountBookId = original.getAccountBookId();
-            if(!salesOrder.getAccountBookId().equals(accountBookId) || !salesOrder.getMerchantId().equals(merchantId)){
-                throw new RuntimeException("参数错误!!");
-            }
             //修改销售订单
             SalesOrder update = salesOrderRepository.save(original);
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
@@ -158,6 +152,25 @@ public class SalesOrderService extends AbsService {
         });
         dto.setSalesOrderItemList(salesOrderItemDTOS);
         return dto;
+    }
+
+    public void batchAudit(SalesOrderForm salesOrderForm) {
+        List<Long> orderIds = salesOrderForm.getOrderIds();
+        if (orderIds == null || orderIds.isEmpty()) {
+            throw new IllegalArgumentException("Order IDs cannot be null or empty");
+        }
+
+        List<SalesOrder> salesOrders = salesOrderRepository.findAllById(orderIds);
+
+        if (salesOrders.size() != orderIds.size()) {
+            throw new IllegalArgumentException("Some orders could not be found");
+        }
+
+        salesOrders.forEach(order -> {
+            order.setOrderStatus(OrderStatus.已审核); // Assuming "已审核" means "audited"
+        });
+
+        salesOrderRepository.saveAll(salesOrders);
     }
 
     public static class Query {

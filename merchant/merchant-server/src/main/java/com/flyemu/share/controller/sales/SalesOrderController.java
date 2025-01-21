@@ -90,4 +90,10 @@ public class SalesOrderController {
         return JsonResult.successful(salesOrderService.getById(query));
     }
 
+    @PutMapping("/batchAudit")
+    public JsonResult batchAudit(@RequestBody SalesOrderForm salesOrderForm) {
+        salesOrderService.batchAudit(salesOrderForm);
+        return JsonResult.successful();
+    }
+
 }

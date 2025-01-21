@@ -8,6 +8,7 @@ import com.flyemu.share.entity.basic.Warehouse;
 import com.flyemu.share.repository.WarehouseRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +26,7 @@ public class WarehouseService extends AbsService {
     private final WarehouseRepository warehouseRepository;
 
     public List<Warehouse> query(Query query) {
-        return bqf.selectFrom(qWarehouse).where(query.builder).orderBy(qWarehouse.id.desc()).fetch();
+        return bqf.selectFrom(qWarehouse).where(query.builder).where(query.builders()).orderBy(qWarehouse.id.desc()).fetch();
     }
 
     @Transactional
@@ -54,8 +55,11 @@ public class WarehouseService extends AbsService {
         return bqf.selectFrom(qWarehouse).where(qWarehouse.merchantId.eq(merchantId).and(qWarehouse.accountBookId.eq(accountBookId))).fetch();
     }
 
+    @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
+
+        private Long id;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -73,6 +77,13 @@ public class WarehouseService extends AbsService {
             if (StrUtil.isNotBlank(filter)) {
                 builder.and(qWarehouse.name.contains(filter));
             }
+        }
+
+        public BooleanBuilder builders() {
+            if (id != null) {
+                builder.and(qWarehouse.id.eq(id));
+            }
+            return builder;
         }
     }
 }

@@ -94,7 +94,8 @@ export default {
     loadList() {
       this.loading = true;
       Warehouse.list(this.queryParams).then(({data}) => {
-        this.dataList = data.results;
+        console.log("Warehouse:",data);
+        this.dataList = data;
       }).finally(() => this.loading = false);
     },
     pageChange() {

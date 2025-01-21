@@ -8,10 +8,7 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.PurchaserOrderDto;
 import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
-import com.flyemu.share.entity.basic.QCustomer;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QSupplier;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.QSalesOrder;
 import com.flyemu.share.entity.sales.QSalesOrderItem;
 import com.flyemu.share.entity.sales.SalesOrder;
@@ -60,6 +57,7 @@ public class SalesOrderService extends AbsService {
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProduct qProduct = QProduct.product;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
+    private final static QUnit qUnit = QUnit.unit;
 
     public PageResults<SalesOrderDTO> query(Page page, SalesOrderService.Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
@@ -140,14 +138,16 @@ public class SalesOrderService extends AbsService {
         SalesOrderDTO dto = BeanUtil.toBean(salesOrder, SalesOrderDTO.class);
         //查询销售订单商品
         List<Tuple> fetch = jqf.selectFrom(qSalesOrderItem)
-                .select(qSalesOrderItem, qProduct.code, qProduct.name)
+                .select(qSalesOrderItem, qProduct.code, qProduct.name, qUnit.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qSalesOrderItem.productId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qSalesOrderItem.baseUnitId))
                 .where(qSalesOrderItem.salesOrderId.eq(query.getId())).orderBy(qSalesOrderItem.id.asc()).fetch();
         List<SalesOrderItemDTO> salesOrderItemDTOS = new ArrayList<>();
         fetch.forEach(tuple -> {
             SalesOrderItemDTO salesOrderItemDTO = BeanUtil.toBean(tuple.get(qSalesOrderItem), SalesOrderItemDTO.class);
             salesOrderItemDTO.setProductName(tuple.get(qProduct.name));
             salesOrderItemDTO.setProductCode(tuple.get(qProduct.code));
+            salesOrderItemDTO.setUnitName(tuple.get(qUnit.name));
             salesOrderItemDTOS.add(salesOrderItemDTO);
         });
         dto.setSalesOrderItemList(salesOrderItemDTOS);

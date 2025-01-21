@@ -33,6 +33,9 @@ public class SalesOrderItemDTO {
     @Comment("基本单位ID")
     private Long baseUnitId;
 
+    @Comment("基本单位")
+    private String unitName;
+
     @Comment("数量（以基本单位计）")
     private Double quantity;
 

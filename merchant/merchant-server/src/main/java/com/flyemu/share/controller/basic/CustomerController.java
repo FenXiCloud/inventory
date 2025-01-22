@@ -1,16 +1,40 @@
 package com.flyemu.share.controller.basic;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.lang.Assert;
+import cn.hutool.poi.excel.ExcelReader;
+import cn.hutool.poi.excel.ExcelUtil;
+import cn.hutool.poi.excel.ExcelWriter;
+import cn.hutool.poi.excel.style.StyleUtil;
+import com.alibaba.fastjson.JSONObject;
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.common.ImportVoUtil;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.dto.CustomerImportVo;
 import com.flyemu.share.entity.basic.Customer;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.service.basic.CustomerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @功能描述: 客户管理
@@ -56,6 +80,53 @@ public class CustomerController {
     @GetMapping("select")
     public JsonResult select(@SaMerchantId Long merchantId,@SaAccountBookId Long accountBookId) {
         return JsonResult.successful(customerService.select(merchantId,accountBookId));
+    }
+
+    // 导入
+    @PostMapping("/import")
+    public JsonResult importData(@RequestParam("file") MultipartFile multipartFile, @SaMerchantId Long merchantId) {
+        try {
+            ExcelReader reader = ExcelUtil.getReader(multipartFile.getInputStream());
+            ImportVoUtil.setHeaderAlias(CustomerImportVo.class, reader);
+            List<CustomerImportVo> rows = reader.readAll(CustomerImportVo.class);
+            Assert.isFalse(CollUtil.isEmpty(rows), "excel中未解析到可以导入的数据");
+            customerService.importData(rows, merchantId);
+            return JsonResult.successful();
+        } catch (IllegalArgumentException ae) {
+            throw new ServiceException(ae.getMessage());
+        } catch (IOException e) {
+            throw new ServiceException("表头解析失败");
+        } catch (ServiceException e) {
+            throw new ServiceException(e.getMessage());
+        }
+    }
+
+    // 导出
+    @GetMapping("/exportToFile")
+    public ResponseEntity<byte[]> exportToFile(@SaMerchantId Long merchantId) {
+        return toExcel(customerService.exportList(merchantId, null, null));
+    }
+
+    private ResponseEntity<byte[]> toExcel(List<JSONObject> exportList) {
+        ExcelWriter writer = ExcelUtil.getBigWriter("客户档案");
+        Workbook workbook = writer.getWorkbook();
+        Font font = StyleUtil.createFont(workbook, Font.COLOR_RED, (short) 11, null);
+        CellStyle cellStyle = StyleUtil.cloneCellStyle(workbook, writer.getStyleSet().getHeadCellStyle());
+        cellStyle.setFont(font);
+        List<String> strings = Arrays.asList("分类编码", "分类名称", "客户编码", "客户名称", "客户联系人",
+                "联系电话", "备注", "客户等级", "应收账款", "客户状态");
+        writer.writeHeadRow(strings);
+
+        writer.setCurrentRow(1).write(exportList);
+        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        writer.flush(byteOutputStream);
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set(HttpHeaders.CONTENT_TYPE, ExcelUtil.XLSX_CONTENT_TYPE);
+        httpHeaders.setContentDisposition(ContentDisposition.builder("attachment")
+                .filename("客户档案.xlsx", StandardCharsets.UTF_8).build());
+        return new ResponseEntity<>(byteOutputStream.toByteArray(),
+                httpHeaders,
+                HttpStatus.OK);
     }
 
 }

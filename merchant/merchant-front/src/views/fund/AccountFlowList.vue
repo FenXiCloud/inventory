@@ -2,10 +2,12 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-
+        <Button @click="showForm()" color="primary" class="mr-20px">记 账</Button>
+        账户： <Select v-model="params.accountId" @change="change" :datas="accounts" style="width: 120px;"
+                      :deletable="false" keyName="id" titleName="name"/>
       </template>
       <template #tools>
-        <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入名称"/>
+        <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入名称"/>
         <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
       </template>
     </vxe-toolbar>
@@ -25,8 +27,8 @@
         <vxe-column title="创建人" field="createdBy" width="100"/>
         <vxe-column title="创建时间" field="createdAt" width="150"/>
         <vxe-column title="操作类型" field="accountFlowType" width="150"/>
-        <vxe-column title="交易金额" field="amount" width="100"/>
         <vxe-column title="交易前余额" field="balanceBefore" width="100"/>
+        <vxe-column title="交易金额" field="amount" width="100"/>
         <vxe-column title="交易后余额" field="balanceAfter" width="100"/>
         <vxe-column title="备注" field="remarks"/>
       </vxe-table>
@@ -36,6 +38,7 @@
 
 <script>
 import AccountFlow from "@js/api/fund/AccountFlow";
+import Account from "@js/api/fund/Account";
 
 
 /**
@@ -51,12 +54,17 @@ export default {
     return {
       loading: false,
       dataList: [],
+      accounts: null,
       params: {
-        filter: null,
+        name: null,
+        accountId: null,
       },
     }
   },
   methods: {
+    change(data) {
+      console.log(data);
+    },
     doSearch() {
       this.loadList();
     },
@@ -68,6 +76,11 @@ export default {
     },
   },
   created() {
+    Promise.all([
+      Account.select(),
+    ]).then((results) => {
+      this.accounts = results[0].data || [];
+    });
     this.loadList();
   }
 }

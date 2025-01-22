@@ -20,4 +20,10 @@ export default {
 	select(param) {
 		return Ajax.get('/customer/select', param)
 	},
+	importData(formData) {
+		return Ajax.post('/customer/import', formData, {'Content-Type': 'multipart/form-data', repeatable: true});
+	},
+	exportToFile(params) {
+		return Ajax.get("/customer/exportToFile", params, {responseType: 'blob'})
+	},
 }

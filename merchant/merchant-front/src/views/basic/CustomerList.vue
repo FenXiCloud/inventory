@@ -28,6 +28,8 @@
           <template #buttons>
             <Button @click="addOrEditForm()" color="primary">新 增</Button>
             <Button @click="addOrEditCategoryForm()">新增分类</Button>
+            <Button @click="importForm()">导入</Button>
+            <Button @click="exportToFile()">导出</Button>
           </template>
           <template #tools>
             <Search v-model.trim="params.name" search-button-theme="h-btn-default"
@@ -84,6 +86,9 @@ import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 import CustomerCategoryForm from "@views/basic/CustomerCategoryForm.vue";
 import CustomerCategory from "@js/api/basic/CustomerCategory";
+import CustomerImportForm from "@views/basic/CustomerImportForm.vue";
+import {downloadBlob} from "download.js";
+
 
 /**
  * @功能描述: 客户管理
@@ -122,6 +127,31 @@ export default {
     }
   },
   methods: {
+
+    exportToFile() {
+      Customer.exportToFile().then((blob) => {
+        downloadBlob("客户档案.xlsx", blob)
+      }).finally(() => {
+        this.loading = false
+      })
+    },
+
+    importForm() {
+      let layerId = layer.open({
+        title: "客户导入",
+        shadeClose: false,
+        area: ['50vw', 'auto'],
+        content: h(CustomerImportForm, {
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: () => {
+            this.doSearch();
+            layer.close(layerId);
+          }
+        })
+      });
+    },
 
     selectFirstCustomerType() {
       // 默认选中第一个单据类型

@@ -33,7 +33,6 @@
         </vxe-column>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
-            <i class="primary-color ml-10px" @click="addForm(row)">明细账</i>
             <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
             <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
           </template>

@@ -118,10 +118,13 @@ const groupRoutes = [
     {
         name: 'OtherInboundList',
         component: defineAsyncComponent(() => import('@views/inventory/OtherInboundList.vue'))
-    }, {
+    }, 
+    {
         name: 'OtherOutboundList',
         component: defineAsyncComponent(() => import('@views/inventory/OtherOutboundList.vue'))
-    }, {
+    }, 
+    {name: 'OtherOutboundForm', component: defineAsyncComponent(() => import('@views/inventory/OtherOutboundForm.vue'))},
+    {
         name: 'OtherIncomeList',
         component: defineAsyncComponent(() => import('@views/fund/OtherIncomeList.vue'))
     }, {

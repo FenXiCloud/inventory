@@ -27,9 +27,9 @@
               </div>
             </template>
           </Suspense>
-          <template v-for="tab in tabs">
+          <template v-for="(tab,index) in tabs">
             <Suspense>
-              <component class="h-full bg-white-color" v-show="tab.key===currentTab" :is="tab.key" :pro="tab.params"/>
+              <component class="h-full bg-white-color" v-show="tab.key===currentTab" :is="tab.key" v-bind="tab.params" :index="index" :pro="tab.params"/>
               <!-- 加载中状态 -->
               <template #fallback>
                 <div class="bg-white-color h-full flex justify-center items-center flex-column">

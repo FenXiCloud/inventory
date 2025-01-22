@@ -138,7 +138,7 @@ public class AdminService extends AbsService {
 
         AccountBook accountBook = bqf.selectFrom(qAccountBook).where(qAccountBook.merchantId.eq(admin.getMerchantId()).and(qAccountBook.current.isTrue())).fetchFirst();
 
-        return new AccountDto(admin, merchant, role,accountBook);
+        return new AccountDto(admin, merchant, role, accountBook);
 
 
     }
@@ -206,6 +206,10 @@ public class AdminService extends AbsService {
         return bqf.selectFrom(qAdmin)
                 .where(qAdmin.merchantId.eq(merchantId).and(qAdmin.systemDefault.isTrue()))
                 .fetchFirst();
+    }
+
+    public Admin selectByPrimaryKey(Long id) {
+        return jqf.selectFrom(qAdmin).where(qAdmin.id.eq(id)).fetchFirst();
     }
 
 

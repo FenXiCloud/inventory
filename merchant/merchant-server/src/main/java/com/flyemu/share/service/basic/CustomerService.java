@@ -125,4 +125,8 @@ public class CustomerService extends AbsService {
         }
     }
 
+
+    public Customer selectByPrimaryKey(Long id) {
+        return jqf.selectFrom(qCustomer).where(qCustomer.id.eq(id)).fetchOne();
+    }
 }

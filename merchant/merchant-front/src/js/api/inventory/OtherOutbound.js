@@ -9,15 +9,24 @@ import Ajax from "@common/Request";
 
 export default {
     save(param) {
-        return Ajax[param.id ? 'put' : 'post']('/otherOutbound', param)
+        return Ajax[param.id ? "put" : "post"]("/otherOutbound", param);
     },
     list(param) {
-        return Ajax.get('/otherOutbound', param)
+        return Ajax.get("/otherOutbound", param);
     },
     remove(otherOutboundId) {
-        return Ajax.delete('/otherOutbound/' + otherOutboundId);
+        return Ajax.delete("/otherOutbound/" + otherOutboundId);
     },
     select(param) {
-        return Ajax.get('/otherOutbound/select', param)
+        return Ajax.get("/otherOutbound/select", param);
     },
-}
+    load(id) {
+        return Ajax.get("/otherOutbound/load/" + id);
+    },
+    approve(param) {
+        return Ajax.get("/otherOutbound/approve", param);
+    },
+    delete(id) {
+        return Ajax.delete("/otherOutbound/delete/" + id);
+    },
+};

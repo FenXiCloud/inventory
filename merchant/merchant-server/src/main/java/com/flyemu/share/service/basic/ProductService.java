@@ -241,6 +241,8 @@ public class ProductService extends AbsService {
 
         private Boolean enabled;
 
+        private Long id;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qProduct.merchantId.eq(merchantId));
@@ -268,6 +270,9 @@ public class ProductService extends AbsService {
             }
             if (enabled != null) {
                 builder.and(qProduct.enabled.eq(enabled));
+            }
+            if (id != null) {
+                builder.and(qProduct.id.eq(id));
             }
             return builder;
         }

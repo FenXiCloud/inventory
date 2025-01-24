@@ -112,6 +112,13 @@ export default {
   },
   methods: {
     ...mapMutations(['pushTab']),
+    addForm(type = 'add', orderId = null) {
+      this.$store.commit('SET_TAB_DATA', { type, orderId });
+      this.pushTab({
+        key: 'SalesOutboundForm',
+        title: type === 'edit' ? '编辑销售出库单' : '新增销售出库单',
+      });
+    },
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {

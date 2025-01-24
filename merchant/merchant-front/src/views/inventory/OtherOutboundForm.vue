@@ -33,17 +33,21 @@
         </vxe-column>
         <vxe-column field="productUrl" title="商品图片" width="100" :cell-render="imgUrlCellRender"></vxe-column>
         <vxe-column field="productCode" title="商品编码" width="100"></vxe-column>
-        <vxe-column field="productName" title="商品名称" width="300" :edit-render="{}">
-          <template #edit="scope">
-            <vxe-select filterable v-model="scope.row.productId" placeholder="输入编码/名称" transfer
-              @change="changeRow($event, scope, 'product')">
-              <vxe-option v-for="(item, index) in productList" :key="index" :value="item.id"
-                :label="item.code + ' ' + item.name">
-                <template #default>
-                  <span>{{ item.code }} {{ item.name }}</span>
+        <vxe-column field="productName" title="商品名称" width="300">
+          <template #default="scope">
+            <div class="h-input-group goodsSelect" v-if="!auditOperate">
+              <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable
+                placeholder="输入编码/名称" keyName="id" titleName="name" @change="changeRow(scope, 'product')">
+                <template v-slot:item="{ item }">
+                  <div>{{ item.name }}</div>
                 </template>
-              </vxe-option>
-            </vxe-select>
+              </Select>
+            </div>
+            <div v-else class="flex">
+              <div class="flex1 ml-8px">
+                <div>{{ scope.row.productCode }}--{{ scope.row.productName }}</div>
+              </div>
+            </div>
           </template>
         </vxe-column>
         <vxe-column title="规格型号" field="productSpecification" align="center" width="80"></vxe-column>
@@ -51,24 +55,33 @@
         <!-- <vxe-column title="品牌" field="productBrand" width="90"></vxe-column> -->
         <!-- <vxe-column title="产地" field="productOrigin" align="center" width="80" /> -->
         <vxe-column title="单位" field="productUnitName" width="90" />
-        <vxe-column title="仓库" field="warehouseName" width="250" :edit-render="{}">
-          <template #edit="scope">
-            <vxe-select filterable v-model="scope.row.warehouseId" placeholder="请选择仓库" transfer
-              @change="changeRow($event, scope, 'warehouse')">
-              <vxe-option v-for="(item, index) in warehouseList" :key="index" :value="item.id" :label="item.name">
-                <template #default>
-                  <span> {{ item.name }}</span>
+        <vxe-column title="仓库" field="warehouseName" width="300">
+          <template #default="scope">
+            <div class="h-input-group goodsSelect" v-if="!auditOperate">
+              <Select :deletable="false" ref="ms" v-model="scope.row.warehouseId" :datas="warehouseList" filterable
+                placeholder="请选择仓库" keyName="id" titleName="name" @change="changeRow(scope, 'warehouse')">
+                <template v-slot:item="{ item }">
+                  <div>{{ item.name }}</div>
                 </template>
-              </vxe-option>
-            </vxe-select>
+              </Select>
+            </div>
+            <div v-else class="flex">
+              <div class="flex1 ml-8px">
+                <div>{{ scope.row.warehouseName }}</div>
+              </div>
+            </div>
           </template>
         </vxe-column>
-        <vxe-column title="数量" field="quantity" width="100" :edit-render="{}"
-          :title-help="{ content: form.quantityTips }">
-          <template #edit="scope">
-            <vxe-input @focus="quantityFocus(scope)" @blur="quantityBlur" v-model.number="scope.row.quantity" type="int"
-              min="0" :controls="false">
+        <vxe-column title="数量" field="quantity" width="100" :title-help="{ content: form.quantityTips }">
+          <template #default="scope">
+            <vxe-input v-if="!auditOperate" @focus="quantityFocus(scope)" @blur="quantityBlur"
+              v-model.number="scope.row.quantity" type="int" min="0" :controls="false">
             </vxe-input>
+            <div v-else class="flex">
+              <div class="flex1 ml-8px">
+                <div>{{ scope.row.quantity }}</div>
+              </div>
+            </div>
           </template>
         </vxe-column>
         <vxe-column title="出库单位成本" field="unitPrice" width="100"></vxe-column>
@@ -83,7 +96,8 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="auditOperate" placeholder="请输入备注" type="text" maxlength="150" style="width: 80%" v-model="form.remarks" />
+          <Input :disabled="auditOperate" placeholder="请输入备注" type="text" maxlength="150" style="width: 80%"
+            v-model="form.remarks" />
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
         </div>
       </div>
@@ -210,45 +224,50 @@ export default {
       ];
     },
     // 设置行数据
-    changeRow({ value, $event }, { rowIndex }, type) {
-      console.info(value, $event, type);
-      if (value !== undefined) {
-        switch (type) {
-          case 'product': {
-            // 根据id获取商品信息更新
-            Product.list({ id: value }).then(res => {
-              const { success, data } = res;
-              if (success) {
-                const item = data.results[0];
-                console.info("Product info:", item);
-                this.otherOutboundData[rowIndex].productName = item.name;
-                this.otherOutboundData[rowIndex].productId = item.id;
-                this.otherOutboundData[rowIndex].productCode = item.code;
-                this.otherOutboundData[rowIndex].productSpecification = item.specification;
-                this.otherOutboundData[rowIndex].productCategoryName = item.productCategoryName;
-                this.otherOutboundData[rowIndex].productUnitName = item.unitName;
-                this.otherOutboundData[rowIndex].productUnitId = item.unitId;
-                this.$forceUpdate();
-              }
-            });
-            break;
+    changeRow({ rowIndex }, type) {
+      switch (type) {
+        case 'product': {
+          const value = this.otherOutboundData[rowIndex].productId;
+          if (this.isEmpty(value)) {
+            return;
           }
-          case 'warehouse': {
-            // 根据id获取仓库信息
-            Warehouse.list({ id: value }).then(res => {
-              console.info("Warehouse res:", res);
-              const { success, data } = res;
-              if (success) {
-                const item = data[0];
-                this.otherOutboundData[rowIndex].warehouseName = item.name;
-                this.otherOutboundData[rowIndex].warehouseId = item.id;
-                this.$forceUpdate();
-              }
-            });
-            break;
-          }
-          default: break;
+          // 根据id获取商品信息更新
+          Product.list({ id: value }).then(res => {
+            const { success, data } = res;
+            if (success) {
+              const item = data.results[0];
+              console.info("Product info:", item);
+              this.otherOutboundData[rowIndex].productName = item.name;
+              this.otherOutboundData[rowIndex].productId = item.id;
+              this.otherOutboundData[rowIndex].productCode = item.code;
+              this.otherOutboundData[rowIndex].productSpecification = item.specification;
+              this.otherOutboundData[rowIndex].productCategoryName = item.productCategoryName;
+              this.otherOutboundData[rowIndex].productUnitName = item.unitName;
+              this.otherOutboundData[rowIndex].productUnitId = item.unitId;
+              this.$forceUpdate();
+            }
+          });
+          break;
         }
+        case 'warehouse': {
+          const value = this.otherOutboundData[rowIndex].warehouseId;
+          if (this.isEmpty(value)) {
+            return;
+          }
+          // 根据id获取仓库信息
+          Warehouse.list({ id: value }).then(res => {
+            console.info("Warehouse res:", res);
+            const { success, data } = res;
+            if (success) {
+              const item = data[0];
+              this.otherOutboundData[rowIndex].warehouseName = item.name;
+              this.otherOutboundData[rowIndex].warehouseId = item.id;
+              this.$forceUpdate();
+            }
+          });
+          break;
+        }
+        default: break;
       }
     },
     isEmpty(value) {
@@ -357,7 +376,7 @@ export default {
     },
     //行是否选中
     rowIsSelect(rowIndex) {
-      return this.increase || rowIndex === this.selectRowIndex;
+      return (this.increase || rowIndex === this.selectRowIndex) && !this.auditOperate;
     },
     //行选中事件
     currentChangeEvent({ rowIndex }) {
@@ -442,6 +461,10 @@ export default {
       Promise.all([Product.select(), Warehouse.select(), Customer.select()])
         .then((results) => {
           this.productList = results[0].data || [];
+          // 调整productList的name值
+          this.productList.forEach(item => {
+            item.name = `${item.code}--${item.name}`;
+          });
           this.warehouseList = results[1].data || [];
           this.customerList = results[2].data || [];
           if (this.warehouseList != null) {

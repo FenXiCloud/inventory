@@ -79,6 +79,20 @@ const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
 
 export default {
   name: "SalesOrderList",
+  watch: {
+    // 监听 store 中的 currentTabData
+    '$store.state.currentTabData': {
+      handler(newVal) {
+        console.log('currentTabData changed:', newVal)
+        if (newVal && newVal.refresh) {
+          this.loadList();
+          // 重置刷新标志
+          this.$store.commit('SET_TAB_DATA', null);
+        }
+      },
+      deep: true
+    }
+  },
   data() {
     return {
       dataList: [],
@@ -124,23 +138,20 @@ export default {
     },
 
     batchAudit(){
-
+      const selectedRows = this.$refs.table.getCheckboxRecords();
+      console.log(selectedRows);
+      if (selectedRows.length === 0) {
+        message.error("请选择至少一个订单进行审核");
+        return;
+      }
 
       confirm({
         content: `确定批量审核订单？`,
         onConfirm: () => {
-          const selectedRows = this.$refs.table.getCheckboxRecords();
-          console.log(selectedRows);
-          if (selectedRows.length === 0) {
-            message.error("请选择至少一个订单进行审核");
-            return;
-          }
           const orderIds = selectedRows.map(row => row.id);
-
           let params = {
             orderIds: orderIds
           };
-
           SalesOrder.batchAudit(params).then((success) => {
             if (success) {
               message.success("批量审核成功");
@@ -207,6 +218,7 @@ export default {
     },
   },
   created() {
+    console.log('created',"1111")
     this.loadList();
   }
 }

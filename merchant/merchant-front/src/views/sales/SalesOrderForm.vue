@@ -113,12 +113,15 @@
         </div>
       </div>
     </div>
-    <div class="modal-column-right bg-white-color  border">
+    <div class="modal-column-between bg-white-color  border">
+      <Button @click="closeWindow" :loading="loading">
+        取消
+      </Button>
       <div>
-        <Button color="primary" @click="saveOrder" :loading="loading">
+        <Button color="primary" @click="saveOrder('new')" :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder" :loading="loading">
+        <Button @click="saveOrder('save')" :loading="loading">
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
@@ -140,7 +143,7 @@ import manba from "manba";
 import {CopyObj} from "@common/utils";
 import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
-import {mapState} from "vuex";
+import {mapMutations, mapState} from "vuex";
 import SalesOrder from "@js/api/sales/SalesOrder";
 import Product from "@js/api/basic/Product";
 
@@ -176,6 +179,7 @@ export default {
     }
   },
   methods: {
+    ...mapMutations(['newTab']),
     //footer合计
     footerMethod({columns, data}) {
       let quantity = 0;
@@ -313,18 +317,18 @@ export default {
     },
 
     auditOrder(orderStatus){
+      if (!this.form.customerId) {
+        message.error("请选择客户~");
+        loading.close()
+        return
+      }
+      if (!this.checkHttp()) {
+        return
+      }
       confirm({
         content: `确定审核订单？`,
         onConfirm: () => {
           loading("保存中....");
-          if (!this.form.customerId) {
-            message.error("请选择客户~");
-            loading.close()
-            return
-          }
-          if (!this.checkHttp()) {
-            return
-          }
           let salesOrder = Object.assign(this.form);
           salesOrder.orderStatus = orderStatus
           SalesOrder.save({
@@ -342,8 +346,7 @@ export default {
     },
 
     //保存订单
-    saveOrder() {
-      loading("保存中....");
+    saveOrder(saveType) {
       if (!this.form.customerId) {
         message.error("请选择客户~");
         loading.close()
@@ -352,18 +355,29 @@ export default {
       if (!this.checkHttp()) {
         return
       }
-      let productData = this.productData.filter(c => c.quantity > 0);
-      SalesOrder.save({
-        salesOrder: Object.assign(this.form),
-        salesOrderItemList: productData
-      }).then((success) => {
-        if (success) {
-          message("保存成功~");
-          this.clearForm()
+      confirm({
+        content: `确定保存订单？`,
+        onConfirm: () => {
+          loading("保存中....");
+          let productData = this.productData.filter(c => c.quantity > 0);
+          SalesOrder.save({
+            salesOrder: Object.assign(this.form),
+            salesOrderItemList: productData
+          }).then((success) => {
+            if (success) {
+              message("保存成功~");
+              this.clearForm();
+              //保存
+              if(saveType === 'save'){
+                this.closeWindow()
+              }
+
+            }
+          }).finally(() =>
+              loading.close()
+          );
         }
-      }).finally(() =>
-          loading.close()
-      );
+      })
     },
 
     //清除Form
@@ -462,7 +476,15 @@ export default {
 
     //关闭窗口
     closeWindow() {
-      window.close();
+      console.log("this.$store.state.currentTab", this.$store.state.currentTab)
+      //this.$store.commit('closeTabKey', this.$store.state.currentTab);
+
+      this.$store.commit('newTab', "SalesOrderList");
+      // 使用 nextTick 确保在 DOM 更新后执行
+      this.$nextTick(() => {
+        // 通过 eventBus 或 vuex 触发刷新
+        this.$store.commit('SET_TAB_DATA', { refresh: true });
+      });
     }
   },
   beforeDestroy() {

@@ -1,23 +1,20 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <vxe-toolbar>
-        <template #buttons>
-        </template>
+      <vxe-toolbar class="toolbar-left">
         <template #tools>
-          <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
-                  placeholder="审核状态："/>
+          <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}" placeholder="审核状态："/>
           <div class="h-input-group">
             <span class="h-input-addon ml-8px">订单日期：</span>
             <DateRangePicker v-model="dateRange"></DateRangePicker>
           </div>
           <div class="h-input-group">
             <span class="h-input-addon ml-8px">客户：</span>
-            <Select class="w-178px" filterable :datas="customerList" keyName="id" titleName="name"
+            <Select class="w-180px" filterable :datas="customerList" keyName="id" titleName="name"
                     v-model="params.customerId" placeholder="请选择客户"  />
           </div>
           <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                  show-search-button class="w-360px ml-8px"
+                  show-search-button class="w-200px ml-8px"
                   placeholder="请输入订单号" @search="doSearch">
             <i class="h-icon-search"/>
           </Search>
@@ -226,3 +223,25 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+/* 覆盖 vxe-toolbar 的默认样式 */
+.toolbar-left :deep(.vxe-toolbar) {
+  padding: 8px 10px;
+  justify-content: flex-start !important;
+}
+
+.toolbar-left :deep(.vxe-tools--wrapper) {
+  justify-content: flex-start !important;
+  width: 100%;
+}
+
+/* 移除不必要的 margin-left */
+.h-input-group {
+  margin-left: 8px;
+}
+
+.h-input-group:first-child {
+  margin-left: 0;
+}
+</style>

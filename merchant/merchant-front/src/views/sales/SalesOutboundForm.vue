@@ -9,7 +9,7 @@
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">单据日期:</label>
           <DatePicker v-model="form.orderDate" :option="{start:accountBook.checkoutDate}"
                       :clearable="false"></DatePicker>
-          <Button color="primary" style="margin-left: 20px">选择源单</Button>
+          <Button @click="addOrEditForm()" color="primary" style="margin-left: 20px">选择源单</Button>
         </template>
       </vxe-toolbar>
       <vxe-table
@@ -147,6 +147,11 @@ import Warehouse from "@js/api/basic/Warehouse";
 import {mapMutations, mapState} from "vuex";
 import SalesOrder from "@js/api/sales/SalesOrder";
 import Product from "@js/api/basic/Product";
+import {layer} from "@layui/layer-vue";
+import {h} from "vue";
+import SalesOrderList from "@views/sales/SalesOrderList.vue";
+import CustomerForm from "@views/basic/CustomerForm.vue";
+import SalesOrderSelect from "@views/sales/SalesOrderSelect.vue";
 
 export default {
   name: "SalesOutboundForm",
@@ -181,6 +186,44 @@ export default {
   },
   methods: {
     ...mapMutations(['newTab']),
+
+    //添加或编辑Form
+    addOrEditForm(entity) {
+      let layerId = layer.open({
+        title: "请选择销售订单",
+        shadeClose: false,
+        closeBtn: false,
+        area: ['1000px', '600px'],
+        content: h(SalesOrderSelect, {
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: () => {
+            this.doSearch();
+            layer.close(layerId);
+          }
+        }),
+        // btn: ['按钮一', '按钮二', '按钮三']
+        // ,yes: function(index, layero){
+        //   //按钮【按钮一】的回调
+        // }
+        // ,btn2: function(index, layero){
+        //   //按钮【按钮二】的回调
+        //
+        //   //return false 开启该代码可禁止点击该按钮关闭
+        // }
+        // ,btn3: function(index, layero){
+        //   //按钮【按钮三】的回调
+        //
+        //   //return false 开启该代码可禁止点击该按钮关闭
+        // }
+        // ,cancel: function(){
+        //   //右上角关闭回调
+        //
+        //   //return false 开启该代码可禁止点击该按钮关闭
+        // }
+      });
+    },
     //footer合计
     footerMethod({columns, data}) {
       let quantity = 0;

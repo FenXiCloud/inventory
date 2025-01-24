@@ -12,9 +12,14 @@
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">客户：</span>
+          <Select class="w-178px" filterable :datas="customerList" keyName="id" titleName="name"
+                  v-model="params.customerId" placeholder="请选择客户"  />
+        </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/客户名称" @search="doSearch">
+                placeholder="请输入订单号" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -73,6 +78,9 @@ import SalesOrder from "@js/api/sales/SalesOrder";
 import {mapMutations} from "vuex";
 import {confirm, loading, message} from "heyui.ext";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
+import Customer from "@js/api/basic/Customer";
+import Warehouse from "@js/api/basic/Warehouse";
+import Product from "@js/api/basic/Product";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -109,7 +117,9 @@ export default {
         state: null,
         sortCol: null,
         sort: null,
+        customerId:null
       },
+      customerList: [],
       dateRange: {
         start: manba(startTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
@@ -215,6 +225,12 @@ export default {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
+
+      Promise.all([
+        Customer.select(),
+      ]).then((results) => {
+        this.customerList = results[0].data || [];
+      }).finally(() => loading.close());
     },
   },
   created() {

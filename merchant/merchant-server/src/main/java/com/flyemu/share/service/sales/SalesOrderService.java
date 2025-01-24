@@ -215,5 +215,11 @@ public class SalesOrderService extends AbsService {
                 builder.and(qSalesOrder.orderDate.loe(LocalDate.parse(end)));
             }
         }
+
+        public void setCustomerId(Long customerId) {
+            if (customerId != null) {
+                builder.and(qSalesOrder.customerId.eq(customerId));
+            }
+        }
     }
 }

@@ -198,10 +198,15 @@ export default {
           onClose: () => {
             layer.close(layerId);
           },
-          onSuccess: () => {
-            this.doSearch();
+          onSuccess: (params) => {  // 添加参数接收
+            // 处理选中的订单数据
+            console.log('选中的订单数据:', params);
+            // 这里处理你的业务逻辑，比如：
+            //this.handleSelectedOrders(params.jsonList);
+
+            //this.doSearch();
             layer.close(layerId);
-          }
+          },
         }),
         // btn: ['按钮一', '按钮二', '按钮三']
         // ,yes: function(index, layero){

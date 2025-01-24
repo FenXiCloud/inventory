@@ -23,7 +23,6 @@
       <div class="flex1">
         <vxe-table row-id="id"
                    ref="table"
-
                    :data="dataList"
                    highlight-hover-row
                    show-overflow
@@ -34,12 +33,6 @@
                    :sort-config="{remote:true}"
                    :loading="loading">
           <vxe-column type="checkbox" width="40" align="center"/>
-          <vxe-column title="操作" align="center" width="120">
-            <template #default="{row}">
-              <span class="primary-color  text-hover ml-10px" @click="addForm('edit',row.id)">编辑</span>
-              <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
-            </template>
-          </vxe-column>
           <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
           <vxe-column title="订单编号" field="orderNo" width="200"/>
           <vxe-column title="关联销售出库单" field="code" width="200"/>
@@ -67,7 +60,7 @@
       <Button @click="$emit('close')" :loading="loading">
         取消
       </Button>
-      <Button color="primary" @click="confirm" :loading="loading">
+      <Button color="primary" @click="batchSelect" :loading="loading">
         保存
       </Button>
     </div>
@@ -76,7 +69,6 @@
 <script>
 import manba from "manba";
 import SalesOrder from "@js/api/sales/SalesOrder";
-import {mapMutations} from "vuex";
 import {confirm, loading, message} from "heyui.ext";
 import Customer from "@js/api/basic/Customer";
 
@@ -121,55 +113,37 @@ export default {
     },
   },
   methods: {
-    ...mapMutations(['pushTab']),
 
-    addForm(type = 'add', orderId = null) {
-      this.$store.commit('SET_TAB_DATA', { type, orderId });
-      this.pushTab({
-        key: 'SalesOrderForm',
-        title: type === 'edit' ? '编辑销售订单' : '新增销售订单',
-      });
-    },
-
-    batchAudit(){
+    batchSelect(){
       const selectedRows = this.$refs.table.getCheckboxRecords();
       console.log(selectedRows);
       if (selectedRows.length === 0) {
-        message.error("请选择至少一个订单进行审核");
+        message.error("请选择至少一条订单");
         return;
       }
+      confirm({
+        content: `确定选择订单？`,
+        onConfirm: () => {
+          // 将选中行转换为需要的JSON格式
+          const jsonList = selectedRows.map(row => ({
+            orderId: row.id,
+            orderNo: row.orderNo,
+            customerId: row.customerId,
+            customerName: row.customerName,
+            // 根据需要添加其他字段
+          }));
 
-      confirm({
-        content: `确定批量审核订单？`,
-        onConfirm: () => {
-          const orderIds = selectedRows.map(row => row.id);
           let params = {
-            orderIds: orderIds
+            orderIds: selectedRows.map(row => row.id),
+            jsonList: jsonList
           };
-          SalesOrder.batchAudit(params).then((success) => {
-            if (success) {
-              message.success("批量审核成功");
-              this.loadList(); // Refresh the list
-            }
-          }).finally(() =>
-              loading.close()
-          );
+
+          // 这里可以触发成功事件并传递数据
+          this.$emit('success', params);
         }
       })
     },
-    doRemove(row) {
-      console.log(row)
-      confirm({
-        title: "系统提示",
-        content: `确认删除：${row.orderNo}?`,
-        onConfirm: () => {
-          SalesOrder.remove(row.id).then(() => {
-            message("删除成功~");
-            this.loadList();
-          })
-        }
-      })
-    },
+
     footerMethod({columns, data}) {
       let totalAmount = 0;
       let discountAmount = 0;
@@ -218,7 +192,6 @@ export default {
     },
   },
   created() {
-    console.log('created',"1111")
     this.loadList();
   }
 }

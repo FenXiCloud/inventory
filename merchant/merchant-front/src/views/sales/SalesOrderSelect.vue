@@ -121,27 +121,22 @@ export default {
         message.error("请选择至少一条订单");
         return;
       }
-      confirm({
-        content: `确定选择订单？`,
-        onConfirm: () => {
-          // 将选中行转换为需要的JSON格式
-          const jsonList = selectedRows.map(row => ({
-            orderId: row.id,
-            orderNo: row.orderNo,
-            customerId: row.customerId,
-            customerName: row.customerName,
-            // 根据需要添加其他字段
-          }));
+      // 将选中行转换为需要的JSON格式
+      const jsonList = selectedRows.map(row => ({
+        orderId: row.id,
+        orderNo: row.orderNo,
+        customerId: row.customerId,
+        customerName: row.customerName,
+        // 根据需要添加其他字段
+      }));
 
-          let params = {
-            orderIds: selectedRows.map(row => row.id),
-            jsonList: jsonList
-          };
+      let params = {
+        orderIds: selectedRows.map(row => row.id),
+        jsonList: jsonList
+      };
 
-          // 这里可以触发成功事件并传递数据
-          this.$emit('success', params);
-        }
-      })
+      // 这里可以触发成功事件并传递数据
+      this.$emit('success', params);
     },
 
     footerMethod({columns, data}) {

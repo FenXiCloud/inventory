@@ -268,10 +268,10 @@ export default {
           });
         }
       })
-      this.form.orderQuantity = quantity;
-      this.form.discountAmount = discountValue;
-      this.form.finalAmount = subtotal;
-      this.form.totalAmount = discountValue+subtotal;
+      this.form.orderQuantity = quantity.toFixed(2);
+      this.form.discountAmount = discountValue.toFixed(2);
+      this.form.finalAmount = subtotal.toFixed(2);
+      this.form.totalAmount = (discountValue+subtotal).toFixed(2);
       if(!!this.form.discountAmount && !!this.form.totalAmount){
         this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
       }

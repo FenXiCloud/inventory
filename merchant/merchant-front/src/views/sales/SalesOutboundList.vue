@@ -9,7 +9,7 @@
         <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
                 placeholder="审核状态："/>
         <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期：</span>
+          <span class="h-input-addon ml-8px">出库日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
         <div class="h-input-group">
@@ -44,7 +44,7 @@
             <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
           </template>
         </vxe-column>
-        <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
+        <vxe-column title="出库日期" field="outboundDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="关联销售订单" field="code" width="200"/>
         <vxe-column title="客户" field="customerName" min-width="120"/>

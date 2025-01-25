@@ -91,7 +91,12 @@ public class SalesOrderController {
     }
 
     @PutMapping("/batchAudit")
-    public JsonResult batchAudit(@RequestBody SalesOrderForm salesOrderForm) {
+    public JsonResult batchAudit(
+            @RequestBody SalesOrderForm salesOrderForm,
+            @SaAdminId Long adminId
+    ) {
+        salesOrderForm.getSalesOrder().setApprovedBy(adminId);
+        salesOrderForm.getSalesOrder().setApprovedAt(LocalDateTime.now());
         salesOrderService.batchAudit(salesOrderForm);
         return JsonResult.successful();
     }

@@ -6,8 +6,8 @@
           <label class="mr-20px" style="font-size: 16px !important;">客户:</label>
           <Select class="w-300px" filterable required :datas="customerList" keyName="id" titleName="name"
                   :deletable="false" @change="changeCustomer($event)" v-model="customerId" placeholder="请选择客户"/>
-          <label class="mr-20px ml-16px" style="font-size: 16px !important;">单据日期:</label>
-          <DatePicker v-model="form.orderDate" :option="{start:accountBook.checkoutDate}"
+          <label class="mr-20px ml-16px" style="font-size: 16px !important;">出库日期:</label>
+          <DatePicker v-model="form.outboundDate" :option="{start:accountBook.checkoutDate}"
                       :clearable="false"></DatePicker>
           <Button @click="addOrEditForm()" color="primary" style="margin-left: 20px">选择源单</Button>
         </template>
@@ -174,7 +174,7 @@ export default {
       warehouseId: null,
       form: {
         id: null,
-        orderDate: manba().format("YYYY-MM-dd"),
+        outboundDate: manba().format("YYYY-MM-dd"),
         customerId: null,
         discountAmount: 0.00,
         discountRate: 0.00,

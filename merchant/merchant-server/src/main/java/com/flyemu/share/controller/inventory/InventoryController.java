@@ -56,4 +56,9 @@ public class InventoryController {
         return JsonResult.successful(inventoryService.select(merchantId, accountBookId));
     }
 
+    @GetMapping("/exist/{productId}/{warehouseId}")
+    public JsonResult exist(@PathVariable("productId") Long productId, @PathVariable("warehouseId") Long warehouseId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(inventoryService.exist(productId, warehouseId, merchantId, accountBookId));
+    }
+
 }

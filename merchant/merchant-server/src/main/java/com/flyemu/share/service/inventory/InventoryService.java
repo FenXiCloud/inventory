@@ -165,6 +165,26 @@ public class InventoryService extends AbsService {
         }
     }
 
+    /**
+     * 商品是否存在库存
+     *
+     * @param productId     商品id
+     * @param warehouseId   仓库id
+     * @param merchantId    商户id
+     * @param accountBookId 账号id
+     * @return true/false
+     */
+    public Boolean exist(Long productId, Long warehouseId, Long merchantId, Long accountBookId) {
+        Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(productId)
+                .and(qInventory.warehouseId.eq(warehouseId)).and(qInventory.merchantId.eq(merchantId))
+                .and(qInventory.accountBookId.eq(accountBookId))).fetchOne();
+        if (inventory == null) {
+            return false;
+        }
+        Integer currentQuantity = inventory.getCurrentQuantity();
+        return currentQuantity != null && currentQuantity > 0;
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

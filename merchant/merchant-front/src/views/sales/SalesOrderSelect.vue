@@ -132,7 +132,7 @@ export default {
       });
 
       let params = {
-        orderIds: selectedRows.map(row => row.id),
+        selectSalesOrderIdList: selectedRows.map(row => row.salesOrderId),
         itemList: allItemList
       };
       // 这里可以触发成功事件并传递数据

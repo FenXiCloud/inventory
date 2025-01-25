@@ -18,6 +18,7 @@ import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.form.SalesOutboundForm;
+import com.flyemu.share.repository.SalesOrderRepository;
 import com.flyemu.share.repository.SalesOutboundItemRepository;
 import com.flyemu.share.repository.SalesOutboundRepository;
 import com.flyemu.share.service.AbsService;
@@ -37,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.flyemu.share.entity.sales.QSalesOrder.salesOrder;
 
@@ -66,6 +68,7 @@ public class SalesOutboundService extends AbsService {
     private final SalesOutboundItemRepository salesOutboundItemRepository;
     private final CodeSeedService codeSeedService;
     private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
+    private final SalesOrderRepository salesOrderRepository;
 
     public PageResults<SalesOutboundDTO> query(Page page, SalesOutboundService.Query query) {
         PagedList<Tuple> tuples = bqf.selectFrom(qSalesOutbound)
@@ -119,6 +122,17 @@ public class SalesOutboundService extends AbsService {
                 });
                 //批量保存
                 salesOutboundItemRepository.saveAll(salesOutboundItemList);
+            }
+            //选择的源单不为空
+            List<Long> selectSalesOrderIdList = salesOutboundForm.getSelectSalesOrderIdList();
+            if(!CollectionUtils.isEmpty(selectSalesOrderIdList)){
+                List<Long> collect = selectSalesOrderIdList.stream().distinct().toList();
+                List<SalesOrder> salesOrderList = salesOrderRepository.findAllById(collect);
+                salesOrderList.forEach(order -> {
+                    //销售订单关联销售出库单
+                    order.setOutOrderId(save.getId());
+                });
+                salesOrderRepository.saveAll(salesOrderList);
             }
             return save;
         }

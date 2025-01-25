@@ -182,6 +182,8 @@ export default {
         remarks: null,
       },
       productData: [],
+      //保存选择的源单
+      selectSalesOrderIdList: [],
       orderId:null,
       type:null,
     }
@@ -204,7 +206,7 @@ export default {
             // 处理选中的订单数据
             console.log('选中的订单数据:', params);
             // 处理你业务逻辑
-            this.handleSelectedOrders(params.itemList);
+            this.handleSelectedOrders(params);
 
             //this.doSearch();
             layer.close(layerId);
@@ -213,7 +215,8 @@ export default {
       });
     },
 
-    handleSelectedOrders(itemList) {
+    handleSelectedOrders(params) {
+      let itemList = params.itemList;
       // 将 productList 转换为 Map，以 productId 为键
       const productMap = new Map(this.productList.map(product => [product.id, product]));
       const unitMap = new Map(this.unitList.map(unit => [unit.id, unit]));
@@ -235,6 +238,7 @@ export default {
       console.log('处理后的订单数据:', itemList)
       // 将 itemList 赋值给 productData
       this.productData = itemList;
+      this.selectSalesOrderIdList = itemList.selectSalesOrderIdList;
 
       // this.productData = itemList.map(item => ({
       //   ...item,
@@ -426,7 +430,8 @@ export default {
           let productData = this.productData.filter(c => c.quantity > 0);
           SalesOutbound.save({
             salesOutbound: Object.assign(this.form),
-            salesOutboundItemList: productData
+            salesOutboundItemList: productData,
+            selectSalesOrderIdList:this.selectSalesOrderIdList
           }).then((success) => {
             if (success) {
               message("保存成功~");

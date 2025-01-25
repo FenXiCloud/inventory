@@ -389,7 +389,7 @@ export default {
     //根据供货商加载商品列表
     loadProductsBySupplier() {
       if (this.form.supplierId) {
-        Supplier.selectProducts(this.form.supplierId).then(({data}) => {
+        Supplier.selectProduct(this.form.supplierId).then(({data}) => {
           this.productList = data || [];
           if (!this.form.id) {
             this.productData = [{isNew: true}];

@@ -145,7 +145,6 @@ import {CopyObj} from "@common/utils";
 import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapMutations, mapState} from "vuex";
-import SalesOrder from "@js/api/sales/SalesOrder";
 import Product from "@js/api/basic/Product";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
@@ -153,6 +152,7 @@ import SalesOrderList from "@views/sales/SalesOrderList.vue";
 import CustomerForm from "@views/basic/CustomerForm.vue";
 import SalesOrderSelect from "@views/sales/SalesOrderSelect.vue";
 import Unit from "@js/api/basic/Unit";
+import SalesOutbound from "@js/api/sales/SalesOutbound";
 
 export default {
   name: "SalesOutboundForm",
@@ -218,15 +218,19 @@ export default {
       const productMap = new Map(this.productList.map(product => [product.id, product]));
       const unitMap = new Map(this.unitList.map(unit => [unit.id, unit]));
       itemList.forEach(row => {
+        // 根据 productId 查找对应的 productName 和 unitName
         const product = productMap.get(row.productId);
         if (product) {
           row.productName = product.name;
           row.productCode = product.code;
         }
+        // 根据 baseUnitId 查找对应的 unitName
         const unit = unitMap.get(row.baseUnitId);
         if (unit) {
           row.unitName = unit.name;
         }
+        //将id置为空，因为是新增的商品
+        row.id = null;
       });
       console.log('处理后的订单数据:', itemList)
       // 将 itemList 赋值给 productData
@@ -389,10 +393,10 @@ export default {
         content: `确定审核订单？`,
         onConfirm: () => {
           loading("保存中....");
-          let salesOrder = Object.assign(this.form);
-          salesOrder.orderStatus = orderStatus
-          SalesOrder.save({
-            salesOrder: salesOrder,
+          let salesOutbound = Object.assign(this.form);
+          salesOutbound.orderStatus = orderStatus
+          SalesOutbound.save({
+            salesOutbound: salesOutbound,
           }).then((success) => {
             if (success) {
               message("审核成功~");
@@ -420,9 +424,9 @@ export default {
         onConfirm: () => {
           loading("保存中....");
           let productData = this.productData.filter(c => c.quantity > 0);
-          SalesOrder.save({
-            salesOrder: Object.assign(this.form),
-            salesOrderItemList: productData
+          SalesOutbound.save({
+            salesOutbound: Object.assign(this.form),
+            salesOutboundItemList: productData
           }).then((success) => {
             if (success) {
               message("保存成功~");
@@ -575,14 +579,14 @@ export default {
       this.type = tabData?.type;
       this.orderId = tabData?.orderId;
       if (this.orderId) {
-        SalesOrder.getInfo(this.orderId).then(response => {
-          let salesOrder = response.data;
-          console.log("response.data", salesOrder)
-          this.form = salesOrder;
-          this.customerId = salesOrder.customerId;
+        SalesOutbound.getInfo(this.orderId).then(response => {
+          let salesOutbound = response.data;
+          console.log("response.data", salesOutbound)
+          this.form = salesOutbound;
+          this.customerId = salesOutbound.customerId;
           this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
           console.log("this.form", this.form)
-          this.productData = salesOrder.salesOrderItemList || [];
+          this.productData = salesOutbound.salesOutboundItemList || [];
           this.productData.push({isNew: true});
         });
       }

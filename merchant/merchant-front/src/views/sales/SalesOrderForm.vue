@@ -336,7 +336,7 @@ export default {
           }).then((success) => {
             if (success) {
               message("审核成功~");
-              this.clearForm()
+              this.closeWindow()
             }
           }).finally(() =>
               loading.close()

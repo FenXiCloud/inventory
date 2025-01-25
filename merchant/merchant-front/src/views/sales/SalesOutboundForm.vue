@@ -9,7 +9,7 @@
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">出库日期:</label>
           <DatePicker v-model="form.outboundDate" :option="{start:accountBook.checkoutDate}"
                       :clearable="false"></DatePicker>
-          <Button @click="addOrEditForm()" color="primary" style="margin-left: 20px">选择源单</Button>
+          <Button v-if="type==='add'" @click="addOrEditForm()" color="primary" style="margin-left: 20px">选择源单</Button>
         </template>
       </vxe-toolbar>
       <vxe-table
@@ -400,7 +400,7 @@ export default {
           }).then((success) => {
             if (success) {
               message("审核成功~");
-              this.clearForm()
+              this.closeWindow()
             }
           }).finally(() =>
               loading.close()

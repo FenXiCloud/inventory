@@ -7,10 +7,14 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
-import com.flyemu.share.entity.sales.QSalesOutbound;
-import com.flyemu.share.entity.sales.SalesOrder;
-import com.flyemu.share.entity.sales.SalesOutbound;
-import com.flyemu.share.entity.sales.SalesOutboundItem;
+import com.flyemu.share.dto.SalesOutboundDTO;
+import com.flyemu.share.dto.SalesOutboundItemDTO;
+import com.flyemu.share.entity.basic.QCustomer;
+import com.flyemu.share.entity.basic.QProduct;
+import com.flyemu.share.entity.basic.QUnit;
+import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.sales.*;
+import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.form.SalesOutboundForm;
@@ -26,10 +30,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+
+import static com.flyemu.share.entity.sales.QSalesOrder.salesOrder;
 
 /**
  * @功能描述: 销售出库单
@@ -45,22 +52,35 @@ import java.util.Optional;
 public class SalesOutboundService extends AbsService {
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
+    private final static QSalesOutboundItem qSalesOutboundItem = QSalesOutboundItem.salesOutboundItem;
+
+    private final static QCustomer qCustomer = QCustomer.customer;
+    private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
+    private final static QProduct qProduct = QProduct.product;
+    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
+    private final static QUnit qUnit = QUnit.unit;
 
     private final SalesOutboundRepository salesOutboundRepository;
     private final SalesOutboundItemRepository salesOutboundItemRepository;
     private final CodeSeedService codeSeedService;
+    private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
 
-    public PageResults<SalesOutbound> query(Page page, SalesOutboundService.Query query) {
-        PagedList<SalesOutbound> fetchPage = bqf.selectFrom(qSalesOutbound).where(query.builder).orderBy(qSalesOutbound.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+    public PageResults<SalesOutboundDTO> query(Page page, SalesOutboundService.Query query) {
+        PagedList<Tuple> tuples = bqf.selectFrom(qSalesOutbound)
+                .select(qSalesOutbound, qCustomer.name, qMerchantUser.name)
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOutbound.createdBy))
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOutbound.customerId))
+                .where(query.builder).orderBy(qSalesOutbound.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
-        List<SalesOutbound> dtos = new ArrayList<>();
-        fetchPage.forEach(tuple -> {
-            SalesOutbound salesOutbound1 = tuple;
-            SalesOutbound salesOutbound = BeanUtil.toBean(salesOutbound1, SalesOutbound.class);
-            dtos.add(salesOutbound);
+        List<SalesOutboundDTO> dtos = new ArrayList<>();
+        tuples.forEach(tuple -> {
+            SalesOutboundDTO salesOutboundDTO = BeanUtil.toBean(tuple.get(qSalesOutbound), SalesOutboundDTO.class);
+            salesOutboundDTO.setCustomerName(tuple.get(qCustomer.name));
+            salesOutboundDTO.setCreatedName(tuple.get(qMerchantUser.name));
+            dtos.add(salesOutboundDTO);
         });
 
-        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+        return new PageResults<>(dtos, page, tuples.getTotalSize());
     }
 
     @Transactional
@@ -113,8 +133,26 @@ public class SalesOutboundService extends AbsService {
     }
 
     public Object getById(SalesOrder query) {
-
-        return null;
+        //查询订单
+        SalesOutbound salesOutbound = salesOutboundRepository.getById(query.getId());
+        //订单数据转换
+        SalesOutboundDTO dto = BeanUtil.toBean(salesOutbound, SalesOutboundDTO.class);
+        //查询销售订单商品
+        List<Tuple> fetch = jqf.selectFrom(qSalesOutboundItem)
+                .select(qSalesOutboundItem, qProduct.code, qProduct.name, qUnit.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qSalesOutboundItem.productId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qSalesOutboundItem.baseUnitId))
+                .where(qSalesOutboundItem.salesOutboundId.eq(query.getId())).orderBy(qSalesOutboundItem.id.asc()).fetch();
+        List<SalesOutboundItemDTO> salesOutboundItemDTOList = new ArrayList<>();
+        fetch.forEach(tuple -> {
+            SalesOutboundItemDTO salesOutboundItemDTO = BeanUtil.toBean(tuple.get(qSalesOutboundItem), SalesOutboundItemDTO.class);
+            salesOutboundItemDTO.setProductName(tuple.get(qProduct.name));
+            salesOutboundItemDTO.setProductCode(tuple.get(qProduct.code));
+            salesOutboundItemDTO.setUnitName(tuple.get(qUnit.name));
+            salesOutboundItemDTOList.add(salesOutboundItemDTO);
+        });
+        dto.setSalesOutboundItemList(salesOutboundItemDTOList);
+        return dto;
     }
 
     @Transactional
@@ -129,9 +167,11 @@ public class SalesOutboundService extends AbsService {
         if (salesOutboundList.size() != orderIds.size()) {
             throw new IllegalArgumentException("Some salesOutboundList could not be found");
         }
-
+        SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
         salesOutboundList.forEach(order -> {
-            order.setOrderStatus(OrderStatus.已审核); // Assuming "已审核" means "audited"
+            order.setOrderStatus(OrderStatus.已审核);
+            order.setApprovedAt(LocalDateTime.now());
+            order.setApprovedBy(salesOutbound.getApprovedBy());
         });
 
         salesOutboundRepository.saveAll(salesOutboundList);

@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -182,9 +183,11 @@ public class SalesOrderService extends AbsService {
         if (salesOrders.size() != orderIds.size()) {
             throw new IllegalArgumentException("Some orders could not be found");
         }
-
+        SalesOrder salesOrder = salesOrderForm.getSalesOrder();
         salesOrders.forEach(order -> {
-            order.setOrderStatus(OrderStatus.已审核); // Assuming "已审核" means "audited"
+            order.setOrderStatus(OrderStatus.已审核);
+            order.setApprovedAt(LocalDateTime.now());
+            order.setApprovedBy(salesOrder.getApprovedBy());
         });
 
         salesOrderRepository.saveAll(salesOrders);

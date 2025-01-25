@@ -94,8 +94,8 @@ public class SalesOutboundController {
             @RequestBody SalesOutboundForm salesOutboundForm,
             @SaAdminId Long adminId
     ) {
+        salesOutboundForm.setSalesOutbound(new SalesOutbound());
         salesOutboundForm.getSalesOutbound().setApprovedBy(adminId);
-        salesOutboundForm.getSalesOutbound().setApprovedAt(LocalDateTime.now());
         salesOutboundService.batchAudit(salesOutboundForm);
         return JsonResult.successful();
     }

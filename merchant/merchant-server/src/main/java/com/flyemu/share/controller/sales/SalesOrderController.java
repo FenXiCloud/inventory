@@ -6,6 +6,7 @@ import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.sales.SalesOrder;
+import com.flyemu.share.entity.sales.SalesOutbound;
 import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.service.sales.SalesOrderService;
 import jakarta.validation.Valid;
@@ -95,8 +96,8 @@ public class SalesOrderController {
             @RequestBody SalesOrderForm salesOrderForm,
             @SaAdminId Long adminId
     ) {
+        salesOrderForm.setSalesOrder(new SalesOrder());
         salesOrderForm.getSalesOrder().setApprovedBy(adminId);
-        salesOrderForm.getSalesOrder().setApprovedAt(LocalDateTime.now());
         salesOrderService.batchAudit(salesOrderForm);
         return JsonResult.successful();
     }

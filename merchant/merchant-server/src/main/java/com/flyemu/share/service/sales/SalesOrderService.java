@@ -60,20 +60,36 @@ public class SalesOrderService extends AbsService {
     private final static QUnit qUnit = QUnit.unit;
 
     public PageResults<SalesOrderDTO> query(Page page, SalesOrderService.Query query) {
-        PagedList<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
-                .select(qSalesOrder, qCustomer.name, qMerchantUser.name)
+        long totalSize = bqf.selectFrom(qSalesOrder)
+                .where(query.builder)
+                .fetchCount();
+
+        List<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
+                .select(qSalesOrder, qCustomer.name, qMerchantUser.name, qSalesOrderItem)
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
-                .where(query.builder).orderBy(qSalesOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+                .leftJoin(qSalesOrderItem).on(qSalesOrderItem.salesOrderId.eq(qSalesOrder.id))
+                .where(query.builder)
+                .orderBy(qSalesOrder.id.desc())
+                .offset(page.getOffset())
+                .limit(page.getOffsetEnd())
+                .fetch();
 
         List<SalesOrderDTO> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
             SalesOrderDTO salesOrderDTO = BeanUtil.toBean(tuple.get(qSalesOrder), SalesOrderDTO.class);
             salesOrderDTO.setCustomerName(tuple.get(qCustomer.name));
             salesOrderDTO.setCreatedName(tuple.get(qMerchantUser.name));
+            salesOrderDTO.setSalesOrderItemList(new ArrayList<>());
             dtos.add(salesOrderDTO);
+
+            SalesOrderItem salesOrderItem = tuple.get(qSalesOrderItem);
+            if (salesOrderItem != null) {
+                SalesOrderItemDTO itemDTO = BeanUtil.toBean(salesOrderItem, SalesOrderItemDTO.class);
+                salesOrderDTO.getSalesOrderItemList().add(itemDTO);
+            }
         });
-        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+        return new PageResults<>(dtos, page, totalSize);
     }
 
     @Transactional

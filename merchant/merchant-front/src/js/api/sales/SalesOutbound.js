@@ -16,4 +16,7 @@ export default {
     getInfo(id) {
         return Ajax.get('/salesOutbound/getInfo/' + id);
     },
+    batchAudit(param) {
+        return Ajax.put('/salesOutbound/batchAudit', param)
+    },
 }

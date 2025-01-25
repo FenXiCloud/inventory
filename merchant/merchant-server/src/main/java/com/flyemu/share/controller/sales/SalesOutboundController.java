@@ -7,6 +7,7 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOutbound;
+import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.form.SalesOutboundForm;
 import com.flyemu.share.service.sales.SalesOutboundService;
 import jakarta.validation.Valid;
@@ -86,6 +87,12 @@ public class SalesOutboundController {
         query.setAccountBookId(accountBookId);
         query.setId(orderId);
         return JsonResult.successful(salesOutboundService.getById(query));
+    }
+
+    @PutMapping("/batchAudit")
+    public JsonResult batchAudit(@RequestBody SalesOutboundForm salesOutboundForm) {
+        salesOutboundService.batchAudit(salesOutboundForm);
+        return JsonResult.successful();
     }
 
 }

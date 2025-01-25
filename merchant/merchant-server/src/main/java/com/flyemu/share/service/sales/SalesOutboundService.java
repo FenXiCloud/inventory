@@ -12,6 +12,7 @@ import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOutbound;
 import com.flyemu.share.entity.sales.SalesOutboundItem;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.form.SalesOutboundForm;
 import com.flyemu.share.repository.SalesOutboundItemRepository;
 import com.flyemu.share.repository.SalesOutboundRepository;
@@ -114,6 +115,26 @@ public class SalesOutboundService extends AbsService {
     public Object getById(SalesOrder query) {
 
         return null;
+    }
+
+    @Transactional
+    public void batchAudit(SalesOutboundForm salesOutboundForm) {
+        List<Long> orderIds = salesOutboundForm.getOrderIds();
+        if (orderIds == null || orderIds.isEmpty()) {
+            throw new IllegalArgumentException("Order IDs cannot be null or empty");
+        }
+
+        List<SalesOutbound> salesOutboundList = salesOutboundRepository.findAllById(orderIds);
+
+        if (salesOutboundList.size() != orderIds.size()) {
+            throw new IllegalArgumentException("Some salesOutboundList could not be found");
+        }
+
+        salesOutboundList.forEach(order -> {
+            order.setOrderStatus(OrderStatus.已审核); // Assuming "已审核" means "audited"
+        });
+
+        salesOutboundRepository.saveAll(salesOutboundList);
     }
 
     public static class Query {

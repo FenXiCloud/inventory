@@ -238,7 +238,7 @@ export default {
       console.log('处理后的订单数据:', itemList)
       // 将 itemList 赋值给 productData
       this.productData = itemList;
-      this.selectSalesOrderIdList = itemList.selectSalesOrderIdList;
+      this.selectSalesOrderIdList = params.selectSalesOrderIdList;
 
       // this.productData = itemList.map(item => ({
       //   ...item,

@@ -180,7 +180,7 @@ export default {
         title: "系统提示",
         content: `确认删除：${row.orderNo}?`,
         onConfirm: () => {
-          SalesOrder.remove(row.id).then(() => {
+          SalesOutbound.remove(row.id).then(() => {
             message("删除成功~");
             this.loadList();
           })

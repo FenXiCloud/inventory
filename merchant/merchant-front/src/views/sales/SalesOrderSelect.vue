@@ -125,16 +125,19 @@ export default {
       }
       // 创建一个数组存储所有订单明细
       let allItemList = [];
+      let selectSalesOrderIdList = [];
+      console.log("selectedRows",selectedRows)
       // 遍历选中的订单，收集所有明细
       selectedRows.forEach(row => {
         if (row.salesOrderItemList && row.salesOrderItemList.length > 0) {
           // 将当前订单的明细添加到总列表中
           allItemList = allItemList.concat(row.salesOrderItemList);
+          selectSalesOrderIdList = selectSalesOrderIdList.concat(row.id);
         }
       });
 
       let params = {
-        selectSalesOrderIdList: selectedRows.map(row => row.salesOrderId),
+        selectSalesOrderIdList:selectSalesOrderIdList,
         itemList: allItemList
       };
       // 这里可以触发成功事件并传递数据

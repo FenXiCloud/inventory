@@ -143,6 +143,11 @@ public class SalesOutboundService extends AbsService {
         jqf.delete(qSalesOutbound)
                 .where(qSalesOutbound.id.eq(salesOutboundId).and(qSalesOutbound.merchantId.eq(merchantId)).and(qSalesOutbound.accountBookId.eq(accountBookId)))
                 .execute();
+
+        //删除出库单商品
+        jqf.delete(qSalesOutboundItem)
+                .where(qSalesOutboundItem.salesOutboundId.eq(salesOutboundId).and(qSalesOutboundItem.merchantId.eq(merchantId)).and(qSalesOutboundItem.accountBookId.eq(accountBookId)))
+                .execute();
     }
 
     public List<SalesOutbound> select(Long merchantId, Long accountBookId) {

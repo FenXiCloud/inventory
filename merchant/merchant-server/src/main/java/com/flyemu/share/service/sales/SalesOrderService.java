@@ -238,7 +238,7 @@ public class SalesOrderService extends AbsService {
         //查询未出库订单
         public void setQueryUnOutOrder(Integer queryUnOutOrder) {
             if (queryUnOutOrder == 1) {
-                builder.and(qSalesOrder.outOrderId.isNotNull());
+                builder.and(qSalesOrder.outOrderId.isNull());
             }
         }
 

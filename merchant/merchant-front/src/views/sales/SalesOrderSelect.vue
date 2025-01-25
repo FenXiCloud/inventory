@@ -121,20 +121,37 @@ export default {
         message.error("请选择至少一条订单");
         return;
       }
-      // 将选中行转换为需要的JSON格式
-      const jsonList = selectedRows.map(row => ({
-        orderId: row.id,
-        orderNo: row.orderNo,
-        customerId: row.customerId,
-        customerName: row.customerName,
-        // 根据需要添加其他字段
-      }));
+      // 创建一个数组存储所有订单明细
+      let allItemList = [];
+      // 遍历选中的订单，收集所有明细
+      selectedRows.forEach(row => {
+        if (row.salesOrderItemList && row.salesOrderItemList.length > 0) {
+          // 为每个明细项添加订单信息
+          const items = row.salesOrderItemList.map(item => ({
+            id: item.id,
+            orderId: row.id,
+            orderNo: row.orderNo,
+            customerId: row.customerId,
+            customerName: row.customerName,
+            productId: item.productId,
+            productName: item.productName,
+            productCode: item.productCode,
+            unitId: item.unitId,
+            unitName: item.unitName,
+            quantity: item.quantity,
+            price: item.price,
+            amount: item.amount,
+            // 可以根据需要添加其他字段
+          }));
+          // 将当前订单的明细添加到总列表中
+          allItemList = allItemList.concat(items);
+        }
+      });
 
       let params = {
         orderIds: selectedRows.map(row => row.id),
-        jsonList: jsonList
+        itemList: allItemList
       };
-
       // 这里可以触发成功事件并传递数据
       this.$emit('success', params);
     },

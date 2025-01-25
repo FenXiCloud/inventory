@@ -201,33 +201,18 @@ export default {
           onSuccess: (params) => {  // 添加参数接收
             // 处理选中的订单数据
             console.log('选中的订单数据:', params);
-            // 这里处理你的业务逻辑，比如：
-            //this.handleSelectedOrders(params.jsonList);
+            // 处理你业务逻辑
+            this.handleSelectedOrders(params.itemList);
 
             //this.doSearch();
             layer.close(layerId);
           },
         }),
-        // btn: ['按钮一', '按钮二', '按钮三']
-        // ,yes: function(index, layero){
-        //   //按钮【按钮一】的回调
-        // }
-        // ,btn2: function(index, layero){
-        //   //按钮【按钮二】的回调
-        //
-        //   //return false 开启该代码可禁止点击该按钮关闭
-        // }
-        // ,btn3: function(index, layero){
-        //   //按钮【按钮三】的回调
-        //
-        //   //return false 开启该代码可禁止点击该按钮关闭
-        // }
-        // ,cancel: function(){
-        //   //右上角关闭回调
-        //
-        //   //return false 开启该代码可禁止点击该按钮关闭
-        // }
       });
+    },
+
+    handleSelectedOrders(itemList) {
+      this.productData = itemList;
     },
     //footer合计
     footerMethod({columns, data}) {

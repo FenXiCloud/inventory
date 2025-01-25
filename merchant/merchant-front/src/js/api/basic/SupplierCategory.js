@@ -14,7 +14,7 @@ export default {
 	list(param) {
 		return Ajax.get('/supplierCategory', param)
 	},
-	remove(vendorsCategoryId) {
+	delete(vendorsCategoryId) {
 		return Ajax.delete('/supplierCategory/' + vendorsCategoryId);
 	},
 	select(param) {

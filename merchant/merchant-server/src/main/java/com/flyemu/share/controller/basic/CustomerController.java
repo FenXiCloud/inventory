@@ -83,7 +83,7 @@ public class CustomerController {
     }
 
     // 导入
-    @PostMapping("/import")
+    @PostMapping("/importData")
     public JsonResult importData(@RequestParam("file") MultipartFile multipartFile, @SaMerchantId Long merchantId) {
         try {
             ExcelReader reader = ExcelUtil.getReader(multipartFile.getInputStream());
@@ -102,8 +102,8 @@ public class CustomerController {
     }
 
     // 导出
-    @GetMapping("/exportToFile")
-    public ResponseEntity<byte[]> exportToFile(@SaMerchantId Long merchantId) {
+    @GetMapping("/exportToExcel")
+    public ResponseEntity<byte[]> exportToExcel(@SaMerchantId Long merchantId) {
         return toExcel(customerService.exportList(merchantId, null, null));
     }
 

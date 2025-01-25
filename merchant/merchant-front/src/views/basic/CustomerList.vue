@@ -3,20 +3,20 @@
     <div class="parent_container">
       <div class="left">
         <vxe-table
-            ref="customerTypeGridRef"
+            ref="customerCategoryGridRef"
             size="mini"
-            :data="customerTypeDataList"
+            :data="customerCategoryDataList"
             highlight-hover-row
             show-overflow
-            @radio-change="handleCustomerTypeChange"
+            @radio-change="onCustomerCategoryChange"
             :rowConfig="{isCurrent: true,isHover: true}"
             :radio-config="{trigger: 'row',labelField: 'name',highlight: true}">
-          <vxe-column field="name" title="客户类型"></vxe-column>
+          <vxe-column field="name" title="客户分类"></vxe-column>
           <vxe-column title="" align="center" width="120">
             <template #default="{row}">
               <template v-if="row.id !=null">
-                <i class="primary-color h-icon-edit ml-10px" @click="addOrEditCategoryForm(row)"></i>
-                <i class="primary-color h-icon-trash ml-10px" @click="doRemoveCategory(row)"></i>
+                <i class="primary-color h-icon-edit ml-10px" @click="showCustomerCategoryForm(row)"></i>
+                <i class="primary-color h-icon-trash ml-10px" @click="deleteCustomerCategory(row)"></i>
               </template>
             </template>
           </vxe-column>
@@ -26,22 +26,22 @@
 
         <vxe-toolbar>
           <template #buttons>
-            <Button @click="addOrEditForm()" color="primary">新 增</Button>
-            <Button @click="addOrEditCategoryForm()">新增分类</Button>
-            <Button @click="importForm()">导入</Button>
-            <Button @click="exportToFile()">导出</Button>
+            <Button @click="showCustomerForm()" color="primary">新 增</Button>
+            <Button @click="showCustomerCategoryForm()">新增分类</Button>
+            <Button @click="showCustomerImportForm()">导入</Button>
+            <Button @click="exportCustomerToExcel()">导出</Button>
           </template>
           <template #tools>
             <Search v-model.trim="params.name" search-button-theme="h-btn-default"
                     show-search-button class="w-300px"
-                    placeholder="请输入客户名称" @search="doSearch">查询
+                    placeholder="请输入客户名称" @search="searchCustomer">查询
             </Search>
           </template>
         </vxe-toolbar>
 
         <vxe-table row-id="id"
                    ref="table"
-                   :data="dataList"
+                   :data="customerDataList"
                    highlight-hover-row
                    show-overflow
                    :row-config="{height: 48}"
@@ -57,18 +57,18 @@
           <vxe-column title="备注" field="remarks" min-width="120"/>
           <vxe-column title="操作" align="center" width="160">
             <template #default="{row}">
-              <i class="primary-color h-icon-edit ml-10px" @click="addOrEditForm(row)"></i>
-              <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
+              <i class="primary-color h-icon-edit ml-10px" @click="showCustomerForm(row)"></i>
+              <i class="primary-color h-icon-trash ml-10px" @click="deleteCustomer(row)"></i>
             </template>
           </vxe-column>
         </vxe-table>
-        <vxe-pager perfect @page-change="loadData(false)"
+        <vxe-pager perfect @page-change="loadCustomer(false)"
                    v-model:current-page="pagination.page"
                    v-model:page-size="pagination.pageSize"
                    :total="pagination.total"
                    :layouts="[ 'PrevPage', 'Number', 'NextPage', 'Sizes', 'Total']">
           <template #left>
-            <vxe-button @click="loadData(false)" type="text" size="mini" icon="h-icon-refresh"
+            <vxe-button @click="loadCustomer(false)" type="text" size="mini" icon="h-icon-refresh"
                         :loading="loading"></vxe-button>
           </template>
         </vxe-pager>
@@ -107,8 +107,8 @@ export default {
         name: null,
         customerCategoryId: null
       },
-      customerTypeDataList: [{id: null, code: 'ALL', parentId: null, name: '全部分类'}],
-      dataList: [],
+      customerCategoryDataList: [],
+      customerDataList: [],
       pagination: {
         page: 1,
         size: 20,
@@ -128,15 +128,15 @@ export default {
   },
   methods: {
 
-    exportToFile() {
-      Customer.exportToFile().then((blob) => {
+    exportCustomerToExcel() {
+      Customer.exportToExcel().then((blob) => {
         downloadBlob("客户档案.xlsx", blob)
       }).finally(() => {
         this.loading = false
       })
     },
 
-    importForm() {
+    showCustomerImportForm() {
       let layerId = layer.open({
         title: "客户导入",
         shadeClose: false,
@@ -153,25 +153,22 @@ export default {
       });
     },
 
-    selectFirstCustomerType() {
-      // 默认选中第一个单据类型
-      const table = this.$refs.customerTypeGridRef;
-
-      if (this.customerTypeDataList[0]){
-        table.setRadioRow(this.customerTypeDataList[0]);
+    // 默认选中第一个单据类型'
+    selectDefaultCustomerCategory() {
+      const table = this.$refs.customerCategoryGridRef;
+      if (this.customerCategoryDataList[0]) {
+        table.setRadioRow(this.customerCategoryDataList[0]);
       }
-
     },
 
-    handleCustomerTypeChange(data) {
-      // 单选框变化时的处理函数
-      console.log(data.row.id);
+    // 单选框变化时的处理函数
+    onCustomerCategoryChange(data) {
       this.params.customerCategoryId = data.row.id;
-      this.loadData();
+      this.loadCustomer();
     },
 
     //添加或编辑客户分类Form
-    addOrEditCategoryForm(entity) {
+    showCustomerCategoryForm(entity) {
       let layerId = layer.open({
         title: "客户分类",
         shadeClose: false,
@@ -183,7 +180,7 @@ export default {
             layer.close(layerId);
           },
           onSuccess: () => {
-            this.loadCategoryData();
+            this.loadCustomerCategory();
             layer.close(layerId);
           }
         })
@@ -191,41 +188,41 @@ export default {
     },
 
     //删除客户分类
-    doRemoveCategory(row) {
+    deleteCustomerCategory(row) {
       confirm({
         title: "系统提示",
-        content: `确认删除客户类型：${row.name}?`,
+        content: `确认删除客户分类：${row.name}?`,
         onConfirm: () => {
           CustomerCategory.remove(row.id).then(() => {
             message("删除成功~");
-            this.loadCategoryData();
+            this.loadCustomerCategory();
             this.params.customerCategoryId = null;
-            this.loadData();
+            this.loadCustomer();
           })
         }
       })
     },
 
     //查询客户分类
-    loadCategoryData() {
+    loadCustomerCategory() {
       Promise.all([
         CustomerCategory.select(),
       ]).then((results) => {
         let data = results[0].data || [];
         data.unshift({id: null, code: 'ALL', parentId: null, name: '全部分类'})
-        this.customerTypeDataList = data;
-        this.selectFirstCustomerType();
+        this.customerCategoryDataList = data;
+        this.selectDefaultCustomerCategory();
       });
     },
 
     //查询客户按钮
-    doSearch() {
+    searchCustomer() {
       this.pagination.page = 1;
-      this.loadData();
+      this.loadCustomer();
     },
 
     //添加或编辑客户Form
-    addOrEditForm(entity) {
+    showCustomerForm(entity) {
       let layerId = layer.open({
         title: "客户信息",
         shadeClose: false,
@@ -237,7 +234,7 @@ export default {
             layer.close(layerId);
           },
           onSuccess: () => {
-            this.doSearch();
+            this.searchCustomer();
             layer.close(layerId);
           }
         })
@@ -245,34 +242,33 @@ export default {
     },
 
     //删除客户
-    doRemove(row) {
+    deleteCustomer(row) {
       confirm({
         title: "系统提示",
         content: `确认删除客户：${row.name}?`,
         onConfirm: () => {
-          Customer.remove(row.id).then(() => {
+          Customer.delete(row.id).then(() => {
             message("删除成功~");
-            this.loadData();
+            this.loadCustomer();
           })
         }
       })
     },
 
     //加载客户列表
-    loadData() {
+    loadCustomer() {
       this.loading = true;
       Customer.list(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results || [];
+        this.customerDataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
     },
   },
   created() {
     //初始化客户分类列表
-    this.loadCategoryData();
-
+    this.loadCustomerCategory();
     //初始化客户列表
-    this.loadData();
+    this.loadCustomer();
   }
 }
 </script>

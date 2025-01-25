@@ -26,10 +26,12 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,6 +90,7 @@ public class SalesOutboundService extends AbsService {
         SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
         Long id = salesOutbound.getId();
         List<SalesOutboundItem> salesOutboundItemList = salesOutboundForm.getSalesOutboundItemList();
+        // todo 根据产品id和仓库id 查询库存服务是否有库存;
         if (id != null) {
             //查询
             SalesOutbound original = salesOutboundRepository.getById(id);
@@ -189,6 +192,35 @@ public class SalesOutboundService extends AbsService {
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
                 builder.and(qSalesOutbound.accountBookId.eq(accountBookId));
+            }
+        }
+        public void setFilter(String filter) {
+            if (StringUtils.isNotBlank(filter)) {
+                builder.and(qSalesOutbound.orderNo.like("%" + filter + "%"));
+            }
+        }
+
+        public void setState(String state) {
+            if (StringUtils.isNotBlank(state)) {
+                builder.and(qSalesOutbound.orderStatus.eq(OrderStatus.valueOf(state)));
+            }
+        }
+
+        public void setStart(String start) {
+            if (StringUtils.isNotBlank(start)) {
+                builder.and(qSalesOutbound.outboundDate.goe(LocalDate.parse(start)));
+            }
+        }
+
+        public void setEnd(String end) {
+            if (StringUtils.isNotBlank(end)) {
+                builder.and(qSalesOutbound.outboundDate.loe(LocalDate.parse(end)));
+            }
+        }
+
+        public void setCustomerId(Long customerId) {
+            if (customerId != null) {
+                builder.and(qSalesOutbound.customerId.eq(customerId));
             }
         }
     }

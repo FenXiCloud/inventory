@@ -10,6 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
 /**
@@ -41,8 +42,7 @@ public class SalesOutbound {
     private Long customerId;
 
     @Comment("出库日期")
-    @CreationTimestamp
-    private Date outboundDate;
+    private LocalDate outboundDate;
 
     @Comment("订单金额")
     private BigDecimal totalAmount;

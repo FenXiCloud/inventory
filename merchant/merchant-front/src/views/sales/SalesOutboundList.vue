@@ -140,8 +140,8 @@ export default {
   methods: {
     ...mapMutations(['pushTab']),
 
-    addForm(type = 'add', id = null) {
-      this.$store.commit('SET_TAB_DATA', {type, id});
+    addForm(type = 'add', orderId = null) {
+      this.$store.commit('SET_TAB_DATA', {type, orderId});
       this.pushTab({
         key: 'SalesOutboundForm',
         title: type === 'edit' ? '编辑销售出库' : '新增销售出库',

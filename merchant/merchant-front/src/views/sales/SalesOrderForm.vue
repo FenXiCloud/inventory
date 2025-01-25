@@ -477,8 +477,7 @@ export default {
     //关闭窗口
     closeWindow() {
       console.log("this.$store.state.currentTab", this.$store.state.currentTab)
-      //this.$store.commit('closeTabKey', this.$store.state.currentTab);
-
+      this.$store.commit('closeTabKey', this.$store.state.currentTab);
       this.$store.commit('newTab', "SalesOrderList");
       // 使用 nextTick 确保在 DOM 更新后执行
       this.$nextTick(() => {

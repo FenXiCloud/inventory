@@ -106,11 +106,11 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
           <label class="mr-16px  w-100px">优惠率(%)：</label>
-          <Input v-model="form.discountRate" readonly/>
+          <Input v-model="form.discountRate" readonly type="number"/>
           <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
-          <Input v-model="form.discountAmount" readonly/>
+          <Input v-model="form.discountAmount" type="number" readonly/>
           <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
-          <Input v-model="form.finalAmount" readonly/>
+          <Input v-model="form.finalAmount" type="number" readonly/>
         </div>
       </div>
     </div>

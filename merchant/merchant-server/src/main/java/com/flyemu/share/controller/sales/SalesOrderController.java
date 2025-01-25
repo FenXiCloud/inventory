@@ -71,7 +71,7 @@ public class SalesOrderController {
     }
 
     /**
-     * 入库单详情
+     * 销售订单详情
      * @param merchantId
      * @param accountBookId
      * @param orderId

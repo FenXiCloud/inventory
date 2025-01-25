@@ -235,10 +235,12 @@ public class SalesOrderService extends AbsService {
             }
         }
 
-        public void setCustomerId(Long customerId) {
-            if (customerId != null) {
-                builder.and(qSalesOrder.customerId.eq(customerId));
+        //查询未出库订单
+        public void setQueryUnOutOrder(Integer queryUnOutOrder) {
+            if (queryUnOutOrder == 1) {
+                builder.and(qSalesOrder.outOrderId.isNotNull());
             }
         }
+
     }
 }

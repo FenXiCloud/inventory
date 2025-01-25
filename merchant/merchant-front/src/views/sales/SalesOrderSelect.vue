@@ -109,6 +109,8 @@ export default {
         pageSize: this.pagination.pageSize,
         start: this.dateRange.start,
         end: this.dateRange.end,
+        //查询未出库订单
+        queryUnOutOrder: 1
       })
     },
   },

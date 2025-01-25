@@ -126,25 +126,8 @@ export default {
       // 遍历选中的订单，收集所有明细
       selectedRows.forEach(row => {
         if (row.salesOrderItemList && row.salesOrderItemList.length > 0) {
-          // 为每个明细项添加订单信息
-          const items = row.salesOrderItemList.map(item => ({
-            id: item.id,
-            orderId: row.id,
-            orderNo: row.orderNo,
-            customerId: row.customerId,
-            customerName: row.customerName,
-            productId: item.productId,
-            productName: item.productName,
-            productCode: item.productCode,
-            unitId: item.unitId,
-            unitName: item.unitName,
-            quantity: item.quantity,
-            price: item.price,
-            amount: item.amount,
-            // 可以根据需要添加其他字段
-          }));
           // 将当前订单的明细添加到总列表中
-          allItemList = allItemList.concat(items);
+          allItemList = allItemList.concat(row.salesOrderItemList);
         }
       });
 

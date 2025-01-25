@@ -31,7 +31,7 @@
         <vxe-column title="商品信息" width="300">
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,rowIndex)" :datas="productList" v-model="product"
+              <Select ref="ms" @change="selectProduct($event,rowIndex)" :datas="productList" v-model="row.productId"
                       keyName="id" titleName="name" filterable placeholder="输入编码/名称">
                 <template v-slot:item="{ item }">
                   <div>{{ item.code }} {{ item.name }}</div>
@@ -152,6 +152,7 @@ import {h} from "vue";
 import SalesOrderList from "@views/sales/SalesOrderList.vue";
 import CustomerForm from "@views/basic/CustomerForm.vue";
 import SalesOrderSelect from "@views/sales/SalesOrderSelect.vue";
+import Unit from "@js/api/basic/Unit";
 
 export default {
   name: "SalesOutboundForm",
@@ -165,6 +166,7 @@ export default {
     return {
       loading: false,
       productList: [],
+      unitList: [],
       product: null,
       warehouseList: [],
       customerList: [],
@@ -212,7 +214,31 @@ export default {
     },
 
     handleSelectedOrders(itemList) {
+      // 将 productList 转换为 Map，以 productId 为键
+      const productMap = new Map(this.productList.map(product => [product.id, product]));
+      const unitMap = new Map(this.unitList.map(unit => [unit.id, unit]));
+      itemList.forEach(row => {
+        const product = productMap.get(row.productId);
+        if (product) {
+          row.productName = product.name;
+          row.productCode = product.code;
+        }
+        const unit = unitMap.get(row.baseUnitId);
+        if (unit) {
+          row.unitName = unit.name;
+        }
+      });
+      console.log('处理后的订单数据:', itemList)
+      // 将 itemList 赋值给 productData
       this.productData = itemList;
+
+      // this.productData = itemList.map(item => ({
+      //   ...item,
+      //   //封装产品名称和产品编码，进行回显
+      //   productName: item.name,
+      //   productCode: item.code,
+      //   // 如果需要添加或修改其他字段可以在这里处理
+      // }));
     },
     //footer合计
     footerMethod({columns, data}) {
@@ -535,11 +561,13 @@ export default {
     Promise.all([
       Customer.select(),
       Warehouse.select(),
-      Product.select()
+      Product.select(),
+      Unit.select()
     ]).then((results) => {
       this.customerList = results[0].data || [];
       this.warehouseList = results[1].data || [];
       this.productList = results[2].data || [];
+      this.unitList = results[3].data || [];
       console.log("this.productList", this.productList);
       //订单详情/编辑订单
       const tabData = this.$store.state.currentTabData;

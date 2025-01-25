@@ -509,6 +509,8 @@ export default {
       console.log("this.productList", this.productList);
       //订单详情/编辑订单
       const tabData = this.$store.state.currentTabData;
+      //清空参数
+      this.$store.commit('SET_TAB_DATA', null);
       console.log("tabData", tabData)
       this.type = tabData?.type;
       this.orderId = tabData?.orderId;

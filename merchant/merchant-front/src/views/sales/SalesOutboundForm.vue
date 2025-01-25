@@ -543,7 +543,7 @@ export default {
       console.log("this.$store.state.currentTab", this.$store.state.currentTab)
       //this.$store.commit('closeTabKey', this.$store.state.currentTab);
 
-      this.$store.commit('newTab', "SalesOrderList");
+      this.$store.commit('newTab', "SalesOutboundList");
       // 使用 nextTick 确保在 DOM 更新后执行
       this.$nextTick(() => {
         // 通过 eventBus 或 vuex 触发刷新
@@ -575,6 +575,8 @@ export default {
       console.log("this.productList", this.productList);
       //订单详情/编辑订单
       const tabData = this.$store.state.currentTabData;
+      //清空参数
+      this.$store.commit('SET_TAB_DATA', null);
       console.log("tabData", tabData)
       this.type = tabData?.type;
       this.orderId = tabData?.orderId;

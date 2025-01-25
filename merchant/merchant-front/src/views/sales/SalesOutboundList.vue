@@ -140,8 +140,8 @@ export default {
   methods: {
     ...mapMutations(['pushTab']),
 
-    addForm(type = 'add', orderId = null) {
-      this.$store.commit('SET_TAB_DATA', {type, orderId});
+    addForm(type = 'add', id = null) {
+      this.$store.commit('SET_TAB_DATA', {type, id});
       this.pushTab({
         key: 'SalesOutboundForm',
         title: type === 'edit' ? '编辑销售出库' : '新增销售出库',
@@ -213,7 +213,7 @@ export default {
         }
       })
       this.amountTotal = totalAmount;
-      return [["", "", "", "", "", "", totalAmount, discountAmount, finalAmount]];
+      return [["", "", "", "", "", "", totalAmount.toFixed(2), discountAmount.toFixed(2), finalAmount.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;

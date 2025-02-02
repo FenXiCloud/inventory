@@ -37,6 +37,9 @@ public class OtherInbound {
     @Comment("供货商ID")
     private Long supplierId;
 
+    @Comment("客户ID")
+    private Long customerId;
+
     @Comment("入库日期")
     @CreationTimestamp
     private Date inboundDate;

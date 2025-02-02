@@ -1069,6 +1069,7 @@ CREATE TABLE `jxc_other_inbound`
   `approved_by` bigint DEFAULT NULL COMMENT '审核人',
   `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
   `created_by` bigint DEFAULT NULL COMMENT '创建人',
+  `customer_id` bigint(20) DEFAULT NULL COMMENT '客户ID',
   `discount_amount` decimal(38,2) DEFAULT NULL COMMENT '折扣金额',
   `final_amount` decimal(38,2) DEFAULT NULL COMMENT '折后金额',
   `inbound_date` datetime(6) DEFAULT NULL COMMENT '入库日期',

@@ -130,6 +130,16 @@ public class SupplierService extends AbsService {
         return dtoList;
     }
 
+    /**
+     * 根据主键获取供应商信息
+     *
+     * @param id 主键
+     * @return supplier
+     */
+    public Supplier selectByPrimaryKey(Long id) {
+        return jqf.selectFrom(qSupplier).where(qSupplier.id.eq(id)).fetchOne();
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 

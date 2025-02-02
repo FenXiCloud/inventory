@@ -117,7 +117,8 @@ const groupRoutes = [
     {
         name: 'OtherInboundList',
         component: defineAsyncComponent(() => import('@views/inventory/OtherInboundList.vue'))
-    }, 
+    },
+    {name: 'OtherInboundForm', component: defineAsyncComponent(() => import('@views/inventory/OtherInboundForm.vue'))},
     {
         name: 'OtherOutboundList',
         component: defineAsyncComponent(() => import('@views/inventory/OtherOutboundList.vue'))

@@ -23,7 +23,7 @@ import java.math.RoundingMode;
 import java.util.List;
 
 /**
- * @功能描述: 其他入库单明细
+ * @功能描述: 其他出库单明细
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司

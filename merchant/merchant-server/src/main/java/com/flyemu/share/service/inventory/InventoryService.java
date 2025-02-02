@@ -152,8 +152,7 @@ public class InventoryService extends AbsService {
     private void operateInventory(Long orderId, List<InventoryItem> inventoryItems,
                                   Inventory inventory, Integer currentQuantity,
                                   BigDecimal totalCost) {
-        BigDecimal averageCost = totalCost.divide(BigDecimal.valueOf(currentQuantity))
-                .setScale(2, RoundingMode.DOWN);
+        BigDecimal averageCost = totalCost.divide(BigDecimal.valueOf(currentQuantity),2, RoundingMode.DOWN);
         jqf.update(qInventory).set(qInventory.currentQuantity, currentQuantity)
                 .set(qInventory.totalCost, totalCost)
                 .set(qInventory.averageCost, averageCost)

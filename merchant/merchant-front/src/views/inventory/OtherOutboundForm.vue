@@ -7,7 +7,7 @@
           <DatePicker v-model="form.orderDate" :disabled="auditOperate" :option="{ start: accountBook.checkoutDate }"
             :clearable="false">
           </DatePicker>
-          <label class="mr-20px" style="font-size: 16px !important">客户：</label>
+          <label class="mr-20px ml-20px" style="font-size: 16px !important">客户：</label>
           <Select class="w-178px" filterable required :datas="customerList" keyName="id" titleName="name"
             v-model="form.customerId" placeholder="请选择客户" :disabled="auditOperate" />
           <label class="mr-20px ml-16px" style="font-size: 16px !important">业务类型：</label>
@@ -72,11 +72,13 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="数量" field="quantity" width="100" :title-help="{ content: form.quantityTips }">
+        <vxe-column title="数量" field="quantity" width="100">
           <template #default="scope">
-            <vxe-input v-if="!auditOperate" @focus="quantityFocus(scope)" @blur="quantityBlur"
-              v-model.number="scope.row.quantity" type="int" min="0" :controls="false">
-            </vxe-input>
+            <vxe-tooltip v-if="!auditOperate" theme="light" :content="scope.row.quantityTips" >
+              <vxe-input @focus="quantityFocus(scope)" @blur="quantityBlur"
+                         v-model.number="scope.row.quantity" type="int" min="0" :controls="false">
+              </vxe-input>
+            </vxe-tooltip>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
                 <div>{{ scope.row.quantity }}</div>
@@ -158,7 +160,7 @@ export default {
         totalAmount: 0.00,
         totalQuantity: 0,
         adminName: '',
-        quantityTips: '编辑数量后，查看库存',
+        // quantityTips: '编辑数量后，查看库存',
         orderStatus: '已保存'
       },
       productData: [],
@@ -292,6 +294,9 @@ export default {
         })
         .finally(() => loading.close());
     },
+    closeWindow(){
+      this.closeSelfTab(this.index);
+    },
     //校验提交表单
     validatorsForm(filterOtherOutboundData) {
       if (filterOtherOutboundData.length === 0) {
@@ -405,15 +410,15 @@ export default {
               quantity = item.currentQuantity;
             }
           });
-          this.form.quantityTips = `总库存：${totalQuantity}\r\n仓库库存：${quantity}`;
+          this.otherOutboundData[rowIndex].quantityTips = `总库存：${totalQuantity}\r\n仓库库存：${quantity}`;
         } else {
-          this.form.quantityTips = `总库存：0\r\n仓库库存：0`;
+          this.otherOutboundData[rowIndex].quantityTips = `总库存：0\r\n仓库库存：0`;
         }
       });
     },
     //失去焦点
     quantityBlur() {
-      this.form.quantityTips = "编辑数量后，查看库存";
+      // this.form.quantityTips = "编辑数量后，查看库存";
     },
     //加载编辑表单
     loadEditForm() {

@@ -300,26 +300,22 @@ export default {
     //校验提交表单
     validatorsForm(filterOtherOutboundData) {
       if (filterOtherOutboundData.length === 0) {
-        message.error("请填写操作数据~");
         throw new Error("请填写操作数据~")
       }
       loading("保存中....");
       let productData = filterOtherOutboundData.filter((c) => this.isEmpty(c.productId));
       console.info("productData:", productData)
       if (productData.length > 0) {
-        message.error("请选择商品~");
         loading.close();
         throw new Error("请选择商品~")
       }
       let warehouse = filterOtherOutboundData.filter((c) => this.isEmpty(c.warehouseId));
       if (warehouse.length > 0) {
-        message.error("请选择仓库~");
         loading.close();
         throw new Error("请选择仓库~")
       }
       let quantity = filterOtherOutboundData.filter((c) => this.isEmpty(c.quantity) || Number(c.quantity) === 0);
       if (quantity.length > 0) {
-        message.error("请填写数量~");
         loading.close();
         throw new Error("请填写数量~")
       }

@@ -110,6 +110,7 @@ const groupRoutes = [
         name: 'InventoryTransferList',
         component: defineAsyncComponent(() => import('@views/inventory/InventoryTransferList.vue'))
     },
+    {name: 'InventoryTransferForm', component: defineAsyncComponent(() => import('@views/inventory/InventoryTransferForm.vue'))},
     {
         name: 'StockTakeList',
         component: defineAsyncComponent(() => import('@views/inventory/StockTakeList.vue'))

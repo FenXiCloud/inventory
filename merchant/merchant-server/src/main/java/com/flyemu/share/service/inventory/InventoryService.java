@@ -90,6 +90,20 @@ public class InventoryService extends AbsService {
      */
     @Transactional
     public void computedInventory(Inventory item, boolean increase, Long orderId, List<InventoryItem> inventoryItems) {
+        this.computedInventory(item, increase, orderId, inventoryItems, true);
+    }
+
+    /**
+     * 计算库存
+     *
+     * @param item           库存对象
+     * @param increase       是否添加
+     * @param orderId        订单id
+     * @param inventoryItems 库存明细
+     * @param operateItems   是否操作明细
+     */
+    @Transactional
+    public void computedInventory(Inventory item, boolean increase, Long orderId, List<InventoryItem> inventoryItems, boolean operateItems) {
         Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(item.getProductId()))
                 .where(qInventory.warehouseId.eq(item.getWarehouseId())).fetchFirst();
         if (inventory == null) {
@@ -108,19 +122,19 @@ public class InventoryService extends AbsService {
         if (increase) {
             currentQuantity += computedQuantity;
             totalCost = totalCost.add(computedCost).setScale(2, RoundingMode.DOWN);
-            this.operateInventory(orderId, inventoryItems, inventory, currentQuantity, totalCost);
+            this.operateInventory(orderId, inventoryItems, inventory, currentQuantity, totalCost, operateItems);
             return;
         }
         //todo 负值库存待处理
         currentQuantity -= computedQuantity;
         totalCost = totalCost.subtract(computedCost).setScale(2, RoundingMode.DOWN);
-        if (currentQuantity > 0) {
+        if (currentQuantity < 0) {
             currentQuantity = 0;
         }
         if (totalCost.compareTo(BigDecimal.ZERO) == 0) {
             totalCost = BigDecimal.ZERO;
         }
-        this.operateInventory(orderId, inventoryItems, inventory, currentQuantity, totalCost);
+        this.operateInventory(orderId, inventoryItems, inventory, currentQuantity, totalCost, operateItems);
     }
 
     /**
@@ -148,15 +162,22 @@ public class InventoryService extends AbsService {
      * @param inventory       库存对象
      * @param currentQuantity 当前库存
      * @param totalCost       总成本
+     * @param operateItems    是否操作明细
      */
     private void operateInventory(Long orderId, List<InventoryItem> inventoryItems,
                                   Inventory inventory, Integer currentQuantity,
-                                  BigDecimal totalCost) {
-        BigDecimal averageCost = totalCost.divide(BigDecimal.valueOf(currentQuantity),2, RoundingMode.DOWN);
+                                  BigDecimal totalCost, boolean operateItems) {
+        BigDecimal averageCost = BigDecimal.ZERO;
+        if (currentQuantity != 0) {
+            averageCost = totalCost.divide(BigDecimal.valueOf(currentQuantity), 2, RoundingMode.DOWN);
+        }
         jqf.update(qInventory).set(qInventory.currentQuantity, currentQuantity)
                 .set(qInventory.totalCost, totalCost)
                 .set(qInventory.averageCost, averageCost)
                 .where(qInventory.id.eq(inventory.getId())).execute();
+        if (!operateItems) {
+            return;
+        }
         if (inventoryItems == null) {
             inventoryItemService.deleteByOrderId(orderId);
         } else {
@@ -182,6 +203,18 @@ public class InventoryService extends AbsService {
         }
         Integer currentQuantity = inventory.getCurrentQuantity();
         return currentQuantity != null && currentQuantity > 0;
+    }
+
+    /**
+     * 根据仓库id和产品id获取库存信息
+     *
+     * @param warehouseId 仓库id
+     * @param productId   产品id
+     * @return inventory
+     */
+    public Inventory findByWarehouseIdAndProductId(Long warehouseId, Long productId) {
+        return jqf.selectFrom(qInventory).where(qInventory.warehouseId.eq(warehouseId))
+                .where(qInventory.productId.eq(productId)).fetchOne();
     }
 
     @Data

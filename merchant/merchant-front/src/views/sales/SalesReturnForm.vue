@@ -148,11 +148,9 @@ import {mapMutations, mapState} from "vuex";
 import Product from "@js/api/basic/Product";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
-import SalesOrderList from "@views/sales/SalesOrderList.vue";
-import CustomerForm from "@views/basic/CustomerForm.vue";
-import SalesOrderSelect from "@views/sales/SalesOrderSelect.vue";
 import Unit from "@js/api/basic/Unit";
-import SalesOutbound from "@js/api/sales/SalesOutbound";
+import SalesOutboundSelect from "@views/sales/SalesOutboundSelect.vue";
+import SalesReturn from "@js/api/sales/SalesReturn";
 
 export default {
   name: "SalesReturnForm",
@@ -183,7 +181,7 @@ export default {
       },
       productData: [],
       //保存选择的源单
-      selectSalesOrderIdList: [],
+      selectSalesOutboundIdList: [],
       orderId:null,
       type:null,
     }
@@ -194,11 +192,11 @@ export default {
     //添加或编辑Form
     addOrEditForm(entity) {
       let layerId = layer.open({
-        title: "请选择销售订单",
+        title: "请选择销售出库单",
         shadeClose: false,
         closeBtn: false,
         area: ['1000px', '600px'],
-        content: h(SalesOrderSelect, {
+        content: h(SalesOutboundSelect, {
           onClose: () => {
             layer.close(layerId);
           },
@@ -238,7 +236,7 @@ export default {
       console.log('处理后的订单数据:', itemList)
       // 将 itemList 赋值给 productData
       this.productData = itemList;
-      this.selectSalesOrderIdList = params.selectSalesOrderIdList;
+      this.selectSalesOutboundIdList = params.selectSalesOutboundIdList;
 
       // this.productData = itemList.map(item => ({
       //   ...item,
@@ -397,10 +395,10 @@ export default {
         content: `确定审核订单？`,
         onConfirm: () => {
           loading("保存中....");
-          let salesOutbound = Object.assign(this.form);
-          salesOutbound.orderStatus = orderStatus
-          SalesOutbound.save({
-            salesOutbound: salesOutbound,
+          let salesReturn = Object.assign(this.form);
+          salesReturn.orderStatus = orderStatus
+          SalesReturn.save({
+            salesReturn: salesReturn,
           }).then((success) => {
             if (success) {
               message("审核成功~");
@@ -424,14 +422,14 @@ export default {
         return
       }
       confirm({
-        content: `确定保存订单？`,
+        content: `确定保存单据？`,
         onConfirm: () => {
           loading("保存中....");
           let productData = this.productData.filter(c => c.quantity > 0);
-          SalesOutbound.save({
-            salesOutbound: Object.assign(this.form),
-            salesOutboundItemList: productData,
-            selectSalesOrderIdList:this.selectSalesOrderIdList
+          SalesReturn.save({
+            salesReturn: Object.assign(this.form),
+            salesReturnItemList: productData,
+            selectSalesOutboundIdList:this.selectSalesOutboundIdList
           }).then((success) => {
             if (success) {
               message("保存成功~");
@@ -548,7 +546,7 @@ export default {
       console.log("this.$store.state.currentTab", this.$store.state.currentTab)
       //this.$store.commit('closeTabKey', this.$store.state.currentTab);
       this.$store.commit('closeTabKey', this.$store.state.currentTab);
-      this.$store.commit('newTab', "SalesOutboundList");
+      this.$store.commit('newTab', "SalesReturnList");
       // 使用 nextTick 确保在 DOM 更新后执行
       this.$nextTick(() => {
         // 通过 eventBus 或 vuex 触发刷新
@@ -586,14 +584,14 @@ export default {
       this.type = tabData?.type;
       this.orderId = tabData?.orderId;
       if (this.orderId) {
-        SalesOutbound.getInfo(this.orderId).then(response => {
-          let salesOutbound = response.data;
-          console.log("response.data", salesOutbound)
-          this.form = salesOutbound;
-          this.customerId = salesOutbound.customerId;
+        SalesReturn.getInfo(this.orderId).then(response => {
+          let salesReturn = response.data;
+          console.log("response.data", salesReturn)
+          this.form = salesReturn;
+          this.customerId = salesReturn.customerId;
           this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
           console.log("this.form", this.form)
-          this.productData = salesOutbound.salesOutboundItemList || [];
+          this.productData = salesReturn.salesReturnItemList || [];
           this.productData.push({isNew: true});
         });
       }

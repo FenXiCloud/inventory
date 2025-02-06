@@ -74,13 +74,9 @@
 </template>
 <script>
 import manba from "manba";
-import SalesOrder from "@js/api/sales/SalesOrder";
 import {mapMutations} from "vuex";
 import {confirm, loading, message} from "heyui.ext";
-import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import Customer from "@js/api/basic/Customer";
-import Warehouse from "@js/api/basic/Warehouse";
-import Product from "@js/api/basic/Product";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
 import SalesReturn from "@js/api/sales/SalesReturn";
 

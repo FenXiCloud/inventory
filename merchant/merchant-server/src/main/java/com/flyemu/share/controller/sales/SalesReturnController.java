@@ -6,11 +6,14 @@ import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.sales.SalesReturn;
+import com.flyemu.share.form.SalesOutboundForm;
 import com.flyemu.share.form.SalesReturnForm;
 import com.flyemu.share.service.sales.SalesReturnService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 
 /**
  * @功能描述: 销售退货单
@@ -34,16 +37,23 @@ public class SalesReturnController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid SalesReturn salesReturn, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        salesReturn.setMerchantId(merchantId);
-        salesReturn.setAccountBookId(accountBookId);
-        salesReturnService.save(salesReturn);
+    public JsonResult save(
+        @RequestBody @Valid SalesReturnForm salesReturnForm,
+        @SaAccountBookId Long accountBookId,
+        @SaMerchantId Long merchantId,
+        @SaAdminId Long adminId
+    ) {
+        salesReturnForm.getSalesReturn().setMerchantId(merchantId);
+        salesReturnForm.getSalesReturn().setAccountBookId(accountBookId);
+        salesReturnForm.getSalesReturn().setCreatedBy(adminId);
+        salesReturnForm.getSalesReturn().setCreatedAt(LocalDateTime.now());
+        salesReturnService.save(salesReturnForm);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid SalesReturn salesReturn) {
-        salesReturnService.save(salesReturn);
+    public JsonResult update( @RequestBody @Valid SalesReturnForm salesReturnForm) {
+        salesReturnService.save(salesReturnForm);
         return JsonResult.successful();
     }
 

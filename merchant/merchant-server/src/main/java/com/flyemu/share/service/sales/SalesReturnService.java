@@ -50,7 +50,8 @@ public class SalesReturnService extends AbsService {
     }
 
     @Transactional
-    public SalesReturn save(SalesReturn salesReturn) {
+    public SalesReturn save(SalesReturnForm salesReturnForm) {
+        SalesReturn salesReturn = salesReturnForm.getSalesReturn();
         if (salesReturn.getId() != null) {
             //更新
             SalesReturn original = salesReturnRepository.getById(salesReturn.getId());

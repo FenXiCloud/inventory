@@ -16,6 +16,6 @@ public class SalesReturnForm {
     private List<SalesReturnItem> salesReturnItemList;
 
     private List<Long> orderIds;
-    //选择的源单id
-    private List<Long> selectSalesOrderIdList;
+    //选择的源单id-销售出库单
+    private List<Long> selectSalesOutboundIdList;
 }

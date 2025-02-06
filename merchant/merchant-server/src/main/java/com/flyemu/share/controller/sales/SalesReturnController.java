@@ -1,10 +1,12 @@
 package com.flyemu.share.controller.sales;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.sales.SalesReturn;
+import com.flyemu.share.form.SalesReturnForm;
 import com.flyemu.share.service.sales.SalesReturnService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +56,37 @@ public class SalesReturnController {
     @GetMapping("select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(salesReturnService.select(merchantId, accountBookId));
+    }
+
+    /**
+     * 销售退货单详情
+     * @param merchantId
+     * @param accountBookId
+     * @param orderId
+     * @return
+     */
+    @GetMapping("/getInfo/{orderId}")
+    public JsonResult getInfo(
+            @SaMerchantId Long merchantId,
+            @SaAccountBookId Long accountBookId,
+            @PathVariable Long orderId
+    ) {
+        SalesReturn query = new SalesReturn();
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        query.setId(orderId);
+        return JsonResult.successful(salesReturnService.getById(query));
+    }
+
+    @PutMapping("/batchAudit")
+    public JsonResult batchAudit(
+            @RequestBody SalesReturnForm salesReturnForm,
+            @SaAdminId Long adminId
+    ) {
+        salesReturnForm.setSalesReturn(new SalesReturn());
+        salesReturnForm.getSalesReturn().setApprovedBy(adminId);
+        salesReturnService.batchAudit(salesReturnForm);
+        return JsonResult.successful();
     }
 
 }

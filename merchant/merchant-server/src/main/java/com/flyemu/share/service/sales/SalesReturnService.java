@@ -7,6 +7,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.sales.QSalesReturn;
 import com.flyemu.share.entity.sales.SalesReturn;
+import com.flyemu.share.form.SalesReturnForm;
 import com.flyemu.share.repository.SalesReturnRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -68,6 +69,14 @@ public class SalesReturnService extends AbsService {
 
     public List<SalesReturn> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qSalesReturn).where(qSalesReturn.merchantId.eq(merchantId).and(qSalesReturn.accountBookId.eq(accountBookId))).fetch();
+    }
+
+    public Object getById(SalesReturn query) {
+        return null;
+    }
+
+    public void batchAudit(SalesReturnForm salesReturnForm) {
+
     }
 
     public static class Query {

@@ -129,9 +129,9 @@ export default {
       console.log("selectedRows",selectedRows)
       // 遍历选中的订单，收集所有明细
       selectedRows.forEach(row => {
-        if (row.salesOrderItemList && row.salesOrderItemList.length > 0) {
+        if (row.salesOutboundItemList && row.salesOutboundItemList.length > 0) {
           // 将当前订单的明细添加到总列表中
-          allItemList = allItemList.concat(row.salesOrderItemList);
+          allItemList = allItemList.concat(row.salesOutboundItemList);
           selectSalesOutboundIdList = selectSalesOutboundIdList.concat(row.id);
         }
       });

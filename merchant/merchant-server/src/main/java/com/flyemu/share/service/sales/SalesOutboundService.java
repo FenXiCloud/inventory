@@ -71,21 +71,38 @@ public class SalesOutboundService extends AbsService {
     private final SalesOrderRepository salesOrderRepository;
 
     public PageResults<SalesOutboundDTO> query(Page page, SalesOutboundService.Query query) {
-        PagedList<Tuple> tuples = bqf.selectFrom(qSalesOutbound)
-                .select(qSalesOutbound, qCustomer.name, qMerchantUser.name)
+
+        long totalSize = bqf.selectFrom(qSalesOutbound)
+                .where(query.builder)
+                .fetchCount();
+
+        List<Tuple> fetchPage = bqf.selectFrom(qSalesOutbound)
+                .select(qSalesOutbound, qCustomer.name, qMerchantUser.name,qSalesOutboundItem)
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOutbound.createdBy))
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOutbound.customerId))
-                .where(query.builder).orderBy(qSalesOutbound.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+                .leftJoin(qSalesOutboundItem).on(qSalesOutboundItem.salesOutboundId.eq(qSalesOutbound.id))
+                .where(query.builder)
+                .orderBy(qSalesOutbound.id.desc())
+                .offset(page.getOffset())
+                .limit(page.getOffsetEnd())
+                .fetch();
 
         List<SalesOutboundDTO> dtos = new ArrayList<>();
-        tuples.forEach(tuple -> {
+        fetchPage.forEach(tuple -> {
             SalesOutboundDTO salesOutboundDTO = BeanUtil.toBean(tuple.get(qSalesOutbound), SalesOutboundDTO.class);
             salesOutboundDTO.setCustomerName(tuple.get(qCustomer.name));
             salesOutboundDTO.setCreatedName(tuple.get(qMerchantUser.name));
             dtos.add(salesOutboundDTO);
+
+            salesOutboundDTO.setSalesOutboundItemList(new ArrayList<>());
+            SalesOutboundItem salesOutboundItem = tuple.get(qSalesOutboundItem);
+            if (salesOutboundItem != null) {
+                SalesOutboundItemDTO itemDTO = BeanUtil.toBean(salesOutboundItem, SalesOutboundItemDTO.class);
+                salesOutboundDTO.getSalesOutboundItemList().add(itemDTO);
+            }
         });
 
-        return new PageResults<>(dtos, page, tuples.getTotalSize());
+        return new PageResults<>(dtos, page, totalSize);
     }
 
     @Transactional

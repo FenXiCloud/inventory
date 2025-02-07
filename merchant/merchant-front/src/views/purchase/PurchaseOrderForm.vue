@@ -45,13 +45,14 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="采购单位" field="orderUnitName" align="center" width="80">
+        <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
               <Select v-if="row.auxiliaryUnitPrices" :deletable="false" @change="changeProductUnit($event,row)"
-                      v-model="row.orderUnitId" :datas="row.auxiliaryUnitPrices" filterable placeholder="输入采购单位"
+                      v-model="row.secondaryUnitId" :datas="row.auxiliaryUnitPrices" filterable
+                      placeholder="输入采购单位"
                       keyName="unitId" titleName="unitName"/>
-              <span v-else>{{ row.orderUnitName }}</span>
+              <span v-else>{{ row.secondaryUnitName }}</span>
             </template>
           </template>
         </vxe-column>
@@ -63,26 +64,27 @@
             </template>
           </template>
         </vxe-column>
-        <vxe-column title="数量" field="orderQuantity" width="90">
+        <vxe-column title="数量" field="secondaryQuantity" width="90">
           <template #default="{row,rowIndex,columnIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3" @keyup="handleEnter($event,rowIndex,3)"
-                       @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.orderQuantity" type="float"
+                       @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.secondaryQuantity"
+                       type="float"
                        min="0" :controls="false"></vxe-input>
           </template>
         </vxe-column>
-        <vxe-column title="基本单位" field="unitName" align="center" width="80"/>
-        <vxe-column title="基本数量" field="sysQuantity" width="90"/>
-        <vxe-column title="购货单价" field="orderPrice" width="100">
+        <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
+        <vxe-column title="基本数量" field="quantity" width="90"/>
+        <vxe-column title="购货单价" field="secondaryPrice" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
-                       @blur="updatePrice(row)" v-model.number="row.orderPrice" type="float" min="0"
+                       @blur="updatePrice(row)" v-model.number="row.secondaryPrice" type="float" min="0"
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
-        <vxe-column title="折扣率(%)" field="discount" width="100">
+        <vxe-column title="折扣率(%)" field="discountRate" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5" @keyup="handleEnter($event,rowIndex,5)"
-                       @blur="updateDiscount(row)" v-model.number="row.discount" type="float" min="0"
+                       @blur="updateDiscount(row)" v-model.number="row.discountRate" type="float" min="0"
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
@@ -93,10 +95,10 @@
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
-        <vxe-column title="购货金额" field="finalAmount" width="100">
+        <vxe-column title="购货金额" field="subtotal" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+7" @keyup="handleEnter($event,rowIndex,7)"
-                       @blur="updateFinalAmount(row)" v-model.number="row.finalAmount" type="float" min="0"
+                       @blur="updateSubtotal(row)" v-model.number="row.subtotal" type="float" min="0"
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
@@ -170,8 +172,8 @@ export default {
     finalAmount() {
       let total = 0;
       this.productData.forEach(val => {
-        if (val.sysQuantity > 0) {
-          total += parseFloat(val.finalAmount);
+        if (val.quantity > 0) {
+          total += parseFloat(val.subtotal);
         }
       });
       return total.toFixed(2);
@@ -253,15 +255,15 @@ export default {
     //footer合计
     footerMethod({columns, data}) {
       let sums = [];
-      let sysQuantity = 0;
+      let quantity = 0;
       columns.forEach((column) => {
-        if (column.property && ['sysQuantity', 'discountAmount', 'finalAmount'].includes(column.property)) {
+        if (column.property && ['quantity', 'discountAmount', 'subtotal'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
-            if (column.property === 'sysQuantity') {
+            if (column.property === 'quantity') {
               let rd = row[column.property];
               if (rd) {
-                sysQuantity += Number(rd || 0);
+                quantity += Number(rd || 0);
               }
             } else {
               let rd = row[column.property];
@@ -270,31 +272,33 @@ export default {
               }
             }
           });
-          if (column.property !== 'sysQuantity') {
+          if (column.property !== 'quantity') {
             sums.push(total.toFixed(2));
           }
         }
       })
       this.allFinalAmount = sums[1]
-      return [["", "", "", "", "", "", "", sysQuantity.toFixed(2), "", ""].concat(sums)];
+      return [["", "", "", "", "", "", "", quantity.toFixed(2), "", ""].concat(sums)];
     },
 
     //选择商品
     selectProduct(d, index) {
       if (d) {
-        console.log('d',d)
+        console.log('d', d)
+        console.log('d', this.warehouseId)
         let g = {
-          sysQuantity: 1,
-          orderQuantity: 1,
-          orderPrice: d.price || 0,
-          warehouseId: this.warehouseId,
+          quantity: 1,
+          secondaryQuantity: 1,
+          secondaryPrice: d.price || 0,
+          warehouseId: this.warehouseId || null,
           price: d.price || 0,
           discountAmount: 0.00,
-          discount: 0.00,
-          finalAmount: d.price || 0,
-          num: 1,
-          orderUnitId: d.unitId,
-          orderUnitName: d.unitName,
+          discountRate: 0.00,
+          subtotal: d.price || 0,
+          conversionRate: 1,
+          secondaryUnitId: d.unitId,
+          baseUnitId: d.unitId,
+          baseUnitName: d.unitName,
           remark: ""
         };
         this.productData[index] = Object.assign(Object.assign(g, d), d);
@@ -323,7 +327,7 @@ export default {
         loading.close()
         return
       }
-      let productData = this.productData.filter(c => c.sysQuantity > 0);
+      let productData = this.productData.filter(c => c.quantity > 0);
       if (productData.length <= 0) {
         message.error("请选择商品~");
         loading.close()
@@ -355,8 +359,11 @@ export default {
         orderDate: manba().format("YYYY-MM-dd"),
         supplierId: null,
         remark: null,
-        finalAmount: null
+        discountAmount: 0.00,
+        discountRate: 0.00,
+        finalAmount: 0.00,
       }
+      this.allFinalAmount = 0
       this.productData = []
       this.supplierId = null
     },
@@ -415,66 +422,69 @@ export default {
 
     //修改优惠率
     changeDiscountRate() {
+      this.form.discountRate = parseFloat(this.form.discountRate) || 0;
       this.form.discountAmount = (this.allFinalAmount * this.form.discountRate * 0.01).toFixed(2)
       this.form.finalAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2)
     },
     //修改优惠金额
     changeDiscountAmount() {
+      this.form.discountAmount = parseFloat(this.form.discountAmount) || 0;
       this.form.finalAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2)
-      this.form.discountRate = ((this.form.discountAmount / this.allFinalAmount) * 100).toFixed(2)
+      this.form.discountRate = this.form.discountAmount === 0 ? 0 : ((this.form.discountAmount / this.allFinalAmount) * 100).toFixed(2)
     },
     //修改优惠后金额
     changeFinalAmount() {
-      this.form.discountAmount = (this.form.allFinalAmount - this.form.discountAmount).toFixed(2)
-      this.form.discountRate = ((this.form.finalAmount / this.allFinalAmount) * 100).toFixed(2)
+      this.form.finalAmount = parseFloat(this.form.finalAmount) || 0;
+      this.form.discountAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2)
+      this.form.discountRate = this.form.finalAmount === 0 ? 0 : ((this.form.finalAmount / this.allFinalAmount) * 100).toFixed(2)
     },
     //修改商品多单位
     changeProductUnit(item, row) {
-      row.orderUnitName = item.unitName
-      row.orderPrice = (item.price || 0).toFixed(2) || 0
-      row.num = item.num || 1;
-      row.sysQuantity = (row.orderQuantity * row.num).toFixed(2);
-      row.finalAmount = (row.orderQuantity * row.orderPrice).toFixed(2);
+      row.secondaryUnitName = item.unitName
+      row.secondaryPrice = (item.price || 0).toFixed(2) || 0
+      row.conversionRate = item.conversionRate || 1;
+      row.quantity = (row.secondaryQuantity * row.conversionRate).toFixed(2);
+      row.subtotal = (row.secondaryQuantity * row.secondaryPrice).toFixed(2);
     },
 
     //更新数量
     updateQuantity(item) {
-      item.orderQuantity = item.orderQuantity || 1;
-      item.finalAmount = ((item.orderQuantity * item.orderPrice * (100 - item.discount)) / 100).toFixed(2);
-      item.discountAmount = (((item.orderQuantity * item.orderPrice) * item.discount) / 100).toFixed(2);
-      item.sysQuantity = (item.orderQuantity * (item.num || 1)).toFixed(2);
+      item.secondaryQuantity = item.secondaryQuantity || 1;
+      item.subtotal = ((item.secondaryQuantity * item.secondaryPrice * (100 - item.discountRate)) / 100).toFixed(2);
+      item.discountAmount = (((item.secondaryQuantity * item.secondaryPrice) * item.discountRate) / 100).toFixed(2);
+      item.quantity = (item.secondaryQuantity * (item.conversionRate || 1)).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
 
     //更新单价
     updatePrice(item) {
-      item.orderPrice = item.orderPrice || 0.00
-      item.discountAmount = (item.orderPrice * item.orderQuantity * item.discount / 100).toFixed(2);
-      item.finalAmount = (item.orderPrice * item.orderQuantity - item.discountAmount).toFixed(2);
+      item.secondaryPrice = item.secondaryPrice || 0.00
+      item.discountAmount = (item.secondaryPrice * item.secondaryQuantity * item.discountRate / 100).toFixed(2);
+      item.subtotal = (item.secondaryPrice * item.secondaryQuantity - item.discountAmount).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
 
     //更新折扣
     updateDiscount(item) {
-      item.discount = item.discount || 0.00;
-      item.finalAmount = ((item.orderQuantity || 0) * item.orderPrice * (100 - item.discount || 0) / 100).toFixed(2);
-      item.discountAmount = ((item.orderQuantity || 0) * item.orderPrice - item.finalAmount).toFixed(2);
+      item.discountRate = item.discountRate || 0.00;
+      item.subtotal = ((item.secondaryQuantity || 0) * item.secondaryPrice * (100 - item.discountRate || 0) / 100).toFixed(2);
+      item.discountAmount = ((item.secondaryQuantity || 0) * item.secondaryPrice - item.subtotal).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
 
     //更新折扣金额
     updateDiscountAmount(item) {
       item.discountAmount = item.discountAmount || 0.00;
-      item.discount = (((item.discountAmount / (item.orderPrice * item.orderQuantity)) * 100) || 0).toFixed(2);
-      item.finalAmount = (item.orderPrice * item.orderQuantity - item.discountAmount).toFixed(2);
+      item.discountRate = (((item.discountAmount / (item.secondaryPrice * item.secondaryQuantity)) * 100) || 0).toFixed(2);
+      item.subtotal = (item.secondaryPrice * item.secondaryQuantity - item.discountAmount).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
 
     //更新折后金额
-    updateFinalAmount(item) {
-      item.finalAmount = item.finalAmount || 0
-      item.orderPrice = ((item.finalAmount) / ((100 - item.discount)) * 100 / item.orderQuantity).toFixed(2);
-      item.discoutPrice = (item.orderPrice - item.finalAmount).toFixed(2);
+    updateSubtotal(item) {
+      item.subtotal = item.subtotal || 0
+      item.secondaryPrice = ((item.subtotal) / ((100 - item.discountRate)) * 100 / item.secondaryQuantity).toFixed(2);
+      item.discoutPrice = (item.secondaryPrice - item.subtotal).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
 

@@ -72,7 +72,6 @@ public class SalesReturnService extends AbsService {
                 .select(qSalesReturn, qCustomer.name, qMerchantUser.name,qsalesReturnItem)
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesReturn.createdBy))
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesReturn.customerId))
-                .leftJoin(qsalesReturnItem).on(qsalesReturnItem.salesReturnId.eq(qSalesReturn.id))
                 .where(query.builder)
                 .orderBy(qSalesReturn.id.desc())
                 .offset(page.getOffset())
@@ -84,14 +83,19 @@ public class SalesReturnService extends AbsService {
             SalesReturnDTO salesReturnDTO = BeanUtil.toBean(tuple.get(qSalesReturn), SalesReturnDTO.class);
             salesReturnDTO.setCustomerName(tuple.get(qCustomer.name));
             salesReturnDTO.setCreatedName(tuple.get(qMerchantUser.name));
-            dtos.add(salesReturnDTO);
+            //查询子表
+            List<SalesReturnItem> salesReturnItemList = bqf.selectFrom(qsalesReturnItem)
+                    .select(qsalesReturnItem)
+                    .where(qsalesReturnItem.salesReturnId.eq(salesReturnDTO.getId()))
+                    .fetch();
+            List<SalesReturnItemDTO> itemDTOs = new ArrayList<>();
+            salesReturnItemList.forEach(item -> {
+                SalesReturnItemDTO itemDTO = BeanUtil.toBean(item, SalesReturnItemDTO.class);
+                itemDTOs.add(itemDTO);
+            });
+            salesReturnDTO.setSalesReturnItemList(itemDTOs);
 
-            salesReturnDTO.setSalesReturnItemList(new ArrayList<>());
-            SalesReturnItem salesReturnItem = tuple.get(qsalesReturnItem);
-            if (salesReturnItem != null) {
-                SalesReturnItemDTO itemDTO = BeanUtil.toBean(salesReturnItem, SalesReturnItemDTO.class);
-                salesReturnDTO.getSalesReturnItemList().add(itemDTO);
-            }
+            dtos.add(salesReturnDTO);
         });
 
         return new PageResults<>(dtos, page, totalSize);

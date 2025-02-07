@@ -76,10 +76,9 @@ public class SalesOutboundService extends AbsService {
                 .fetchCount();
 
         List<Tuple> fetchPage = bqf.selectFrom(qSalesOutbound)
-                .select(qSalesOutbound, qCustomer.name, qMerchantUser.name,qSalesOutboundItem)
+                .select(qSalesOutbound, qCustomer.name, qMerchantUser.name)
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOutbound.createdBy))
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOutbound.customerId))
-                .leftJoin(qSalesOutboundItem).on(qSalesOutboundItem.salesOutboundId.eq(qSalesOutbound.id))
                 .where(query.builder)
                 .orderBy(qSalesOutbound.id.desc())
                 .offset(page.getOffset())
@@ -91,14 +90,20 @@ public class SalesOutboundService extends AbsService {
             SalesOutboundDTO salesOutboundDTO = BeanUtil.toBean(tuple.get(qSalesOutbound), SalesOutboundDTO.class);
             salesOutboundDTO.setCustomerName(tuple.get(qCustomer.name));
             salesOutboundDTO.setCreatedName(tuple.get(qMerchantUser.name));
-            dtos.add(salesOutboundDTO);
+            //查询子表
+            List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                    .select(qSalesOutboundItem)
+                    .where(qSalesOutboundItem.salesOutboundId.eq(salesOutboundDTO.getId()))
+                    .fetch();
 
-            salesOutboundDTO.setSalesOutboundItemList(new ArrayList<>());
-            SalesOutboundItem salesOutboundItem = tuple.get(qSalesOutboundItem);
-            if (salesOutboundItem != null) {
-                SalesOutboundItemDTO itemDTO = BeanUtil.toBean(salesOutboundItem, SalesOutboundItemDTO.class);
-                salesOutboundDTO.getSalesOutboundItemList().add(itemDTO);
-            }
+            List<SalesOutboundItemDTO> itemDTOs = new ArrayList<>();
+            salesOutboundItemList.forEach(item -> {
+                SalesOutboundItemDTO itemDTO = BeanUtil.toBean(item, SalesOutboundItemDTO.class);
+                itemDTOs.add(itemDTO);
+            });
+            salesOutboundDTO.setSalesOutboundItemList(itemDTOs);
+
+            dtos.add(salesOutboundDTO);
         });
 
         return new PageResults<>(dtos, page, totalSize);

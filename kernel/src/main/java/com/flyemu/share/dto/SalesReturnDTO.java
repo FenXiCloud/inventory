@@ -31,6 +31,8 @@ public class SalesReturnDTO {
 
     @Comment("客户ID")
     private Long customerId;
+    @Comment("客户name")
+    private String customerName;
 
     @Comment("退单日期")
     private LocalDate returnDate;
@@ -60,6 +62,8 @@ public class SalesReturnDTO {
 
     @Comment("创建人")
     private Long createdBy;
+    @Comment("创建人")
+    private String createdName;
 
     @Comment("创建时间")
     private LocalDateTime createdAt;

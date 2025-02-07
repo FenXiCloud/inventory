@@ -61,7 +61,6 @@ public class SalesOutboundService extends AbsService {
     private final static QCustomer qCustomer = QCustomer.customer;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProduct qProduct = QProduct.product;
-    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final static QUnit qUnit = QUnit.unit;
 
     private final SalesOutboundRepository salesOutboundRepository;

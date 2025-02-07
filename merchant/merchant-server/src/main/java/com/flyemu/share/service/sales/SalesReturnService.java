@@ -5,11 +5,16 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.SalesOutboundDTO;
+import com.flyemu.share.dto.SalesOutboundItemDTO;
 import com.flyemu.share.dto.SalesReturnDTO;
 import com.flyemu.share.dto.SalesReturnItemDTO;
+import com.flyemu.share.entity.basic.QCustomer;
 import com.flyemu.share.entity.basic.QProduct;
 import com.flyemu.share.entity.basic.QUnit;
+import com.flyemu.share.entity.basic.QWarehouse;
 import com.flyemu.share.entity.sales.*;
+import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesReturnForm;
 import com.flyemu.share.repository.SalesOutboundRepository;
@@ -44,8 +49,10 @@ import java.util.List;
 public class SalesReturnService extends AbsService {
 
     private final static QSalesReturn qSalesReturn = QSalesReturn.salesReturn;
-    private final static QSalesReturnItem salesReturnItem = QSalesReturnItem.salesReturnItem;
+    private final static QSalesReturnItem qsalesReturnItem = QSalesReturnItem.salesReturnItem;
 
+    private final static QCustomer qCustomer = QCustomer.customer;
+    private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProduct qProduct = QProduct.product;
     private final static QUnit qUnit = QUnit.unit;
 
@@ -56,17 +63,38 @@ public class SalesReturnService extends AbsService {
 
     private final SalesOutboundRepository salesOutboundRepository;
 
-    public PageResults<SalesReturn> query(Page page, SalesReturnService.Query query) {
-        PagedList<SalesReturn> fetchPage = bqf.selectFrom(qSalesReturn).where(query.builder).orderBy(qSalesReturn.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+    public PageResults<SalesReturnDTO> query(Page page, SalesReturnService.Query query) {
+        long totalSize = bqf.selectFrom(qSalesReturn)
+                .where(query.builder)
+                .fetchCount();
 
-        List<SalesReturn> dtos = new ArrayList<>();
+        List<Tuple> fetchPage = bqf.selectFrom(qSalesReturn)
+                .select(qSalesReturn, qCustomer.name, qMerchantUser.name,qsalesReturnItem)
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesReturn.createdBy))
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesReturn.customerId))
+                .leftJoin(qsalesReturnItem).on(qsalesReturnItem.salesReturnId.eq(qSalesReturn.id))
+                .where(query.builder)
+                .orderBy(qSalesReturn.id.desc())
+                .offset(page.getOffset())
+                .limit(page.getOffsetEnd())
+                .fetch();
+
+        List<SalesReturnDTO> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            SalesReturn salesReturn1 = tuple;
-            SalesReturn salesReturn = BeanUtil.toBean(salesReturn1, SalesReturn.class);
-            dtos.add(salesReturn);
+            SalesReturnDTO salesReturnDTO = BeanUtil.toBean(tuple.get(qSalesReturn), SalesReturnDTO.class);
+            salesReturnDTO.setCustomerName(tuple.get(qCustomer.name));
+            salesReturnDTO.setCreatedName(tuple.get(qMerchantUser.name));
+            dtos.add(salesReturnDTO);
+
+            salesReturnDTO.setSalesReturnItemList(new ArrayList<>());
+            SalesReturnItem salesReturnItem = tuple.get(qsalesReturnItem);
+            if (salesReturnItem != null) {
+                SalesReturnItemDTO itemDTO = BeanUtil.toBean(salesReturnItem, SalesReturnItemDTO.class);
+                salesReturnDTO.getSalesReturnItemList().add(itemDTO);
+            }
         });
 
-        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+        return new PageResults<>(dtos, page, totalSize);
     }
 
     @Transactional
@@ -134,14 +162,14 @@ public class SalesReturnService extends AbsService {
         //订单数据转换
         SalesReturnDTO dto = BeanUtil.toBean(salesReturn, SalesReturnDTO.class);
         //查询销售订单商品
-        List<Tuple> fetch = jqf.selectFrom(salesReturnItem)
-                .select(salesReturnItem, qProduct.code, qProduct.name, qUnit.name)
-                .leftJoin(qProduct).on(qProduct.id.eq(salesReturnItem.productId))
-                .leftJoin(qUnit).on(qUnit.id.eq(salesReturnItem.baseUnitId))
-                .where(salesReturnItem.salesReturnId.eq(query.getId())).orderBy(salesReturnItem.id.asc()).fetch();
+        List<Tuple> fetch = jqf.selectFrom(qsalesReturnItem)
+                .select(qsalesReturnItem, qProduct.code, qProduct.name, qUnit.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qsalesReturnItem.productId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qsalesReturnItem.baseUnitId))
+                .where(qsalesReturnItem.salesReturnId.eq(query.getId())).orderBy(qsalesReturnItem.id.asc()).fetch();
         List<SalesReturnItemDTO> salesReturnItemDTOList = new ArrayList<>();
         fetch.forEach(tuple -> {
-            SalesReturnItemDTO salesReturnItemDTO = BeanUtil.toBean(tuple.get(salesReturnItem), SalesReturnItemDTO.class);
+            SalesReturnItemDTO salesReturnItemDTO = BeanUtil.toBean(tuple.get(qsalesReturnItem), SalesReturnItemDTO.class);
             salesReturnItemDTO.setProductName(tuple.get(qProduct.name));
             salesReturnItemDTO.setProductCode(tuple.get(qProduct.code));
             salesReturnItemDTO.setUnitName(tuple.get(qUnit.name));

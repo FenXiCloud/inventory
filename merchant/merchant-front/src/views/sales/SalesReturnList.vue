@@ -45,8 +45,8 @@
           </template>
         </vxe-column>
         <vxe-column title="退单日期" field="returnDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="orderNo" width="200"/>
-        <vxe-column title="关联销售订单" field="code" width="200"/>
+        <vxe-column title="单据编号" field="orderNo" width="200"/>
+        <vxe-column title="关联销售退货单" field="code" width="200"/>
         <vxe-column title="客户" field="customerName" min-width="120"/>
         <vxe-column title="销售金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>

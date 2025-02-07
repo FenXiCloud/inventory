@@ -46,7 +46,7 @@
         </vxe-column>
         <vxe-column title="出库日期" field="outboundDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
-        <vxe-column title="关联销售订单" field="code" width="200"/>
+        <vxe-column title="关联销售订单" field="salesOrderNos" width="200"/>
         <vxe-column title="客户" field="customerName" min-width="120"/>
         <vxe-column title="销售金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>

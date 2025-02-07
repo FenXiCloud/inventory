@@ -83,4 +83,6 @@ public class SalesOutboundDTO {
     private Long merchantId;
 
     private List<SalesOutboundItemDTO> salesOutboundItemList;
+
+    private String salesOrderNos;
 }

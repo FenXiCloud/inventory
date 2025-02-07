@@ -58,6 +58,8 @@ public class SalesOutboundService extends AbsService {
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
     private final static QSalesOutboundItem qSalesOutboundItem = QSalesOutboundItem.salesOutboundItem;
 
+    private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
+
     private final static QCustomer qCustomer = QCustomer.customer;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProduct qProduct = QProduct.product;
@@ -66,7 +68,6 @@ public class SalesOutboundService extends AbsService {
     private final SalesOutboundRepository salesOutboundRepository;
     private final SalesOutboundItemRepository salesOutboundItemRepository;
     private final CodeSeedService codeSeedService;
-    private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
     private final SalesOrderRepository salesOrderRepository;
 
     public PageResults<SalesOutboundDTO> query(Page page, SalesOutboundService.Query query) {
@@ -90,18 +91,27 @@ public class SalesOutboundService extends AbsService {
             SalesOutboundDTO salesOutboundDTO = BeanUtil.toBean(tuple.get(qSalesOutbound), SalesOutboundDTO.class);
             salesOutboundDTO.setCustomerName(tuple.get(qCustomer.name));
             salesOutboundDTO.setCreatedName(tuple.get(qMerchantUser.name));
+
             //查询子表
             List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
                     .select(qSalesOutboundItem)
                     .where(qSalesOutboundItem.salesOutboundId.eq(salesOutboundDTO.getId()))
                     .fetch();
-
             List<SalesOutboundItemDTO> itemDTOs = new ArrayList<>();
             salesOutboundItemList.forEach(item -> {
                 SalesOutboundItemDTO itemDTO = BeanUtil.toBean(item, SalesOutboundItemDTO.class);
                 itemDTOs.add(itemDTO);
             });
             salesOutboundDTO.setSalesOutboundItemList(itemDTOs);
+
+            //查询关联的销售订单
+            List<String> salesOrderList = bqf.selectFrom(qSalesOrder)
+                    .select(qSalesOrder.orderNo)
+                    .where(qSalesOrder.outOrderId.eq(salesOutboundDTO.getId()))
+                    .fetch();
+            if(!CollectionUtils.isEmpty(salesOrderList)){
+                salesOutboundDTO.setSalesOrderNos(String.join(",", salesOrderList));
+            }
 
             dtos.add(salesOutboundDTO);
         });

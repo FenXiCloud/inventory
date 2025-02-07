@@ -1,0 +1,508 @@
+<template>
+  <div class="modal-column">
+    <div class="modal-column-full-body">
+      <vxe-toolbar class-name="!size--mini">
+        <template #buttons>
+          <label class="mr-20px" style="font-size: 16px !important;">客户:</label>
+          <Select class="w-300px" filterable required :datas="customerList" keyName="id" titleName="name"
+                  :deletable="false" @change="changeCustomer($event)" v-model="customerId" placeholder="请选择客户"/>
+          <label class="mr-20px ml-16px" style="font-size: 16px !important;">单据日期:</label>
+          <DatePicker v-model="form.orderDate" :option="{start:accountBook.checkoutDate}"
+                      :clearable="false"></DatePicker>
+        </template>
+      </vxe-toolbar>
+      <vxe-table
+          size="mini"
+          ref="xTable"
+          border="border"
+          :row-config="{height: 40}"
+          show-footer
+          :footer-method="footerMethod"
+          stripe
+          :data="productData">
+        <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
+        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
+          <template #default="{row,rowIndex}">
+            <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert',rowIndex)"></div>
+            <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
+          </template>
+        </vxe-column>
+        <vxe-column title="商品信息" width="300">
+          <template #default="{row,rowIndex}">
+            <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
+              <Select ref="ms" @change="selectProduct($event,rowIndex)" :datas="productList" v-model="product"
+                      keyName="id" titleName="name" filterable placeholder="输入编码/名称">
+                <template v-slot:item="{ item }">
+                  <div>{{ item.code }} {{ item.name }}</div>
+                </template>
+              </Select>
+            </div>
+            <div v-else class="flex">
+              <div class="flex1 ml-8px">
+                <div>{{ row.productCode }}--{{ row.productName }}</div>
+              </div>
+            </div>
+          </template>
+        </vxe-column>
+        <vxe-column title="仓库" field="warehouse" align="center" width="120">
+          <template #default="{row,rowIndex}">
+            <template v-if="!row.isNew">
+              <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
+                      titleName="name"/>
+            </template>
+          </template>
+        </vxe-column>
+        <vxe-column title="数量" field="quantity" width="90">
+          <template #default="{row,rowIndex,columnIndex}">
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3"
+                       @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.quantity" type="float"
+                       min="0" :controls="false"></vxe-input>
+          </template>
+        </vxe-column>
+        <vxe-column title="单位" field="unitName" align="center" width="80"/>
+        <vxe-column title="单价" field="unitPrice" width="100">
+          <template #default="{row,rowIndex}">
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4"
+                       @blur="updatePrice(row)" v-model.number="row.unitPrice" type="float" min="0"
+                       :controls="false"></vxe-input>
+          </template>
+        </vxe-column>
+        <vxe-column title="折扣率(%)" field="discountRate" width="100">
+          <template #default="{row,rowIndex}">
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5"
+                       @blur="updateDiscount(row)" v-model.number="row.discountRate" type="float" min="0"
+                       :controls="false"></vxe-input>
+          </template>
+        </vxe-column>
+        <vxe-column title="折扣额" field="discountValue" width="100">
+          <template #default="{row,rowIndex}">
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+6"
+                       @blur="updateDiscountAmount(row)" v-model.number="row.discountValue" type="float" min="0"
+                       :controls="false"></vxe-input>
+          </template>
+        </vxe-column>
+        <vxe-column title="金额" field="subtotal" width="100">
+          <template #default="{row,rowIndex}">
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+7"
+                       @blur="updateFinalAmount(row)" v-model.number="row.subtotal" type="float" min="0"
+                       :controls="false" readonly disabled></vxe-input>
+          </template>
+        </vxe-column>
+        <vxe-column title="备注" field="remark">
+          <template #default="{row,rowIndex}">
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8"
+                       v-model="row.remark" placeholder="输入备注" :controls="false"></vxe-input>
+          </template>
+        </vxe-column>
+      </vxe-table>
+      <div class="mt-10px"></div>
+      <div class="filler-panel">
+        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+          <label class="mr-16px  w-80px">备注说明：</label>
+          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
+        </div>
+      </div>
+      <div class="filler-panel">
+        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+          <label class="mr-16px  w-100px">优惠率(%)：</label>
+          <Input v-model="form.discountRate" readonly/>
+          <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
+          <Input v-model="form.discountAmount" readonly/>
+          <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
+          <Input v-model="form.finalAmount" readonly/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-column-right bg-white-color  border">
+      <div>
+        <Button color="primary" @click="saveOrder" :loading="loading">
+          保存并新增
+        </Button>
+        <Button @click="saveOrder" :loading="loading">
+          保存
+        </Button>
+        <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
+        <Button @click="auditOrder('已审核')" v-if="form.orderStatus === '已保存' " :loading="loading">
+          审核
+        </Button>
+        <!-- 仅当状态为审核时显示 -->
+        <Button @click="auditOrder('已保存')" v-if="form.orderStatus === '已审核' " :loading="loading">
+          反审核
+      </Button>
+      </div>
+    </div>
+  </div>
+</template>
+<script>
+
+import {confirm, loading, message} from "heyui.ext";
+import manba from "manba";
+import {CopyObj} from "@common/utils";
+import Customer from "@js/api/basic/Customer";
+import Warehouse from "@js/api/basic/Warehouse";
+import {mapState} from "vuex";
+import SalesOrder from "@js/api/sales/SalesOrder";
+import Product from "@js/api/basic/Product";
+
+export default {
+  name: "PurchaseOrderForm",
+  computed: {
+    ...mapState(['accountBook']),
+    isDeleting() {
+      return this.productData.length > 1;
+    }
+  },
+  data() {
+    return {
+      loading: false,
+      productList: [],
+      product: null,
+      warehouseList: [],
+      customerList: [],
+      customerId: null,
+      warehouseId: null,
+      form: {
+        id: null,
+        orderDate: manba().format("YYYY-MM-dd"),
+        customerId: null,
+        discountAmount: 0.00,
+        discountRate: 0.00,
+        finalAmount: 0.00,
+        remarks: null,
+      },
+      productData: [],
+      orderId:null,
+      type:null,
+    }
+  },
+  methods: {
+    //footer合计
+    footerMethod({columns, data}) {
+      let quantity = 0;
+      let discountValue = 0;
+      let subtotal = 0;
+      columns.forEach((column) => {
+        if (column.property && ['quantity', 'discountValue', 'subtotal'].includes(column.property)) {
+          let total = 0;
+          data.forEach((row) => {
+            if (column.property === 'quantity') {
+              let rd = row[column.property];
+              if (rd) {
+                quantity += Number(rd || 0);
+              }
+            } else if (column.property === 'discountValue') {
+              let rd = row[column.property];
+              if (rd) {
+                discountValue += Number(rd || 0);
+              }
+            } else if (column.property === 'subtotal') {
+              let rd = row[column.property];
+              if (rd) {
+                subtotal += Number(rd || 0);
+              }
+            }
+          });
+        }
+      })
+      this.form.orderQuantity = quantity;
+      this.form.discountAmount = discountValue;
+      this.form.finalAmount = subtotal;
+      this.form.totalAmount = discountValue+subtotal;
+      if(!!this.form.discountAmount && !!this.form.totalAmount){
+        this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
+      }
+      console.log("subtotal",subtotal)
+
+      return [["", "", "", "", quantity.toFixed(2), "", "", "",discountValue,subtotal,""]];
+    },
+
+    //选择商品
+    selectProduct(d, index) {
+      if (d) {
+        let g = {
+          quantity: 1,
+          unitPrice: d.price || 0,
+          warehouseId: this.warehousesId,
+          discountValue: 0.00,
+          discountRate: 0.00,
+          subtotal: d.price || 0,
+          baseUnitId: d.unitId,
+          unitName: d.unitName,
+          productId: d.id,
+          productCode: d.code,
+          productName: d.name,
+          remark: "",
+        };
+        this.productData[index] = g;
+        console.log("this.productData",this.productData)
+        if (!this.productData[index + 1]) {
+          this.productData.push({isNew: true});
+        }
+        this.$refs.xTable.loadData(this.productData).then(() => {
+          this.$nextTick(() => {
+            let str = index + '' + 3
+            let element = document.querySelector('#r' + str + ' input');
+            setTimeout(() => {
+              element.focus()
+              element.select()
+            }, 100);
+          })
+        });
+      }
+      this.product = null;
+    },
+
+    checkHttp() {
+      console.log("this.productData.length",this.productData.length)
+      if (this.productData.length === 0) {
+        message.error("请选择商品~");
+        loading.close()
+        return false
+      }
+      if (this.productData.length === 1) {
+        let item = this.productData[0]
+        if (item.isNew) {
+          message.error("请选择商品~");
+          loading.close()
+          return false
+        }
+      }
+      let quantityFlag = false
+      let unitPriceFlag = false
+      let subtotalFlag = false
+      let warehouseFlag = false
+      this.productData.map(item => {
+        console.log("item",item)
+        if (item.isNew) {
+          return;
+        }
+        if (item.quantity === 0 || !item.quantity) {
+          quantityFlag = true
+          loading.close()
+        }
+        if (item.unitPrice === 0 || !item.unitPrice) {
+          unitPriceFlag = true
+          loading.close()
+        }
+        if (item.subtotal === 0 || !item.subtotal) {
+          subtotalFlag = true
+          loading.close()
+        }
+        if (!item.warehouseId) {
+          warehouseFlag = true
+          loading.close()
+        }
+      })
+      if (quantityFlag) {
+        message.error("请填写数量~");
+        return false
+      }
+      if (unitPriceFlag) {
+        message.error("请填写单价~");
+        return false
+      }
+      if (subtotalFlag) {
+        message.error("金额不能为空~");
+        return false
+      }
+      if (warehouseFlag) {
+        message.error("请选择仓库~");
+        return false
+      }
+      return true
+    },
+
+    auditOrder(orderStatus){
+      confirm({
+        content: `确定审核订单？`,
+        onConfirm: () => {
+          loading("保存中....");
+          if (!this.form.customerId) {
+            message.error("请选择客户~");
+            loading.close()
+            return
+          }
+          if (!this.checkHttp()) {
+            return
+          }
+          let salesOrder = Object.assign(this.form);
+          salesOrder.orderStatus = orderStatus
+          SalesOrder.save({
+            salesOrder: salesOrder,
+          }).then((success) => {
+            if (success) {
+              message("审核成功~");
+              this.clearForm()
+            }
+          }).finally(() =>
+              loading.close()
+          );
+        }
+      })
+    },
+
+    //保存订单
+    saveOrder() {
+      loading("保存中....");
+      if (!this.form.customerId) {
+        message.error("请选择客户~");
+        loading.close()
+        return
+      }
+      if (!this.checkHttp()) {
+        return
+      }
+      let productData = this.productData.filter(c => c.quantity > 0);
+      SalesOrder.save({
+        salesOrder: Object.assign(this.form),
+        salesOrderItemList: productData
+      }).then((success) => {
+        if (success) {
+          message("保存成功~");
+          this.clearForm()
+        }
+      }).finally(() =>
+          loading.close()
+      );
+    },
+
+    //清除Form
+    clearForm() {
+      this.form = {
+        id: null,
+        orderDate: manba().format("YYYY-MM-dd"),
+        customerId: null,
+        remark: null,
+        finalAmount: null
+      }
+      this.productData = []
+      this.customerId = null
+    },
+
+    //添加行或减少行
+    adjustRows(type, index) {
+      if (type === 'insert') {
+        this.productData.splice(index + 1, 0, {isNew: true});
+      } else {
+        this.productData.splice(index, 1);
+      }
+    },
+
+    //修改客户
+    changeCustomer(e) {
+      console.log("e",e)
+      if (!e) {
+        this.form.customerId = null;
+        this.productData = [{isNew: true}];
+      } else if (e.id !== this.form.customerId) {
+        if (this.productData.length > 1) {
+          confirm({
+            title: "系统提示",
+            content: `修改供货商后，将清除已选择的商品数据，确定修改？`,
+            onConfirm: () => {
+              this.productData = [{isNew: true}];
+              this.form.customerId = e.id;
+            }
+          })
+        } else {
+          this.form.customerId = e.id;
+          this.productData = [{isNew: true}];
+        }
+      }
+    },
+
+    //修改商品多单位
+    changeProductUnit(item, row) {
+      row.orderUnitName = item.unitName
+      row.unitPrice = (item.price || 0).toFixed(2) || 0
+      row.num = item.num || 1;
+      row.sysQuantity = (row.quantity * row.num).toFixed(2);
+      row.subtotal = (row.quantity * row.unitPrice).toFixed(2);
+    },
+
+    //更新数量
+    updateQuantity(item) {
+      item.quantity = item.quantity || 1;
+      item.subtotal = ((item.quantity * item.unitPrice * (100 - item.discountRate)) / 100).toFixed(2);
+      item.discountValue = (((item.quantity * item.unitPrice) * item.discountRate) / 100).toFixed(2);
+      this.$refs.xTable.updateFooter();
+    },
+
+    //更新单价
+    updatePrice(item) {
+      item.unitPrice = item.unitPrice || 0.00
+      item.discountValue = (item.unitPrice * item.quantity * item.discountRate / 100).toFixed(2);
+      item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);
+      this.$refs.xTable.updateFooter();
+    },
+
+    //更新折扣
+    updateDiscount(item) {
+      item.discountRate = item.discountRate || 0.00;
+      item.subtotal = ((item.quantity || 0) * item.unitPrice * (100 - item.discountRate || 0) / 100).toFixed(2);
+      item.discountValue = ((item.quantity || 0) * item.unitPrice - item.subtotal).toFixed(2);
+      this.$refs.xTable.updateFooter();
+    },
+
+    //更新折扣金额
+    updateDiscountAmount(item) {
+      item.discountValue = item.discountValue || 0.00;
+      item.discountRate = (((item.discountValue / (item.unitPrice * item.quantity)) * 100) || 0).toFixed(2);
+      item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);
+      this.$refs.xTable.updateFooter();
+    },
+
+    //更新折后金额
+    updateFinalAmount(item) {
+      item.subtotal = item.subtotal || 0
+      item.unitPrice = ((item.subtotal) / ((100 - item.discountRate)) * 100 / item.quantity).toFixed(2);
+      item.discoutPrice = (item.unitPrice - item.subtotal).toFixed(2);
+      this.$refs.xTable.updateFooter();
+    },
+
+    //关闭窗口
+    closeWindow() {
+      window.close();
+    }
+  },
+  beforeDestroy() {
+    confirm({
+      title: "系统提示",
+      content: `确认?`,
+      onConfirm: () => {
+
+      }
+    })
+  },
+  created() {
+    loading("加载中....");
+    Promise.all([
+      Customer.select(),
+      Warehouse.select(),
+      Product.select()
+    ]).then((results) => {
+      this.customerList = results[0].data || [];
+      this.warehouseList = results[1].data || [];
+      this.productList = results[2].data || [];
+      console.log("this.productList", this.productList);
+      //订单详情/编辑订单
+      const tabData = this.$store.state.currentTabData;
+      console.log("tabData", tabData)
+      this.type = tabData?.type;
+      this.orderId = tabData?.orderId;
+      if (this.orderId) {
+        SalesOrder.getInfo(this.orderId).then(response => {
+          let salesOrder = response.data;
+          console.log("response.data", salesOrder)
+          this.form = salesOrder;
+          this.customerId = salesOrder.customerId;
+          this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
+          console.log("this.form", this.form)
+          this.productData = salesOrder.salesOrderItemList || [];
+          this.productData.push({isNew: true});
+        });
+      }
+    }).finally(() => loading.close());
+  },
+}
+</script>

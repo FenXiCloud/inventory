@@ -2,7 +2,9 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Button @click="showForm()" color="primary">新 增</Button>
+        <Button class="mr-20px" @click="showForm()" color="primary">新 增</Button>
+        类型： <Select v-model="params.costType" @change="change" :datas="costTypes" style="width: 120px"
+                      :deletable="false"/>
       </template>
       <template #tools>
         <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入名称"/>
@@ -13,6 +15,7 @@
       <vxe-table row-id="id"
                  ref="table"
                  :data="dataList"
+                 :tree-config="{transform:true, rowField: 'id', parentField: 'pid'}"
                  highlight-hover-row
                  show-overflow
                  stripe
@@ -20,10 +23,8 @@
                  :column-config="{resizable: true}"
                  :loading="loading">
         <vxe-column type="seq" width="40" title="#"/>
-        <vxe-column title="收支类型" field="costType" width="150"/>
-        <vxe-column title="编码" field="code" width="150"/>
-        <vxe-column title="分类" field="accountTypeCategory" width="150"/>
-        <vxe-column title="类别名称" field="name"/>
+        <vxe-column title="收支类型" field="costType" width="120"/>
+        <vxe-column title="名称" field="name" tree-node/>
         <vxe-column title="状态" field="enabled" width="120" align="center">
           <template #default="{row}">
             <Tag color="primary" @click="trigger(row)"  v-if="row.enabled">启用</Tag>
@@ -32,6 +33,7 @@
         </vxe-column>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
+            <span class=" primary-color text-hover ml-10px" @click="showForm(null,row)" size="s">创建下级</span>
             <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
             <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
           </template>
@@ -62,8 +64,13 @@ export default {
       loading: false,
       dataList: [],
       params: {
-        filter: null,
+        name: null,
+        costType: '支出',
       },
+      costTypes: [
+        {title: '收入', key: '收入'},
+        {title: '支出', key: '支出'},
+      ],
       param: [
         {title: '启用', key: 'enabled'},
         {title: '禁用', key: 'disabled'},
@@ -71,15 +78,13 @@ export default {
     }
   },
   methods: {
-    showForm(entity) {
-      let type = 0;
+    showForm(entity, parent) {
       let layerId = layer.open({
         title: "收入类别信息",
         shadeClose: false,
-        closeBtn: false,
-        area: ['400px', '380px'],
+        area: ['400px', '300px'],
         content: h(AccountTypeForm, {
-          entity, type,
+          entity, parent, list: this.dataList,
           onClose: () => {
             layer.close(layerId);
           },
@@ -110,6 +115,10 @@ export default {
           })
         }
       })
+    },
+    change(data) {
+      this.params.costType = data.key;
+      this.loadList();
     },
     trigger(row) {
       let enabled = !row.enabled;

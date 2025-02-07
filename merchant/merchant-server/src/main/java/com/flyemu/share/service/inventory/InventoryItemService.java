@@ -61,6 +61,37 @@ public class InventoryItemService extends AbsService {
         return bqf.selectFrom(qInventoryItem).where(qInventoryItem.merchantId.eq(merchantId).and(qInventoryItem.accountBookId.eq(accountBookId))).fetch();
     }
 
+    /**
+     * 根据订单号获取库存明细
+     *
+     * @param orderId 订单id
+     * @return list
+     */
+    public List<InventoryItem> findByOrderId(Long orderId) {
+        return jqf.selectFrom(qInventoryItem).where(qInventoryItem.orderId.eq(orderId)).fetch();
+    }
+
+    /**
+     * 根据订单号删除库存明细
+     *
+     * @param orderId 订单id
+     */
+    public void deleteByOrderId(Long orderId) {
+        jqf.delete(qInventoryItem).where(qInventoryItem.orderId.eq(orderId)).execute();
+    }
+
+    /**
+     * 批量插入
+     *
+     * @param list 列表
+     */
+    public void batchInsertList(List<InventoryItem> list) {
+        if (list == null || list.isEmpty()) {
+            return;
+        }
+        inventoryItemRepository.saveAll(list);
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 

@@ -1,14 +1,14 @@
-    buildscript {
-        dependencies {
-            repositories {
-                maven {
-                    url "https://repo.huaweicloud.com/repository/maven/"
-                }
+buildscript {
+    dependencies {
+        repositories {
+            maven {
+                url "https://repo.huaweicloud.com/repository/maven/"
             }
         }
-        dependencies {
-            classpath("com.github.node-gradle:gradle-node-plugin:${nodePluginVer}")
-        }
+    }
+    dependencies {
+        classpath("com.github.node-gradle:gradle-node-plugin:${nodePluginVer}")
+    }
 }
 
 plugins {
@@ -32,7 +32,7 @@ configure(subprojects.findAll { it.name.endsWith("-server") || it.name.equals("k
     apply plugin: "io.spring.dependency-management"
     apply plugin: "java"
 
-    sourceCompatibility = "17"
+//    sourceCompatibility = "17"
 
     repositories {
         maven { url "https://repo.huaweicloud.com/repository/maven/" }
@@ -41,6 +41,18 @@ configure(subprojects.findAll { it.name.endsWith("-server") || it.name.equals("k
             url "https://repo.maven.apache.org/maven2"
             name "Maven Central"
         }
+    }
+
+    // 设置JDK编译版本
+    compileJava {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    // 设置JDK编译测试代码版本
+    compileTestJava {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     dependencies {

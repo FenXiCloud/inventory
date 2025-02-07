@@ -9,6 +9,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * @功能描述: 编码规则
  * @创建时间: 2023年08月08日
@@ -39,7 +41,15 @@ public class CodeRuleController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid CodeRule codeRule) {
+    public JsonResult update(@RequestBody @Valid CodeRule codeRule, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+
+        if (codeRule.getSystemDefault()) {
+            List<CodeRule> codeRuleList = codeRuleService.queryEnable(codeRule,accountBookId,merchantId);
+            if (!codeRuleList.isEmpty()) {
+                return JsonResult.failure("每种单据类型只能存在一个默认");
+            }
+        }
+
         codeRuleService.save(codeRule);
         return JsonResult.successful();
     }

@@ -20,7 +20,7 @@ export default {
 	select(param) {
 		return Ajax.get('/supplier/select', param)
 	},
-    selectProducts(id) {
+	selectProduct(id) {
         return Ajax.get('/supplier/product/select/' + id)
 	}
 }

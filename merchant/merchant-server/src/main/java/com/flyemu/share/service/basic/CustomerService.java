@@ -2,15 +2,15 @@ package com.flyemu.share.service.basic;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.fastjson.JSONObject;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.CustomerDto;
-import com.flyemu.share.entity.basic.Customer;
-import com.flyemu.share.entity.basic.QCustomer;
-import com.flyemu.share.entity.basic.QCustomerCategory;
-import com.flyemu.share.entity.basic.QCustomerLevel;
+import com.flyemu.share.dto.CustomerImportVo;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.repository.CustomerRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 
 /**
@@ -94,6 +95,66 @@ public class CustomerService extends AbsService {
         return bqf.selectFrom(qCustomer).where(qCustomer.merchantId.eq(merchantId).and(qCustomer.accountBookId.eq(accountBookId))).fetch();
     }
 
+    // 导入
+    @Transactional
+    public void importData(List<CustomerImportVo> rows, Long merchantId) {
+
+        //TODO: 校验客户档案字段不能为空，请补充
+        Assert.isFalse(rows.stream().filter(c -> StrUtil.isEmpty(c.getName())).count() > 0, "客户名称不能为空");
+
+        CustomerLevel level = jqf.selectFrom(qCustomerLevel).where(qCustomerLevel.merchantId.eq(merchantId)).fetchFirst();
+        CustomerCategory category = jqf.selectFrom(qCustomerCategory).where(qCustomerCategory.merchantId.eq(merchantId)).fetchFirst();
+
+        for (CustomerImportVo row : rows) {
+            Customer customer = new Customer();
+            customer.setCustomerCategoryId(category.getId());
+            customer.setCustomerLevelId(level.getId());
+            customer.setMerchantId(merchantId);
+            customer.setAccountBookId(merchantId);
+            customer.setCode(row.getCode());
+            customer.setName(row.getName());
+            customer.setPhone(row.getPhone());
+            customer.setContact(row.getContact());
+            customer.setRemarks(row.getRemarks());
+            customerRepository.save(customer);
+        }
+    }
+
+    //  导出
+    public List<JSONObject> exportList(Long merchantId, Set<Long> ids, Query query) {
+        BooleanBuilder builder = new BooleanBuilder();
+        if (ids != null) {
+            builder.and(qCustomer.id.in(ids));
+        }
+        if (query != null) {
+            builder.and(query.builder);
+        }
+
+        List<JSONObject> list = new ArrayList<>();
+        bqf.selectFrom(qCustomer)
+                .select(qCustomer, qCustomerCategory.name, qCustomerCategory.id, qCustomerLevel.name, qCustomerLevel.id)
+                .leftJoin(qCustomerCategory).on(qCustomerCategory.id.eq(qCustomer.customerCategoryId).and(qCustomerCategory.merchantId.eq(merchantId)))
+                .leftJoin(qCustomerLevel).on(qCustomerLevel.id.eq(qCustomer.customerCategoryId).and(qCustomer.merchantId.eq(merchantId)))
+                .orderBy(qCustomer.code.desc(), qCustomer.id.desc())
+                .where(qCustomer.merchantId.eq(merchantId).and(builder)).fetch().forEach(tuple -> {
+                    Customer customer = BeanUtil.toBean(tuple.get(qCustomer), Customer.class);
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("分类编码", tuple.get(qCustomerCategory.id));
+                    jsonObject.put("分类名称", tuple.get(qCustomerCategory.name));
+                    jsonObject.put("客户编码", qCustomer.code);
+                    jsonObject.put("客户名称", qCustomer.name);
+                    jsonObject.put("客户级别ID", tuple.get(qCustomerLevel.id));
+                    jsonObject.put("客户级别名称", tuple.get(qCustomerLevel.name));
+                    jsonObject.put("应收账款", tuple.get(qCustomer.balance));
+                    jsonObject.put("联系人", tuple.get(qCustomer.contact));
+                    jsonObject.put("电话", tuple.get(qCustomer.phone));
+                    jsonObject.put("备注", qCustomer.remarks);
+                    jsonObject.put("状态", qCustomer.enabled);
+                    list.add(jsonObject);
+                });
+        return list;
+    }
+
     /**
      * 查询条件
      */
@@ -117,6 +178,16 @@ public class CustomerService extends AbsService {
                 builder.and(qCustomer.accountBookId.eq(accountBookId));
             }
         }
+
+        public void setCustomerCategoryId(Long customerCategoryId) {
+            if (customerCategoryId != null) {
+                builder.and(qCustomer.customerCategoryId.eq(customerCategoryId));
+            }
+        }
     }
 
+
+    public Customer selectByPrimaryKey(Long id) {
+        return jqf.selectFrom(qCustomer).where(qCustomer.id.eq(id)).fetchOne();
+    }
 }

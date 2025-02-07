@@ -69,6 +69,12 @@ public class AccountTypeService extends AbsService {
             }
         }
 
+        public void setCostType(AccountType.CostType costType) {
+            if (costType != null) {
+                builder.and(qAccountType.costType.eq(costType));
+            }
+        }
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qAccountType.merchantId.eq(merchantId));

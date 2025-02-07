@@ -204,9 +204,19 @@ public class ProductService extends AbsService {
                 .execute();
     }
 
-    public List<Product> select(Long merchantId, Long accountBookId) {
-        return bqf.selectFrom(qProduct).where(qProduct.merchantId.eq(merchantId).and(qProduct.accountBookId.eq(accountBookId))
-                .and(qProduct.enabled.isTrue())).fetch();
+    public List<ProductDto> select(Long merchantId, Long accountBookId) {
+        //left join 查询商品单位
+        List<Tuple> fetch = bqf.selectFrom(qProduct)
+                .select(qProduct, qUnit.name)
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).where(qProduct.merchantId.eq(merchantId)
+                .and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue())).fetch();
+        //封装产品单位返回;
+        ArrayList<ProductDto> result = fetch.stream().collect(ArrayList::new, (list, tuple) -> {
+            ProductDto dto = BeanUtil.toBean(tuple.get(qProduct), ProductDto.class);
+            dto.setUnitName(tuple.get(qUnit.name));
+            list.add(dto);
+        }, List::addAll);
+        return result;
     }
 
 
@@ -230,6 +240,8 @@ public class ProductService extends AbsService {
         private Integer categoryId;
 
         private Boolean enabled;
+
+        private Long id;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -258,6 +270,9 @@ public class ProductService extends AbsService {
             }
             if (enabled != null) {
                 builder.and(qProduct.enabled.eq(enabled));
+            }
+            if (id != null) {
+                builder.and(qProduct.id.eq(id));
             }
             return builder;
         }

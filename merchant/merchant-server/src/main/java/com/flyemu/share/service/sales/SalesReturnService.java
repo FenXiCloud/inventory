@@ -146,9 +146,14 @@ public class SalesReturnService extends AbsService {
     }
 
     @Transactional
-    public void delete(Long SalesReturnId, Long merchantId, Long accountBookId) {
+    public void delete(Long salesReturnId, Long merchantId, Long accountBookId) {
         jqf.delete(qSalesReturn)
-                .where(qSalesReturn.id.eq(SalesReturnId).and(qSalesReturn.merchantId.eq(merchantId)).and(qSalesReturn.accountBookId.eq(accountBookId)))
+                .where(qSalesReturn.id.eq(salesReturnId).and(qSalesReturn.merchantId.eq(merchantId)).and(qSalesReturn.accountBookId.eq(accountBookId)))
+                .execute();
+
+        //删除退货单商品
+        jqf.delete(qsalesReturnItem)
+                .where(qsalesReturnItem.salesReturnId.eq(salesReturnId).and(qsalesReturnItem.merchantId.eq(merchantId)).and(qsalesReturnItem.accountBookId.eq(accountBookId)))
                 .execute();
     }
 

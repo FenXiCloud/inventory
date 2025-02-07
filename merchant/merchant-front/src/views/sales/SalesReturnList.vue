@@ -50,7 +50,7 @@
         <vxe-column title="客户" field="customerName" min-width="120"/>
         <vxe-column title="销售金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-        <vxe-column title="折后金额" field="finalAmount" width="120"/>
+        <vxe-column title="退款金额" field="refundAmount" width="120"/>
         <vxe-column title="制单人" field="createdName" align="center" width="100"/>
         <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
         <vxe-column title="状态" field="orderStatus" width="80"/>
@@ -77,14 +77,13 @@ import manba from "manba";
 import {mapMutations} from "vuex";
 import {confirm, loading, message} from "heyui.ext";
 import Customer from "@js/api/basic/Customer";
-import SalesOutbound from "@js/api/sales/SalesOutbound";
 import SalesReturn from "@js/api/sales/SalesReturn";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
 
 export default {
-  name: "SalesOutboundList",
+  name: "SalesReturnList",
   watch: {
     // 监听 store 中的 currentTabData
     '$store.state.currentTabData': {
@@ -177,7 +176,7 @@ export default {
         title: "系统提示",
         content: `确认删除：${row.orderNo}?`,
         onConfirm: () => {
-          SalesOutbound.remove(row.id).then(() => {
+          SalesReturn.remove(row.id).then(() => {
             message("删除成功~");
             this.loadList();
           })
@@ -187,9 +186,9 @@ export default {
     footerMethod({columns, data}) {
       let totalAmount = 0;
       let discountAmount = 0;
-      let finalAmount = 0;
+      let refundAmount = 0;
       columns.forEach((column) => {
-        if (column.property && ['totalAmount', 'discountAmount', 'finalAmount'].includes(column.property)) {
+        if (column.property && ['totalAmount', 'discountAmount', 'refundAmount'].includes(column.property)) {
 
           data.forEach((row) => {
             let rd = row[column.property];
@@ -201,16 +200,16 @@ export default {
               if (rd) {
                 discountAmount += Number(rd || 0);
               }
-            } else if (column.property === 'finalAmount') {
+            } else if (column.property === 'refundAmount') {
               if (rd) {
-                finalAmount += Number(rd || 0);
+                refundAmount += Number(rd || 0);
               }
             }
           });
         }
       })
       this.amountTotal = totalAmount;
-      return [["", "", "", "", "", "", totalAmount.toFixed(2), discountAmount.toFixed(2), finalAmount.toFixed(2)]];
+      return [["", "", "", "", "", "", totalAmount.toFixed(2), discountAmount.toFixed(2), refundAmount.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -231,7 +230,7 @@ export default {
     },
   },
   created() {
-    console.log('created', "SalesOutboundList")
+    console.log('created', "SalesReturnList")
     this.loadList();
   }
 }

@@ -6,8 +6,8 @@
           <label class="mr-20px" style="font-size: 16px !important;">客户:</label>
           <Select class="w-300px" filterable required :datas="customerList" keyName="id" titleName="name"
                   :deletable="false" @change="changeCustomer($event)" v-model="customerId" placeholder="请选择客户"/>
-          <label class="mr-20px ml-16px" style="font-size: 16px !important;">出库日期:</label>
-          <DatePicker v-model="form.outboundDate" :option="{start:accountBook.checkoutDate}"
+          <label class="mr-20px ml-16px" style="font-size: 16px !important;">退货日期:</label>
+          <DatePicker v-model="form.returnDate" :option="{start:accountBook.checkoutDate}"
                       :clearable="false"></DatePicker>
           <Button v-if="type==='add'" @click="addOrEditForm()" color="primary" style="margin-left: 20px">选择源单</Button>
         </template>

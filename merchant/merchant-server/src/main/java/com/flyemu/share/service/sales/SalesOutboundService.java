@@ -259,5 +259,12 @@ public class SalesOutboundService extends AbsService {
                 builder.and(qSalesOutbound.customerId.eq(customerId));
             }
         }
+
+        //查询未退货订单
+        public void setQueryUnReturnOrder(Integer queryUnReturnOrder) {
+            if (queryUnReturnOrder == 1) {
+                builder.and(qSalesOutbound.returnOrderId.isNull());
+            }
+        }
     }
 }

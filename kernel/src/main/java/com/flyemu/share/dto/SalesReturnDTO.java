@@ -1,66 +1,54 @@
-package com.flyemu.share.entity.sales;
+package com.flyemu.share.dto;
 
 import com.flyemu.share.enums.OrderStatus;
 import jakarta.persistence.*;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Comment;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
+import java.util.List;
+
 /**
- * @功能描述: 销售出库单
- * @创建时间: 2024年04月28日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
+    销售退货单DTO
  */
-@Getter
-@Setter
-@Entity
-@NoArgsConstructor
-@Table
-@DynamicUpdate
-public class SalesOutbound {
+@Data
+public class SalesReturnDTO {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Comment("单据编号")
     private String orderNo;
 
-    @Comment("销售订单ID")
-    private Long orderId;
+    @Comment("销售出库主表ID")
+    private Long salesOutboundId;
 
     @Comment("客户ID")
     private Long customerId;
 
-    @Comment("出库日期")
-    private LocalDate outboundDate;
+    @Comment("退单日期")
+    private LocalDate returnDate;
 
-    @Comment("订单金额")
-    private BigDecimal totalAmount;
-
-    @Comment("折扣金额")
-    private BigDecimal discountAmount;
-
-    @Comment("折后金额")
-    private BigDecimal finalAmount;
+    @Comment("退款金额")
+    private BigDecimal refundAmount;
 
     @Comment("已核销金额")
     private BigDecimal verifiedAmount;
 
-    @Comment("收款金额")
-    private BigDecimal collectionAmount;
+    @Comment("付款金额")
+    private BigDecimal paymentAmount;
 
     @Comment("账户ID")
     private Long accountId;
+
+    @Comment("退单原因")
+    private String returnReason;
 
     @Comment("备注")
     private String remarks;
@@ -82,12 +70,9 @@ public class SalesOutbound {
     @Comment("审核时间")
     private LocalDateTime approvedAt;
 
-    @Column(nullable = false)
     private Long accountBookId;
 
-    @Column(nullable = false)
     private Long merchantId;
 
-    @Comment("销售退货单id")
-    private Long returnOrderId;
+    private List<SalesReturnItemDTO> salesReturnItemList;
 }

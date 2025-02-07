@@ -109,8 +109,8 @@
           <Input v-model="form.discountRate" readonly type="number"/>
           <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
           <Input v-model="form.discountAmount" type="number" readonly/>
-          <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
-          <Input v-model="form.finalAmount" type="number" readonly/>
+          <label class="ml-16px mr-16px  w-100px">本次退款：</label>
+          <Input v-model="form.refundAmount" type="number" readonly/>
         </div>
       </div>
     </div>
@@ -176,7 +176,7 @@ export default {
         customerId: null,
         discountAmount: 0.00,
         discountRate: 0.00,
-        finalAmount: 0.00,
+        refundAmount: 0.00,
         remarks: null,
       },
       productData: [],
@@ -276,7 +276,7 @@ export default {
       })
       this.form.orderQuantity = quantity.toFixed(2);
       this.form.discountAmount = discountValue.toFixed(2);
-      this.form.finalAmount = subtotal.toFixed(2);
+      this.form.refundAmount = subtotal.toFixed(2);
       this.form.totalAmount = (discountValue+subtotal).toFixed(2);
       if(!!this.form.discountAmount && !!this.form.totalAmount){
         this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
@@ -454,7 +454,7 @@ export default {
         orderDate: manba().format("YYYY-MM-dd"),
         customerId: null,
         remark: null,
-        finalAmount: null
+        refundAmount: null
       }
       this.productData = []
       this.customerId = null

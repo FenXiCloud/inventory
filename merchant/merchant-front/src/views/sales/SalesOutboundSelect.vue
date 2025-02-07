@@ -109,8 +109,8 @@ export default {
         pageSize: this.pagination.pageSize,
         start: this.dateRange.start,
         end: this.dateRange.end,
-        //查询未出库订单
-        queryUnOutOrder: 1
+        //查询未退货订单
+        queryUnReturnOrder: 1
       })
     },
   },
@@ -171,7 +171,7 @@ export default {
         }
       })
       this.amountTotal = totalAmount;
-      return [["", "", "", "", "", "",totalAmount,discountAmount,finalAmount]];
+      return [["", "", "", "",totalAmount,discountAmount,finalAmount]];
     },
     doSearch() {
       this.pagination.page = 1;

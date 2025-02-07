@@ -5,19 +5,30 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.entity.sales.QSalesReturn;
-import com.flyemu.share.entity.sales.SalesReturn;
+import com.flyemu.share.dto.SalesReturnDTO;
+import com.flyemu.share.dto.SalesReturnItemDTO;
+import com.flyemu.share.entity.basic.QProduct;
+import com.flyemu.share.entity.basic.QUnit;
+import com.flyemu.share.entity.sales.*;
+import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesReturnForm;
+import com.flyemu.share.repository.SalesOutboundRepository;
+import com.flyemu.share.repository.SalesReturnItemRepository;
 import com.flyemu.share.repository.SalesReturnRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
 
 /**
  * @功能描述: 销售出库单
@@ -33,8 +44,17 @@ import java.util.List;
 public class SalesReturnService extends AbsService {
 
     private final static QSalesReturn qSalesReturn = QSalesReturn.salesReturn;
+    private final static QSalesReturnItem salesReturnItem = QSalesReturnItem.salesReturnItem;
+
+    private final static QProduct qProduct = QProduct.product;
+    private final static QUnit qUnit = QUnit.unit;
+
 
     private final SalesReturnRepository salesReturnRepository;
+    private final SalesReturnItemRepository salesReturnItemRepository;
+    private final CodeSeedService codeSeedService;
+
+    private final SalesOutboundRepository salesOutboundRepository;
 
     public PageResults<SalesReturn> query(Page page, SalesReturnService.Query query) {
         PagedList<SalesReturn> fetchPage = bqf.selectFrom(qSalesReturn).where(query.builder).orderBy(qSalesReturn.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -52,13 +72,49 @@ public class SalesReturnService extends AbsService {
     @Transactional
     public SalesReturn save(SalesReturnForm salesReturnForm) {
         SalesReturn salesReturn = salesReturnForm.getSalesReturn();
-        if (salesReturn.getId() != null) {
+        List<SalesReturnItem> salesReturnItemList = salesReturnForm.getSalesReturnItemList();
+        Long id = salesReturn.getId();
+        if (id != null) {
             //更新
             SalesReturn original = salesReturnRepository.getById(salesReturn.getId());
             BeanUtil.copyProperties(salesReturn, original, CopyOptions.create().ignoreNullValue());
-            return salesReturnRepository.save(original);
+            SalesReturn update = salesReturnRepository.save(original);
+            if (!CollectionUtils.isEmpty(salesReturnItemList)) {
+                //批量修改
+                salesReturnItemRepository.saveAll(salesReturnItemList);
+            }
+            return update;
+        }else{
+            //状态初始化
+            salesReturn.setOrderStatus(OrderStatus.已保存);
+            //订单编号
+            salesReturn.setOrderNo(codeSeedService.generateCode(salesReturn.getMerchantId(), "销售退货单"));
+            SalesReturn save = salesReturnRepository.save(salesReturn);
+            if (!CollectionUtils.isEmpty(salesReturnItemList)) {
+                salesReturnItemList.forEach(item -> {
+                    item.setSalesReturnId(save.getId());
+                    item.setAccountBookId(salesReturn.getAccountBookId());
+                    item.setMerchantId(salesReturn.getMerchantId());
+                    item.setCreatedBy(salesReturn.getCreatedBy());
+                    item.setCreatedAt(salesReturn.getCreatedAt());
+                });
+                //批量保存
+                salesReturnItemRepository.saveAll(salesReturnItemList);
+            }
+            //选择的源单不为空
+            List<Long> selectSalesOutboundIdList = salesReturnForm.getSelectSalesOutboundIdList();
+            if(!CollectionUtils.isEmpty(selectSalesOutboundIdList)){
+                List<Long> collect = selectSalesOutboundIdList.stream().distinct().toList();
+                List<SalesOutbound> salesOutboundList = salesOutboundRepository.findAllById(collect);
+                salesOutboundList.forEach(order -> {
+                    //退货单 关联 销售出库单
+                    order.setReturnOrderId(save.getId());
+                });
+                salesOutboundRepository.saveAll(salesOutboundList);
+            }
+            return save;
         }
-        return salesReturnRepository.save(salesReturn);
+
     }
 
     @Transactional
@@ -73,11 +129,46 @@ public class SalesReturnService extends AbsService {
     }
 
     public Object getById(SalesReturn query) {
-        return null;
+        //查询订单
+        SalesReturn salesReturn = salesReturnRepository.getById(query.getId());
+        //订单数据转换
+        SalesReturnDTO dto = BeanUtil.toBean(salesReturn, SalesReturnDTO.class);
+        //查询销售订单商品
+        List<Tuple> fetch = jqf.selectFrom(salesReturnItem)
+                .select(salesReturnItem, qProduct.code, qProduct.name, qUnit.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(salesReturnItem.productId))
+                .leftJoin(qUnit).on(qUnit.id.eq(salesReturnItem.baseUnitId))
+                .where(salesReturnItem.salesReturnId.eq(query.getId())).orderBy(salesReturnItem.id.asc()).fetch();
+        List<SalesReturnItemDTO> salesReturnItemDTOList = new ArrayList<>();
+        fetch.forEach(tuple -> {
+            SalesReturnItemDTO salesReturnItemDTO = BeanUtil.toBean(tuple.get(salesReturnItem), SalesReturnItemDTO.class);
+            salesReturnItemDTO.setProductName(tuple.get(qProduct.name));
+            salesReturnItemDTO.setProductCode(tuple.get(qProduct.code));
+            salesReturnItemDTO.setUnitName(tuple.get(qUnit.name));
+            salesReturnItemDTOList.add(salesReturnItemDTO);
+        });
+        dto.setSalesReturnItemList(salesReturnItemDTOList);
+        return dto;
     }
 
     public void batchAudit(SalesReturnForm salesReturnForm) {
+        List<Long> orderIds = salesReturnForm.getOrderIds();
+        if (orderIds == null || orderIds.isEmpty()) {
+            throw new IllegalArgumentException("Order IDs cannot be null or empty");
+        }
 
+        List<SalesReturn> salesReturnList = salesReturnRepository.findAllById(orderIds);
+
+        if (salesReturnList.size() != orderIds.size()) {
+            throw new IllegalArgumentException("Some salesOutboundList could not be found");
+        }
+        SalesReturn salesReturn = salesReturnForm.getSalesReturn();
+        salesReturnList.forEach(order -> {
+            order.setOrderStatus(OrderStatus.已审核);
+            order.setApprovedAt(LocalDateTime.now());
+            order.setApprovedBy(salesReturn.getApprovedBy());
+        });
+        salesReturnRepository.saveAll(salesReturnList);
     }
 
     public static class Query {

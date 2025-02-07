@@ -7,7 +7,7 @@ export default {
 	list(param) {
 		return Ajax.get('/paymentMethod', param)
 	},
-	remove(id) {
+    delete(id) {
 		return Ajax.delete('/paymentMethod/' + id);
 	},
 	select(param) {

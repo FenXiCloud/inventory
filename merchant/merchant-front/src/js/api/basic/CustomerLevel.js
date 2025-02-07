@@ -14,7 +14,7 @@ export default {
 	list(param) {
 		return Ajax.get('/customerLevel', param)
 	},
-	remove(customerLevelId) {
+    delete(customerLevelId) {
 		return Ajax.delete('/customerLevel/' + customerLevelId);
 	},
 	select(param) {

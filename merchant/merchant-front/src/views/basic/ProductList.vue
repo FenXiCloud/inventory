@@ -1,97 +1,88 @@
 <template>
-  <div class="container">
-    <Layout>
-      <!-- header start -->
-      <HHeader>
+  <div class="frame-page flex flex-column">
+    <div class="parent_container">
+      <div class="left">
+        <vxe-table
+            ref="productCategoryGridRef"
+            size="mini"
+            :data="productCategoryDataList"
+            highlight-hover-row
+            show-overflow
+            @radio-change="onProductCategoryChange"
+            :rowConfig="{isCurrent: true,isHover: true}"
+            :radio-config="{trigger: 'row',labelField: 'name',highlight: true}">
+          <vxe-column field="name" tree-node title="分类名称"></vxe-column>
+          <vxe-column title="" align="center" width="120">
+            <template #default="{row}">
+              <template v-if="row.id !=null">
+                <i class="primary-color h-icon-plus ml-10px" @click="showProductCategoryForm(row)"></i>
+                <i class="primary-color h-icon-edit ml-10px" @click="showProductCategoryForm(row)"></i>
+                <i class="primary-color h-icon-trash ml-10px" @click="deleteProductCategory(row)"></i>
+              </template>
+            </template>
+          </vxe-column>
+        </vxe-table>
+      </div>
+      <div class="right">
         <vxe-toolbar>
           <template #buttons>
-            <Button class="ml-10px" @click="addOrEditForm()" color="primary">新 增</Button>
-            <Button @click="addOrEditCategoryForm()">新增分类</Button>
+            <Button @click="showProductForm()" color="primary">新 增</Button>
+            <Button @click="showProductCategoryForm()">新增分类</Button>
           </template>
           <template #tools>
             <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                     show-search-button class="w-300px"
-                    placeholder="请输入产品名称" @search="doSearch">查询
+                    placeholder="请输入产品名称" @search="searchProduct">查询
             </Search>
           </template>
         </vxe-toolbar>
-      </HHeader>
-      <!-- header end -->
 
-      <Layout>
-        <!-- Sider start -->
-        <Sider>
-          <div style="width: 200px" class="tree-vue">
-            <Tree
-                ref="demo"
-                :option="categoryParams"
-                filterable="true"
-                select-on-click
-                class-name="h-tree-theme-row-selected">
-              <template #item="{ item }">
-                <div class="tree-show-custom">
-                  <span class="tree-show-title">{{ item.name }}</span>
-                  <span v-if="item.code!='ALL'" class="tree-edit-part">
-                    <i class="h-icon-edit" @click.stop="addOrEditCategoryForm(item)"/>
-                    <i class="h-icon-trash" @click.stop="doRemoveCategory(item)"/>
-                  </span>
-                </div>
-              </template>
-            </Tree>
-          </div>
-        </Sider>
-        <!-- Sider end -->
-
-        <!-- Content start -->
-        <Content>
-          <vxe-table row-id="id"
-                     ref="table"
-                     :data="dataList"
-                     highlight-hover-row
-                     show-overflow
-                     :row-config="{height: 48}"
-                     :column-config="{resizable: true}"
-                     :loading="loading">
-            <vxe-column title="操作" align="center" width="100" fixed="left">
-              <template #default="{row}">
-                <i class="primary-color h-icon-edit ml-10px" @click="addOrEditForm(row)"></i>
-                <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
-              </template>
-            </vxe-column>
-            <vxe-column title="编码" field="code" width="80"/>
-            <vxe-column title="产品名称" field="name" min-width="200"/>
-            <vxe-column title="分类" field="productCategoryName" width="100"/>
-            <vxe-column title="规格" field="specification" width="100"/>
-            <vxe-column title="单位" field="unitName" width="80"/>
-            <vxe-column title="参考进价" field="purchasePrice" width="80"/>
-            <vxe-column title="当前库存" field="stockQuantity" width="80"/>
-            <vxe-column title="预警库存" field="alertQuantity" width="80"/>
-            <vxe-column title="创建时间" field="createdAt" width="120"/>
-            <vxe-column title="更新时间" field="updatedAt" width="120"/>
-            <vxe-column title="备注" field="remarks" min-width="120"/>
-            <vxe-column title="排序号" field="sort" width="80"/>
-            <vxe-column title="状态" field="enabled" width="100" align="center" fixed="right">
-              <template #default="{row}">
-                <Tag color="primary" @click="trigger(row)" v-if="row.enabled">启用</Tag>
-                <Tag color="red" @click="trigger(row)" v-else>禁用</Tag>
-              </template>
-            </vxe-column>
-
-          </vxe-table>
-          <vxe-pager perfect @page-change="loadData(false)"
-                     v-model:current-page="pagination.page"
-                     v-model:page-size="pagination.pageSize"
-                     :total="pagination.total"
-                     :layouts="[ 'PrevPage', 'Number', 'NextPage', 'Sizes', 'Total']">
-            <template #left>
-              <vxe-button @click="loadData(false)" type="text" size="mini" icon="h-icon-refresh"
-                          :loading="loading"></vxe-button>
+        <vxe-table row-id="id"
+                   ref="table"
+                   :data="productDataList"
+                   highlight-hover-row
+                   show-overflow
+                   :row-config="{height: 48}"
+                   :column-config="{resizable: true}"
+                   :loading="loading">
+          <vxe-column title="操作" align="center" width="100" fixed="left">
+            <template #default="{row}">
+              <i class="primary-color h-icon-edit ml-10px" @click="showProductForm(row)"></i>
+              <i class="primary-color h-icon-trash ml-10px" @click="deleteProduct(row)"></i>
             </template>
-          </vxe-pager>
-        </Content>
-        <!-- Content end -->
-      </Layout>
-    </Layout>
+          </vxe-column>
+          <vxe-column title="编码" field="code" width="80"/>
+          <vxe-column title="产品名称" field="name" min-width="200"/>
+          <vxe-column title="分类" field="productCategoryName" width="100"/>
+          <vxe-column title="规格" field="specification" width="100"/>
+          <vxe-column title="单位" field="unitName" width="80"/>
+          <vxe-column title="参考进价" field="purchasePrice" width="80"/>
+          <vxe-column title="当前库存" field="stockQuantity" width="80"/>
+          <!--          <vxe-column title="预警库存" field="alertQuantity" width="80"/>-->
+          <!--          <vxe-column title="创建时间" field="createdAt" width="120"/>-->
+          <!--          <vxe-column title="更新时间" field="updatedAt" width="120"/>-->
+          <vxe-column title="备注" field="remarks"/>
+          <vxe-column title="排序号" field="sort" width="80"/>
+          <vxe-column title="状态" field="enabled" width="100" align="center" fixed="right">
+            <template #default="{row}">
+              <Tag color="primary" @click="trigger(row)" v-if="row.enabled">启用</Tag>
+              <Tag color="red" @click="trigger(row)" v-else>禁用</Tag>
+            </template>
+          </vxe-column>
+
+        </vxe-table>
+        <vxe-pager perfect @page-change="loadProduct(false)"
+                   v-model:current-page="pagination.page"
+                   v-model:page-size="pagination.pageSize"
+                   :total="pagination.total"
+                   :layouts="[ 'PrevPage', 'Number', 'NextPage', 'Sizes', 'Total']">
+          <template #left>
+            <vxe-button @click="loadProduct(false)" type="text" size="mini" icon="h-icon-refresh"
+                        :loading="loading"></vxe-button>
+          </template>
+        </vxe-pager>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -120,19 +111,14 @@ export default {
       loading: false,
       params: {
         name: null,
+        productCategoryId: null
       },
-      dataList: [],
+      productDataList: [],
+      productCategoryDataList: [],
       pagination: {
         page: 1,
         size: 20,
         total: 0
-      },
-      categoryParams: {
-        keyName: 'id',
-        parentName: 'pid',
-        titleName: 'name',
-        dataMode: 'list',
-        datas: []
       },
     }
   },
@@ -147,6 +133,20 @@ export default {
     }
   },
   methods: {
+    // 默认选中第一个单据类型
+    selectDefaultProductCategory() {
+      const table = this.$refs.productCategoryGridRef;
+      if (this.productCategoryDataList[0]) {
+        table.setRadioRow(this.productCategoryDataList[0]);
+      }
+    },
+
+    // 单选框变化时的处理函数
+    onProductCategoryChange(data) {
+      this.params.productCategoryId = data.row.id;
+      this.loadProduct();
+    },
+
     //启用/禁用产品
     trigger(row) {
       let enabled = !row.enabled;
@@ -163,7 +163,7 @@ export default {
     },
 
     //添加或编辑产品分类Form
-    addOrEditCategoryForm(entity) {
+    showProductCategoryForm(entity) {
       let layerId = layer.open({
         title: "产品分类",
         shadeClose: false,
@@ -175,7 +175,7 @@ export default {
             layer.close(layerId);
           },
           onSuccess: () => {
-            this.loadCategoryData();
+            this.loadProductCategory();
             layer.close(layerId);
           }
         })
@@ -183,38 +183,39 @@ export default {
     },
 
     //删除产品分类
-    doRemoveCategory(row) {
+    deleteProductCategory(row) {
       confirm({
         title: "系统提示",
-        content: `确认删除产品：${row.name}?`,
+        content: `确认删除产品分类：${row.name}?`,
         onConfirm: () => {
           ProductCategory.remove(row.id).then(() => {
             message("删除成功~");
-            this.loadCategoryData();
+            this.loadProductCategory();
           })
         }
       })
     },
 
     //查询产品分类
-    loadCategoryData() {
+    loadProductCategory() {
       Promise.all([
         ProductCategory.select(),
       ]).then((results) => {
         let data = results[0].data || [];
         data.unshift({id: null, code: 'ALL', parentId: null, name: '全部分类'})
-        this.categoryParams.datas = data;
+        this.productCategoryDataList = data;
+        this.selectDefaultProductCategory()
       });
     },
 
     //查询产品按钮
-    doSearch() {
+    searchProduct() {
       this.pagination.page = 1;
-      this.loadData();
+      this.loadProduct();
     },
 
     //添加或编辑产品Form
-    addOrEditForm(entity) {
+    showProductForm(entity) {
       let layerId = layer.open({
         title: "产品信息",
         shadeClose: false,
@@ -234,21 +235,21 @@ export default {
     },
 
     //删除产品
-    doRemove(row) {
+    deleteProduct(row) {
       confirm({
         title: "系统提示",
         content: `确认删除产品：${row.name}?`,
         onConfirm: () => {
           Product.remove(row.id).then(() => {
             message("删除成功~");
-            this.loadData();
+            this.loadProduct();
           })
         }
       })
     },
 
     //加载产品列表
-    loadData() {
+    loadProduct() {
       this.loading = true;
       Product.list(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
@@ -258,74 +259,31 @@ export default {
   },
   created() {
     //初始化产品分类列表
-    this.loadCategoryData();
-
+    this.loadProductCategory();
     //初始化产品列表
-    this.loadData();
+    this.loadProduct();
   }
 }
 </script>
 <style lang="less">
-.container {
-  .h-layout-header {
-    height: @layout-header-height;
-    text-align: center;
-  }
-
-  .h-layout-content {
-
-    text-align: center;
-  }
-
-  .h-layout-sider {
-    transition: all 0.2s;
-    position: relative;
-    flex: 0 0 200px;
-    max-width: @layout-sider-width;
-    min-width: @layout-sider-width;
-    width: @layout-sider-width;
-    z-index: 1;
-  }
+.parent_container {
+  display: flex;
+  height: 100%;
 }
 
-.tree-vue {
-  .h-tree-show {
-    .h-tree-show-desc {
-      display: none;
-    }
+.left {
+  width: 300px; /* 固定宽度 */
+  padding: 20px;
+  //background-color: #f8e1e1;
+}
 
-    .tree-show-custom {
-      display: inline-block;
-      padding: 5px 0;
+.right {
+  flex: 1; /* 占用剩余空间 */
+  padding: 20px;
+  //background-color: #b8b7b7;
+}
 
-      .tree-show-title {
-        font-size: 13px;
-      }
-    }
-
-    .tree-edit-part {
-      position: absolute;
-      right: 5px;
-      top: 7px;
-      opacity: 0;
-
-      i {
-        font-size: 12px;
-        vertical-align: middle;
-        margin-right: 10px;
-        cursor: pointer;
-
-        &:hover {
-          color: @primary-color;
-        }
-      }
-    }
-
-    &:hover {
-      .tree-edit-part {
-        opacity: 1;
-      }
-    }
-  }
+.selected {
+  background-color: #dddddd;
 }
 </style>

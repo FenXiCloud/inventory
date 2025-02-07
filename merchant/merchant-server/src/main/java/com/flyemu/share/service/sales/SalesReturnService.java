@@ -69,7 +69,7 @@ public class SalesReturnService extends AbsService {
                 .fetchCount();
 
         List<Tuple> fetchPage = bqf.selectFrom(qSalesReturn)
-                .select(qSalesReturn, qCustomer.name, qMerchantUser.name,qsalesReturnItem)
+                .select(qSalesReturn, qCustomer.name, qMerchantUser.name)
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesReturn.createdBy))
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesReturn.customerId))
                 .where(query.builder)

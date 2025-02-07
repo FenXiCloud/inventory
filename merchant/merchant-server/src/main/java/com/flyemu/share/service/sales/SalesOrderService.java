@@ -66,10 +66,9 @@ public class SalesOrderService extends AbsService {
                 .fetchCount();
 
         List<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
-                .select(qSalesOrder, qCustomer.name, qMerchantUser.name, qSalesOrderItem)
+                .select(qSalesOrder, qCustomer.name, qMerchantUser.name)
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
-                .leftJoin(qSalesOrderItem).on(qSalesOrderItem.salesOrderId.eq(qSalesOrder.id))
                 .where(query.builder)
                 .orderBy(qSalesOrder.id.desc())
                 .offset(page.getOffset())

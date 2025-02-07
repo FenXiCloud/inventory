@@ -17,6 +17,7 @@ import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesReturnForm;
+import com.flyemu.share.repository.SalesOutboundItemRepository;
 import com.flyemu.share.repository.SalesOutboundRepository;
 import com.flyemu.share.repository.SalesReturnItemRepository;
 import com.flyemu.share.repository.SalesReturnRepository;
@@ -51,6 +52,8 @@ public class SalesReturnService extends AbsService {
     private final static QSalesReturn qSalesReturn = QSalesReturn.salesReturn;
     private final static QSalesReturnItem qsalesReturnItem = QSalesReturnItem.salesReturnItem;
 
+    private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
+
     private final static QCustomer qCustomer = QCustomer.customer;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProduct qProduct = QProduct.product;
@@ -62,6 +65,7 @@ public class SalesReturnService extends AbsService {
     private final CodeSeedService codeSeedService;
 
     private final SalesOutboundRepository salesOutboundRepository;
+    private final SalesOutboundItemRepository salesOutboundItemRepository;
 
     public PageResults<SalesReturnDTO> query(Page page, SalesReturnService.Query query) {
         long totalSize = bqf.selectFrom(qSalesReturn)
@@ -94,6 +98,15 @@ public class SalesReturnService extends AbsService {
                 itemDTOs.add(itemDTO);
             });
             salesReturnDTO.setSalesReturnItemList(itemDTOs);
+
+            //查询关联的出库单
+            List<String> salesOutboundList = bqf.selectFrom(qSalesOutbound)
+                    .select(qSalesOutbound.orderNo)
+                    .where(qSalesOutbound.returnOrderId.eq(salesReturnDTO.getId()))
+                    .fetch();
+            if(!CollectionUtils.isEmpty(salesOutboundList)){
+                salesReturnDTO.setSalesOutboundNos(String.join(",", salesOutboundList));
+            }
 
             dtos.add(salesReturnDTO);
         });

@@ -79,4 +79,6 @@ public class SalesReturnDTO {
     private Long merchantId;
 
     private List<SalesReturnItemDTO> salesReturnItemList;
+
+    private String salesOutboundNos;
 }

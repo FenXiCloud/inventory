@@ -184,6 +184,7 @@ public class SalesReturnService extends AbsService {
         return dto;
     }
 
+    @Transactional
     public void batchAudit(SalesReturnForm salesReturnForm) {
         List<Long> orderIds = salesReturnForm.getOrderIds();
         if (orderIds == null || orderIds.isEmpty()) {

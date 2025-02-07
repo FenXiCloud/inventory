@@ -117,11 +117,11 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
           <label class="mr-16px  w-80px">优惠率：</label>
-          <Input v-model="form.discountRate"/>
+          <Input v-model="form.discountRate" @blur="changeDiscountRate"/>
           <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
-          <Input v-model="form.discountAmount"/>
+          <Input v-model="form.discountAmount" @blur="changeDiscountAmount"/>
           <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
-          <Input v-model="form.finalAmount"/>
+          <Input v-model="form.finalAmount" @blur="changeFinalAmount"/>
         </div>
       </div>
     </div>
@@ -144,7 +144,7 @@
         <!-- 仅当状态为审核时显示 -->
         <Button @click="saveOrder" :loading="loading">
           反审核
-      </Button>
+        </Button>
       </div>
     </div>
   </div>
@@ -185,6 +185,7 @@ export default {
       loading: false,
       productList: [],
       product: null,
+      allFinalAmount: 0,
       warehouseList: [],
       supplierList: [],
       supplierId: null,
@@ -199,6 +200,12 @@ export default {
         remarks: null,
       },
       productData: [],
+    }
+  },
+  watch: {
+    allFinalAmount(val) {
+      this.form.discountAmount = (val * this.form.discountRate * 0.01).toFixed(2)
+      this.form.finalAmount = (val - this.form.discountAmount).toFixed(2)
     }
   },
   methods: {
@@ -268,17 +275,19 @@ export default {
           }
         }
       })
+      this.allFinalAmount = sums[1]
       return [["", "", "", "", "", "", "", sysQuantity.toFixed(2), "", ""].concat(sums)];
     },
 
     //选择商品
     selectProduct(d, index) {
       if (d) {
+        console.log('d',d)
         let g = {
           sysQuantity: 1,
           orderQuantity: 1,
           orderPrice: d.price || 0,
-          warehouseId: this.warehousesId,
+          warehouseId: this.warehouseId,
           price: d.price || 0,
           discountAmount: 0.00,
           discount: 0.00,
@@ -383,7 +392,6 @@ export default {
           this.loadProductsBySupplier();
         }
       }
-
     },
 
     //根据供货商加载商品列表
@@ -400,12 +408,26 @@ export default {
                 this.$refs.ms.$el.querySelector('input').click()
                 this.$refs.ms.$el.querySelector('input').select()
               })
-              this.products = null;
             })
         );
       }
     },
 
+    //修改优惠率
+    changeDiscountRate() {
+      this.form.discountAmount = (this.allFinalAmount * this.form.discountRate * 0.01).toFixed(2)
+      this.form.finalAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2)
+    },
+    //修改优惠金额
+    changeDiscountAmount() {
+      this.form.finalAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2)
+      this.form.discountRate = ((this.form.discountAmount / this.allFinalAmount) * 100).toFixed(2)
+    },
+    //修改优惠后金额
+    changeFinalAmount() {
+      this.form.discountAmount = (this.form.allFinalAmount - this.form.discountAmount).toFixed(2)
+      this.form.discountRate = ((this.form.finalAmount / this.allFinalAmount) * 100).toFixed(2)
+    },
     //修改商品多单位
     changeProductUnit(item, row) {
       row.orderUnitName = item.unitName

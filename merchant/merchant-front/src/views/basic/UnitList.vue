@@ -2,17 +2,17 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Button @click="showForm()" color="primary">新 增</Button>
+        <Button @click="showUnitForm()" color="primary">新 增</Button>
       </template>
       <template #tools>
-        <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入单位名称"/>
-        <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
+        <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入单位名称"/>
+        <Button color="primary" :loading="loading" @click="searchUnit">查询</Button>
       </template>
     </vxe-toolbar>
     <div class="flex1">
       <vxe-table row-id="id"
                  ref="table"
-                 :data="dataList"
+                 :data="unitDataList"
                  highlight-hover-row
                  show-overflow
                  stripe
@@ -23,8 +23,8 @@
         <vxe-column title="名称" field="name"/>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
-            <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
-            <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
+            <i class="primary-color h-icon-edit ml-10px" @click="showUnitForm(row)"></i>
+            <i class="primary-color h-icon-trash ml-10px" @click="deleteUnit(row)"></i>
           </template>
         </vxe-column>
       </vxe-table>
@@ -51,14 +51,14 @@ export default {
   data() {
     return {
       loading: false,
-      dataList: [],
+      unitDataList: [],
       params: {
-        filter: null,
+        name: null,
       },
     }
   },
   methods: {
-    showForm(entity) {
+    showUnitForm(entity) {
       let type = 0;
       let layerId = layer.open({
         title: "单位信息",
@@ -71,36 +71,36 @@ export default {
             layer.close(layerId);
           },
           onSuccess: () => {
-            this.doSearch();
+            this.searchUnit();
             layer.close(layerId);
           }
         })
       });
     },
-    doSearch() {
-      this.loadList();
+    searchUnit() {
+      this.loadUnit();
     },
-    loadList() {
+    loadUnit() {
       this.loading = true;
       Unit.list(this.params).then(({data}) => {
-        this.dataList = data;
+        this.unitDataList = data;
       }).finally(() => this.loading = false);
     },
-    doRemove(row) {
+    deleteUnit(row) {
       confirm({
         title: "系统提示",
         content: `确认删除单位：${row.name}?`,
         onConfirm: () => {
-          Unit.remove(row.id).then(() => {
+          Unit.delete(row.id).then(() => {
             message("删除成功~");
-            this.loadList();
+            this.loadUnit();
           })
         }
       })
     }
   },
   created() {
-    this.loadList();
+    this.loadUnit();
   }
 }
 </script>

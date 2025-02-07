@@ -1,12 +1,12 @@
 <template>
   <div class="frame-page flex flex-column">
         <div class="table-toolbar">
-          <Button @click="showForm()" color="primary">新 增</Button>
+          <Button @click="showWarehouseForm()" color="primary">新 增</Button>
           <div>
             <Row :space-x="10">
               <Cell width="50" class="flex items-center">
-                <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入仓库名称"/>
-                <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
+                <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入仓库名称"/>
+                <Button color="primary" :loading="loading" @click="searchWarehouse">查询</Button>
               </Cell>
             </Row>
           </div>
@@ -15,7 +15,7 @@
                    ref="table"
                    :row-config="{height: 48}"
                    stripe
-                   :data="dataList"
+                   :data="warehouseDataList"
                    show-overflow
                    :column-config="{resizable: true}"
                    :loading="loading">
@@ -38,8 +38,8 @@
           <vxe-column title="操作" align="center" width="150">
             <template #default="{row}">
               <div class="flex items-center justify-center">
-                <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
-                <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
+                <i class="primary-color h-icon-edit ml-10px" @click="showWarehouseForm(row)"></i>
+                <i class="primary-color h-icon-trash ml-10px" @click="deleteWarehouse(row)"></i>
               </div>
             </template>
           </vxe-column>
@@ -63,17 +63,17 @@ export default {
       params: {
         name: '',
       },
-      checkedRows: [],
-      dataList: [],
+      warehouseDataList: [],
     }
   },
   computed: {
+
     queryParams() {
       return Object.assign(this.params, {})
     }
   },
   methods: {
-    showForm(warehouse = null) {
+    showWarehouseForm(warehouse = null) {
       let layerId = layer.open({
         title: "仓库信息",
         shadeClose: false,
@@ -85,43 +85,36 @@ export default {
             layer.close(layerId);
           },
           onSuccess: () => {
-            this.doSearch();
+            this.searchWarehouse();
             layer.close(layerId);
           }
         })
       });
     },
-    loadList() {
+    loadWarehouse() {
       this.loading = true;
       Warehouse.list(this.queryParams).then(({data}) => {
-        console.log("Warehouse:",data);
-        this.dataList = data;
+        this.warehouseDataList = data;
       }).finally(() => this.loading = false);
     },
-    pageChange() {
-      this.loadList();
+    searchWarehouse() {
+      this.loadWarehouse();
     },
-    tableCheck() {
-      this.checkedRows = this.$refs.table.getCheckboxRecords();
-    },
-    doSearch() {
-      this.loadList();
-    },
-    doRemove(row) {
+    deleteWarehouse(row) {
       confirm({
         title: "系统提示",
         content: `确认删除：${row.name}?`,
         onConfirm: () => {
-          Warehouse.remove(row.id).then(() => {
+          Warehouse.delete(row.id).then(() => {
             message("删除成功~");
-            this.doSearch();
+            this.searchWarehouse();
           })
         }
       })
     }
   },
   created() {
-    this.doSearch();
+    this.loadWarehouse();
   }
 }
 </script>

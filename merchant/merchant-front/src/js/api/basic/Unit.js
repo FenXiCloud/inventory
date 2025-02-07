@@ -14,7 +14,7 @@ export default {
 	list(param) {
 		return Ajax.get('/unit', param)
 	},
-	remove(unitId) {
+    delete(unitId) {
 		return Ajax.delete('/unit/' + unitId);
 	},
 	select(param) {

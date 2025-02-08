@@ -32,6 +32,7 @@ public class PurchaseOrder {
     private Long id;
 
     @Comment("单据编号")
+    @Column(unique = true)
     private String orderNo;
 
     @Comment("采购入库主表ID")
@@ -59,7 +60,7 @@ public class PurchaseOrder {
     private String remarks;
 
     @Comment("订单状态")
-    @Column(nullable = false,length = 32, columnDefinition = "varchar(20) default '已保存'")
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(20) default '已保存'")
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
 

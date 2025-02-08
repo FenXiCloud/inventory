@@ -44,7 +44,7 @@
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="关联入库单" field="purchaseInboundId" width="200"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
-        <vxe-column title="销售金额" field="totalAmount" width="120"/>
+        <vxe-column title="销售金额" field="finalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
         <vxe-column title="制单人" field="createdName" align="center" width="100"/>

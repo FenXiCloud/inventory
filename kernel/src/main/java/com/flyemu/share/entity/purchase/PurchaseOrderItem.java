@@ -5,7 +5,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -41,11 +43,14 @@ public class PurchaseOrderItem {
     @Comment("数量（以基本单位计）")
     private Double quantity;
 
-    @Comment("辅助单位ID(可为空)")
+    @Comment("采购单位ID)")
     private Long secondaryUnitId;
 
-    @Comment("辅助单位数量 (可为空")
+    @Comment("采购单位数量")
     private Double secondaryQuantity;
+
+    @Comment("采购单价")
+    private Double secondaryPrice;
 
     @Comment("换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)")
     private BigDecimal conversionRate;
@@ -57,7 +62,7 @@ public class PurchaseOrderItem {
     private BigDecimal discountRate;
 
     @Comment("折扣金额")
-    private BigDecimal discountValue;
+    private BigDecimal discountAmount;
 
     @Comment("小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)")
     private BigDecimal subtotal;
@@ -69,9 +74,11 @@ public class PurchaseOrderItem {
     private Long createdBy;
 
     @Comment("创建时间")
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Comment("更新时间")
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
 
     @Column(nullable = false)
@@ -79,5 +86,8 @@ public class PurchaseOrderItem {
 
     @Column(nullable = false)
     private Long merchantId;
+
+    @Comment("备注")
+    private String remark;
 
 }

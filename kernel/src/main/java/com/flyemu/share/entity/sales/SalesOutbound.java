@@ -87,4 +87,7 @@ public class SalesOutbound {
 
     @Column(nullable = false)
     private Long merchantId;
+
+    @Comment("销售退货单id")
+    private Long returnOrderId;
 }

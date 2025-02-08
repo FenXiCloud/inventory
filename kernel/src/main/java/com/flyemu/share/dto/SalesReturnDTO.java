@@ -7,54 +7,50 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Comment;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 
 /**
- * 销售出库单
+    销售退货单DTO
  */
 @Data
-public class SalesOutboundDTO {
+public class SalesReturnDTO {
 
+    @Id
     private Long id;
 
     @Comment("单据编号")
     private String orderNo;
 
-    @Comment("销售订单ID")
-    private String orderId;
+    @Comment("销售出库主表ID")
+    private Long salesOutboundId;
 
     @Comment("客户ID")
     private Long customerId;
     @Comment("客户name")
     private String customerName;
 
-    @Comment("出库日期")
-    private LocalDate outboundDate;
+    @Comment("退单日期")
+    private LocalDate returnDate;
 
-    @Comment("订单金额")
-    private BigDecimal totalAmount;
-
-    @Comment("折扣金额")
-    private BigDecimal discountAmount;
-
-    @Comment("折后金额")
-    private BigDecimal finalAmount;
+    @Comment("退款金额")
+    private BigDecimal refundAmount;
 
     @Comment("已核销金额")
     private BigDecimal verifiedAmount;
 
-    @Comment("收款金额")
-    private BigDecimal collectionAmount;
+    @Comment("付款金额")
+    private BigDecimal paymentAmount;
 
     @Comment("账户ID")
     private Long accountId;
+
+    @Comment("退单原因")
+    private String returnReason;
 
     @Comment("备注")
     private String remarks;
@@ -82,7 +78,7 @@ public class SalesOutboundDTO {
 
     private Long merchantId;
 
-    private List<SalesOutboundItemDTO> salesOutboundItemList;
+    private List<SalesReturnItemDTO> salesReturnItemList;
 
-    private String salesOrderNos;
+    private String salesOutboundNos;
 }

@@ -58,34 +58,65 @@ public class SalesOutboundService extends AbsService {
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
     private final static QSalesOutboundItem qSalesOutboundItem = QSalesOutboundItem.salesOutboundItem;
 
+    private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
+
     private final static QCustomer qCustomer = QCustomer.customer;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProduct qProduct = QProduct.product;
-    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final static QUnit qUnit = QUnit.unit;
 
     private final SalesOutboundRepository salesOutboundRepository;
     private final SalesOutboundItemRepository salesOutboundItemRepository;
     private final CodeSeedService codeSeedService;
-    private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
     private final SalesOrderRepository salesOrderRepository;
 
     public PageResults<SalesOutboundDTO> query(Page page, SalesOutboundService.Query query) {
-        PagedList<Tuple> tuples = bqf.selectFrom(qSalesOutbound)
+
+        long totalSize = bqf.selectFrom(qSalesOutbound)
+                .where(query.builder)
+                .fetchCount();
+
+        List<Tuple> fetchPage = bqf.selectFrom(qSalesOutbound)
                 .select(qSalesOutbound, qCustomer.name, qMerchantUser.name)
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOutbound.createdBy))
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOutbound.customerId))
-                .where(query.builder).orderBy(qSalesOutbound.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+                .where(query.builder)
+                .orderBy(qSalesOutbound.id.desc())
+                .offset(page.getOffset())
+                .limit(page.getOffsetEnd())
+                .fetch();
 
         List<SalesOutboundDTO> dtos = new ArrayList<>();
-        tuples.forEach(tuple -> {
+        fetchPage.forEach(tuple -> {
             SalesOutboundDTO salesOutboundDTO = BeanUtil.toBean(tuple.get(qSalesOutbound), SalesOutboundDTO.class);
             salesOutboundDTO.setCustomerName(tuple.get(qCustomer.name));
             salesOutboundDTO.setCreatedName(tuple.get(qMerchantUser.name));
+
+            //查询子表
+            List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                    .select(qSalesOutboundItem)
+                    .where(qSalesOutboundItem.salesOutboundId.eq(salesOutboundDTO.getId()))
+                    .fetch();
+            List<SalesOutboundItemDTO> itemDTOs = new ArrayList<>();
+            salesOutboundItemList.forEach(item -> {
+                SalesOutboundItemDTO itemDTO = BeanUtil.toBean(item, SalesOutboundItemDTO.class);
+                itemDTOs.add(itemDTO);
+            });
+            salesOutboundDTO.setSalesOutboundItemList(itemDTOs);
+
+            //查询关联的销售订单
+            List<String> salesOrderList = bqf.selectFrom(qSalesOrder)
+                    .select(qSalesOrder.orderNo)
+                    .where(qSalesOrder.outOrderId.eq(salesOutboundDTO.getId()))
+                    .fetch();
+            if(!CollectionUtils.isEmpty(salesOrderList)){
+                salesOutboundDTO.setSalesOrderNos(String.join(",", salesOrderList));
+            }
+
             dtos.add(salesOutboundDTO);
         });
 
-        return new PageResults<>(dtos, page, tuples.getTotalSize());
+        return new PageResults<>(dtos, page, totalSize);
     }
 
     @Transactional
@@ -240,6 +271,13 @@ public class SalesOutboundService extends AbsService {
         public void setCustomerId(Long customerId) {
             if (customerId != null) {
                 builder.and(qSalesOutbound.customerId.eq(customerId));
+            }
+        }
+
+        //查询未退货订单
+        public void setQueryUnReturnOrder(Integer queryUnReturnOrder) {
+            if (queryUnReturnOrder == 1) {
+                builder.and(qSalesOutbound.returnOrderId.isNull());
             }
         }
     }

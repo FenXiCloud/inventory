@@ -66,10 +66,9 @@ public class SalesOrderService extends AbsService {
                 .fetchCount();
 
         List<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
-                .select(qSalesOrder, qCustomer.name, qMerchantUser.name, qSalesOrderItem)
+                .select(qSalesOrder, qCustomer.name, qMerchantUser.name)
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
-                .leftJoin(qSalesOrderItem).on(qSalesOrderItem.salesOrderId.eq(qSalesOrder.id))
                 .where(query.builder)
                 .orderBy(qSalesOrder.id.desc())
                 .offset(page.getOffset())
@@ -81,14 +80,19 @@ public class SalesOrderService extends AbsService {
             SalesOrderDTO salesOrderDTO = BeanUtil.toBean(tuple.get(qSalesOrder), SalesOrderDTO.class);
             salesOrderDTO.setCustomerName(tuple.get(qCustomer.name));
             salesOrderDTO.setCreatedName(tuple.get(qMerchantUser.name));
-            salesOrderDTO.setSalesOrderItemList(new ArrayList<>());
-            dtos.add(salesOrderDTO);
+            //查询子表
+            List<SalesOrderItem> salesOrderItemList = bqf.selectFrom(qSalesOrderItem)
+                    .select(qSalesOrderItem)
+                    .where(qSalesOrderItem.salesOrderId.eq(salesOrderDTO.getId()))
+                    .fetch();
+            List<SalesOrderItemDTO> itemDTOs = new ArrayList<>();
+            salesOrderItemList.forEach(item -> {
+                SalesOrderItemDTO itemDTO = BeanUtil.toBean(item, SalesOrderItemDTO.class);
+                itemDTOs.add(itemDTO);
+            });
+            salesOrderDTO.setSalesOrderItemList(itemDTOs);
 
-            SalesOrderItem salesOrderItem = tuple.get(qSalesOrderItem);
-            if (salesOrderItem != null) {
-                SalesOrderItemDTO itemDTO = BeanUtil.toBean(salesOrderItem, SalesOrderItemDTO.class);
-                salesOrderDTO.getSalesOrderItemList().add(itemDTO);
-            }
+            dtos.add(salesOrderDTO);
         });
         return new PageResults<>(dtos, page, totalSize);
     }

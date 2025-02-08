@@ -68,6 +68,7 @@ const groupRoutes = [
     {name: 'SalesOrderList', component: defineAsyncComponent(() => import('@views/sales/SalesOrderList.vue'))},
     {name: 'SalesOrderForm', component: defineAsyncComponent(() => import('@views/sales/SalesOrderForm.vue'))},
     {name: 'SalesReturnList', component: defineAsyncComponent(() => import('@views/sales/SalesReturnList.vue'))},
+    {name: 'SalesReturnForm', component: defineAsyncComponent(() => import('@views/sales/SalesReturnForm.vue'))},
     {name: 'SalesOutboundList', component: defineAsyncComponent(() => import('@views/sales/SalesOutboundList.vue'))},
     {name: 'SalesOutboundForm', component: defineAsyncComponent(() => import('@views/sales/SalesOutboundForm.vue'))},
     {name: 'SalesItemReport', component: defineAsyncComponent(() => import('@views/sales/SalesItemReport.vue'))},

@@ -9,10 +9,7 @@ import com.flyemu.share.dto.PurchaserOrderDto;
 import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
 import com.flyemu.share.entity.basic.*;
-import com.flyemu.share.entity.sales.QSalesOrder;
-import com.flyemu.share.entity.sales.QSalesOrderItem;
-import com.flyemu.share.entity.sales.SalesOrder;
-import com.flyemu.share.entity.sales.SalesOrderItem;
+import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesOrderForm;
@@ -51,6 +48,8 @@ public class SalesOrderService extends AbsService {
     private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
     private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
 
+    private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
+
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderItemRepository salesOrderItemRepository;
     private final CodeSeedService codeSeedService;
@@ -66,9 +65,10 @@ public class SalesOrderService extends AbsService {
                 .fetchCount();
 
         List<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
-                .select(qSalesOrder, qCustomer.name, qMerchantUser.name)
+                .select(qSalesOrder, qCustomer.name, qMerchantUser.name,qSalesOutbound.orderNo)
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
+                .leftJoin(qSalesOutbound).on(qSalesOutbound.id.eq(qSalesOrder.outOrderId))
                 .where(query.builder)
                 .orderBy(qSalesOrder.id.desc())
                 .offset(page.getOffset())
@@ -80,6 +80,7 @@ public class SalesOrderService extends AbsService {
             SalesOrderDTO salesOrderDTO = BeanUtil.toBean(tuple.get(qSalesOrder), SalesOrderDTO.class);
             salesOrderDTO.setCustomerName(tuple.get(qCustomer.name));
             salesOrderDTO.setCreatedName(tuple.get(qMerchantUser.name));
+            salesOrderDTO.setOutOrderNo(tuple.get(qSalesOutbound.orderNo));
             //查询子表
             List<SalesOrderItem> salesOrderItemList = bqf.selectFrom(qSalesOrderItem)
                     .select(qSalesOrderItem)

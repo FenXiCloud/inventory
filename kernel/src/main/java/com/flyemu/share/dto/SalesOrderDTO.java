@@ -73,4 +73,9 @@ public class SalesOrderDTO {
     private Long merchantId;
 
     private List<SalesOrderItemDTO> salesOrderItemList;
+
+    @Comment("销售出库单id")
+    private Long outOrderId;
+    @Comment("销售出库单编号")
+    private String outOrderNo;
 }

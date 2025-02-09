@@ -1065,10 +1065,12 @@ CREATE TABLE `jxc_other_inbound`
 (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `account_book_id` bigint NOT NULL,
+  `stock_take_id` bigint(20) DEFAULT NULL COMMENT '盘点主表ID',
   `approved_at` datetime(6) DEFAULT NULL COMMENT '审核时间',
   `approved_by` bigint DEFAULT NULL COMMENT '审核人',
   `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
   `created_by` bigint DEFAULT NULL COMMENT '创建人',
+  `customer_id` bigint(20) DEFAULT NULL COMMENT '客户ID',
   `discount_amount` decimal(38,2) DEFAULT NULL COMMENT '折扣金额',
   `final_amount` decimal(38,2) DEFAULT NULL COMMENT '折后金额',
   `inbound_date` datetime(6) DEFAULT NULL COMMENT '入库日期',
@@ -1175,6 +1177,7 @@ CREATE TABLE `jxc_other_outbound`
 (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `account_book_id` bigint                                 NOT NULL,
+  `stock_take_id`   bigint(20) DEFAULT NULL COMMENT '盘点主表ID',
   `approved_at`     datetime(6) DEFAULT NULL COMMENT '审核时间',
   `approved_by`     bigint                                          DEFAULT NULL COMMENT '审核人',
   `created_at`      datetime(6) DEFAULT NULL COMMENT '创建时间',
@@ -1946,6 +1949,7 @@ CREATE TABLE `jxc_stock_take_item`
   `product_id` bigint DEFAULT NULL COMMENT '产品ID',
   `system_quantity` int DEFAULT NULL COMMENT '账面库存',
   `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  `warehouse_id` bigint(20) DEFAULT NULL COMMENT '仓库ID',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

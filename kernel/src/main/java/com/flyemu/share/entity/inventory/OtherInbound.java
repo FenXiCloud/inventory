@@ -37,6 +37,9 @@ public class OtherInbound {
     @Comment("供货商ID")
     private Long supplierId;
 
+    @Comment("客户ID")
+    private Long customerId;
+
     @Comment("入库日期")
     @CreationTimestamp
     private Date inboundDate;
@@ -77,6 +80,9 @@ public class OtherInbound {
 
     @Comment("审核时间")
     private LocalDateTime approvedAt;
+
+    @Comment("盘点主表ID")
+    private Long stockTakeId;
 
     @Column(nullable = false)
     private Long accountBookId;

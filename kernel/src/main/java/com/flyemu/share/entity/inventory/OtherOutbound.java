@@ -82,6 +82,9 @@ public class OtherOutbound {
     @Comment("审核时间")
     private LocalDateTime approvedAt;
 
+    @Comment("盘点主表ID")
+    private Long stockTakeId;
+
     @Column(nullable = false)
     private Long accountBookId;
 

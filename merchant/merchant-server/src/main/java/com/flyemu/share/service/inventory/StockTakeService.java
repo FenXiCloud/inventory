@@ -2,21 +2,41 @@ package com.flyemu.share.service.inventory;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.lang.generator.SnowflakeGenerator;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.entity.inventory.QStockTake;
-import com.flyemu.share.entity.inventory.StockTake;
+import com.flyemu.share.dto.OtherInboundDto;
+import com.flyemu.share.dto.OtherOutboundDto;
+import com.flyemu.share.dto.StockTakeDto;
+import com.flyemu.share.entity.basic.Product;
+import com.flyemu.share.entity.basic.ProductCategory;
+import com.flyemu.share.entity.basic.Unit;
+import com.flyemu.share.entity.basic.Warehouse;
+import com.flyemu.share.entity.inventory.*;
+import com.flyemu.share.entity.setting.Admin;
+import com.flyemu.share.enums.ApproveType;
+import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.form.StockTakeForm;
 import com.flyemu.share.repository.StockTakeRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.ProductCategoryService;
+import com.flyemu.share.service.basic.ProductService;
+import com.flyemu.share.service.basic.UnitService;
+import com.flyemu.share.service.basic.WarehouseService;
+import com.flyemu.share.service.setting.AdminService;
 import com.querydsl.core.BooleanBuilder;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @功能描述: 盘点单
@@ -35,28 +55,77 @@ public class StockTakeService extends AbsService {
 
     private final StockTakeRepository stockTakeRepository;
 
-    public PageResults<StockTake> query(Page page, Query query) {
+    private final StockTakeItemService stockTakeItemService;
+
+    private final WarehouseService warehouseService;
+
+    private final AdminService adminService;
+
+    private final ProductService productService;
+
+    private final ProductCategoryService productCategoryService;
+
+    private final UnitService unitService;
+
+    private final OtherInboundService otherInboundService;
+
+    private final OtherOutboundService otherOutboundService;
+
+    public PageResults<StockTakeDto> query(Page page, Query query) {
         PagedList<StockTake> fetchPage = bqf.selectFrom(qStockTake).where(query.builder).orderBy(qStockTake.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
-        List<StockTake> dtos = new ArrayList<>();
+        List<StockTakeDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            StockTake stockTake1 = tuple;
-            StockTake stockTake = BeanUtil.toBean(stockTake1, StockTake.class);
-            dtos.add(stockTake);
+            StockTakeDto dto = BeanUtil.toBean(tuple, StockTakeDto.class);
+            if (dto.getWarehouseId() != null) {
+                Warehouse warehouse = warehouseService.selectByPrimaryKey(dto.getWarehouseId());
+                if (warehouse != null) {
+                    dto.setWarehouseName(warehouse.getName());
+                }
+            } else {
+                dto.setWarehouseName("全部仓库");
+            }
+            if (dto.getCreatedBy() != null) {
+                Admin admin = adminService.selectByPrimaryKey(dto.getCreatedBy());
+                if (admin != null) {
+                    dto.setCreatedByName(admin.getName());
+                }
+            }
+            // 获取对应关联的其他出库，其他入库订单
+            List<String> orderNos = new ArrayList<>();
+            List<OtherInbound> otherInbounds = otherInboundService.findByStockTakeId(dto.getId());
+            otherInbounds.forEach(inbound -> {
+                orderNos.add(inbound.getOrderNo());
+            });
+            List<OtherOutbound> otherOutbounds = otherOutboundService.findByStockTakeId(dto.getId());
+            otherOutbounds.forEach(outbound -> {
+                orderNos.add(outbound.getOrderNo());
+            });
+            dto.setOrderNos(orderNos);
+            dtos.add(dto);
         });
 
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
     @Transactional
-    public StockTake save(StockTake stockTake) {
+    public StockTake save(StockTakeForm stockTakeForm) {
+        StockTake result;
+        SnowflakeGenerator snowflakeGenerator = new SnowflakeGenerator();
+        StockTake stockTake = stockTakeForm.getStockTake();
         if (stockTake.getId() != null) {
             //更新
             StockTake original = stockTakeRepository.getById(stockTake.getId());
             BeanUtil.copyProperties(stockTake, original, CopyOptions.create().ignoreNullValue());
-            return stockTakeRepository.save(original);
+            result = stockTakeRepository.save(original);
+        } else {
+            stockTake.setCreatedAt(LocalDateTime.now());
+            stockTake.setOrderNo(snowflakeGenerator.next().toString());
+            result = stockTakeRepository.save(stockTake);
         }
-        return stockTakeRepository.save(stockTake);
+        //处理盘点单明细
+        stockTakeItemService.generateStockTakeDetails(result, stockTakeForm.getStockTakeItems());
+        return result;
     }
 
     @Transactional
@@ -68,6 +137,123 @@ public class StockTakeService extends AbsService {
 
     public List<StockTake> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qStockTake).where(qStockTake.merchantId.eq(merchantId).and(qStockTake.accountBookId.eq(accountBookId))).fetch();
+    }
+
+    public List<Map<String, Object>> load(Long id) {
+        return stockTakeRepository.load(id);
+    }
+
+    @Transactional
+    public void approve(Long id, ApproveType type, Long adminId) {
+        StockTake stockTake = jqf.selectFrom(qStockTake).where(qStockTake.id.eq(id)).fetchOne();
+        switch (type) {
+            case AUDITS -> {
+                stockTake.setOrderStatus(OrderStatus.已审核);
+                stockTake.setApprovedBy(adminId);
+                stockTake.setApprovedAt(LocalDateTime.now());
+                stockTakeRepository.save(stockTake);
+            }
+            case ANTI_AUDIT -> {
+                jqf.delete(qStockTake).where(qStockTake.id.eq(id)).execute();
+                stockTakeItemService.deleteByStockTakeId(id);
+            }
+            default -> {
+
+            }
+        }
+    }
+
+    public Map<String, Object> export(Long id) {
+        Map<String, Object> result = new HashMap<>(2);
+        List<StockTakeItem> stockTakeItems = stockTakeItemService.findByStockTakeId(id);
+        // 是否已有关联盘盈数据
+        List<OtherInbound> otherInbounds = otherInboundService.findByStockTakeId(id);
+        if (otherInbounds == null || otherInbounds.isEmpty()) {
+            // 获取盘点盘盈
+            List<Map<String, Object>> inbounds = this.getInbounds(stockTakeItems);
+            // 设置盘盈数据
+            result.put("inbounds", inbounds);
+        }
+        // 是否已有关联盘亏数据
+        List<OtherOutbound> otherOutbounds = otherOutboundService.findByStockTakeId(id);
+        if (otherOutbounds == null || otherOutbounds.isEmpty()) {
+            // 获取盘点盘亏
+            List<Map<String, Object>> outbounds = this.getOutbounds(stockTakeItems);
+            // 设置盘亏数据
+            result.put("outbounds", outbounds);
+        }
+        return result;
+    }
+
+    /**
+     * 获取盘点盘盈
+     *
+     * @param stockTakeItems 盘点明细列表
+     * @return 盘亏列表
+     */
+    private List<Map<String, Object>> getOutbounds(List<StockTakeItem> stockTakeItems) {
+        List<Map<String, Object>> outbounds = new ArrayList<>();
+        Map<String, Object> item;
+        for (StockTakeItem stockTakeItem : stockTakeItems) {
+            Integer systemQuantity = stockTakeItem.getSystemQuantity();
+            Integer actualQuantity = stockTakeItem.getActualQuantity();
+            if (actualQuantity - systemQuantity > 0) {
+                item = new HashMap<>();
+                // 盘盈
+                this.getStockBoundsItem(stockTakeItem, item, actualQuantity - systemQuantity);
+                outbounds.add(item);
+            }
+        }
+        return outbounds;
+    }
+
+    /**
+     * 获取盘点单数据
+     *
+     * @param stockTakeItem 盘点单对象
+     * @param item          设置对象
+     * @param quantity      数量
+     */
+    private void getStockBoundsItem(StockTakeItem stockTakeItem, Map<String, Object> item, Integer quantity) {
+        Long productId = stockTakeItem.getProductId();
+        Long warehouseId = stockTakeItem.getWarehouseId();
+        Product product = productService.loadById(productId, stockTakeItem.getMerchantId());
+        ProductCategory productCategory = productCategoryService.loadById(product.getProductCategoryId(), product.getMerchantId());
+        Unit unit = unitService.selectByPrimaryKey(product.getUnitId());
+        Warehouse warehouse = warehouseService.selectByPrimaryKey(warehouseId);
+        item.put("productName", product.getName());
+        item.put("productId", product.getId());
+        item.put("productCode", product.getCode());
+        item.put("productSpecification", product.getSpecification());
+        item.put("productCategoryId", product.getProductCategoryId());
+        item.put("productCategoryName", productCategory.getName());
+        item.put("productUnitName", unit.getName());
+        item.put("productUnitId", product.getUnitId());
+        item.put("warehouseName", warehouse.getName());
+        item.put("warehouseId", warehouse.getId());
+        item.put("quantity", quantity);
+    }
+
+    /**
+     * 获取盘点盘盈
+     *
+     * @param stockTakeItems 盘点明细列表
+     * @return 盘盈列表
+     */
+    private List<Map<String, Object>> getInbounds(List<StockTakeItem> stockTakeItems) {
+        List<Map<String, Object>> inbounds = new ArrayList<>();
+        Map<String, Object> item;
+        for (StockTakeItem stockTakeItem : stockTakeItems) {
+            Integer systemQuantity = stockTakeItem.getSystemQuantity();
+            Integer actualQuantity = stockTakeItem.getActualQuantity();
+            if (actualQuantity - systemQuantity < 0) {
+                item = new HashMap<>();
+                // 盘亏
+                this.getStockBoundsItem(stockTakeItem, item, systemQuantity - actualQuantity);
+                inbounds.add(item);
+            }
+        }
+        return inbounds;
     }
 
     public static class Query {

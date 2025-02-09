@@ -20,4 +20,13 @@ export default {
     select(param) {
         return Ajax.get('/otherInbound/select', param)
     },
+    load(id) {
+        return Ajax.get("/otherInbound/load/" + id);
+    },
+    approve(param) {
+        return Ajax.get("/otherInbound/approve", param);
+    },
+    delete(id) {
+        return Ajax.delete("/otherInbound/" + id);
+    },
 }

@@ -1,5 +1,6 @@
 package com.flyemu.share.service.sales;
 
+import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
@@ -124,6 +125,13 @@ public class SalesReturnService extends AbsService {
         if (id != null) {
             //更新
             SalesReturn original = salesReturnRepository.getById(salesReturn.getId());
+
+            //已审核单据不能修改
+            OrderStatus orderStatus = original.getOrderStatus();
+            if (orderStatus.equals(OrderStatus.已审核)) {
+                throw new InvalidContextException("已审核单据不能修改");
+            }
+
             BeanUtil.copyProperties(salesReturn, original, CopyOptions.create().ignoreNullValue());
             SalesReturn update = salesReturnRepository.save(original);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {

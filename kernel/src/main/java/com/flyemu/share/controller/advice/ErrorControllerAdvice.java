@@ -1,5 +1,6 @@
 package com.flyemu.share.controller.advice;
 
+import cn.dev33.satoken.exception.InvalidContextException;
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.hutool.core.collection.CollUtil;
 import com.flyemu.share.controller.JsonResult;
@@ -124,5 +125,17 @@ public class ErrorControllerAdvice {
         log.error("Throwable Error", throwable);
         Sentry.captureException(throwable);
         return JsonResult.failure("操作被禁止或发生错误！");
+    }
+
+    /**
+     * 无效内容
+     * @return
+     */
+    @ExceptionHandler(InvalidContextException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public JsonResult invalidContextException(final InvalidContextException invalidContextException) {
+        log.error("invalidContextException", invalidContextException);
+        Sentry.captureException(invalidContextException);
+        return JsonResult.failure(invalidContextException.getMessage());
     }
 }

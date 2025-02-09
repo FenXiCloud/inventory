@@ -175,7 +175,7 @@ export default {
       warehouseId: null,
       form: {
         id: null,
-        outboundDate: manba().format("YYYY-MM-dd"),
+        returnDate: manba().format("YYYY-MM-dd"),
         customerId: null,
         discountAmount: 0.00,
         discountRate: 0.00,
@@ -282,6 +282,7 @@ export default {
       this.form.orderQuantity = quantity.toFixed(2);
       this.form.discountAmount = discountValue.toFixed(2);
       this.form.finalAmount = subtotal.toFixed(2);
+      this.updateCustomerAmount();
       this.form.totalAmount = (discountValue+subtotal).toFixed(2);
       if(!!this.form.discountAmount && !!this.form.totalAmount){
         this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
@@ -341,6 +342,11 @@ export default {
           loading.close()
           return false
         }
+      }
+      if (!this.form.returnDate) {
+        message.error("请选择日期~");
+        loading.close()
+        return false
       }
       let quantityFlag = false
       let unitPriceFlag = false
@@ -545,6 +551,7 @@ export default {
       item.discoutPrice = (item.unitPrice - item.subtotal).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
+
     //更新客户承担金额
     updateCustomerAmount(){
       this.form.refundAmount = (this.form.finalAmount - this.form.customerAmount).toFixed(2)

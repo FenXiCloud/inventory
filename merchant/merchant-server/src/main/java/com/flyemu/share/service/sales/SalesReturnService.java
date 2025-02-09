@@ -27,10 +27,12 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -239,6 +241,35 @@ public class SalesReturnService extends AbsService {
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
                 builder.and(qSalesReturn.accountBookId.eq(accountBookId));
+            }
+        }
+        public void setFilter(String filter) {
+            if (StringUtils.isNotBlank(filter)) {
+                builder.and(qSalesReturn.orderNo.like("%" + filter + "%"));
+            }
+        }
+
+        public void setState(String state) {
+            if (StringUtils.isNotBlank(state)) {
+                builder.and(qSalesReturn.orderStatus.eq(OrderStatus.valueOf(state)));
+            }
+        }
+
+        public void setStart(String start) {
+            if (StringUtils.isNotBlank(start)) {
+                builder.and(qSalesReturn.returnDate.goe(LocalDate.parse(start)));
+            }
+        }
+
+        public void setEnd(String end) {
+            if (StringUtils.isNotBlank(end)) {
+                builder.and(qSalesReturn.returnDate.loe(LocalDate.parse(end)));
+            }
+        }
+
+        public void setCustomerId(Long customerId) {
+            if (customerId != null) {
+                builder.and(qSalesReturn.customerId.eq(customerId));
             }
         }
     }

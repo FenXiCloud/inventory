@@ -39,13 +39,13 @@ public class PurchaseOrderController {
         purchaseOrderForm.getPurchaseOrder().setMerchantId(merchantId);
         purchaseOrderForm.getPurchaseOrder().setAccountBookId(accountBookId);
         purchaseOrderForm.getPurchaseOrder().setOrderStatus(OrderStatus.已保存);
-        purchaseOrderService.save(purchaseOrderForm,merchantId);
+        purchaseOrderService.save(purchaseOrderForm, merchantId);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm,@SaMerchantId Long merchantId) {
-        purchaseOrderService.save(purchaseOrderForm,merchantId);
+    public JsonResult update(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaMerchantId Long merchantId) {
+        purchaseOrderService.save(purchaseOrderForm, merchantId);
         return JsonResult.successful();
     }
 

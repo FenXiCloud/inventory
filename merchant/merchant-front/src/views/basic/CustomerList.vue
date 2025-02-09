@@ -1,86 +1,79 @@
 <template>
-  <div class="container">
-    <Layout>
-      <!-- header start -->
-      <HHeader>
+  <div class="frame-page flex flex-column">
+    <div class="parent_container">
+      <div class="left">
+        <vxe-table
+            ref="customerCategoryGridRef"
+            size="mini"
+            :data="customerCategoryDataList"
+            highlight-hover-row
+            show-overflow
+            @radio-change="onCustomerCategoryChange"
+            :rowConfig="{isCurrent: true,isHover: true}"
+            :radio-config="{trigger: 'row',labelField: 'name',highlight: true}">
+          <vxe-column field="name" title="客户分类"></vxe-column>
+          <vxe-column title="" align="center" width="120">
+            <template #default="{row}">
+              <template v-if="row.id !=null">
+                <i class="primary-color h-icon-edit ml-10px" @click="showCustomerCategoryForm(row)"></i>
+                <i class="primary-color h-icon-trash ml-10px" @click="deleteCustomerCategory(row)"></i>
+              </template>
+            </template>
+          </vxe-column>
+        </vxe-table>
+      </div>
+      <div class="right">
+
         <vxe-toolbar>
           <template #buttons>
-            <Button class="ml-10px" @click="addOrEditForm()" color="primary">新 增</Button>
-            <Button @click="addOrEditCategoryForm()">新增分类</Button>
+            <Button @click="showCustomerForm()" color="primary">新 增</Button>
+            <Button @click="showCustomerCategoryForm()">新增分类</Button>
+            <Button @click="showCustomerImportForm()">导入</Button>
+            <Button @click="exportCustomerToExcel()">导出</Button>
           </template>
           <template #tools>
-            <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+            <Search v-model.trim="params.name" search-button-theme="h-btn-default"
                     show-search-button class="w-300px"
-                    placeholder="请输入客户名称" @search="doSearch">查询
+                    placeholder="请输入客户名称" @search="searchCustomer">查询
             </Search>
           </template>
         </vxe-toolbar>
-      </HHeader>
-      <!-- header end -->
 
-      <Layout>
-        <!-- Sider start -->
-        <Sider>
-          <div style="width: 200px" class="tree-vue">
-            <Tree
-                ref="demo"
-                :option="categoryParams"
-                filterable="true"
-                select-on-click
-                class-name="h-tree-theme-row-selected">
-              <template #item="{ item }">
-                <div class="tree-show-custom">
-                  <span class="tree-show-title">{{ item.name }}</span>
-                  <span v-if="item.code!='ALL'" class="tree-edit-part">
-                    <i class="h-icon-edit" @click.stop="addOrEditCategoryForm(item)"/>
-                    <i class="h-icon-trash" @click.stop="doRemoveCategory(item)"/>
-                  </span>
-                </div>
-              </template>
-            </Tree>
-          </div>
-        </Sider>
-        <!-- Sider end -->
-
-        <!-- Content start -->
-        <Content>
-          <vxe-table row-id="id"
-                     ref="table"
-                     :data="dataList"
-                     highlight-hover-row
-                     show-overflow
-                     :row-config="{height: 48}"
-                     :column-config="{resizable: true}"
-                     :loading="loading">
-            <vxe-column type="seq" width="40" title="#"/>
-            <vxe-column title="编码" field="code" width="120"/>
-            <vxe-column title="客户名称" field="name" min-width="200"/>
-            <vxe-column title="联系人" field="linkman" width="120"/>
-            <vxe-column title="电话" field="phone" width="120"/>
-            <vxe-column title="分类" field="categoryName" width="120"/>
-            <vxe-column title="等级" field="levelName" width="120"/>
-            <vxe-column title="备注" field="remark" min-width="120"/>
-            <vxe-column title="操作" align="center" width="160">
-              <template #default="{row}">
-                <i class="primary-color h-icon-edit ml-10px" @click="addOrEditForm(row)"></i>
-                <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
-              </template>
-            </vxe-column>
-          </vxe-table>
-          <vxe-pager perfect @page-change="loadData(false)"
-                     v-model:current-page="pagination.page"
-                     v-model:page-size="pagination.pageSize"
-                     :total="pagination.total"
-                     :layouts="[ 'PrevPage', 'Number', 'NextPage', 'Sizes', 'Total']">
-            <template #left>
-              <vxe-button @click="loadData(false)" type="text" size="mini" icon="h-icon-refresh"
-                          :loading="loading"></vxe-button>
+        <vxe-table row-id="id"
+                   ref="table"
+                   :data="customerDataList"
+                   highlight-hover-row
+                   show-overflow
+                   :row-config="{height: 48}"
+                   :column-config="{resizable: true}"
+                   :loading="loading">
+          <vxe-column type="seq" width="40" title="#"/>
+          <vxe-column title="编码" field="code" width="120"/>
+          <vxe-column title="客户名称" field="name" min-width="200"/>
+          <vxe-column title="联系人" field="contact" width="120"/>
+          <vxe-column title="电话" field="phone" width="120"/>
+          <vxe-column title="分类" field="categoryName" width="120"/>
+          <vxe-column title="等级" field="levelName" width="120"/>
+          <vxe-column title="备注" field="remarks" min-width="120"/>
+          <vxe-column title="操作" align="center" width="160">
+            <template #default="{row}">
+              <i class="primary-color h-icon-edit ml-10px" @click="showCustomerForm(row)"></i>
+              <i class="primary-color h-icon-trash ml-10px" @click="deleteCustomer(row)"></i>
             </template>
-          </vxe-pager>
-        </Content>
-        <!-- Content end -->
-      </Layout>
-    </Layout>
+          </vxe-column>
+        </vxe-table>
+        <vxe-pager perfect @page-change="loadCustomer(false)"
+                   v-model:current-page="pagination.page"
+                   v-model:page-size="pagination.pageSize"
+                   :total="pagination.total"
+                   :layouts="[ 'PrevPage', 'Number', 'NextPage', 'Sizes', 'Total']">
+          <template #left>
+            <vxe-button @click="loadCustomer(false)" type="text" size="mini" icon="h-icon-refresh"
+                        :loading="loading"></vxe-button>
+          </template>
+        </vxe-pager>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -93,6 +86,9 @@ import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 import CustomerCategoryForm from "@views/basic/CustomerCategoryForm.vue";
 import CustomerCategory from "@js/api/basic/CustomerCategory";
+import CustomerImportForm from "@views/basic/CustomerImportForm.vue";
+import {downloadBlob} from "download.js";
+
 
 /**
  * @功能描述: 客户管理
@@ -109,20 +105,15 @@ export default {
       loading: false,
       params: {
         name: null,
+        customerCategoryId: null
       },
-      dataList: [],
+      customerCategoryDataList: [],
+      customerDataList: [],
       pagination: {
         page: 1,
         size: 20,
         total: 0
-      },
-      categoryParams: {
-        keyName: 'id',
-        parentName: 'pid',
-        titleName: 'name',
-        dataMode: 'list',
-        datas: []
-      },
+      }
     }
   },
   computed: {
@@ -137,66 +128,20 @@ export default {
   },
   methods: {
 
-    //添加或编辑客户分类Form
-    addOrEditCategoryForm(entity) {
-      let layerId = layer.open({
-        title: "客户分类",
-        shadeClose: false,
-        closeBtn: false,
-        area: ['400px', '230px'],
-        content: h(CustomerCategoryForm, {
-          entity,
-          onClose: () => {
-            layer.close(layerId);
-          },
-          onSuccess: () => {
-            this.loadCategoryData();
-            layer.close(layerId);
-          }
-        })
-      });
-    },
-
-    //删除客户分类
-    doRemoveCategory(row) {
-      confirm({
-        title: "系统提示",
-        content: `确认删除客户：${row.name}?`,
-        onConfirm: () => {
-          CustomerCategory.remove(row.id).then(() => {
-            message("删除成功~");
-            this.loadCategoryData();
-          })
-        }
+    exportCustomerToExcel() {
+      Customer.exportToExcel().then((blob) => {
+        downloadBlob("客户档案.xlsx", blob)
+      }).finally(() => {
+        this.loading = false
       })
     },
 
-    //查询客户分类
-    loadCategoryData() {
-      Promise.all([
-        CustomerCategory.select(),
-      ]).then((results) => {
-        let data = results[0].data || [];
-        data.unshift({id: null, code: 'ALL', parentId: null, name: '全部分类'})
-        this.categoryParams.datas = data;
-      });
-    },
-
-    //查询客户按钮
-    doSearch() {
-      this.pagination.page = 1;
-      this.loadData();
-    },
-
-    //添加或编辑客户Form
-    addOrEditForm(entity) {
+    showCustomerImportForm() {
       let layerId = layer.open({
-        title: "客户信息",
+        title: "客户导入",
         shadeClose: false,
-        closeBtn: false,
-        area: ['700px', '500px'],
-        content: h(CustomerForm, {
-          entity,
+        area: ['50vw', 'auto'],
+        content: h(CustomerImportForm, {
           onClose: () => {
             layer.close(layerId);
           },
@@ -208,99 +153,145 @@ export default {
       });
     },
 
+    // 默认选中第一个单据类型'
+    selectDefaultCustomerCategory() {
+      const table = this.$refs.customerCategoryGridRef;
+      if (this.customerCategoryDataList[0]) {
+        table.setRadioRow(this.customerCategoryDataList[0]);
+      }
+    },
+
+    // 单选框变化时的处理函数
+    onCustomerCategoryChange(data) {
+      this.params.customerCategoryId = data.row.id;
+      this.loadCustomer();
+    },
+
+    //添加或编辑客户分类Form
+    showCustomerCategoryForm(entity) {
+      let layerId = layer.open({
+        title: "客户分类",
+        shadeClose: false,
+        closeBtn: false,
+        area: ['400px', '230px'],
+        content: h(CustomerCategoryForm, {
+          entity,
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: () => {
+            this.loadCustomerCategory();
+            layer.close(layerId);
+          }
+        })
+      });
+    },
+
+    //删除客户分类
+    deleteCustomerCategory(row) {
+      confirm({
+        title: "系统提示",
+        content: `确认删除客户分类：${row.name}?`,
+        onConfirm: () => {
+          CustomerCategory.remove(row.id).then(() => {
+            message("删除成功~");
+            this.loadCustomerCategory();
+            this.params.customerCategoryId = null;
+            this.loadCustomer();
+          })
+        }
+      })
+    },
+
+    //查询客户分类
+    loadCustomerCategory() {
+      Promise.all([
+        CustomerCategory.select(),
+      ]).then((results) => {
+        let data = results[0].data || [];
+        data.unshift({id: null, code: 'ALL', parentId: null, name: '全部分类'})
+        this.customerCategoryDataList = data;
+        this.selectDefaultCustomerCategory();
+      });
+    },
+
+    //查询客户按钮
+    searchCustomer() {
+      this.pagination.page = 1;
+      this.loadCustomer();
+    },
+
+    //添加或编辑客户Form
+    showCustomerForm(entity) {
+      let layerId = layer.open({
+        title: "客户信息",
+        shadeClose: false,
+        closeBtn: false,
+        area: ['700px', '500px'],
+        content: h(CustomerForm, {
+          entity,
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: () => {
+            this.searchCustomer();
+            layer.close(layerId);
+          }
+        })
+      });
+    },
+
     //删除客户
-    doRemove(row) {
+    deleteCustomer(row) {
       confirm({
         title: "系统提示",
         content: `确认删除客户：${row.name}?`,
         onConfirm: () => {
-          Customer.remove(row.id).then(() => {
+          Customer.delete(row.id).then(() => {
             message("删除成功~");
-            this.loadData();
+            this.loadCustomer();
           })
         }
       })
     },
 
     //加载客户列表
-    loadData() {
+    loadCustomer() {
       this.loading = true;
       Customer.list(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results || [];
+        this.customerDataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
     },
   },
   created() {
     //初始化客户分类列表
-    this.loadCategoryData();
-
+    this.loadCustomerCategory();
     //初始化客户列表
-    this.loadData();
+    this.loadCustomer();
   }
 }
 </script>
-<style lang="less">
-.container {
-  .h-layout-header {
-    height: @layout-header-height;
-    text-align: center;
-  }
 
-  .h-layout-content {
-
-    text-align: center;
-  }
-
-  .h-layout-sider {
-    transition: all 0.2s;
-    position: relative;
-    flex: 0 0 200px;
-    max-width: @layout-sider-width;
-    min-width: @layout-sider-width;
-    width: @layout-sider-width;
-    z-index: 1;
-  }
+<style lang="less" scoped>
+.parent_container {
+  display: flex;
+  height: 100%;
 }
 
-.tree-vue {
-  .h-tree-show {
-    .h-tree-show-desc {
-      display: none;
-    }
+.left {
+  width: 300px; /* 固定宽度 */
+  padding: 20px;
+  //background-color: #f8e1e1;
+}
 
-    .tree-show-custom {
-      display: inline-block;
-      padding: 5px 0;
+.right {
+  flex: 1; /* 占用剩余空间 */
+  padding: 20px;
+  //background-color: #b8b7b7;
+}
 
-      .tree-show-title {
-        font-size: 13px;
-      }
-    }
-
-    .tree-edit-part {
-      position: absolute;
-      right: 5px;
-      top: 7px;
-      opacity: 0;
-
-      i {
-        font-size: 12px;
-        vertical-align: middle;
-        margin-right: 10px;
-        cursor: pointer;
-
-        &:hover {
-          color: @primary-color;
-        }
-      }
-    }
-
-    &:hover {
-      .tree-edit-part {
-        opacity: 1;
-      }
-    }
-  }
+.selected {
+  background-color: #dddddd;
 }
 </style>

@@ -2,17 +2,17 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Button @click="showForm()" color="primary">新 增</Button>
+        <Button @click="showCustomerLevelForm()" color="primary">新 增</Button>
       </template>
       <template #tools>
-        <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入名称"/>
-        <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
+        <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入名称"/>
+        <Button color="primary" :loading="loading" @click="searchCustomerLevel()">查询</Button>
       </template>
     </vxe-toolbar>
   <div class="flex1">
       <vxe-table row-id="id"
                  ref="table"
-                 :data="dataList"
+                 :data="customerLevelDataList"
                  highlight-hover-row
                  show-overflow
                  stripe
@@ -23,8 +23,9 @@
         <vxe-column title="名称" field="name"/>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
-            <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
-            <i class="primary-color h-icon-trash ml-10px" v-if="!row.systemDefault" @click="doRemove(row)"></i>
+            <i class="primary-color h-icon-edit ml-10px" @click="showCustomerLevelForm(row)"></i>
+            <i class="primary-color h-icon-trash ml-10px" v-if="!row.systemDefault"
+               @click="deleteCustomerLevel(row)"></i>
           </template>
         </vxe-column>
       </vxe-table>
@@ -51,14 +52,15 @@ export default {
   data() {
     return {
       loading: false,
-      dataList: [],
+      customerLevelDataList: [],
       params: {
-        filter: null,
+        name: null,
       },
     }
   },
   methods: {
-    showForm(entity) {
+
+    showCustomerLevelForm(entity) {
       let type = 0;
       let layerId = layer.open({
         title: "客户等级",
@@ -71,36 +73,36 @@ export default {
             layer.close(layerId);
           },
           onSuccess: () => {
-            this.doSearch();
+            this.searchCustomerLevel();
             layer.close(layerId);
           }
         })
       });
     },
-    doSearch() {
-      this.loadList();
+    searchCustomerLevel() {
+      this.loadCustomerLevel();
     },
-    loadList() {
+    loadCustomerLevel() {
       this.loading = true;
       CustomerLevel.list(this.params).then(({data}) => {
-        this.dataList = data;
+        this.customerLevelDataList = data;
       }).finally(() => this.loading = false);
     },
-    doRemove(row) {
+    deleteCustomerLevel(row) {
       confirm({
         title: "系统提示",
         content: `确认删除：${row.name}?`,
         onConfirm: () => {
-          CustomerLevel.remove(row.id).then(() => {
+          CustomerLevel.delete(row.id).then(() => {
             message("删除成功~");
-            this.loadList();
+            this.loadCustomerLevel();
           })
         }
       })
     }
   },
   created() {
-    this.loadList();
+    this.loadCustomerLevel();
   }
 }
 </script>

@@ -2,17 +2,17 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Button @click="showForm()" color="primary">新 增</Button>
+        <Button @click="showPaymentMethodForm()" color="primary">新 增</Button>
       </template>
       <template #tools>
         <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入名称"/>
-        <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
+        <Button color="primary" :loading="loading" @click="searchPaymentMethod">查询</Button>
       </template>
     </vxe-toolbar>
     <div class="flex1">
       <vxe-table row-id="id"
                  ref="table"
-                 :data="dataList"
+                 :data="paymentMethodDataList"
                  highlight-hover-row
                  show-overflow
                  stripe
@@ -29,8 +29,8 @@
         </vxe-column>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
-            <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
-            <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
+            <i class="primary-color h-icon-edit ml-10px" @click="showPaymentMethodForm(row)"></i>
+            <i class="primary-color h-icon-trash ml-10px" @click="deletePaymentMethod(row)"></i>
           </template>
         </vxe-column>
       </vxe-table>
@@ -57,9 +57,9 @@ export default {
   data() {
     return {
       loading: false,
-      dataList: [],
+      paymentMethodDataList: [],
       params: {
-        filter: null,
+        name: null,
       },
       param: [
         {title: '启用', key: 'enabled'},
@@ -68,7 +68,7 @@ export default {
     }
   },
   methods: {
-    showForm(entity) {
+    showPaymentMethodForm(entity) {
       let type = 0;
       let layerId = layer.open({
         title: "结算方式",
@@ -81,29 +81,29 @@ export default {
             layer.close(layerId);
           },
           onSuccess: () => {
-            this.doSearch();
+            this.searchPaymentMethod();
             layer.close(layerId);
           }
         })
       });
     },
-    doSearch() {
-      this.loadList();
+    searchPaymentMethod() {
+      this.loadPaymentMethod();
     },
-    loadList() {
+    loadPaymentMethod() {
       this.loading = true;
       PaymentMethod.list(this.params).then(({data}) => {
-        this.dataList = data;
+        this.paymentMethodDataList = data;
       }).finally(() => this.loading = false);
     },
-    doRemove(row) {
+    deletePaymentMethod(row) {
       confirm({
         title: "系统提示",
         content: `确认删除：${row.name}?`,
         onConfirm: () => {
-          PaymentMethod.remove(row.id).then(() => {
+          PaymentMethod.delete(row.id).then(() => {
             message("删除成功~");
-            this.loadList();
+            this.loadPaymentMethod();
           })
         }
       })
@@ -116,14 +116,14 @@ export default {
         onConfirm: () => {
           PaymentMethod.save({id: row.id, enabled}).then(() => {
             message("操作成功~");
-            this.loadList();
+            this.loadPaymentMethod();
           })
         }
       })
     }
   },
   created() {
-    this.loadList();
+    this.loadPaymentMethod();
   }
 }
 </script>

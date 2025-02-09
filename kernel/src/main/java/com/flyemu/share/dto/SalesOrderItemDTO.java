@@ -1,6 +1,7 @@
-package com.flyemu.share.entity.sales;
+package com.flyemu.share.dto;
 
 import jakarta.persistence.*;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -11,32 +12,29 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * @功能描述: 销售出库单明细
- * @创建时间: 2024年04月28日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
+ * @功能描述: 销售订单明细DTO
  */
-@Getter
-@Setter
-@Entity
-@NoArgsConstructor
-@Table
-@DynamicUpdate
-public class SalesOutboundItem {
+@Data
+public class SalesOrderItemDTO {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Comment("销售出库主表ID")
-    private Long salesOutboundId;
+    @Comment("销售订单主表ID")
+    private Long salesOrderId;
 
     @Comment("产品ID")
     private Long productId;
-
+    @Comment("产品code")
+    private String productCode;
+    @Comment("产品name")
+    private String productName;
     @Comment("基本单位ID")
     private Long baseUnitId;
+
+    @Comment("基本单位")
+    private String unitName;
 
     @Comment("数量（以基本单位计）")
     private Double quantity;

@@ -155,6 +155,12 @@ public class SupplierService extends AbsService {
             }
         }
 
+        public void setSupplierCategoryId(Long supplierCategoryId) {
+            if (supplierCategoryId != null) {
+                builder.and(qSupplier.supplierCategoryId.eq(supplierCategoryId));
+            }
+        }
+
         public void setFilter(String filter) {
             if (StrUtil.isNotBlank(filter)) {
                 builder.and(qSupplier.code.contains(filter).or(qSupplier.contact.contains(filter)).or(qSupplier.phone.contains(filter)).or(qSupplier.name.contains(filter)));

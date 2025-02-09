@@ -66,8 +66,11 @@ const groupRoutes = [
 
     {name: 'PriceRecordList', component: defineAsyncComponent(() => import('@views/basic/PriceRecordList.vue'))},
     {name: 'SalesOrderList', component: defineAsyncComponent(() => import('@views/sales/SalesOrderList.vue'))},
+    {name: 'SalesOrderForm', component: defineAsyncComponent(() => import('@views/sales/SalesOrderForm.vue'))},
     {name: 'SalesReturnList', component: defineAsyncComponent(() => import('@views/sales/SalesReturnList.vue'))},
+    {name: 'SalesReturnForm', component: defineAsyncComponent(() => import('@views/sales/SalesReturnForm.vue'))},
     {name: 'SalesOutboundList', component: defineAsyncComponent(() => import('@views/sales/SalesOutboundList.vue'))},
+    {name: 'SalesOutboundForm', component: defineAsyncComponent(() => import('@views/sales/SalesOutboundForm.vue'))},
     {name: 'SalesItemReport', component: defineAsyncComponent(() => import('@views/sales/SalesItemReport.vue'))},
     {name: 'SalesSummaryReport', component: defineAsyncComponent(() => import('@views/sales/SalesSummaryReport.vue'))},
     {name: 'SalesProfitReport', component: defineAsyncComponent(() => import('@views/sales/SalesProfitReport.vue'))},
@@ -124,7 +127,7 @@ const groupRoutes = [
     {
         name: 'OtherOutboundList',
         component: defineAsyncComponent(() => import('@views/inventory/OtherOutboundList.vue'))
-    }, 
+    },
     {name: 'OtherOutboundForm', component: defineAsyncComponent(() => import('@views/inventory/OtherOutboundForm.vue'))},
     {
         name: 'OtherIncomeList',

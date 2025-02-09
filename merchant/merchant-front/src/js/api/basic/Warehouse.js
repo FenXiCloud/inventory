@@ -7,7 +7,7 @@ export default {
   list(param) {
     return Ajax.get('/warehouse', param)
   },
-  remove(id) {
+    delete(id) {
     return Ajax.delete('/warehouse/' + id);
   },
   select(param) {

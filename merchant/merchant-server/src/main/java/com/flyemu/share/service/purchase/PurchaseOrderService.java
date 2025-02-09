@@ -3,20 +3,17 @@ package com.flyemu.share.service.purchase;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.Dict;
+import cn.hutool.core.util.NumberUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.PurchaserOrderDto;
-import com.flyemu.share.entity.basic.PriceRecord;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QSupplier;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.dto.purchase.PurchaseOrderItemDto;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.purchase.PurchaseOrder;
 import com.flyemu.share.entity.purchase.PurchaseOrderItem;
 import com.flyemu.share.entity.purchase.QPurchaseOrder;
 import com.flyemu.share.entity.purchase.QPurchaseOrderItem;
-import com.flyemu.share.entity.setting.CodeRule;
-import com.flyemu.share.entity.setting.QMerchant;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.PurchaseOrderForm;
@@ -32,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -50,6 +48,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PurchaseOrderService extends AbsService {
 
+    private final static QUnit qUnit = QUnit.unit;
     private final static QPurchaseOrder qPurchaseOrder = QPurchaseOrder.purchaseOrder;
     private final static QProduct qProduct = QProduct.product;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
@@ -80,16 +79,17 @@ public class PurchaseOrderService extends AbsService {
     }
 
     @Transactional
-    public PurchaseOrder save(PurchaseOrderForm purchaseOrderForm,Long merchantId) {
+    public PurchaseOrder save(PurchaseOrderForm purchaseOrderForm, Long merchantId) {
         PurchaseOrder order = purchaseOrderForm.getPurchaseOrder();
         if (order.getId() != null) {
             PurchaseOrder original = purchaseOrderRepository.getById(purchaseOrderForm.getPurchaseOrder().getId());
 
             BeanUtil.copyProperties(order, original, CopyOptions.create().ignoreNullValue());
 
-
             Set<Long> ids = new HashSet<>();
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
+                //计算基本单价
+                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(),d.getQuantity(),2)));
 //                保存更新购货商品价格
                 PriceRecord priceRecord = new PriceRecord();
                 priceRecord.setUnitPrice(d.getUnitPrice());
@@ -108,12 +108,15 @@ public class PurchaseOrderService extends AbsService {
                 d.setMerchantId(merchantId);
             }
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
-            purchaseOrderRepository.save(original);
+            return purchaseOrderRepository.save(original);
         } else {
             order.setOrderNo(codeSeedService.generateCode(purchaseOrderForm.getPurchaseOrder().getMerchantId(), "采购订单"));
             order.setOrderStatus(OrderStatus.已保存);
             purchaseOrderRepository.save(order);
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
+                //计算基本单价
+                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(),d.getQuantity(),2)));
+
 //                保存更新购货商品价格
                 PriceRecord priceRecord = new PriceRecord();
                 priceRecord.setUnitPrice(d.getUnitPrice());
@@ -130,8 +133,8 @@ public class PurchaseOrderService extends AbsService {
                 d.setMerchantId(merchantId);
             }
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
+            return purchaseOrderRepository.save(purchaseOrderForm.getPurchaseOrder());
         }
-        return purchaseOrderRepository.save(purchaseOrderForm.getPurchaseOrder());
     }
 
     @Transactional
@@ -151,33 +154,25 @@ public class PurchaseOrderService extends AbsService {
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
                 .where(qPurchaseOrder.merchantId.eq(merchantId).and(qPurchaseOrder.id.eq(orderId))).fetchFirst();
 
+        QUnit qUnit1 = new QUnit("id");
+
         PurchaserOrderDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseOrder), PurchaserOrderDto.class);
-        ArrayList<Dict> collect = jqf.selectFrom(qPurchaseOrderItem)
+        ArrayList<PurchaseOrderItemDto> collect = jqf.selectFrom(qPurchaseOrderItem)
                 .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,
-                        qProduct.imgPath, qProduct.specification)
+                        qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
+                .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseOrderItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
+                .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseOrderItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseOrderItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
                 .where(qPurchaseOrderItem.purchaseOrderId.eq(orderId).and(qPurchaseOrderItem.merchantId.eq(merchantId)))
                 .orderBy(qPurchaseOrderItem.id.asc())
                 .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
-                    PurchaseOrderItem od = tuple.get(qPurchaseOrderItem);
-                    Dict dict = Dict.create()
-                            .set("id", od.getId())
-                            .set("productsId", od.getProductId())
-                            .set("discountedValue", od.getDiscountValue())
-                            .set("secondaryQuantity", od.getSecondaryQuantity())
-                            .set("quantity", od.getQuantity())
-                            .set("unitId", od.getBaseUnitId())
-                            .set("orderUnitId", od.getSecondaryUnitId())
-                            .set("orderUnitName", od.getUnitPrice())
-                            .set("warehouseId", od.getWarehouseId())
-                            .set("warehouseName", tuple.get(qWarehouse.name))
-                            .set("discountRate", od.getDiscountRate())
-                            .set("productsCode", tuple.get(qProduct.code))
-                            .set("productsName", tuple.get(qProduct.name))
-                            .set("spec", tuple.get(qProduct.specification))
-                            .set("imgPath", tuple.get(qProduct.imgPath));
-                    list.add(dict);
+                    PurchaseOrderItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrderItem), PurchaseOrderItemDto.class);
+                    dto.setProductCode(tuple.get(qProduct.code));
+                    dto.setProductName(tuple.get(qProduct.name));
+                    dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setSecondaryUnitName(tuple.get(qUnit1.name));
+                    list.add(dto);
                 }, List::addAll);
         return Dict.create().set("purchaseOrder", orderDto).set("purchaseOrderItemList", collect);
     }

@@ -1,12 +1,8 @@
 package com.flyemu.share.dto;
 
 import com.flyemu.share.enums.OrderStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

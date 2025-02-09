@@ -1,7 +1,8 @@
-package com.flyemu.share.entity.sales;
+package com.flyemu.share.dto;
 
 import com.flyemu.share.enums.OrderStatus;
 import jakarta.persistence.*;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -11,24 +12,15 @@ import org.hibernate.annotations.DynamicUpdate;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * @功能描述: 销售退单
- * @创建时间: 2024年12月31日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
+    销售退货单DTO
  */
-@Getter
-@Setter
-@Entity
-@NoArgsConstructor
-@Table
-@DynamicUpdate
-public class SalesReturn {
+@Data
+public class SalesReturnDTO {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Comment("单据编号")
@@ -39,6 +31,8 @@ public class SalesReturn {
 
     @Comment("客户ID")
     private Long customerId;
+    @Comment("客户name")
+    private String customerName;
 
     @Comment("退单日期")
     private LocalDate returnDate;
@@ -80,6 +74,8 @@ public class SalesReturn {
 
     @Comment("创建人")
     private Long createdBy;
+    @Comment("创建人")
+    private String createdName;
 
     @Comment("创建时间")
     private LocalDateTime createdAt;
@@ -90,9 +86,11 @@ public class SalesReturn {
     @Comment("审核时间")
     private LocalDateTime approvedAt;
 
-    @Column(nullable = false)
     private Long accountBookId;
 
-    @Column(nullable = false)
     private Long merchantId;
+
+    private List<SalesReturnItemDTO> salesReturnItemList;
+
+    private String salesOutboundNos;
 }

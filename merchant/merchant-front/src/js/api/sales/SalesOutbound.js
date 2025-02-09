@@ -12,5 +12,11 @@ export default {
     },
     select(param) {
         return Ajax.get('/salesOutbound/select', param)
-    }
+    },
+    getInfo(id) {
+        return Ajax.get('/salesOutbound/getInfo/' + id);
+    },
+    batchAudit(param) {
+        return Ajax.put('/salesOutbound/batchAudit', param)
+    },
 }

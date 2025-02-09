@@ -55,6 +55,15 @@ public class WarehouseService extends AbsService {
         return bqf.selectFrom(qWarehouse).where(qWarehouse.merchantId.eq(merchantId).and(qWarehouse.accountBookId.eq(accountBookId))).fetch();
     }
 
+    /**
+     * 根据id查询仓库信息
+     *
+     * @param id 仓库id
+     */
+    public Warehouse selectByPrimaryKey(Long id) {
+        return jqf.selectFrom(qWarehouse).where(qWarehouse.id.eq(id)).fetchOne();
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

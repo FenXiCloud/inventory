@@ -2,21 +2,38 @@ package com.flyemu.share.service.inventory;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.lang.generator.SnowflakeGenerator;
+import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.entity.inventory.OtherInbound;
-import com.flyemu.share.entity.inventory.QOtherInbound;
+import com.flyemu.share.dto.OtherInboundDto;
+import com.flyemu.share.entity.basic.Customer;
+import com.flyemu.share.entity.basic.Supplier;
+import com.flyemu.share.entity.inventory.*;
+import com.flyemu.share.entity.setting.Admin;
+import com.flyemu.share.enums.ApproveType;
+import com.flyemu.share.enums.InboundType;
+import com.flyemu.share.enums.OperationType;
+import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.form.OtherInboundForm;
 import com.flyemu.share.repository.OtherInboundRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.CustomerService;
+import com.flyemu.share.service.basic.SupplierService;
+import com.flyemu.share.service.setting.AdminService;
 import com.querydsl.core.BooleanBuilder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @功能描述: 其他入库单
@@ -33,30 +50,81 @@ public class OtherInboundService extends AbsService {
 
     private final static QOtherInbound qOtherInbound = QOtherInbound.otherInbound;
 
+    private final OtherInboundItemService otherInboundItemService;
+
+    private final CustomerService customerService;
+
+    private final AdminService adminService;
+
+    private final SupplierService supplierService;
+
+    private final InventoryService inventoryService;
+
     private final OtherInboundRepository otherInboundRepository;
 
-    public PageResults<OtherInbound> query(Page page, Query query) {
-        PagedList<OtherInbound> fetchPage = bqf.selectFrom(qOtherInbound).where(query.builder).orderBy(qOtherInbound.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+    public PageResults<OtherInboundDto> query(Page page, Query query) {
+        PagedList<OtherInbound> fetchPage = bqf.selectFrom(qOtherInbound).where(query.builder)
+                .where(query.builders()).orderBy(qOtherInbound.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
-        List<OtherInbound> dtos = new ArrayList<>();
+        List<OtherInboundDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            OtherInbound otherInbound1 = tuple;
-            OtherInbound otherInbound = BeanUtil.toBean(otherInbound1, OtherInbound.class);
-            dtos.add(otherInbound);
+            OtherInboundDto dto = BeanUtil.toBean(tuple, OtherInboundDto.class);
+            // todo 获取额外参数(待优化)
+            AtomicReference<Integer> quantity = new AtomicReference<>(0);
+            List<OtherInboundItem> otherInboundItems = otherInboundItemService.findByOtherInboundId(dto.getId());
+            if (!otherInboundItems.isEmpty()) {
+                otherInboundItems.forEach(otherOutboundItem -> {
+                    double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
+                    quantity.updateAndGet(v -> v + (int) parsed);
+                });
+            }
+            if (dto.getCreatedBy() != null) {
+                Admin admin = adminService.selectByPrimaryKey(dto.getCreatedBy());
+                if (admin != null) {
+                    dto.setCreatedByName(admin.getName());
+                }
+            }
+            if (dto.getCustomerId() != null) {
+                Customer customer = customerService.selectByPrimaryKey(dto.getCustomerId());
+                if (customer != null) {
+                    dto.setCustomerName(customer.getName());
+                    dto.setCustomerCode(customer.getCode());
+                }
+            }
+            if (dto.getSupplierId() != null) {
+                Supplier supplier = supplierService.selectByPrimaryKey(dto.getSupplierId());
+                if (supplier != null) {
+                    dto.setSupplierName(supplier.getName());
+                    dto.setSupplierCode(supplier.getCode());
+                }
+            }
+            dto.setQuantity(quantity.get());
+            dtos.add(dto);
         });
 
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
     @Transactional
-    public OtherInbound save(OtherInbound otherInbound) {
+    public OtherInbound save(OtherInboundForm otherInboundForm) {
+        OtherInbound result;
+        SnowflakeGenerator snowflakeGenerator = new SnowflakeGenerator();
+        OtherInbound otherInbound = otherInboundForm.getOtherInbound();
         if (otherInbound.getId() != null) {
             //更新
             OtherInbound original = otherInboundRepository.getById(otherInbound.getId());
             BeanUtil.copyProperties(otherInbound, original, CopyOptions.create().ignoreNullValue());
-            return otherInboundRepository.save(original);
+            result = otherInboundRepository.save(original);
+        } else {
+            otherInbound.setCreatedAt(LocalDateTime.now());
+            otherInbound.setOrderNo(snowflakeGenerator.next().toString());
+            result = otherInboundRepository.save(otherInbound);
         }
-        return otherInboundRepository.save(otherInbound);
+        // 入库明细
+        BigDecimal totalAmount = otherInboundItemService.generateInboundDetails(result, otherInboundForm.getOtherInboundItems());
+        result.setTotalAmount(totalAmount);
+        otherInboundRepository.save(result);
+        return result;
     }
 
     @Transactional
@@ -70,8 +138,134 @@ public class OtherInboundService extends AbsService {
         return bqf.selectFrom(qOtherInbound).where(qOtherInbound.merchantId.eq(merchantId).and(qOtherInbound.accountBookId.eq(accountBookId))).fetch();
     }
 
+    @Transactional
+    public void approve(Long id, ApproveType type, Long adminId) {
+        OtherInbound otherInbound = jqf.selectFrom(qOtherInbound).where(qOtherInbound.id.eq(id)).fetchOne();
+        List<OtherInboundItem> otherInboundItems = otherInboundItemService.findByOtherInboundId(id);
+        List<Inventory> inventories = new ArrayList<>();
+        List<InventoryItem> inventoryItems = new ArrayList<>();
+        switch (type) {
+            case AUDITS -> {
+                //处理库存
+                this.getComputedInventory(otherInboundItems, inventories, inventoryItems);
+                inventories.forEach(item -> {
+                    // 加库存
+                    inventoryService.computedInventory(item, true, id, inventoryItems);
+                });
+                otherInbound.setOrderStatus(OrderStatus.已审核);
+                otherInbound.setApprovedBy(adminId);
+                otherInbound.setApprovedAt(LocalDateTime.now());
+                otherInboundRepository.save(otherInbound);
+            }
+            case ANTI_AUDIT -> {
+                //处理库存
+                this.getComputedInventory(otherInboundItems, inventories, inventoryItems);
+                inventories.forEach(item -> {
+                    // 减库存
+                    inventoryService.computedInventory(item, false, id, null);
+                });
+                jqf.delete(qOtherInbound).where(qOtherInbound.id.eq(id)).execute();
+                otherInboundItemService.deleteByOtherInboundId(id);
+            }
+            default -> {
+
+            }
+        }
+    }
+
+    /**
+     * 统计操作的库存信息
+     *
+     * @param otherInboundItems 库存明细
+     * @param inventories       操作库存
+     * @param inventoryItems    操作库存明细
+     */
+    private void getComputedInventory(List<OtherInboundItem> otherInboundItems, List<Inventory> inventories,
+                                      List<InventoryItem> inventoryItems) {
+        AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
+        AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
+        otherInboundItems.forEach(otherInboundItem -> {
+            BigDecimal subtotal = otherInboundItem.getSubtotal();
+            Double quantity = otherInboundItem.getQuantity();
+            inventories.stream()
+                    .filter(item -> item.getProductId().equals(otherInboundItem.getProductId())
+                            && item.getWarehouseId().equals(otherInboundItem.getWarehouseId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            item -> {
+                                BigDecimal totalCost = item.getTotalCost();
+                                Integer currentQuantity = item.getCurrentQuantity();
+                                BigDecimal added = totalCost.add(subtotal)
+                                        .setScale(2, RoundingMode.DOWN);
+                                double parsed = Double.parseDouble(quantity.toString());
+                                currentQuantity += (int) parsed;
+                                item.setCurrentQuantity(currentQuantity);
+                                item.setTotalCost(added);
+                            }, () -> {
+                                Inventory inventory = new Inventory();
+                                inventory.setWarehouseId(otherInboundItem.getWarehouseId());
+                                inventory.setProductId(otherInboundItem.getProductId());
+                                double parsed = Double.parseDouble(otherInboundItem.getQuantity().toString());
+                                inventory.setCurrentQuantity((int) parsed);
+                                inventory.setTotalCost(otherInboundItem.getSubtotal());
+                                inventory.setMerchantId(otherInboundItem.getMerchantId());
+                                inventory.setAccountBookId(otherInboundItem.getAccountBookId());
+                                inventory.setBaseUnitId(otherInboundItem.getBaseUnitId());
+                                inventoryAtomicReference.set(inventory);
+                                inventories.add(inventoryAtomicReference.get());
+                            });
+            InventoryItem inventoryItem = getInventoryItem(otherInboundItem);
+            inventoryItemAtomicReference.set(inventoryItem);
+            inventoryItems.add(inventoryItemAtomicReference.get());
+        });
+    }
+
+    /**
+     * 获取库存明细列表
+     *
+     * @param otherInboundItem 入库明细
+     * @return inventoryItem
+     */
+    private InventoryItem getInventoryItem(OtherInboundItem otherInboundItem) {
+        InventoryItem inventoryItem = new InventoryItem();
+        inventoryItem.setWarehouseId(otherInboundItem.getWarehouseId());
+        inventoryItem.setProductId(otherInboundItem.getProductId());
+        double parsed = Double.parseDouble(otherInboundItem.getQuantity().toString());
+        inventoryItem.setQuantity((int) parsed);
+        inventoryItem.setBaseUnitId(otherInboundItem.getBaseUnitId());
+        inventoryItem.setOperationType(OperationType.入库);
+        inventoryItem.setBaseUnitId(otherInboundItem.getBaseUnitId());
+        inventoryItem.setOrderId(otherInboundItem.getOtherInboundId());
+        inventoryItem.setBatchNumber(otherInboundItem.getBatchNumber());
+        inventoryItem.setMerchantId(otherInboundItem.getMerchantId());
+        inventoryItem.setAccountBookId(otherInboundItem.getAccountBookId());
+        inventoryItem.setCreatedAt(LocalDateTime.now());
+        inventoryItem.setCreatedBy(otherInboundItem.getCreatedBy());
+        return inventoryItem;
+    }
+
+    public List<Map<String, Object>> load(Long id) {
+        //todo 获取入库信息待优化
+        return otherInboundRepository.findOtherInboundById(id);
+    }
+
+    public List<OtherInbound> findByStockTakeId(Long stockTakeId) {
+        return jqf.selectFrom(qOtherInbound).where(qOtherInbound.stockTakeId.eq(stockTakeId)).fetch();
+    }
+
+    @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
+
+        private Date start;
+
+        private Date end;
+
+        private InboundType inboundType;
+
+        private OrderStatus state;
+
+        private String filter;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -83,6 +277,32 @@ public class OtherInboundService extends AbsService {
             if (accountBookId != null) {
                 builder.and(qOtherInbound.accountBookId.eq(accountBookId));
             }
+        }
+
+        private static Date addTimeOfFinalMoment(Date date) {
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(date);
+            calendar.add(Calendar.HOUR, 23);
+            calendar.add(Calendar.MINUTE, 59);
+            calendar.add(Calendar.SECOND, 59);
+            return calendar.getTime();
+        }
+
+        public BooleanBuilder builders() {
+            if (start != null && end != null) {
+                builder.and(qOtherInbound.inboundDate.loe(addTimeOfFinalMoment(end)));
+                builder.and(qOtherInbound.inboundDate.goe(start));
+            }
+            if (inboundType != null) {
+                builder.and(qOtherInbound.inboundType.eq(inboundType));
+            }
+            if (state != null) {
+                builder.and(qOtherInbound.orderStatus.eq(state));
+            }
+            if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
+                builder.and(qOtherInbound.orderNo.contains(filter));
+            }
+            return builder;
         }
     }
 }

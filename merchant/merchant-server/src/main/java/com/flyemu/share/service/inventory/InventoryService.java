@@ -2,28 +2,33 @@ package com.flyemu.share.service.inventory;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
-import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
-import com.flyemu.share.repository.InventoryItemRepository;
 import com.flyemu.share.repository.InventoryRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.query.NativeQuery;
+import org.hibernate.transform.Transformers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @功能描述: 库存余额表
@@ -43,6 +48,9 @@ public class InventoryService extends AbsService {
     private final InventoryRepository inventoryRepository;
 
     private final InventoryItemService inventoryItemService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public PageResults<Inventory> query(Page page, Query query) {
         PagedList<Inventory> fetchPage = bqf.selectFrom(qInventory).where(query.builder).where(query.builders())
@@ -90,6 +98,20 @@ public class InventoryService extends AbsService {
      */
     @Transactional
     public void computedInventory(Inventory item, boolean increase, Long orderId, List<InventoryItem> inventoryItems) {
+        this.computedInventory(item, increase, orderId, inventoryItems, true);
+    }
+
+    /**
+     * 计算库存
+     *
+     * @param item           库存对象
+     * @param increase       是否添加
+     * @param orderId        订单id
+     * @param inventoryItems 库存明细
+     * @param operateItems   是否操作明细
+     */
+    @Transactional
+    public void computedInventory(Inventory item, boolean increase, Long orderId, List<InventoryItem> inventoryItems, boolean operateItems) {
         Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(item.getProductId()))
                 .where(qInventory.warehouseId.eq(item.getWarehouseId())).fetchFirst();
         if (inventory == null) {
@@ -108,19 +130,19 @@ public class InventoryService extends AbsService {
         if (increase) {
             currentQuantity += computedQuantity;
             totalCost = totalCost.add(computedCost).setScale(2, RoundingMode.DOWN);
-            this.operateInventory(orderId, inventoryItems, inventory, currentQuantity, totalCost);
+            this.operateInventory(orderId, inventoryItems, inventory, currentQuantity, totalCost, operateItems);
             return;
         }
         //todo 负值库存待处理
         currentQuantity -= computedQuantity;
         totalCost = totalCost.subtract(computedCost).setScale(2, RoundingMode.DOWN);
-        if (currentQuantity > 0) {
+        if (currentQuantity < 0) {
             currentQuantity = 0;
         }
         if (totalCost.compareTo(BigDecimal.ZERO) == 0) {
             totalCost = BigDecimal.ZERO;
         }
-        this.operateInventory(orderId, inventoryItems, inventory, currentQuantity, totalCost);
+        this.operateInventory(orderId, inventoryItems, inventory, currentQuantity, totalCost, operateItems);
     }
 
     /**
@@ -148,16 +170,22 @@ public class InventoryService extends AbsService {
      * @param inventory       库存对象
      * @param currentQuantity 当前库存
      * @param totalCost       总成本
+     * @param operateItems    是否操作明细
      */
     private void operateInventory(Long orderId, List<InventoryItem> inventoryItems,
                                   Inventory inventory, Integer currentQuantity,
-                                  BigDecimal totalCost) {
-        BigDecimal averageCost = totalCost.divide(BigDecimal.valueOf(currentQuantity))
-                .setScale(2, RoundingMode.DOWN);
+                                  BigDecimal totalCost, boolean operateItems) {
+        BigDecimal averageCost = BigDecimal.ZERO;
+        if (currentQuantity != 0) {
+            averageCost = totalCost.divide(BigDecimal.valueOf(currentQuantity), 2, RoundingMode.DOWN);
+        }
         jqf.update(qInventory).set(qInventory.currentQuantity, currentQuantity)
                 .set(qInventory.totalCost, totalCost)
                 .set(qInventory.averageCost, averageCost)
                 .where(qInventory.id.eq(inventory.getId())).execute();
+        if (!operateItems) {
+            return;
+        }
         if (inventoryItems == null) {
             inventoryItemService.deleteByOrderId(orderId);
         } else {
@@ -183,6 +211,54 @@ public class InventoryService extends AbsService {
         }
         Integer currentQuantity = inventory.getCurrentQuantity();
         return currentQuantity != null && currentQuantity > 0;
+    }
+
+    /**
+     * 根据仓库id和产品id获取库存信息
+     *
+     * @param warehouseId 仓库id
+     * @param productId   产品id
+     * @return inventory
+     */
+    public Inventory findByWarehouseIdAndProductId(Long warehouseId, Long productId) {
+        return jqf.selectFrom(qInventory).where(qInventory.warehouseId.eq(warehouseId))
+                .where(qInventory.productId.eq(productId)).fetchOne();
+    }
+
+    public List<Map<String, Object>> products(Long warehouseId, Long productId, String filter, Long accountBookId, Long merchantId) {
+        String productSql = InventoryRepository.PRODUCT_SQL;
+        int index = 3;
+        int productIndex = 3;
+        int warehouseIndex = 3;
+        int filterIndex = 3;
+        if (productId != null) {
+            productSql += " AND ji.product_id= ?" + index;
+            index++;
+        }
+        if (warehouseId != null) {
+            productSql += " AND ji.warehouse_id= ?" + index;
+            warehouseIndex = index;
+            index++;
+        }
+        if (StringUtils.hasText(filter)) {
+            productSql += " AND (jp.`name` LIKE CONCAT('%', ?" + index + ", '%') OR jp.`code` LIKE CONCAT('%', ?" + index + ", '%'))";
+            filterIndex = index;
+        }
+        jakarta.persistence.Query nativeQuery = entityManager.createNativeQuery(productSql);
+        nativeQuery.setParameter(1, accountBookId);
+        nativeQuery.setParameter(2, merchantId);
+        if (productId != null) {
+            nativeQuery.setParameter(productIndex, productId);
+        }
+        if (warehouseId != null) {
+            nativeQuery.setParameter(warehouseIndex, warehouseId);
+        }
+        if (StringUtils.hasText(filter)) {
+            nativeQuery.setParameter(filterIndex, filter);
+        }
+        nativeQuery.unwrap(NativeQuery.class)
+                .setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+        return nativeQuery.getResultList();
     }
 
     @Data

@@ -1,10 +1,16 @@
 package com.flyemu.share.controller.inventory;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.inventory.OtherInbound;
+import com.flyemu.share.entity.inventory.OtherOutbound;
+import com.flyemu.share.enums.ApproveType;
+import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.form.OtherInboundForm;
+import com.flyemu.share.form.OtherOutboundForm;
 import com.flyemu.share.service.inventory.OtherInboundService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,16 +38,20 @@ public class OtherInboundController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid OtherInbound otherInbound, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid OtherInboundForm otherInboundForm, @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+        OtherInbound otherInbound = otherInboundForm.getOtherInbound();
         otherInbound.setMerchantId(merchantId);
         otherInbound.setAccountBookId(accountBookId);
-        otherInboundService.save(otherInbound);
+        otherInbound.setOrderStatus(OrderStatus.已保存);
+        otherInbound.setCreatedBy(adminId);
+        otherInboundService.save(otherInboundForm);
         return JsonResult.successful();
     }
 
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid OtherInbound otherInbound) {
-        otherInboundService.save(otherInbound);
+    @GetMapping("approve")
+    public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        otherInboundService.approve(id, type, adminId);
         return JsonResult.successful();
     }
 
@@ -54,6 +64,11 @@ public class OtherInboundController {
     @GetMapping("select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(otherInboundService.select(merchantId, accountBookId));
+    }
+
+    @GetMapping("load/{id}")
+    public JsonResult load(@PathVariable Long id) {
+        return JsonResult.successful(otherInboundService.load(id));
     }
 
 }

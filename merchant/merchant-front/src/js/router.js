@@ -113,14 +113,17 @@ const groupRoutes = [
         name: 'InventoryTransferList',
         component: defineAsyncComponent(() => import('@views/inventory/InventoryTransferList.vue'))
     },
+    {name: 'InventoryTransferForm', component: defineAsyncComponent(() => import('@views/inventory/InventoryTransferForm.vue'))},
     {
         name: 'StockTakeList',
         component: defineAsyncComponent(() => import('@views/inventory/StockTakeList.vue'))
     },
+    {name: 'StockTakeForm', component: defineAsyncComponent(() => import('@views/inventory/StockTakeForm.vue'))},
     {
         name: 'OtherInboundList',
         component: defineAsyncComponent(() => import('@views/inventory/OtherInboundList.vue'))
     },
+    {name: 'OtherInboundForm', component: defineAsyncComponent(() => import('@views/inventory/OtherInboundForm.vue'))},
     {
         name: 'OtherOutboundList',
         component: defineAsyncComponent(() => import('@views/inventory/OtherOutboundList.vue'))

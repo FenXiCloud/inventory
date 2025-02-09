@@ -7,24 +7,27 @@
           <DatePicker v-model="form.orderDate" :disabled="auditOperate" :option="{ start: accountBook.checkoutDate }"
                       :clearable="false">
           </DatePicker>
+          <label class="mr-20px ml-20px" style="font-size: 16px !important">供应商：</label>
+          <Select class="w-178px" filterable required :datas="supplierList" keyName="id" titleName="name"
+                  v-model="form.supplierId" placeholder="请选择供应商" :disabled="auditOperate"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">客户：</label>
           <Select class="w-178px" filterable required :datas="customerList" keyName="id" titleName="name"
                   v-model="form.customerId" placeholder="请选择客户" :disabled="auditOperate"/>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">业务类型：</label>
-          <Select class="w-178px" filterable required :datas="outboundTypeList" keyName="id" titleName="name"
-                  :deletable="false" v-model="form.outboundType" :disabled="auditOperate" placeholder="请选择业务类型"/>
+          <Select class="w-178px" filterable required :datas="inboundTypeList" keyName="id" titleName="name"
+                  :deletable="false" v-model="form.inboundType" :disabled="auditOperate" placeholder="请选择业务类型"/>
         </template>
       </vxe-toolbar>
       <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border="border" show-overflow keep-source
                  :edit-config="editConfig" :row-config="{ height: 40, isCurrent: true, isHover: true }"
                  :tooltip-config="tooltipConfig" show-footer :footer-method="footerMethod" stripe
-                 :data="otherOutboundData"
+                 :data="otherInboundData"
                  @current-change="currentChangeEvent" @cell-click="tableCellClick">
         <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
           <template #default="{ row, rowIndex }">
             <div v-if="rowIsSelect(rowIndex)">
               <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
-              <div v-if="otherOutboundData.length !== 1" class="fa fa-minus text-hover-danger"
+              <div v-if="otherInboundData.length !== 1" class="fa fa-minus text-hover-danger"
                    @click="adjustRows('delete', rowIndex)"></div>
             </div>
             <div v-else>
@@ -75,8 +78,8 @@
         </vxe-column>
         <vxe-column title="数量" field="quantity" width="100">
           <template #default="scope">
-            <vxe-tooltip v-if="!auditOperate" theme="light" :content="scope.row.quantityTips">
-              <vxe-input @focus="quantityFocus(scope)" @blur="quantityBlur"
+            <vxe-tooltip v-if="!auditOperate" :content="scope.row.quantityTips" theme="light">
+              <vxe-input @focus="quantityFocus(scope)" @blur="quantityBlur('quantity',scope)"
                          v-model.number="scope.row.quantity" type="int" min="0" :controls="false">
               </vxe-input>
             </vxe-tooltip>
@@ -87,8 +90,31 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="出库单位成本" field="unitPrice" width="100"></vxe-column>
-        <vxe-column title="出库成本" field="subtotal" width="100"></vxe-column>
+        <vxe-column title="入库单价" field="unitPrice" width="125">
+          <template #default="scope">
+            <vxe-input v-if="!auditOperate" @focus="quantityFocus(scope)" @blur="quantityBlur('unitPrice',scope)"
+                       v-model.number="scope.row.unitPrice" type="int" min="0" :controls="false">
+            </vxe-input>
+            <div v-else class="flex">
+              <div class="flex1 ml-8px">
+                <div>{{ scope.row.unitPrice }}</div>
+              </div>
+            </div>
+          </template>
+        </vxe-column>
+        <vxe-column title="入库金额" field="subtotal" width="125">
+          <template #default="scope">
+            <vxe-input v-if="!auditOperate" @focus="quantityFocus(scope)"
+                       @blur="quantityBlur('subtotal',scope)"
+                       v-model.number="scope.row.subtotal" type="int" min="0" :controls="false">
+            </vxe-input>
+            <div v-else class="flex">
+              <div class="flex1 ml-8px">
+                <div>{{ scope.row.subtotal }}</div>
+              </div>
+            </div>
+          </template>
+        </vxe-column>
         <!-- <vxe-column title="备注" field="remarks" :edit-render="{}" width="100">
           <template #edit="scope">
             <vxe-input v-model="scope.row.remarks"></vxe-input>
@@ -128,16 +154,17 @@ import {CopyObj} from "@common/utils";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import Customer from "@js/api/basic/Customer";
-import OtherOutbound from "@js/api/inventory/OtherOutbound";
+import Supplier from "@js/api/basic/Supplier";
+import OtherInbound from "@js/api/inventory/OtherInbound";
 import Inventory from "@js/api/inventory/Inventory";
 import {mapMutations, mapState} from "vuex";
 
 export default {
-  name: "OtherOutboundForm",
+  name: "OtherInboundForm",
   props: {
-    otherOutboundId: [String, Number],
+    otherInboundId: [String, Number],
     stockTakeId: [String, Number],
-    importOutbound: Array,
+    importInbound: Array,
     type: String,
     index: Number
   },
@@ -160,19 +187,20 @@ export default {
         orderDate: manba().format("YYYY-MM-dd"),
         remarks: null,
         customerId: null,
-        outboundType: '其他出库',
+        supplierId: null,
+        inboundType: '其他入库',
         totalAmount: 0.00,
         totalQuantity: 0,
         adminName: '',
-        // quantityTips: '编辑数量后，查看库存',
         orderStatus: '已保存'
       },
       productData: [],
-      otherOutboundData: [],
+      otherInboundData: [],
       selectRowIndex: null,
       increase: true,
-      outboundTypeList: [{id: '其他出库', name: '其他出库'}, {id: '盘亏出库', name: '盘亏出库'}],
+      inboundTypeList: [{id: '其他入库', name: '其他入库'}, {id: '盘盈入库', name: '盘盈入库'}],
       customerList: [],
+      supplierList: [],
       // 表格校验规则
       validRules: {
         productName: [
@@ -234,7 +262,7 @@ export default {
     changeRow({rowIndex}, type) {
       switch (type) {
         case 'product': {
-          const value = this.otherOutboundData[rowIndex].productId;
+          const value = this.otherInboundData[rowIndex].productId;
           if (this.isEmpty(value)) {
             return;
           }
@@ -244,20 +272,20 @@ export default {
             if (success) {
               const item = data.results[0];
               console.info("Product info:", item);
-              this.otherOutboundData[rowIndex].productName = item.name;
-              this.otherOutboundData[rowIndex].productId = item.id;
-              this.otherOutboundData[rowIndex].productCode = item.code;
-              this.otherOutboundData[rowIndex].productSpecification = item.specification;
-              this.otherOutboundData[rowIndex].productCategoryName = item.productCategoryName;
-              this.otherOutboundData[rowIndex].productUnitName = item.unitName;
-              this.otherOutboundData[rowIndex].productUnitId = item.unitId;
+              this.otherInboundData[rowIndex].productName = item.name;
+              this.otherInboundData[rowIndex].productId = item.id;
+              this.otherInboundData[rowIndex].productCode = item.code;
+              this.otherInboundData[rowIndex].productSpecification = item.specification;
+              this.otherInboundData[rowIndex].productCategoryName = item.productCategoryName;
+              this.otherInboundData[rowIndex].productUnitName = item.unitName;
+              this.otherInboundData[rowIndex].productUnitId = item.unitId;
               this.$forceUpdate();
             }
           });
           break;
         }
         case 'warehouse': {
-          const value = this.otherOutboundData[rowIndex].warehouseId;
+          const value = this.otherInboundData[rowIndex].warehouseId;
           if (this.isEmpty(value)) {
             return;
           }
@@ -267,8 +295,8 @@ export default {
             const {success, data} = res;
             if (success) {
               const item = data[0];
-              this.otherOutboundData[rowIndex].warehouseName = item.name;
-              this.otherOutboundData[rowIndex].warehouseId = item.id;
+              this.otherInboundData[rowIndex].warehouseName = item.name;
+              this.otherInboundData[rowIndex].warehouseId = item.id;
               this.$forceUpdate();
             }
           });
@@ -283,12 +311,12 @@ export default {
     },
     //保存新增、保存
     saveOrder(type) {
-      const filterOtherOutboundData = this.otherOutboundData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
+      const filterOtherInboundData = this.otherInboundData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
       // 校验
-      this.validatorsForm(filterOtherOutboundData);
+      this.validatorsForm(filterOtherInboundData);
       // 操作对象
-      const params = this.getSaveOrderParams(filterOtherOutboundData, type);
-      OtherOutbound.save(params)
+      const params = this.getSaveOrderParams(filterOtherInboundData, type);
+      OtherInbound.save(params)
           .then((success) => {
             if (success) {
               message("保存成功~");
@@ -300,57 +328,68 @@ export default {
           })
           .finally(() => loading.close());
     },
-    closeWindow() {
-      this.closeSelfTab(this.index);
-    },
     //校验提交表单
-    validatorsForm(filterOtherOutboundData) {
-      if (filterOtherOutboundData.length === 0) {
+    validatorsForm(filterOtherInboundData) {
+      if (filterOtherInboundData.length === 0) {
         throw new Error("请填写操作数据~")
       }
       loading("保存中....");
-      let productData = filterOtherOutboundData.filter((c) => this.isEmpty(c.productId));
+      let productData = filterOtherInboundData.filter((c) => this.isEmpty(c.productId));
       console.info("productData:", productData)
       if (productData.length > 0) {
         loading.close();
         throw new Error("请选择商品~")
       }
-      let warehouse = filterOtherOutboundData.filter((c) => this.isEmpty(c.warehouseId));
+      let warehouse = filterOtherInboundData.filter((c) => this.isEmpty(c.warehouseId));
       if (warehouse.length > 0) {
         loading.close();
         throw new Error("请选择仓库~")
       }
-      let quantity = filterOtherOutboundData.filter((c) => this.isEmpty(c.quantity) || Number(c.quantity) === 0);
+      let quantity = filterOtherInboundData.filter((c) => this.isEmpty(c.quantity) || Number(c.quantity) === 0);
       if (quantity.length > 0) {
         loading.close();
         throw new Error("请填写数量~")
       }
+      let unitPrice = filterOtherInboundData.filter((c) => this.isEmpty(c.unitPrice) || Number(c.unitPrice) === 0);
+      if (unitPrice.length > 0) {
+        loading.close();
+        throw new Error("请填写入库单价~")
+      }
+      let subtotal = filterOtherInboundData.filter((c) => this.isEmpty(c.subtotal) || Number(c.subtotal) === 0);
+      if (subtotal.length > 0) {
+        loading.close();
+        throw new Error("请填写入库金额~")
+      }
     },
     //获取保存新增、保存方法提交数据
-    getSaveOrderParams(filterOtherOutboundData, type) {
-      const otherOutboundItems = [];
-      const otherOutbound = {
+    getSaveOrderParams(filterOtherInboundData, type) {
+      const otherInboundItems = [];
+      const otherInbound = {
         customerId: this.form.customerId,
-        outboundType: this.form.outboundType,
+        supplierId: this.form.supplierId,
+        inboundType: this.form.inboundType,
         inboundDate: this.form.orderDate,
         remarks: this.form.remarks
       };
       if (type !== "increase") {
-        otherOutbound.id = this.form.id;
+        otherInbound.id = this.form.id;
       } else {
-        otherOutbound.stockTakeId = this.stockTakeId;
+        // 新增处理盘点主表id
+        otherInbound.stockTakeId = this.stockTakeId;
       }
-      filterOtherOutboundData.forEach(item => {
-        otherOutboundItems.push({
+      filterOtherInboundData.forEach(item => {
+        otherInboundItems.push({
           productId: item.productId,
           baseUnitId: item.productUnitId,
           quantity: item.quantity,
           warehouseId: item.warehouseId,
+          unitPrice: item.unitPrice,
+          subtotal: item.subtotal,
         });
       });
       return {
-        otherOutbound: otherOutbound,
-        otherOutboundItems: otherOutboundItems
+        otherInbound: otherInbound,
+        otherInboundItems: otherInboundItems
       };
     },
     //清除Form
@@ -360,27 +399,28 @@ export default {
         orderDate: manba().format("YYYY-MM-dd"),
         remarks: null,
         customerId: null,
-        outboundType: '其他出库',
+        supplierId: null,
+        inboundType: '其他入库',
         totalAmount: 0.00,
         totalQuantity: 0,
         quantityTips: ''
       };
-      this.otherOutboundData = [];
-      this.newOtherOutboundData();
+      this.otherInboundData = [];
+      this.newOtherInboundData();
     },
 
     //添加行或减少行
     adjustRows(type, index) {
       if (type === "insert") {
-        this.otherOutboundData.splice(index + 1, 0, {isNew: true});
+        this.otherInboundData.splice(index + 1, 0, {isNew: true});
       } else {
-        this.otherOutboundData.splice(index, 1);
+        this.otherInboundData.splice(index, 1);
       }
     },
     //新增默认初始化行数
-    newOtherOutboundData() {
+    newOtherInboundData() {
       for (let index = 0; index < 5; index++) {
-        this.otherOutboundData.push({productId: null, warehouseId: null, quantity: null});
+        this.otherInboundData.push({productId: null, warehouseId: null, quantity: null});
       }
     },
     //行是否选中
@@ -397,7 +437,7 @@ export default {
     },
     //数量焦点获取库存数量到titile-prefix中
     quantityFocus({rowIndex}) {
-      const otherOutboundItem = this.otherOutboundData[rowIndex];
+      const otherOutboundItem = this.otherInboundData[rowIndex];
       const {productId, warehouseId} = otherOutboundItem;
       if (this.isEmpty(productId) || this.isEmpty(warehouseId)) {
         return;
@@ -414,26 +454,52 @@ export default {
               quantity = item.currentQuantity;
             }
           });
-          this.otherOutboundData[rowIndex].quantityTips = `总库存：${totalQuantity}\r\n仓库库存：${quantity}`;
+          this.otherInboundData[rowIndex].quantityTips = `总库存：${totalQuantity}\r\n仓库库存：${quantity}`;
         } else {
-          this.otherOutboundData[rowIndex].quantityTips = `总库存：0\r\n仓库库存：0`;
+          this.otherInboundData[rowIndex].quantityTips = `总库存：0\r\n仓库库存：0`;
         }
       });
     },
     //失去焦点
-    quantityBlur() {
-      // this.form.quantityTips = "编辑数量后，查看库存";
+    quantityBlur(type, {rowIndex}) {
+      console.info("quantityBlur:", type);
+      const inboundItem = this.otherInboundData[rowIndex];
+      const quantity = inboundItem.quantity || 1;
+      const unitPrice = inboundItem.unitPrice;
+      const subtotal = inboundItem.subtotal;
+      switch (type) {
+        case "subtotal":
+          if (subtotal) {
+            this.otherInboundData[rowIndex].unitPrice = (parseFloat(subtotal) / parseInt(quantity)).toFixed(2);
+            this.otherInboundData[rowIndex].subtotal = parseFloat(subtotal).toFixed(2);
+          }
+          break;
+        case "unitPrice":
+          if (unitPrice) {
+            this.otherInboundData[rowIndex].subtotal = (parseFloat(unitPrice) * parseInt(quantity)).toFixed(2);
+            this.otherInboundData[rowIndex].unitPrice = parseFloat(unitPrice).toFixed(2);
+          }
+          break;
+        case "quantity":
+          if (unitPrice && quantity) {
+            this.otherInboundData[rowIndex].subtotal = (parseFloat(unitPrice) * parseInt(quantity)).toFixed(2);
+          }
+          break;
+        default:
+          break;
+      }
     },
     //加载编辑表单
     loadEditForm() {
       this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
-      this.otherOutboundData = [];
-      OtherOutbound.load(this.otherOutboundId).then(
+      this.otherInboundData = [];
+      OtherInbound.load(this.otherInboundId).then(
           ({data}) => {
             if (data && data.length > 0) {
               this.form.id = data[0].id;
               this.form.customerId = data[0].customerId;
+              this.form.supplierId = data[0].supplierId;
               this.form.remarks = data[0].remarks;
               this.form.outboundType = data[0].outboundType;
               this.form.orderDate = data[0].inboundDate;
@@ -443,7 +509,7 @@ export default {
               data.forEach(item => {
                 totalAmount += parseFloat(item.subtotal);
                 totalQuantity += parseInt(item.quantity);
-                this.otherOutboundData.push({
+                this.otherInboundData.push({
                   productUrl: '',
                   productCode: item.productCode,
                   productName: item.productName,
@@ -467,7 +533,7 @@ export default {
     },
     //加载字典
     loadDict(callback) {
-      Promise.all([Product.select(), Warehouse.select(), Customer.select()])
+      Promise.all([Product.select(), Warehouse.select(), Customer.select(), Supplier.select()])
           .then((results) => {
             this.productList = results[0].data || [];
             // 调整productList的name值
@@ -476,11 +542,13 @@ export default {
             });
             this.warehouseList = results[1].data || [];
             this.customerList = results[2].data || [];
+            this.supplierList = results[3].data || [];
             if (this.warehouseList != null) {
               this.warehouseId = this.warehouseList.find(
                   (val) => val.isDefault
               )?.id;
             }
+            console.log("results[3].data:", results[3].data);
             if (callback) {
               callback();
             }
@@ -490,13 +558,13 @@ export default {
     //初始化表单
     initIncreaseForm() {
       this.increase = true;
-      this.newOtherOutboundData();
+      this.newOtherInboundData();
       this.form.adminName = this.user.admin.name;
       this.form.id = null;
       this.editConfig = {trigger: 'click', mode: 'row'};
       if (this.stockTakeId) {
-        this.form.outboundType = "盘亏出库";
-        this.otherOutboundData = JSON.parse(JSON.stringify(this.importOutbound));
+        this.form.inboundType = "盘盈入库";
+        this.otherInboundData = JSON.parse(JSON.stringify(this.importInbound));
       }
     },
     //初始化审核表单
@@ -514,7 +582,7 @@ export default {
       const {id} = this.form;
       const params = {id, type: operateType};
       loading("审核中....");
-      OtherOutbound.approve(params)
+      OtherInbound.approve(params)
           .then((success) => {
             if (success) {
               message("审核成功~");
@@ -524,7 +592,10 @@ export default {
             }
           })
           .finally(() => loading.close());
-    }
+    },
+    closeWindow() {
+      this.closeSelfTab(this.index);
+    },
   },
   beforeDestroy() {
     confirm({
@@ -538,7 +609,7 @@ export default {
     loading("加载中....");
     this.loadDict(() => {
       //订单详情/编辑订单
-      if (this.otherOutboundId) {
+      if (this.otherInboundId) {
         this.loadEditForm();
         const type = this.type;
         switch (type) {

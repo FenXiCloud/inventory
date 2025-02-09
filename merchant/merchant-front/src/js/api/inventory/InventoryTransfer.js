@@ -20,4 +20,13 @@ export default {
     select(param) {
         return Ajax.get('/inventoryTransfer/select', param)
     },
+    load(id) {
+        return Ajax.get("/inventoryTransfer/load/" + id);
+    },
+    approve(param) {
+        return Ajax.get("/inventoryTransfer/approve", param);
+    },
+    delete(id) {
+        return Ajax.delete("/inventoryTransfer/" + id);
+    },
 }

@@ -1,14 +1,20 @@
 package com.flyemu.share.controller.inventory;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.inventory.StockTake;
+import com.flyemu.share.enums.ApproveType;
+import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.form.StockTakeForm;
 import com.flyemu.share.service.inventory.StockTakeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import static com.flyemu.share.entity.inventory.QStockTake.stockTake;
 
 /**
  * @功能描述: 盘点单
@@ -32,16 +38,14 @@ public class StockTakeController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid StockTake stockTake, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid StockTakeForm stockTakeForm, @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+        StockTake stockTake = stockTakeForm.getStockTake();
         stockTake.setMerchantId(merchantId);
         stockTake.setAccountBookId(accountBookId);
-        stockTakeService.save(stockTake);
-        return JsonResult.successful();
-    }
-
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid StockTake stockTake) {
-        stockTakeService.save(stockTake);
+        stockTake.setOrderStatus(OrderStatus.已保存);
+        stockTake.setCreatedBy(adminId);
+        stockTakeService.save(stockTakeForm);
         return JsonResult.successful();
     }
 
@@ -56,4 +60,19 @@ public class StockTakeController {
         return JsonResult.successful(stockTakeService.select(merchantId, accountBookId));
     }
 
+    @GetMapping("approve")
+    public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        stockTakeService.approve(id, type, adminId);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("load/{id}")
+    public JsonResult load(@PathVariable Long id) {
+        return JsonResult.successful(stockTakeService.load(id));
+    }
+
+    @GetMapping("/export/{id}")
+    public JsonResult export(@PathVariable Long id) {
+        return JsonResult.successful(stockTakeService.export(id));
+    }
 }

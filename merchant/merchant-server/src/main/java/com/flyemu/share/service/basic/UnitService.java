@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+
 /**
  * @功能描述: 单位管理
  * @创建时间: 2023年08月08日
@@ -66,6 +67,10 @@ public class UnitService extends AbsService {
 
     public List<Unit> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qUnit).where(qUnit.merchantId.eq(merchantId).and(qUnit.accountBookId.eq(accountBookId))).fetch();
+    }
+
+    public Unit selectByPrimaryKey(Long id) {
+        return unitRepository.getReferenceById(id);
     }
 
 

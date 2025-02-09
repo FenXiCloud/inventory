@@ -125,6 +125,10 @@ public class SalesReturnService extends AbsService {
             BeanUtil.copyProperties(salesReturn, original, CopyOptions.create().ignoreNullValue());
             SalesReturn update = salesReturnRepository.save(original);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
+                salesReturnItemList.forEach(item -> {
+                    item.setAccountBookId(salesReturn.getAccountBookId());
+                    item.setMerchantId(salesReturn.getMerchantId());
+                });
                 //批量修改
                 salesReturnItemRepository.saveAll(salesReturnItemList);
             }

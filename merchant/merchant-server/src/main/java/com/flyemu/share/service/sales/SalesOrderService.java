@@ -109,6 +109,10 @@ public class SalesOrderService extends AbsService {
             //修改销售订单
             SalesOrder update = salesOrderRepository.save(original);
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
+                salesOrderItemList.forEach(item -> {
+                    item.setAccountBookId(salesOrder.getAccountBookId());
+                    item.setMerchantId(salesOrder.getMerchantId());
+                });
                 //批量修改销售订单商品
                 salesOrderItemRepository.saveAll(salesOrderItemList);
             }

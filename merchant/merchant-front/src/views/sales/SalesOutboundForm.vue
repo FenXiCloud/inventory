@@ -28,7 +28,7 @@
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
           </template>
         </vxe-column>
-        <vxe-column title="商品信息" width="300">
+        <vxe-column title="商品信息" width="180" align="center">
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,rowIndex)" :datas="productList" v-model="row.productId"
@@ -45,7 +45,7 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="仓库" field="warehouse" align="center" width="120">
+        <vxe-column title="仓库" field="warehouse" align="center" width="180">
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
               <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"

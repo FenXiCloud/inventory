@@ -235,6 +235,7 @@ public class SalesOutboundService extends AbsService {
         salesOutboundRepository.saveAll(salesOutboundList);
     }
 
+    @Transactional
     public void audit(SalesOutboundForm salesOutboundForm) {
         SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
         Long id = salesOutbound.getId();

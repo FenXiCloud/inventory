@@ -203,6 +203,7 @@ public class SalesOrderService extends AbsService {
         salesOrderRepository.saveAll(salesOrders);
     }
 
+    @Transactional
     public void audit(SalesOrderForm salesOrderForm) {
         SalesOrder salesOrder = salesOrderForm.getSalesOrder();
         Long id = salesOrder.getId();

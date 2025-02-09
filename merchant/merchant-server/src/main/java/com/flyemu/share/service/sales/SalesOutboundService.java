@@ -133,6 +133,7 @@ public class SalesOutboundService extends AbsService {
             SalesOutbound update = salesOutboundRepository.save(original);
             if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                 salesOutboundItemList.forEach(item -> {
+                    item.setSalesOutboundId(update.getId());
                     item.setAccountBookId(salesOutbound.getAccountBookId());
                     item.setMerchantId(salesOutbound.getMerchantId());
                 });

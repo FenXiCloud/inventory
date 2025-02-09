@@ -126,6 +126,7 @@ public class SalesReturnService extends AbsService {
             SalesReturn update = salesReturnRepository.save(original);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    item.setSalesReturnId(update.getId());
                     item.setAccountBookId(salesReturn.getAccountBookId());
                     item.setMerchantId(salesReturn.getMerchantId());
                 });

@@ -110,6 +110,7 @@ public class SalesOrderService extends AbsService {
             SalesOrder update = salesOrderRepository.save(original);
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
+                    item.setSalesOrderId(update.getId());
                     item.setAccountBookId(salesOrder.getAccountBookId());
                     item.setMerchantId(salesOrder.getMerchantId());
                 });

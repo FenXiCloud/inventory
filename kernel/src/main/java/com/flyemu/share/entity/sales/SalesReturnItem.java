@@ -82,4 +82,7 @@ public class SalesReturnItem {
 
     @Column(nullable = false)
     private Long merchantId;
+
+    @Comment("备注")
+    private String remark;
 }

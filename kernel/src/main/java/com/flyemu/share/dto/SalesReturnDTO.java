@@ -37,6 +37,18 @@ public class SalesReturnDTO {
     @Comment("退单日期")
     private LocalDate returnDate;
 
+    @Comment("订单金额")
+    private BigDecimal totalAmount;
+
+    @Comment("折扣金额")
+    private BigDecimal discountAmount;
+
+    @Comment("折后金额")
+    private BigDecimal finalAmount;
+
+    @Comment("客户承担金额")
+    private BigDecimal customerAmount;
+
     @Comment("退款金额")
     private BigDecimal refundAmount;
 

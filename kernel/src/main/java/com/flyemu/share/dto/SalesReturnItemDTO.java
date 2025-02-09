@@ -78,4 +78,7 @@ public class SalesReturnItemDTO {
     private String productName;
     @Comment("单位")
     private String unitName;
+
+    @Comment("备注")
+    private String remark;
 }

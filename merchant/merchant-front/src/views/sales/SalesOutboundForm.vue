@@ -193,12 +193,18 @@ export default {
 
     //添加或编辑Form
     addOrEditForm(entity) {
+      if (!this.form.customerId) {
+        message.error("请选择客户~");
+        return
+      }
       let layerId = layer.open({
         title: "请选择销售订单",
         shadeClose: false,
         closeBtn: false,
         area: ['1000px', '600px'],
         content: h(SalesOrderSelect, {
+          // 传递参数到子组件
+          customerId: this.customerId,  // 客户ID
           onClose: () => {
             layer.close(layerId);
           },

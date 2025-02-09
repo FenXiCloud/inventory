@@ -20,4 +20,16 @@ export default {
     select(param) {
         return Ajax.get('/stockTake/select', param)
     },
+    load(id) {
+        return Ajax.get("/stockTake/load/" + id);
+    },
+    approve(param) {
+        return Ajax.get("/stockTake/approve", param);
+    },
+    delete(id) {
+        return Ajax.delete("/stockTake/" + id);
+    },
+    export(id) {
+        return Ajax.get("/stockTake/export/" + id);
+    },
 }

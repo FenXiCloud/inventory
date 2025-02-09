@@ -249,6 +249,10 @@ public class OtherInboundService extends AbsService {
         return otherInboundRepository.findOtherInboundById(id);
     }
 
+    public List<OtherInbound> findByStockTakeId(Long stockTakeId) {
+        return jqf.selectFrom(qOtherInbound).where(qOtherInbound.stockTakeId.eq(stockTakeId)).fetch();
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

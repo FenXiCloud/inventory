@@ -37,7 +37,7 @@
         </vxe-column>
         <vxe-column field="productUrl" title="商品图片" width="100" :cell-render="imgUrlCellRender"></vxe-column>
         <vxe-column field="productCode" title="商品编码" width="100"></vxe-column>
-        <vxe-column field="productName" title="商品名称" width="300">
+        <vxe-column field="productName" title="商品名称" min-width="300">
           <template #default="scope">
             <div class="h-input-group goodsSelect" v-if="!auditOperate">
               <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable
@@ -163,6 +163,8 @@ export default {
   name: "OtherInboundForm",
   props: {
     otherInboundId: [String, Number],
+    stockTakeId: [String, Number],
+    importInbound: Array,
     type: String,
     index: Number
   },
@@ -371,6 +373,9 @@ export default {
       };
       if (type !== "increase") {
         otherInbound.id = this.form.id;
+      } else {
+        // 新增处理盘点主表id
+        otherInbound.stockTakeId = this.stockTakeId;
       }
       filterOtherInboundData.forEach(item => {
         otherInboundItems.push({
@@ -557,6 +562,10 @@ export default {
       this.form.adminName = this.user.admin.name;
       this.form.id = null;
       this.editConfig = {trigger: 'click', mode: 'row'};
+      if (this.stockTakeId) {
+        this.form.inboundType = "盘盈入库";
+        this.otherInboundData = JSON.parse(JSON.stringify(this.importInbound));
+      }
     },
     //初始化审核表单
     initAuditsForm() {
@@ -584,7 +593,7 @@ export default {
           })
           .finally(() => loading.close());
     },
-    closeWindow(){
+    closeWindow() {
       this.closeSelfTab(this.index);
     },
   },

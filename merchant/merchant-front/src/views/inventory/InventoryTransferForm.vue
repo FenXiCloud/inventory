@@ -35,7 +35,7 @@
         </vxe-column>
         <vxe-column field="productUrl" title="商品图片" width="250" :cell-render="imgUrlCellRender"></vxe-column>
         <vxe-column field="productCode" title="商品编码" width="240"></vxe-column>
-        <vxe-column field="productName" title="商品名称" width="350">
+        <vxe-column field="productName" title="商品名称" min-width="350">
           <template #default="scope">
             <div class="h-input-group goodsSelect" v-if="!auditOperate">
               <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable

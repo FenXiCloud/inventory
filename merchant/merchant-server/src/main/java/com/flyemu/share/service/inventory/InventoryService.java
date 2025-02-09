@@ -2,28 +2,33 @@ package com.flyemu.share.service.inventory;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
-import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
-import com.flyemu.share.repository.InventoryItemRepository;
 import com.flyemu.share.repository.InventoryRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.query.NativeQuery;
+import org.hibernate.transform.Transformers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @功能描述: 库存余额表
@@ -43,6 +48,9 @@ public class InventoryService extends AbsService {
     private final InventoryRepository inventoryRepository;
 
     private final InventoryItemService inventoryItemService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public PageResults<Inventory> query(Page page, Query query) {
         PagedList<Inventory> fetchPage = bqf.selectFrom(qInventory).where(query.builder).where(query.builders())
@@ -215,6 +223,42 @@ public class InventoryService extends AbsService {
     public Inventory findByWarehouseIdAndProductId(Long warehouseId, Long productId) {
         return jqf.selectFrom(qInventory).where(qInventory.warehouseId.eq(warehouseId))
                 .where(qInventory.productId.eq(productId)).fetchOne();
+    }
+
+    public List<Map<String, Object>> products(Long warehouseId, Long productId, String filter, Long accountBookId, Long merchantId) {
+        String productSql = InventoryRepository.PRODUCT_SQL;
+        int index = 3;
+        int productIndex = 3;
+        int warehouseIndex = 3;
+        int filterIndex = 3;
+        if (productId != null) {
+            productSql += " AND ji.product_id= ?" + index;
+            index++;
+        }
+        if (warehouseId != null) {
+            productSql += " AND ji.warehouse_id= ?" + index;
+            warehouseIndex = index;
+            index++;
+        }
+        if (StringUtils.hasText(filter)) {
+            productSql += " AND (jp.`name` LIKE CONCAT('%', ?" + index + ", '%') OR jp.`code` LIKE CONCAT('%', ?" + index + ", '%'))";
+            filterIndex = index;
+        }
+        jakarta.persistence.Query nativeQuery = entityManager.createNativeQuery(productSql);
+        nativeQuery.setParameter(1, accountBookId);
+        nativeQuery.setParameter(2, merchantId);
+        if (productId != null) {
+            nativeQuery.setParameter(productIndex, productId);
+        }
+        if (warehouseId != null) {
+            nativeQuery.setParameter(warehouseIndex, warehouseId);
+        }
+        if (StringUtils.hasText(filter)) {
+            nativeQuery.setParameter(filterIndex, filter);
+        }
+        nativeQuery.unwrap(NativeQuery.class)
+                .setResultTransformer(Transformers.ALIAS_TO_ENTITY_MAP);
+        return nativeQuery.getResultList();
     }
 
     @Data

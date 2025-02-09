@@ -255,6 +255,10 @@ public class OtherOutboundService extends AbsService {
         return calendar.getTime();
     }
 
+    public List<OtherOutbound> findByStockTakeId(Long stockTakeId) {
+        return jqf.selectFrom(qOtherOutbound).where(qOtherOutbound.stockTakeId.eq(stockTakeId)).fetch();
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

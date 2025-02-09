@@ -20,4 +20,7 @@ export default {
     select(param) {
         return Ajax.get('/inventory/select', param)
     },
+    products(param) {
+        return Ajax.get("/inventory/products", param);
+    },
 }

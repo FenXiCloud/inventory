@@ -10,7 +10,7 @@
         <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
                 placeholder="审核状态："/>
         <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期：</span>
+          <span class="h-input-addon ml-8px">日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"

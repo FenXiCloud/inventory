@@ -31,6 +31,13 @@ public class InventoryController {
         return JsonResult.successful(inventoryService.query(page, query));
     }
 
+    @GetMapping("products")
+    public JsonResult products(@RequestParam(required = false) Long warehouseId, @RequestParam(required = false) Long productId,
+                               @RequestParam(required = false) String filter,
+                               @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        return JsonResult.successful(inventoryService.products(warehouseId, productId, filter, accountBookId, merchantId));
+    }
+
     @PostMapping
     public JsonResult save(@RequestBody @Valid Inventory inventory, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         inventory.setMerchantId(merchantId);

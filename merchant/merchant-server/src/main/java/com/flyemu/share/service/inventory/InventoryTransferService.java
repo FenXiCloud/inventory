@@ -8,18 +8,17 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.InventoryTransferDto;
-import com.flyemu.share.entity.basic.Warehouse;
+import com.flyemu.share.entity.basic.QWarehouse;
 import com.flyemu.share.entity.inventory.*;
-import com.flyemu.share.entity.setting.Admin;
+import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.InventoryTransferForm;
 import com.flyemu.share.repository.InventoryTransferRepository;
 import com.flyemu.share.service.AbsService;
-import com.flyemu.share.service.basic.WarehouseService;
-import com.flyemu.share.service.setting.AdminService;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,38 +51,29 @@ public class InventoryTransferService extends AbsService {
 
     private final InventoryTransferItemService inventoryTransferItemService;
 
-    private final WarehouseService warehouseService;
-
-    private final AdminService adminService;
-
     private final InventoryService inventoryService;
+
+    private final static QWarehouse toQWarehouse = new QWarehouse("to_warehouse");
+
+    private final static QWarehouse formQWarehouse = new QWarehouse("form_warehouse");
+
+    private final static QAdmin qAdmin = QAdmin.admin;
 
 
     public PageResults<InventoryTransferDto> query(Page page, InventoryTransferService.Query query) {
-        PagedList<InventoryTransfer> fetchPage = bqf.selectFrom(qInventoryTransfer).where(query.builder)
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryTransfer)
+                .select(qInventoryTransfer, toQWarehouse.name, formQWarehouse.name, qAdmin.name)
+                .leftJoin(qAdmin).on(qAdmin.id.eq(qInventoryTransfer.createdBy))
+                .leftJoin(toQWarehouse).on(toQWarehouse.id.eq(qInventoryTransfer.ToWarehouseId))
+                .leftJoin(formQWarehouse).on(formQWarehouse.id.eq(qInventoryTransfer.FromWarehouseId))
+                .where(query.builder).where(query.builders())
                 .orderBy(qInventoryTransfer.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
-
         List<InventoryTransferDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            InventoryTransferDto dto = BeanUtil.toBean(tuple, InventoryTransferDto.class);
-            if (dto.getCreatedBy() != null) {
-                Admin admin = adminService.selectByPrimaryKey(dto.getCreatedBy());
-                if (admin != null) {
-                    dto.setCreatedByName(admin.getName());
-                }
-            }
-            if (dto.getFromWarehouseId() != null) {
-                Warehouse warehouse = warehouseService.selectByPrimaryKey(dto.getFromWarehouseId());
-                if (warehouse != null) {
-                    dto.setFromWarehouseName(warehouse.getName());
-                }
-            }
-            if (dto.getToWarehouseId() != null) {
-                Warehouse warehouse = warehouseService.selectByPrimaryKey(dto.getToWarehouseId());
-                if (warehouse != null) {
-                    dto.setToWarehouseName(warehouse.getName());
-                }
-            }
+            InventoryTransferDto dto = BeanUtil.toBean(tuple.get(qInventoryTransfer), InventoryTransferDto.class);
+            dto.setToWarehouseName(tuple.get(toQWarehouse.name));
+            dto.setFromWarehouseName(tuple.get(formQWarehouse.name));
+            dto.setCreatedByName(tuple.get(qAdmin.name));
             dtos.add(dto);
         });
 
@@ -326,7 +316,10 @@ public class InventoryTransferService extends AbsService {
                 builder.and(qInventoryTransfer.orderStatus.eq(state));
             }
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
-                builder.and(qInventoryTransfer.orderNo.contains(filter));
+                builder.and(qInventoryTransfer.orderNo.contains(filter))
+                        .or(qAdmin.name.contains(filter))
+                        .or(formQWarehouse.name.contains(filter))
+                        .or(toQWarehouse.name.contains(filter));
             }
             return builder;
         }

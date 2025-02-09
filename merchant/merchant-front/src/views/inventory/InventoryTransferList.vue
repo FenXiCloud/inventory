@@ -40,6 +40,7 @@
             <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
           </template>
         </vxe-column>
+        <vxe-column title="单据编号" field="orderNo" align="center" width="230"/>
         <vxe-column title="单据日期" field="transferDate" align="center" width="230"/>
 <!--        <vxe-column title="单据来源" field="code" width="200"/>-->
         <vxe-column title="调出仓库" field="fromWarehouseName" width="200"/>

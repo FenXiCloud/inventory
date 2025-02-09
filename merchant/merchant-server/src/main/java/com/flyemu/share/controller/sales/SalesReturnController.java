@@ -99,4 +99,14 @@ public class SalesReturnController {
         return JsonResult.successful();
     }
 
+    @PutMapping("/audit")
+    public JsonResult audit(
+            @RequestBody @Valid SalesReturnForm salesReturnForm,
+            @SaAdminId Long adminId
+    ) {
+        salesReturnForm.getSalesReturn().setApprovedBy(adminId);
+        salesReturnService.audit(salesReturnForm);
+        return JsonResult.successful();
+    }
+
 }

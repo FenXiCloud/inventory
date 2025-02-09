@@ -237,6 +237,21 @@ public class SalesReturnService extends AbsService {
         salesReturnRepository.saveAll(salesReturnList);
     }
 
+    @Transactional
+    public void audit(SalesReturnForm salesReturnForm) {
+        SalesReturn salesReturn = salesReturnForm.getSalesReturn();
+        Long id = salesReturn.getId();
+        SalesReturn original = salesReturnRepository.getById(id);
+        if (original.getId() == null) {
+            throw new IllegalArgumentException("单据不存在");
+        }
+        original.setApprovedAt(LocalDateTime.now());
+        original.setApprovedBy(salesReturn.getApprovedBy());
+        original.setOrderStatus(salesReturn.getOrderStatus());
+        //审核单据
+        salesReturnRepository.save(original);
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 

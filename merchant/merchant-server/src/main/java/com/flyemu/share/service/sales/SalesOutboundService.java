@@ -227,7 +227,7 @@ public class SalesOutboundService extends AbsService {
         }
         SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
         salesOutboundList.forEach(order -> {
-            order.setOrderStatus(OrderStatus.已审核);
+            order.setOrderStatus(salesOutboundForm.getOrderStatus());
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(salesOutbound.getApprovedBy());
         });

@@ -195,7 +195,7 @@ public class SalesOrderService extends AbsService {
         }
         SalesOrder salesOrder = salesOrderForm.getSalesOrder();
         salesOrders.forEach(order -> {
-            order.setOrderStatus(OrderStatus.已审核);
+            order.setOrderStatus(salesOrderForm.getOrderStatus());
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(salesOrder.getApprovedBy());
         });

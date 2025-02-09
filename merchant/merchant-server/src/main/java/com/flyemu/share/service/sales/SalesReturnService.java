@@ -230,7 +230,7 @@ public class SalesReturnService extends AbsService {
         }
         SalesReturn salesReturn = salesReturnForm.getSalesReturn();
         salesReturnList.forEach(order -> {
-            order.setOrderStatus(OrderStatus.已审核);
+            order.setOrderStatus(salesReturnForm.getOrderStatus());
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(salesReturn.getApprovedBy());
         });

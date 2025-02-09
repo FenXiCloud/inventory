@@ -24,7 +24,7 @@
         <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
         <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
           <template #default="{row,rowIndex}">
-            <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert',rowIndex)"></div>
+<!--            <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert',rowIndex)"></div>-->
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
           </template>
         </vxe-column>
@@ -57,7 +57,7 @@
           <template #default="{row,rowIndex,columnIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3"
                        @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.quantity" type="float"
-                       min="0" :controls="false"></vxe-input>
+                       min="0" :controls="false" readonly disabled></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="单位" field="unitName" align="center" width="80"/>
@@ -65,21 +65,21 @@
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4"
                        @blur="updatePrice(row)" v-model.number="row.unitPrice" type="float" min="0"
-                       :controls="false"></vxe-input>
+                       :controls="false" readonly disabled></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="折扣率(%)" field="discountRate" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5"
                        @blur="updateDiscount(row)" v-model.number="row.discountRate" type="float" min="0"
-                       :controls="false"></vxe-input>
+                       :controls="false" readonly disabled></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="折扣额" field="discountValue" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+6"
                        @blur="updateDiscountAmount(row)" v-model.number="row.discountValue" type="float" min="0"
-                       :controls="false"></vxe-input>
+                       :controls="false" readonly disabled></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="金额" field="subtotal" width="100">
@@ -109,10 +109,13 @@
           <Input v-model="form.discountRate" readonly type="number"/>
           <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
           <Input v-model="form.discountAmount" type="number" readonly/>
+          <label class="ml-16px mr-16px  w-100px">客户承担：</label>
+          <Input v-model="form.customerAmount" type="number" @blur="updateCustomerAmount"/>
           <label class="ml-16px mr-16px  w-100px">本次退款：</label>
           <Input v-model="form.refundAmount" type="number" readonly/>
         </div>
       </div>
+
     </div>
     <div class="modal-column-between bg-white-color  border">
       <Button @click="closeWindow" :loading="loading">
@@ -176,6 +179,8 @@ export default {
         customerId: null,
         discountAmount: 0.00,
         discountRate: 0.00,
+        finalAmount: 0.00,
+        customerAmount: 0.00,
         refundAmount: 0.00,
         remarks: null,
       },
@@ -276,7 +281,7 @@ export default {
       })
       this.form.orderQuantity = quantity.toFixed(2);
       this.form.discountAmount = discountValue.toFixed(2);
-      this.form.refundAmount = subtotal.toFixed(2);
+      this.form.finalAmount = subtotal.toFixed(2);
       this.form.totalAmount = (discountValue+subtotal).toFixed(2);
       if(!!this.form.discountAmount && !!this.form.totalAmount){
         this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
@@ -540,6 +545,10 @@ export default {
       item.discoutPrice = (item.unitPrice - item.subtotal).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
+    //更新客户承担金额
+    updateCustomerAmount(){
+      this.form.refundAmount = (this.form.finalAmount - this.form.customerAmount).toFixed(2)
+    },
 
     //关闭窗口
     closeWindow() {
@@ -592,7 +601,7 @@ export default {
           this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
           console.log("this.form", this.form)
           this.productData = salesReturn.salesReturnItemList || [];
-          this.productData.push({isNew: true});
+          //this.productData.push({isNew: true});
         });
       }
     }).finally(() => loading.close());

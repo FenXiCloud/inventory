@@ -399,7 +399,7 @@ export default {
           loading("保存中....");
           let salesOutbound = Object.assign(this.form);
           salesOutbound.orderStatus = orderStatus
-          SalesOutbound.save({
+          SalesOutbound.audit({
             salesOutbound: salesOutbound,
           }).then((success) => {
             if (success) {

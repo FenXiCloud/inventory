@@ -235,6 +235,20 @@ public class SalesOutboundService extends AbsService {
         salesOutboundRepository.saveAll(salesOutboundList);
     }
 
+    public void audit(SalesOutboundForm salesOutboundForm) {
+        SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
+        Long id = salesOutbound.getId();
+        SalesOutbound original = salesOutboundRepository.getById(id);
+        if (original.getId() == null) {
+            throw new IllegalArgumentException("单据不存在");
+        }
+        original.setApprovedAt(LocalDateTime.now());
+        original.setApprovedBy(salesOutbound.getApprovedBy());
+        original.setOrderStatus(salesOutbound.getOrderStatus());
+        //审核单据
+        salesOutboundRepository.save(original);
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 

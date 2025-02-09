@@ -203,6 +203,20 @@ public class SalesOrderService extends AbsService {
         salesOrderRepository.saveAll(salesOrders);
     }
 
+    public void audit(SalesOrderForm salesOrderForm) {
+        SalesOrder salesOrder = salesOrderForm.getSalesOrder();
+        Long id = salesOrder.getId();
+        SalesOrder original = salesOrderRepository.getById(id);
+        if (original.getId() == null) {
+            throw new IllegalArgumentException("单据不存在");
+        }
+        original.setApprovedAt(LocalDateTime.now());
+        original.setApprovedBy(salesOrder.getApprovedBy());
+        original.setOrderStatus(salesOrder.getOrderStatus());
+        //审核单据
+        salesOrderRepository.save(original);
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 

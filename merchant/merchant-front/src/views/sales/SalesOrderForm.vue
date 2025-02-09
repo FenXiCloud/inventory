@@ -331,7 +331,7 @@ export default {
           loading("保存中....");
           let salesOrder = Object.assign(this.form);
           salesOrder.orderStatus = orderStatus
-          SalesOrder.save({
+          SalesOrder.audit({
             salesOrder: salesOrder,
           }).then((success) => {
             if (success) {

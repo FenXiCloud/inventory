@@ -57,7 +57,7 @@
           <template #default="{row,rowIndex,columnIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3"
                        @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.quantity" type="float"
-                       min="0" :controls="false" readonly disabled></vxe-input>
+                       min="0" :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="单位" field="unitName" align="center" width="80"/>
@@ -65,28 +65,28 @@
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4"
                        @blur="updatePrice(row)" v-model.number="row.unitPrice" type="float" min="0"
-                       :controls="false" readonly disabled></vxe-input>
+                       :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="折扣率(%)" field="discountRate" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5"
                        @blur="updateDiscount(row)" v-model.number="row.discountRate" type="float" min="0"
-                       :controls="false" readonly disabled></vxe-input>
+                       :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="折扣额" field="discountValue" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+6"
                        @blur="updateDiscountAmount(row)" v-model.number="row.discountValue" type="float" min="0"
-                       :controls="false" readonly disabled></vxe-input>
+                       :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="金额" field="subtotal" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+7"
                        @blur="updateFinalAmount(row)" v-model.number="row.subtotal" type="float" min="0"
-                       :controls="false" readonly disabled></vxe-input>
+                       :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="备注" field="remark">

@@ -579,7 +579,7 @@ export default {
       // 使用 nextTick 确保在 DOM 更新后执行
       this.$nextTick(() => {
         // 通过 eventBus 或 vuex 触发刷新
-        this.$store.commit('SET_TAB_DATA', { refresh: true });
+        this.$store.commit('SET_TAB_DATA_RETURN', { refresh: true });
       });
     }
   },
@@ -606,9 +606,9 @@ export default {
       this.unitList = results[3].data || [];
       console.log("this.productList", this.productList);
       //订单详情/编辑订单
-      const tabData = this.$store.state.currentTabData;
+      const tabData = this.$store.state.currentTabDataReturn;
       //清空参数
-      this.$store.commit('SET_TAB_DATA', null);
+      this.$store.commit('SET_TAB_DATA_RETURN', null);
       console.log("tabData", tabData)
       this.type = tabData?.type;
       this.orderId = tabData?.orderId;

@@ -87,13 +87,13 @@ export default {
   name: "SalesReturnList",
   watch: {
     // 监听 store 中的 currentTabData
-    '$store.state.currentTabData': {
+    '$store.state.currentTabDataReturn': {
       handler(newVal) {
-        console.log('currentTabData changed:', newVal)
+        console.log('currentTabDataReturn changed:', newVal)
         if (newVal && newVal.refresh) {
           this.loadList();
           // 重置刷新标志
-          this.$store.commit('SET_TAB_DATA', null);
+          this.$store.commit('SET_TAB_DATA_RETURN', null);
         }
       },
       deep: true
@@ -138,7 +138,7 @@ export default {
     ...mapMutations(['pushTab']),
 
     addForm(type = 'add', orderId = null) {
-      this.$store.commit('SET_TAB_DATA', {type, orderId});
+      this.$store.commit('SET_TAB_DATA_RETURN', {type, orderId});
       this.pushTab({
         key: 'SalesReturnForm',
         title: type === 'edit' ? '编辑销售退货单' : '新增销售退货单',

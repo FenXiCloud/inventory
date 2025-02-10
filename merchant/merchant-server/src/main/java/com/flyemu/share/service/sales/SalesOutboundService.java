@@ -1,5 +1,6 @@
 package com.flyemu.share.service.sales;
 
+import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
@@ -128,6 +129,11 @@ public class SalesOutboundService extends AbsService {
         if (id != null) {
             //查询
             SalesOutbound original = salesOutboundRepository.getById(id);
+            //已审核单据不能修改
+            OrderStatus orderStatus = original.getOrderStatus();
+            if (orderStatus.equals(OrderStatus.已审核)) {
+                throw new InvalidContextException("已审核单据不能修改");
+            }
             BeanUtil.copyProperties(salesOutbound, original, CopyOptions.create().ignoreNullValue());
             //修改
             SalesOutbound update = salesOutboundRepository.save(original);
@@ -176,6 +182,14 @@ public class SalesOutboundService extends AbsService {
 
     @Transactional
     public void delete(Long salesOutboundId, Long merchantId, Long accountBookId) {
+
+        SalesOutbound original = salesOutboundRepository.getById(salesOutboundId);
+        //已审核单据不能删除
+        OrderStatus orderStatus = original.getOrderStatus();
+        if (orderStatus.equals(OrderStatus.已审核)) {
+            throw new InvalidContextException("已审核单据不能删除");
+        }
+
         jqf.delete(qSalesOutbound)
                 .where(qSalesOutbound.id.eq(salesOutboundId).and(qSalesOutbound.merchantId.eq(merchantId)).and(qSalesOutbound.accountBookId.eq(accountBookId)))
                 .execute();

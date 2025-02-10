@@ -1,5 +1,6 @@
 package com.flyemu.share.service.sales;
 
+import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
@@ -106,6 +107,11 @@ public class SalesOrderService extends AbsService {
         if (id != null) {
             //查询
             SalesOrder original = salesOrderRepository.getById(id);
+            //已审核单据不能修改
+            OrderStatus orderStatus = original.getOrderStatus();
+            if (orderStatus.equals(OrderStatus.已审核)) {
+                throw new InvalidContextException("已审核单据不能修改");
+            }
             BeanUtil.copyProperties(salesOrder, original, CopyOptions.create().ignoreNullValue());
             //修改销售订单
             SalesOrder update = salesOrderRepository.save(original);
@@ -142,15 +148,21 @@ public class SalesOrderService extends AbsService {
     }
 
     @Transactional
-    public void delete(Long SalesOrderId, Long merchantId, Long accountBookId) {
+    public void delete(Long salesOrderId, Long merchantId, Long accountBookId) {
+        SalesOrder original = salesOrderRepository.getById(salesOrderId);
+        //已审核单据不能删除
+        OrderStatus orderStatus = original.getOrderStatus();
+        if (orderStatus.equals(OrderStatus.已审核)) {
+            throw new InvalidContextException("已审核单据不能删除");
+        }
         //删除销售订单
         jqf.delete(qSalesOrder)
-                .where(qSalesOrder.id.eq(SalesOrderId).and(qSalesOrder.merchantId.eq(merchantId)).and(qSalesOrder.accountBookId.eq(accountBookId)))
+                .where(qSalesOrder.id.eq(salesOrderId).and(qSalesOrder.merchantId.eq(merchantId)).and(qSalesOrder.accountBookId.eq(accountBookId)))
                 .execute();
 
         //删除销售订单商品
         jqf.delete(qSalesOrderItem)
-                .where(qSalesOrderItem.salesOrderId.eq(SalesOrderId).and(qSalesOrderItem.merchantId.eq(merchantId)).and(qSalesOrderItem.accountBookId.eq(accountBookId)))
+                .where(qSalesOrderItem.salesOrderId.eq(salesOrderId).and(qSalesOrderItem.merchantId.eq(merchantId)).and(qSalesOrderItem.accountBookId.eq(accountBookId)))
                 .execute();
     }
 

@@ -179,6 +179,14 @@ public class SalesReturnService extends AbsService {
 
     @Transactional
     public void delete(Long salesReturnId, Long merchantId, Long accountBookId) {
+
+        SalesReturn original = salesReturnRepository.getById(salesReturnId);
+        //已审核单据不能删除
+        OrderStatus orderStatus = original.getOrderStatus();
+        if (orderStatus.equals(OrderStatus.已审核)) {
+            throw new InvalidContextException("已审核单据不能删除");
+        }
+
         jqf.delete(qSalesReturn)
                 .where(qSalesReturn.id.eq(salesReturnId).and(qSalesReturn.merchantId.eq(merchantId)).and(qSalesReturn.accountBookId.eq(accountBookId)))
                 .execute();

@@ -96,10 +96,10 @@
         </vxe-column>
       </vxe-table>
       <div class="mt-10px"></div>
-      <div class="filler-panel">
+      <div class="filler-panel" v-if="type==='edit'">
         <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
-          <label class="mr-16px  w-80px">备注说明：</label>
-          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
+          <label class="mr-16px  w-100px">单据编号：</label>
+          <Input v-model="form.orderNo" readonly/>
         </div>
       </div>
       <div class="filler-panel">
@@ -110,6 +110,12 @@
           <Input v-model="form.discountAmount" type="number" readonly/>
           <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
           <Input v-model="form.finalAmount" type="number" readonly/>
+        </div>
+      </div>
+      <div class="filler-panel">
+        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+          <label class="mr-16px  w-100px">备注说明：</label>
+          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
         </div>
       </div>
     </div>

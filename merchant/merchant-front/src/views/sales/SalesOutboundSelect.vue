@@ -176,8 +176,8 @@ export default {
           });
         }
       })
-      this.amountTotal = totalAmount;
-      return [["", "", "", "",totalAmount,discountAmount,finalAmount]];
+      this.amountTotal = totalAmount.toFixed(2);
+      return [["", "", "", "",totalAmount.toFixed(2),discountAmount.toFixed(2),finalAmount.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;

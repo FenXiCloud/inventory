@@ -8,10 +8,10 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.OtherInboundDto;
-import com.flyemu.share.entity.basic.Customer;
-import com.flyemu.share.entity.basic.Supplier;
+import com.flyemu.share.entity.basic.QCustomer;
+import com.flyemu.share.entity.basic.QSupplier;
 import com.flyemu.share.entity.inventory.*;
-import com.flyemu.share.entity.setting.Admin;
+import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.InboundType;
 import com.flyemu.share.enums.OperationType;
@@ -19,10 +19,8 @@ import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.OtherInboundForm;
 import com.flyemu.share.repository.OtherInboundRepository;
 import com.flyemu.share.service.AbsService;
-import com.flyemu.share.service.basic.CustomerService;
-import com.flyemu.share.service.basic.SupplierService;
-import com.flyemu.share.service.setting.AdminService;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,53 +50,41 @@ public class OtherInboundService extends AbsService {
 
     private final OtherInboundItemService otherInboundItemService;
 
-    private final CustomerService customerService;
-
-    private final AdminService adminService;
-
-    private final SupplierService supplierService;
-
     private final InventoryService inventoryService;
 
     private final OtherInboundRepository otherInboundRepository;
 
+    private final static QOtherInboundItem qOtherInboundItem = QOtherInboundItem.otherInboundItem;
+
+    private final static QAdmin qAdmin = QAdmin.admin;
+
+    private final static QCustomer qCustomer = QCustomer.customer;
+
+    private final static QSupplier qSupplier = QSupplier.supplier;
+
+
     public PageResults<OtherInboundDto> query(Page page, Query query) {
-        PagedList<OtherInbound> fetchPage = bqf.selectFrom(qOtherInbound).where(query.builder)
-                .where(query.builders()).orderBy(qOtherInbound.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qOtherInbound)
+                .select(qOtherInbound, qAdmin.name, qCustomer.name, qCustomer.code, qSupplier.name, qSupplier.code,
+                        qOtherInboundItem.quantity.sum().as("item_quantity"))
+                .leftJoin(qOtherInboundItem).on(qOtherInboundItem.otherInboundId.eq(qOtherInbound.id))
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qOtherInbound.supplierId))
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qOtherInbound.customerId))
+                .leftJoin(qAdmin).on(qAdmin.id.eq(qOtherInbound.createdBy))
+                .where(query.builder)
+                .where(query.builders()).orderBy(qOtherInbound.id.desc())
+                .groupBy(qOtherInbound.id)
+                .fetchPage(page.getOffset(), page.getOffsetEnd());
 
         List<OtherInboundDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            OtherInboundDto dto = BeanUtil.toBean(tuple, OtherInboundDto.class);
-            // todo 获取额外参数(待优化)
-            AtomicReference<Integer> quantity = new AtomicReference<>(0);
-            List<OtherInboundItem> otherInboundItems = otherInboundItemService.findByOtherInboundId(dto.getId());
-            if (!otherInboundItems.isEmpty()) {
-                otherInboundItems.forEach(otherOutboundItem -> {
-                    double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
-                    quantity.updateAndGet(v -> v + (int) parsed);
-                });
-            }
-            if (dto.getCreatedBy() != null) {
-                Admin admin = adminService.selectByPrimaryKey(dto.getCreatedBy());
-                if (admin != null) {
-                    dto.setCreatedByName(admin.getName());
-                }
-            }
-            if (dto.getCustomerId() != null) {
-                Customer customer = customerService.selectByPrimaryKey(dto.getCustomerId());
-                if (customer != null) {
-                    dto.setCustomerName(customer.getName());
-                    dto.setCustomerCode(customer.getCode());
-                }
-            }
-            if (dto.getSupplierId() != null) {
-                Supplier supplier = supplierService.selectByPrimaryKey(dto.getSupplierId());
-                if (supplier != null) {
-                    dto.setSupplierName(supplier.getName());
-                    dto.setSupplierCode(supplier.getCode());
-                }
-            }
-            dto.setQuantity(quantity.get());
+            OtherInboundDto dto = BeanUtil.toBean(tuple.get(qOtherInbound), OtherInboundDto.class);
+            dto.setQuantity(Objects.requireNonNull(tuple.get(qOtherInboundItem.quantity.sum().as("item_quantity"))).intValue());
+            dto.setCreatedByName(tuple.get(qAdmin.name));
+            dto.setCustomerCode(tuple.get(qCustomer.code));
+            dto.setCustomerName(tuple.get(qCustomer.name));
+            dto.setSupplierName(tuple.get(qSupplier.name));
+            dto.setSupplierCode(tuple.get(qSupplier.code));
             dtos.add(dto);
         });
 
@@ -300,7 +286,9 @@ public class OtherInboundService extends AbsService {
                 builder.and(qOtherInbound.orderStatus.eq(state));
             }
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
-                builder.and(qOtherInbound.orderNo.contains(filter));
+                builder.and(qOtherInbound.orderNo.contains(filter))
+                        .or(qAdmin.name.contains(filter))
+                        .or(qCustomer.name.contains(filter));
             }
             return builder;
         }

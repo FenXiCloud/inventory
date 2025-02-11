@@ -3,18 +3,14 @@ package com.flyemu.share.service.inventory;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.generator.SnowflakeGenerator;
+import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.dto.OtherInboundDto;
-import com.flyemu.share.dto.OtherOutboundDto;
 import com.flyemu.share.dto.StockTakeDto;
-import com.flyemu.share.entity.basic.Product;
-import com.flyemu.share.entity.basic.ProductCategory;
-import com.flyemu.share.entity.basic.Unit;
-import com.flyemu.share.entity.basic.Warehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
-import com.flyemu.share.entity.setting.Admin;
+import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.StockTakeForm;
@@ -24,19 +20,16 @@ import com.flyemu.share.service.basic.ProductCategoryService;
 import com.flyemu.share.service.basic.ProductService;
 import com.flyemu.share.service.basic.UnitService;
 import com.flyemu.share.service.basic.WarehouseService;
-import com.flyemu.share.service.setting.AdminService;
 import com.querydsl.core.BooleanBuilder;
-import jakarta.persistence.LockModeType;
+import com.querydsl.core.Tuple;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @功能描述: 盘点单
@@ -59,8 +52,6 @@ public class StockTakeService extends AbsService {
 
     private final WarehouseService warehouseService;
 
-    private final AdminService adminService;
-
     private final ProductService productService;
 
     private final ProductCategoryService productCategoryService;
@@ -71,26 +62,29 @@ public class StockTakeService extends AbsService {
 
     private final OtherOutboundService otherOutboundService;
 
+    private final static QAdmin qAdmin = QAdmin.admin;
+
+    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
+
     public PageResults<StockTakeDto> query(Page page, Query query) {
-        PagedList<StockTake> fetchPage = bqf.selectFrom(qStockTake).where(query.builder).orderBy(qStockTake.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qStockTake)
+                .select(qStockTake, qWarehouse.name, qAdmin.name)
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qStockTake.warehouseId))
+                .leftJoin(qAdmin).on(qAdmin.id.eq(qStockTake.createdBy))
+                .where(query.builder)
+                .where(query.builders())
+                .orderBy(qStockTake.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
         List<StockTakeDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            StockTakeDto dto = BeanUtil.toBean(tuple, StockTakeDto.class);
-            if (dto.getWarehouseId() != null) {
-                Warehouse warehouse = warehouseService.selectByPrimaryKey(dto.getWarehouseId());
-                if (warehouse != null) {
-                    dto.setWarehouseName(warehouse.getName());
-                }
-            } else {
+            StockTakeDto dto = BeanUtil.toBean(tuple.get(qStockTake), StockTakeDto.class);
+            String warehouseName = tuple.get(qWarehouse.name);
+            if (StrUtil.isBlank(warehouseName)) {
                 dto.setWarehouseName("全部仓库");
+            } else {
+                dto.setWarehouseName(warehouseName);
             }
-            if (dto.getCreatedBy() != null) {
-                Admin admin = adminService.selectByPrimaryKey(dto.getCreatedBy());
-                if (admin != null) {
-                    dto.setCreatedByName(admin.getName());
-                }
-            }
+            dto.setCreatedByName(tuple.get(qAdmin.name));
             // 获取对应关联的其他出库，其他入库订单
             List<String> orderNos = new ArrayList<>();
             List<OtherInbound> otherInbounds = otherInboundService.findByStockTakeId(dto.getId());
@@ -256,8 +250,19 @@ public class StockTakeService extends AbsService {
         return inbounds;
     }
 
+    @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
+
+        private Date start;
+
+        private Date end;
+
+        private OrderStatus state;
+
+        private Long warehouseId;
+
+        private String filter;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -269,6 +274,34 @@ public class StockTakeService extends AbsService {
             if (accountBookId != null) {
                 builder.and(qStockTake.accountBookId.eq(accountBookId));
             }
+        }
+
+        private static Date addTimeOfFinalMoment(Date date) {
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(date);
+            calendar.add(Calendar.HOUR, 23);
+            calendar.add(Calendar.MINUTE, 59);
+            calendar.add(Calendar.SECOND, 59);
+            return calendar.getTime();
+        }
+
+        public BooleanBuilder builders() {
+            if (start != null && end != null) {
+                builder.and(qStockTake.checkDate.loe(addTimeOfFinalMoment(end)));
+                builder.and(qStockTake.checkDate.goe(start));
+            }
+            if (state != null) {
+                builder.and(qStockTake.orderStatus.eq(state));
+            }
+            if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
+                builder.and(qStockTake.orderNo.contains(filter))
+                        .or(qWarehouse.name.contains(filter));
+            }
+            if (warehouseId != null) {
+                builder.and(qStockTake.warehouseId.eq(warehouseId))
+                        .or(qStockTake.warehouseId.isNull());
+            }
+            return builder;
         }
     }
 }

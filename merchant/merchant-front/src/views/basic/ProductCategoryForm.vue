@@ -11,16 +11,16 @@
         <FormItem label="排序" required prop="sort">
           <Input placeholder="请输入排序" v-model="model.sort"/>
         </FormItem>
-        <FormItem label="分类图片" prop="imgPath" single>
-          <div class="h-uploader-image-empty h-uploader-browse-button" @click="$refs.uploads.click()">
-            <div class="h-uploader-image" v-if="model.imgPath">
-              <img :src="model.imgPath" v-if="model.imgPath" style="height: 70px;width: 70px"/>
-            </div>
-            <i class="h-icon-plus" v-else style="font-size: 25px; position: absolute;  top: 50%;  left: 50%; transform: translate(-50%,-50%);"></i>
-            <input type="file" id="uploads" style="position:absolute; clip:rect(0 0 0 0);" ref="uploads" accept="image/png, image/jpeg, image/gif, image/jpg"
-                   @change="selectImg($event)">
-          </div>
-        </FormItem>
+        <!--        <FormItem label="分类图片" prop="imgPath" single>-->
+        <!--          <div class="h-uploader-image-empty h-uploader-browse-button" @click="$refs.uploads.click()">-->
+        <!--            <div class="h-uploader-image" v-if="model.imgPath">-->
+        <!--              <img :src="model.imgPath" v-if="model.imgPath" style="height: 70px;width: 70px"/>-->
+        <!--            </div>-->
+        <!--            <i class="h-icon-plus" v-else style="font-size: 25px; position: absolute;  top: 50%;  left: 50%; transform: translate(-50%,-50%);"></i>-->
+        <!--            <input type="file" id="uploads" style="position:absolute; clip:rect(0 0 0 0);" ref="uploads" accept="image/png, image/jpeg, image/gif, image/jpg"-->
+        <!--                   @change="selectImg($event)">-->
+        <!--          </div>-->
+        <!--        </FormItem>-->
         <!--        <FormItem label="上级分类" prop="parent">-->
         <!--          <CategoryPicker :option="categoryOption" type="key" v-model="model.pid"></CategoryPicker>-->
         <!--        </FormItem>-->

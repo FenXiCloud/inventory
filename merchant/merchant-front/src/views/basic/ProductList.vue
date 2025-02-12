@@ -10,12 +10,13 @@
             show-overflow
             @radio-change="onProductCategoryChange"
             :rowConfig="{isCurrent: true,isHover: true}"
+            :tree-config="{transform:true, rowField: 'id', parentField: 'pid'}"
             :radio-config="{trigger: 'row',labelField: 'name',highlight: true}">
           <vxe-column field="name" tree-node title="分类名称"></vxe-column>
           <vxe-column title="" align="center" width="120">
             <template #default="{row}">
               <template v-if="row.id !=null">
-                <i class="primary-color h-icon-plus ml-10px" @click="showProductCategoryForm(row)"></i>
+                <i class="primary-color h-icon-plus ml-10px" @click="showProductCategoryForm(null,row)"></i>
                 <i class="primary-color h-icon-edit ml-10px" @click="showProductCategoryForm(row)"></i>
                 <i class="primary-color h-icon-trash ml-10px" @click="deleteProductCategory(row)"></i>
               </template>
@@ -163,14 +164,14 @@ export default {
     },
 
     //添加或编辑产品分类Form
-    showProductCategoryForm(entity) {
+    showProductCategoryForm(productCategory, parent) {
       let layerId = layer.open({
         title: "产品分类",
         shadeClose: false,
         closeBtn: false,
-        area: ['400px', '230px'],
+        area: ['400px', '400px'],
         content: h(ProductCategoryForm, {
-          entity,
+          productCategory, parent,
           onClose: () => {
             layer.close(layerId);
           },

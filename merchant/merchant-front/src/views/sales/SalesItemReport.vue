@@ -6,8 +6,8 @@
         <Button>打 印</Button>
       </template>
       <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
-                placeholder="审核状态："/>
+        <Select v-model="params.state" class="w-120px" :datas="{全部:'全部',销货:'销货',退货:'退货'}"
+                placeholder="业务类别："/>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
@@ -35,15 +35,16 @@
         <vxe-column type="checkbox" width="40" align="center"/>
         <vxe-column title="销售日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
-        <vxe-column title="关联销售出库单" field="code" width="200"/>
+        <vxe-column title="业务类别" field="orderNo" width="200"/>
         <vxe-column title="客户" field="customerName" min-width="120"/>
+        <vxe-column title="商品编码" field="productCode" width="100"/>
+        <vxe-column title="商品名称" field="productName" width="100"/>
+        <vxe-column title="销售单位" field="unitName" width="100"/>
+        <vxe-column title="仓库名称" field="warehouseName" width="100"/>
+        <vxe-column title="销售数量" field="quantity" width="100"/>
         <vxe-column title="销售金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        <vxe-column title="制单人" field="createDate" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createDate" align="center" width="100"/>
-        <vxe-column title="审核状态" field="orderStatus" width="80"/>
-
       </vxe-table>
     </div>
     <div class="flex justify-between items-center pt-5px">

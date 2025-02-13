@@ -7,6 +7,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
+import com.flyemu.share.dto.SalesReportItemDTO;
 import com.flyemu.share.entity.basic.QCustomer;
 import com.flyemu.share.entity.basic.QProduct;
 import com.flyemu.share.entity.basic.QUnit;
@@ -21,9 +22,13 @@ import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.sagacity.sqltoy.dao.SqlToyLazyDao;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -31,7 +36,9 @@ import org.springframework.util.CollectionUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @功能描述: 销售报表
@@ -43,135 +50,127 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SalesReportService extends AbsService {
 
-    private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
-    private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
-
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
 
-    private final SalesOrderRepository salesOrderRepository;
-    private final SalesOrderItemRepository salesOrderItemRepository;
-    private final CodeSeedService codeSeedService;
-    private final static QCustomer qCustomer = QCustomer.customer;
-    private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
-    private final static QProduct qProduct = QProduct.product;
-    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
-    private final static QUnit qUnit = QUnit.unit;
+    public PageResults<SalesReportItemDTO> salesItem(Page page, SalesReportService.Query query) {
+        // 获取动态生成的 WHERE 子句和参数
+        String whereClause = query.getWhereClause();
+        Map<String, Object> params = query.getParams();
+        // // 去除开头的 " AND "，确保 WHERE 子句正确
+        if (!whereClause.isEmpty()) {
+            whereClause = whereClause.substring(5);
+        }
 
-    public PageResults<SalesOrderDTO> salesItem(Page page, SalesReportService.Query query) {
-        long totalSize = bqf.selectFrom(qSalesOrder)
-                .where(query.builder)
-                .fetchCount();
+        // 查询总记录数
+        String countSql = "SELECT COUNT(*) FROM sales_outbound_item soi " +
+                "LEFT JOIN sales_outbound so ON so.id = soi.sales_outbound_id " +
+                "LEFT JOIN customer c ON c.id = so.customer_id " +
+                "LEFT JOIN warehouse w ON w.id = soi.warehouse_id " +
+                "LEFT JOIN product p ON p.id = soi.product_id " +
+                "LEFT JOIN unit u ON u.id = soi.base_unit_id " +
+                "WHERE " + whereClause;
 
-        List<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
-                .select(qSalesOrder, qCustomer.name, qMerchantUser.name,qSalesOutbound.orderNo)
-                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
-                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
-                .leftJoin(qSalesOutbound).on(qSalesOutbound.id.eq(qSalesOrder.outOrderId))
-                .where(query.builder)
-                .orderBy(qSalesOrder.id.desc())
-                .offset(page.getOffset())
-                .limit(page.getOffsetEnd())
-                .fetch();
+        long totalSize = lazyDao.getCount(countSql, params);
 
-        List<SalesOrderDTO> dtos = new ArrayList<>();
-        fetchPage.forEach(tuple -> {
-            SalesOrderDTO salesOrderDTO = BeanUtil.toBean(tuple.get(qSalesOrder), SalesOrderDTO.class);
-            salesOrderDTO.setCustomerName(tuple.get(qCustomer.name));
-            salesOrderDTO.setCreatedName(tuple.get(qMerchantUser.name));
-            salesOrderDTO.setOutOrderNo(tuple.get(qSalesOutbound.orderNo));
-            //查询子表
-            List<SalesOrderItem> salesOrderItemList = bqf.selectFrom(qSalesOrderItem)
-                    .select(qSalesOrderItem)
-                    .where(qSalesOrderItem.salesOrderId.eq(salesOrderDTO.getId()))
-                    .fetch();
-            List<SalesOrderItemDTO> itemDTOs = new ArrayList<>();
-            salesOrderItemList.forEach(item -> {
-                SalesOrderItemDTO itemDTO = BeanUtil.toBean(item, SalesOrderItemDTO.class);
-                itemDTOs.add(itemDTO);
-            });
-            salesOrderDTO.setSalesOrderItemList(itemDTOs);
+        // 查询分页数据
+        String sql = "SELECT soi.*, c.name AS customer_name, w.name AS warehouse_name, p.name AS product_name, " +
+                "p.code AS product_code, u.name AS unit_name, so.order_no AS order_no " +
+                "FROM sales_outbound_item soi " +
+                "LEFT JOIN sales_outbound so ON so.id = soi.sales_outbound_id " +
+                "LEFT JOIN customer c ON c.id = so.customer_id " +
+                "LEFT JOIN warehouse w ON w.id = soi.warehouse_id " +
+                "LEFT JOIN product p ON p.id = soi.product_id " +
+                "LEFT JOIN unit u ON u.id = soi.base_unit_id " +
+                "WHERE " + whereClause +
+                " ORDER BY soi.id DESC " +
+                "LIMIT :limit OFFSET :offset";
 
-            dtos.add(salesOrderDTO);
-        });
+        // 添加分页参数
+        params.put("limit", page.getOffsetEnd());
+        params.put("offset", page.getOffset());
+
+        // 执行查询并映射结果
+        List<SalesReportItemDTO> dtos = lazyDao.findBySql(sql, params, SalesReportItemDTO.class);
+
         return new PageResults<>(dtos, page, totalSize);
     }
 
-    public SalesOrderDTO getById(SalesOrder query) {
-        //查询销售订单
-        SalesOrder salesOrder = salesOrderRepository.getById(query.getId());
-        //订单数据转换
-        SalesOrderDTO dto = BeanUtil.toBean(salesOrder, SalesOrderDTO.class);
-        //查询销售订单商品
-        List<Tuple> fetch = jqf.selectFrom(qSalesOrderItem)
-                .select(qSalesOrderItem, qProduct.code, qProduct.name, qUnit.name)
-                .leftJoin(qProduct).on(qProduct.id.eq(qSalesOrderItem.productId))
-                .leftJoin(qUnit).on(qUnit.id.eq(qSalesOrderItem.baseUnitId))
-                .where(qSalesOrderItem.salesOrderId.eq(query.getId())).orderBy(qSalesOrderItem.id.asc()).fetch();
-        List<SalesOrderItemDTO> salesOrderItemDTOS = new ArrayList<>();
-        fetch.forEach(tuple -> {
-            SalesOrderItemDTO salesOrderItemDTO = BeanUtil.toBean(tuple.get(qSalesOrderItem), SalesOrderItemDTO.class);
-            salesOrderItemDTO.setProductName(tuple.get(qProduct.name));
-            salesOrderItemDTO.setProductCode(tuple.get(qProduct.code));
-            salesOrderItemDTO.setUnitName(tuple.get(qUnit.name));
-            salesOrderItemDTOS.add(salesOrderItemDTO);
-        });
-        dto.setSalesOrderItemList(salesOrderItemDTOS);
-        return dto;
-    }
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
-
-        private String start;
-        private String end;
+        StringBuilder whereClause = new StringBuilder();
+        @Getter
+        Map<String, Object> params = new HashMap<>();
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
-                builder.and(qSalesOrder.merchantId.eq(merchantId));
+                builder.and(qSalesOutbound.merchantId.eq(merchantId));
+                whereClause.append(" AND so.merchant_id = :merchantId");
+                params.put("merchantId", merchantId);
             }
         }
 
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
-                builder.and(qSalesOrder.accountBookId.eq(accountBookId));
+                builder.and(qSalesOutbound.accountBookId.eq(accountBookId));
+                whereClause.append(" AND so.account_book_id = :accountBookId");
+                params.put("accountBookId", accountBookId);
+
             }
         }
-
         public void setFilter(String filter) {
             if (StringUtils.isNotBlank(filter)) {
-                builder.and(qSalesOrder.orderNo.like("%" + filter + "%"));
+                builder.and(qSalesOutbound.orderNo.like("%" + filter + "%"));
+                //whereClause.append(" AND so.order_no LIKE '%").append(":filter").append("%'");
+                whereClause.append(" AND so.order_no LIKE :filter");
+                params.put("filter", filter);
+
             }
         }
 
         public void setState(String state) {
             if (StringUtils.isNotBlank(state)) {
-                builder.and(qSalesOrder.orderStatus.eq(OrderStatus.valueOf(state)));
+                builder.and(qSalesOutbound.orderStatus.eq(OrderStatus.valueOf(state)));
+                whereClause.append(" AND so.order_status = :state");
+                params.put("state", state);
+
             }
         }
 
         public void setStart(String start) {
             if (StringUtils.isNotBlank(start)) {
-                builder.and(qSalesOrder.orderDate.goe(LocalDate.parse(start)));
+                builder.and(qSalesOutbound.outboundDate.goe(LocalDate.parse(start)));
+                whereClause.append(" AND so.outbound_date >= :start");
+                params.put("start", start);
+
             }
         }
 
         public void setEnd(String end) {
             if (StringUtils.isNotBlank(end)) {
-                builder.and(qSalesOrder.orderDate.loe(LocalDate.parse(end)));
+                builder.and(qSalesOutbound.outboundDate.loe(LocalDate.parse(end)));
+                whereClause.append(" AND so.outbound_date <= :end");
+                params.put("start", end);
             }
         }
 
         public void setCustomerId(Long customerId) {
             if (customerId != null) {
-                builder.and(qSalesOrder.customerId.eq(customerId));
+                builder.and(qSalesOutbound.customerId.eq(customerId));
+                whereClause.append(" AND so.customer_id = :customerId");
+                params.put("start", customerId);
             }
         }
 
-        //查询未出库订单
-        public void setQueryUnOutOrder(Integer queryUnOutOrder) {
-            if (queryUnOutOrder == 1) {
-                builder.and(qSalesOrder.outOrderId.isNull());
+        //查询未退货订单
+        public void setQueryUnReturnOrder(Integer queryUnReturnOrder) {
+            if (queryUnReturnOrder == 1) {
+                builder.and(qSalesOutbound.returnOrderId.isNull());
             }
+        }
+
+        public String getWhereClause() {
+            return whereClause.toString();
         }
 
     }

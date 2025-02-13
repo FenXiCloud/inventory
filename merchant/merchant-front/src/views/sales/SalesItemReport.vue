@@ -2,8 +2,8 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Button @click="addForm()" color="primary">新 增</Button>
-        <Button>审 核</Button>
+        <Button @click="addForm()" color="primary">导 出</Button>
+        <Button>打 印</Button>
       </template>
       <template #tools>
         <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
@@ -33,14 +33,8 @@
                  :sort-config="{remote:true}"
                  :loading="loading">
         <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="操作" align="center" width="120">
-          <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="showForm('add',row.id)">编辑</span>
-            <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
-          </template>
-        </vxe-column>
-        <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="code" width="200"/>
+        <vxe-column title="销售日期" field="orderDate" align="center" width="130"/>
+        <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="关联销售出库单" field="code" width="200"/>
         <vxe-column title="客户" field="customerName" min-width="120"/>
         <vxe-column title="销售金额" field="totalAmount" width="120"/>
@@ -69,8 +63,8 @@
 </template>
 <script>
 import manba from "manba";
-import SalesOutbound from "@js/api/sales/SalesOutbound";
 import {mapMutations} from "vuex";
+import SalesReport from "@js/api/sales/SalesReport";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -134,7 +128,7 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      SalesOutbound.list(this.queryParams).then(({data: {results, total}}) => {
+      SalesReport.salesItem(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);

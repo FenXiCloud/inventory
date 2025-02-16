@@ -90,7 +90,7 @@ public class SalesReportService extends AbsService {
 
         // 查询分页数据
         String sql = "SELECT soi.*, c.name AS customer_name, w.name AS warehouse_name, p.name AS product_name, " +
-                "p.code AS product_code, u.name AS unit_name, so.order_no AS order_no , so.outbound_date AS outboundDate " +
+                "p.code AS product_code, u.name AS unit_name, so.order_no AS order_no , so.outbound_date AS orderDate " +
                 "FROM jxc_sales_outbound_item soi " +
                 "LEFT JOIN jxc_sales_outbound so ON so.id = soi.sales_outbound_id " +
                 "LEFT JOIN jxc_customer c ON c.id = so.customer_id " +
@@ -215,7 +215,7 @@ public class SalesReportService extends AbsService {
 
         public void setEnd(String end) {
             if (StringUtils.isNotBlank(end)) {
-                whereClause.append(" AND so.outbound_date >= :start");
+                whereClause.append(" AND so.outbound_date <= :end");
                 params.put("end", end);
             }
         }

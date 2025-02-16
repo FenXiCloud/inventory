@@ -22,6 +22,7 @@ import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +53,22 @@ public class SalesReportService extends AbsService {
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
 
+
     public PageResults<SalesReportItemDTO> salesItem(Page page, SalesReportService.Query query) {
+
+        PageResults<SalesReportItemDTO> results = new PageResults<>(new ArrayList<>(),page,0);
+        String salesType = query.getSalesType();
+        if(StringUtils.equals("all",salesType)){
+        }
+        if(StringUtils.equals("out",salesType)){
+            results = salesOutItem(page, query);
+        }
+        if(StringUtils.equals("return",salesType)){
+            results = salesReturnItem(page,query);
+        }
+        return results;
+    }
+    public PageResults<SalesReportItemDTO> salesOutItem(Page page, SalesReportService.Query query) {
         // 获取动态生成的 WHERE 子句和参数
         String whereClause = query.getWhereClause();
         Map<String, Object> params = query.getParams();
@@ -95,12 +111,63 @@ public class SalesReportService extends AbsService {
         return new PageResults<>(dtos, page, totalSize);
     }
 
+    public PageResults<SalesReportItemDTO> salesReturnItem(Page page, SalesReportService.Query query) {
+        // 获取动态生成的 WHERE 子句和参数
+        String whereClause = query.getWhereClause();
 
+        Map<String, Object> params = query.getParams();
+        // // 去除开头的 " AND "，确保 WHERE 子句正确
+        if (!whereClause.isEmpty()) {
+            whereClause = whereClause.substring(5);
+        }
+
+        //退货单修改时间查询字段
+        whereClause = whereClause.replaceAll("outbound_date", "return_date");
+
+        // 查询总记录数
+        String countSql = "SELECT COUNT(*) FROM jxc_sales_return_item sri " +
+                "LEFT JOIN jxc_sales_return so ON so.id = sri.sales_return_id " +
+                "LEFT JOIN jxc_customer c ON c.id = so.customer_id " +
+                "LEFT JOIN jxc_warehouse w ON w.id = sri.warehouse_id " +
+                "LEFT JOIN jxc_product p ON p.id = sri.product_id " +
+                "LEFT JOIN jxc_unit u ON u.id = sri.base_unit_id " +
+                "WHERE " + whereClause;
+
+        long totalSize = lazyDao.getCount(countSql, params);
+
+        // 查询分页数据
+        String sql = "SELECT sri.*, c.name AS customer_name, w.name AS warehouse_name, p.name AS product_name, " +
+                "p.code AS product_code, u.name AS unit_name, so.order_no AS order_no , so.return_date AS orderDate " +
+                "FROM jxc_sales_return_item sri " +
+                "LEFT JOIN jxc_sales_return so ON so.id = sri.sales_return_id " +
+                "LEFT JOIN jxc_customer c ON c.id = so.customer_id " +
+                "LEFT JOIN jxc_warehouse w ON w.id = sri.warehouse_id " +
+                "LEFT JOIN jxc_product p ON p.id = sri.product_id " +
+                "LEFT JOIN jxc_unit u ON u.id = sri.base_unit_id " +
+                "WHERE " + whereClause +
+                " ORDER BY sri.id DESC " +
+                "LIMIT :limit OFFSET :offset";
+
+        // 添加分页参数
+        params.put("limit", page.getOffsetEnd());
+        params.put("offset", page.getOffset());
+
+        // 执行查询并映射结果
+        List<SalesReportItemDTO> dtos = lazyDao.findBySql(sql, params, SalesReportItemDTO.class);
+
+        return new PageResults<>(dtos, page, totalSize);
+    }
+
+
+    @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
         StringBuilder whereClause = new StringBuilder();
         @Getter
         Map<String, Object> params = new HashMap<>();
+
+        private String salesType;
+
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -128,28 +195,27 @@ public class SalesReportService extends AbsService {
             }
         }
 
-//        public void setState(String state) {
-//            if (StringUtils.isNotBlank(state)) {
-//                builder.and(qSalesOutbound.orderStatus.eq(OrderStatus.valueOf(state)));
-//                whereClause.append(" AND so.order_status = :state");
-//                params.put("state", state);
-//
-//            }
-//        }
+        public void setState(String state) {
+            if (StringUtils.isNotBlank(state)) {
+                builder.and(qSalesOutbound.orderStatus.eq(OrderStatus.valueOf(state)));
+                whereClause.append(" AND so.order_status = :state");
+                params.put("state", state);
+
+            }
+        }
+
+
 
         public void setStart(String start) {
             if (StringUtils.isNotBlank(start)) {
-                builder.and(qSalesOutbound.outboundDate.goe(LocalDate.parse(start)));
                 whereClause.append(" AND so.outbound_date >= :start");
                 params.put("start", start);
-
             }
         }
 
         public void setEnd(String end) {
             if (StringUtils.isNotBlank(end)) {
-                builder.and(qSalesOutbound.outboundDate.loe(LocalDate.parse(end)));
-                whereClause.append(" AND so.outbound_date <= :end");
+                whereClause.append(" AND so.outbound_date >= :start");
                 params.put("end", end);
             }
         }

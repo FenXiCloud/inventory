@@ -6,7 +6,7 @@
         <Button>打 印</Button>
       </template>
       <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{全部:'全部',销货:'销货',退货:'退货'}"
+        <Select v-model="params.salesType" class="w-120px" :datas="{all:'全部',out:'销货',return:'退货'}"
                 placeholder="业务类别："/>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">订单日期：</span>
@@ -33,7 +33,7 @@
                  :sort-config="{remote:true}"
                  :loading="loading">
         <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="销售日期" field="outboundDate" align="center" width="130"/>
+        <vxe-column title="销售日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="业务类别" field="orderType" width="200"/>
         <vxe-column title="客户" field="customerName" min-width="120"/>

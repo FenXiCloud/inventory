@@ -2,7 +2,7 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Button @click="addForm()" color="primary">导 出</Button>
+        <Button @click="exportData" color="primary">导 出</Button>
         <Button>打 印</Button>
       </template>
       <template #tools>
@@ -74,6 +74,7 @@ import {mapMutations} from "vuex";
 import SalesReport from "@js/api/sales/SalesReport";
 import Customer from "@js/api/basic/Customer";
 import {loading, message} from "heyui.ext";
+import * as XLSX from 'xlsx';
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -148,6 +149,81 @@ export default {
       })
       return [["", "", "", "", "", "", "", "", "", quantityTotal, "", subtotalTotal]];
     },
+
+
+    exportData() {
+      if (this.dataList.length === 0) {
+        message.warn('没有可导出的数据');
+        return;
+      }
+
+      try {
+        loading.open('正在导出...');
+
+        // 准备导出数据
+        const exportData = this.dataList.map(item => ({
+          '销售日期': item.orderDate,
+          '订单编号': item.orderNo,
+          '业务类别': item.orderType,
+          '客户': item.customerName,
+          '商品编码': item.productCode,
+          '商品名称': item.productName,
+          '销售单位': item.unitName,
+          '仓库名称': item.warehouseName,
+          '数量': item.quantity,
+          '单价': item.unitPrice,
+          '销售收入': item.subtotal
+        }));
+
+        // 如果有合计行，添加到导出数据中
+        // if (this.footerMethod) {
+        //   const footerData = this.footerMethod({
+        //     data: this.dataList
+        //   });
+        //   if (footerData && footerData.length > 0) {
+        //     exportData.push({
+        //       '销售日期': '合计',
+        //       '数量': footerData[0].quantity,
+        //       '销售收入': footerData[0].subtotal
+        //     });
+        //   }
+        // }
+
+        // 创建工作簿
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '销售明细');
+
+        // 导出文件
+        const fileName = `销售明细报表_${manba().format('YYYY-MM-DD')}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+
+        message.success('导出成功');
+      } catch (error) {
+        console.error('导出错误:', error);
+        message.error('导出失败');
+      } finally {
+        loading.close();
+      }
+    },
+    // exportEvent() {
+    //   const $table = this.$refs.tableRef;
+    //   if (!$table) return;
+    //
+    //   const fileName = `销售明细报表_${manba().format('YYYY-MM-DD')}`;
+    //   console.log("fileName",fileName)
+    //   $table.exportData({
+    //     filename: fileName,
+    //     type: 'xlsx',
+    //     mode: 'all',
+    //     original: false,
+    //     columnFilterMethod({ column }) {
+    //       // 排除不需要导出的列
+    //       return column.property !== 'operate';
+    //     },
+    //     footerFilterMethod: () => true // 包含表尾合计行
+    //   });
+    // },
     doSearch() {
       this.pagination.page = 1;
       if(!this.params.salesType){

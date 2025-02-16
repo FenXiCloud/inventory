@@ -104,6 +104,8 @@ export default {
         start: manba(startTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
       },
+      quantityTotal:null,
+      subtotalTotal:null
     }
   },
   computed: {
@@ -147,6 +149,8 @@ export default {
           });
         }
       })
+      this.quantityTotal = quantityTotal;
+      this.subtotalTotal = subtotalTotal;
       return [["", "", "", "", "", "", "", "", "", quantityTotal, "", subtotalTotal]];
     },
 
@@ -175,18 +179,11 @@ export default {
         }));
 
         // 如果有合计行，添加到导出数据中
-        // if (this.footerMethod) {
-        //   const footerData = this.footerMethod({
-        //     data: this.dataList
-        //   });
-        //   if (footerData && footerData.length > 0) {
-        //     exportData.push({
-        //       '销售日期': '合计',
-        //       '数量': footerData[0].quantity,
-        //       '销售收入': footerData[0].subtotal
-        //     });
-        //   }
-        // }
+        exportData.push({
+          '销售日期': '合计',
+          '数量': this.quantityTotal,
+          '销售收入': this.subtotalTotal
+        });
 
         // 创建工作簿和工作表
         const ws = XLSX.utils.json_to_sheet(exportData);

@@ -46,7 +46,7 @@
         </vxe-column>
         <vxe-column title="单据日期" field="inboundDate" align="center" width="130"/>
         <vxe-column title="单据编号" field="orderNo" width="200"/>
-<!--        <vxe-column title="单据来源" field="code" width="200"/>-->
+        <!--        <vxe-column title="单据来源" field="code" width="200"/>-->
         <vxe-column title="业务类型" field="inboundType" min-width="120"/>
         <vxe-column title="金额" field="totalAmount" width="120"/>
         <vxe-column title="供应商编号" field="supplierCode" width="120"/>
@@ -55,7 +55,7 @@
         <vxe-column title="客户" field="customerName" align="center" width="100"/>
         <vxe-column title="数量" field="quantity" align="center" width="100"/>
         <vxe-column title="制单人" field="createdByName" align="center" width="100"/>
-<!--        <vxe-column title="打印次数" field="createDate" align="center" width="100"/>-->
+        <!--        <vxe-column title="打印次数" field="createDate" align="center" width="100"/>-->
         <vxe-column title="单据备注" field="remarks" align="center" width="100"/>
         <vxe-column title="审核状态" field="orderStatus" width="80"/>
 
@@ -157,6 +157,11 @@ export default {
       OtherInbound.list(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
+        let amountTotal = 0;
+        this.dataList.forEach(item => {
+          amountTotal += Number(item.totalAmount);
+        });
+        this.amountTotal = amountTotal;
       }).finally(() => this.loading = false);
     },
     auditsForm(type) {

@@ -8,7 +8,7 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.OtherOutboundDto;
-import com.flyemu.share.entity.basic.QCustomer;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
 import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.enums.ApproveType;
@@ -20,6 +20,8 @@ import com.flyemu.share.repository.OtherOutboundRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.StringTemplate;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +60,14 @@ public class OtherOutboundService extends AbsService {
     private final static QCustomer qCustomer = QCustomer.customer;
 
     private final static QAdmin qAdmin = QAdmin.admin;
+
+    private final static QProduct qProduct = QProduct.product;
+
+    private final static QProductCategory qProductCategory = QProductCategory.productCategory;
+
+    private final static QUnit qUnit = QUnit.unit;
+
+    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
 
     public PageResults<OtherOutboundDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qOtherOutbound)
@@ -231,8 +241,70 @@ public class OtherOutboundService extends AbsService {
     }
 
     public List<Map<String, Object>> load(Long id) {
-        //todo 获取出库信息待优化
-        return otherOutboundRepository.findOtherOutboundById(id);
+        StringTemplate dateExpressions = Expressions.
+                stringTemplate("DATE_FORMAT({0},'%Y-%m-%d')", qOtherOutbound.inboundDate);
+        List<Tuple> fetch = jqf.selectFrom(qOtherOutbound)
+                .select(
+                        qOtherOutbound.id.as("id"),
+                        dateExpressions.as("inboundDate"),
+                        qOtherOutbound.customerId.as("customerId"),
+                        qOtherOutbound.outboundType.as("outboundType"),
+                        qOtherOutbound.orderStatus.as("orderStatus"),
+                        qOtherOutboundItem.id.as("itemId"),
+                        qProduct.id.as("productId"),
+                        qProduct.imgPath.as("productUrl"),
+                        qProduct.code.as("productCode"),
+                        qProduct.name.as("productName"),
+                        qProduct.specification.as("productSpecification"),
+                        qProductCategory.id.as("productCategoryId"),
+                        qProductCategory.name.as("productCategoryName"),
+                        qProduct.unitId.as("productUnitId"),
+                        qUnit.name.as("productUnitName"),
+                        qWarehouse.id.as("warehouseId"),
+                        qWarehouse.name.as("warehouseName"),
+                        qOtherOutboundItem.quantity.as("quantity"),
+                        qOtherOutboundItem.unitPrice.as("unitPrice"),
+                        qOtherOutboundItem.subtotal.as("subtotal"),
+                        qAdmin.name.as("adminName"),
+                        qOtherOutbound.remarks.as("remarks")
+                )
+                .leftJoin(qOtherOutboundItem).on(qOtherOutboundItem.otherOutboundId.eq(qOtherOutbound.id))
+                .leftJoin(qProduct).on(qProduct.id.eq(qOtherOutboundItem.productId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+                .leftJoin(qAdmin).on(qAdmin.id.eq(qOtherOutbound.createdBy))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qOtherOutboundItem.warehouseId))
+                .where(qOtherOutbound.id.eq(id))
+                .fetch();
+        List<Map<String, Object>> result = new ArrayList<>();
+        Map<String, Object> item;
+        for (Tuple tuple : fetch) {
+            item = new HashMap<>();
+            item.put("id", tuple.get(qOtherOutbound.id.as("id")));
+            item.put("inboundDate", tuple.get(dateExpressions.as("inboundDate")));
+            item.put("customerId", tuple.get(qOtherOutbound.customerId.as("customerId")));
+            item.put("orderStatus", tuple.get(qOtherOutbound.orderStatus.as("orderStatus")));
+            item.put("outboundType", tuple.get(qOtherOutbound.outboundType.as("outboundType")));
+            item.put("itemId", tuple.get(qOtherOutboundItem.id.as("itemId")));
+            item.put("productId", tuple.get(qProduct.id.as("productId")));
+            item.put("remarks", tuple.get(qOtherOutbound.remarks.as("remarks")));
+            item.put("productUrl", tuple.get(qProduct.imgPath.as("productUrl")));
+            item.put("productCode", tuple.get(qProduct.id.as("productId")));
+            item.put("productName", tuple.get(qProduct.imgPath.as("productUrl")));
+            item.put("productSpecification", tuple.get(qProduct.specification.as("productSpecification")));
+            item.put("productCategoryId", tuple.get(qProductCategory.name.as("productCategoryName")));
+            item.put("productUnitId", tuple.get(qProduct.unitId.as("productUnitId")));
+            item.put("productCategoryName", tuple.get(qProduct.specification.as("productSpecification")));
+            item.put("productUnitName", tuple.get(qUnit.name.as("productUnitName")));
+            item.put("warehouseId", tuple.get(qWarehouse.id.as("warehouseId")));
+            item.put("warehouseName", tuple.get(qWarehouse.name.as("warehouseName")));
+            item.put("quantity", tuple.get(qOtherOutboundItem.quantity.as("quantity")));
+            item.put("unitPrice", tuple.get(qOtherOutboundItem.unitPrice.as("unitPrice")));
+            item.put("adminName", tuple.get(qAdmin.name.as("adminName")));
+            item.put("subtotal", tuple.get(qOtherOutboundItem.subtotal.as("subtotal")));
+            result.add(item);
+        }
+        return result;
     }
 
     private static Date addTimeOfFinalMoment(Date date) {

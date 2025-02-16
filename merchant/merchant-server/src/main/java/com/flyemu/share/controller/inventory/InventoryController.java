@@ -68,4 +68,18 @@ public class InventoryController {
         return JsonResult.successful(inventoryService.exist(productId, warehouseId, merchantId, accountBookId));
     }
 
+    @GetMapping("report")
+    public JsonResult report(Page page, InventoryService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(inventoryService.report(page, query));
+    }
+
+    @GetMapping("reportInventory")
+    public JsonResult reportInventory(InventoryService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(inventoryService.reportInventory(query));
+    }
+
 }

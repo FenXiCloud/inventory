@@ -375,6 +375,7 @@ export default {
               this.form.remarks = data[0].remarks;
               this.form.checkDate = data[0].checkDate;
               this.form.adminName = data[0].adminName;
+              this.form.orderStatus = data[0].orderStatus;
               let totalQuantity = 0;
               data.forEach(item => {
                 totalQuantity += parseInt(item.quantity);

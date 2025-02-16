@@ -159,12 +159,11 @@ export default {
 
       try {
         loading.open('正在导出...');
-
         // 准备导出数据
         const exportData = this.dataList.map(item => ({
           '销售日期': item.orderDate,
           '订单编号': item.orderNo,
-          '业务类别': item.orderType,
+          '业务类别': this.params.salesType === 'return' ? '退货' : '销货',
           '客户': item.customerName,
           '商品编码': item.productCode,
           '商品名称': item.productName,
@@ -189,9 +188,24 @@ export default {
         //   }
         // }
 
-        // 创建工作簿
+        // 创建工作簿和工作表
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
+
+        // 设置标题行样式
+        ws['!cols'] = [
+          { wch: 12 }, // 销售日期
+          { wch: 30 }, // 订单编号
+          { wch: 10 }, // 业务类别
+          { wch: 15 }, // 客户
+          { wch: 12 }, // 商品编码
+          { wch: 20 }, // 商品名称
+          { wch: 10 }, // 销售单位
+          { wch: 12 }, // 仓库名称
+          { wch: 10 }, // 数量
+          { wch: 10 }, // 单价
+          { wch: 12 }  // 销售收入
+        ];
         XLSX.utils.book_append_sheet(wb, ws, '销售明细');
 
         // 导出文件

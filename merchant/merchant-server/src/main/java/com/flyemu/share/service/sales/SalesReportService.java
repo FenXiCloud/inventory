@@ -62,12 +62,12 @@ public class SalesReportService extends AbsService {
         }
 
         // 查询总记录数
-        String countSql = "SELECT COUNT(*) FROM sales_outbound_item soi " +
-                "LEFT JOIN sales_outbound so ON so.id = soi.sales_outbound_id " +
-                "LEFT JOIN customer c ON c.id = so.customer_id " +
-                "LEFT JOIN warehouse w ON w.id = soi.warehouse_id " +
-                "LEFT JOIN product p ON p.id = soi.product_id " +
-                "LEFT JOIN unit u ON u.id = soi.base_unit_id " +
+        String countSql = "SELECT COUNT(*) FROM jxc_sales_outbound_item soi " +
+                "LEFT JOIN jxc_sales_outbound so ON so.id = soi.sales_outbound_id " +
+                "LEFT JOIN jxc_customer c ON c.id = so.customer_id " +
+                "LEFT JOIN jxc_warehouse w ON w.id = soi.warehouse_id " +
+                "LEFT JOIN jxc_product p ON p.id = soi.product_id " +
+                "LEFT JOIN jxc_unit u ON u.id = soi.base_unit_id " +
                 "WHERE " + whereClause;
 
         long totalSize = lazyDao.getCount(countSql, params);
@@ -75,12 +75,12 @@ public class SalesReportService extends AbsService {
         // 查询分页数据
         String sql = "SELECT soi.*, c.name AS customer_name, w.name AS warehouse_name, p.name AS product_name, " +
                 "p.code AS product_code, u.name AS unit_name, so.order_no AS order_no " +
-                "FROM sales_outbound_item soi " +
-                "LEFT JOIN sales_outbound so ON so.id = soi.sales_outbound_id " +
-                "LEFT JOIN customer c ON c.id = so.customer_id " +
-                "LEFT JOIN warehouse w ON w.id = soi.warehouse_id " +
-                "LEFT JOIN product p ON p.id = soi.product_id " +
-                "LEFT JOIN unit u ON u.id = soi.base_unit_id " +
+                "FROM jxc_sales_outbound_item soi " +
+                "LEFT JOIN jxc_sales_outbound so ON so.id = soi.sales_outbound_id " +
+                "LEFT JOIN jxc_customer c ON c.id = so.customer_id " +
+                "LEFT JOIN jxc_warehouse w ON w.id = soi.warehouse_id " +
+                "LEFT JOIN jxc_product p ON p.id = soi.product_id " +
+                "LEFT JOIN jxc_unit u ON u.id = soi.base_unit_id " +
                 "WHERE " + whereClause +
                 " ORDER BY soi.id DESC " +
                 "LIMIT :limit OFFSET :offset";

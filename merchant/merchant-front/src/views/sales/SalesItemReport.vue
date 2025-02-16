@@ -33,18 +33,18 @@
                  :sort-config="{remote:true}"
                  :loading="loading">
         <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="销售日期" field="orderDate" align="center" width="130"/>
+        <vxe-column title="销售日期" field="outboundDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
-        <vxe-column title="业务类别" field="orderNo" width="200"/>
+        <vxe-column title="业务类别" field="orderType" width="200"/>
         <vxe-column title="客户" field="customerName" min-width="120"/>
         <vxe-column title="商品编码" field="productCode" width="100"/>
         <vxe-column title="商品名称" field="productName" width="100"/>
         <vxe-column title="销售单位" field="unitName" width="100"/>
         <vxe-column title="仓库名称" field="warehouseName" width="100"/>
         <vxe-column title="销售数量" field="quantity" width="100"/>
-        <vxe-column title="销售金额" field="totalAmount" width="120"/>
-        <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-        <vxe-column title="折后金额" field="finalAmount" width="120"/>
+        <vxe-column title="单价" field="unitPrice" width="100"/>
+        <vxe-column title="折扣金额" field="discountValue" width="120"/>
+        <vxe-column title="销售收入" field="subtotal" width="120"/>
       </vxe-table>
     </div>
     <div class="flex justify-between items-center pt-5px">

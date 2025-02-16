@@ -74,7 +74,7 @@ public class SalesReportService extends AbsService {
 
         // 查询分页数据
         String sql = "SELECT soi.*, c.name AS customer_name, w.name AS warehouse_name, p.name AS product_name, " +
-                "p.code AS product_code, u.name AS unit_name, so.order_no AS order_no " +
+                "p.code AS product_code, u.name AS unit_name, so.order_no AS order_no , so.outbound_date AS outboundDate " +
                 "FROM jxc_sales_outbound_item soi " +
                 "LEFT JOIN jxc_sales_outbound so ON so.id = soi.sales_outbound_id " +
                 "LEFT JOIN jxc_customer c ON c.id = so.customer_id " +
@@ -128,14 +128,14 @@ public class SalesReportService extends AbsService {
             }
         }
 
-        public void setState(String state) {
-            if (StringUtils.isNotBlank(state)) {
-                builder.and(qSalesOutbound.orderStatus.eq(OrderStatus.valueOf(state)));
-                whereClause.append(" AND so.order_status = :state");
-                params.put("state", state);
-
-            }
-        }
+//        public void setState(String state) {
+//            if (StringUtils.isNotBlank(state)) {
+//                builder.and(qSalesOutbound.orderStatus.eq(OrderStatus.valueOf(state)));
+//                whereClause.append(" AND so.order_status = :state");
+//                params.put("state", state);
+//
+//            }
+//        }
 
         public void setStart(String start) {
             if (StringUtils.isNotBlank(start)) {
@@ -150,7 +150,7 @@ public class SalesReportService extends AbsService {
             if (StringUtils.isNotBlank(end)) {
                 builder.and(qSalesOutbound.outboundDate.loe(LocalDate.parse(end)));
                 whereClause.append(" AND so.outbound_date <= :end");
-                params.put("start", end);
+                params.put("end", end);
             }
         }
 
@@ -158,7 +158,7 @@ public class SalesReportService extends AbsService {
             if (customerId != null) {
                 builder.and(qSalesOutbound.customerId.eq(customerId));
                 whereClause.append(" AND so.customer_id = :customerId");
-                params.put("start", customerId);
+                params.put("customerId", customerId);
             }
         }
 

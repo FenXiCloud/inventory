@@ -4,6 +4,7 @@ import lombok.Data;
 import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -82,4 +83,7 @@ public class SalesReportItemDTO {
 
     @Comment("客户name")
     private String customerName;
+
+    @Comment("销售日期")
+    private LocalDate outboundDate;
 }

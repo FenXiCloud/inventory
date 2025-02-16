@@ -3,7 +3,7 @@
     <vxe-toolbar>
       <template #buttons>
         <Button @click="exportData" color="primary">导 出</Button>
-        <Button>打 印</Button>
+        <Button @click="printEvent">打 印</Button>
       </template>
       <template #tools>
         <!--        <Select v-model="params.salesType" class="w-120px" :datas="{all:'全部',out:'销货',return:'退货'}"-->
@@ -27,7 +27,7 @@
     </vxe-toolbar>
     <div class="flex1">
       <vxe-table row-id="id"
-                 ref="table"
+                 ref="tableRef"
                  height="auto"
                  :data="dataList"
                  highlight-hover-row
@@ -154,6 +154,12 @@ export default {
       return [["", "", "", "", "", "", "", "", "", quantityTotal, "", subtotalTotal]];
     },
 
+    printEvent () {
+      const $table = this.$refs.tableRef
+      if ($table) {
+        $table.print()
+      }
+    },
 
     exportData() {
       if (this.dataList.length === 0) {
@@ -217,24 +223,6 @@ export default {
         loading.close();
       }
     },
-    // exportEvent() {
-    //   const $table = this.$refs.tableRef;
-    //   if (!$table) return;
-    //
-    //   const fileName = `销售明细报表_${manba().format('YYYY-MM-DD')}`;
-    //   console.log("fileName",fileName)
-    //   $table.exportData({
-    //     filename: fileName,
-    //     type: 'xlsx',
-    //     mode: 'all',
-    //     original: false,
-    //     columnFilterMethod({ column }) {
-    //       // 排除不需要导出的列
-    //       return column.property !== 'operate';
-    //     },
-    //     footerFilterMethod: () => true // 包含表尾合计行
-    //   });
-    // },
     doSearch() {
       this.pagination.page = 1;
       if(!this.params.salesType){

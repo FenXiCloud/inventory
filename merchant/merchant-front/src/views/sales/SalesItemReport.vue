@@ -38,7 +38,7 @@
                  :column-config="{resizable: true}"
                  :sort-config="{remote:true}"
                  :loading="loading">
-        <vxe-column type="checkbox" width="40" align="center"/>
+<!--        <vxe-column type="checkbox" width="40" align="center"/>-->
         <vxe-column title="销售日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="业务类别" field="orderType" width="200" :formatter="formatOrderType"/>

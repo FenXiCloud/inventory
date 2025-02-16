@@ -16,4 +16,7 @@ export default {
     load(id) {
         return Ajax.get('/purchaseOrder/load/' + id);
     },
+    approved(state, ids) {
+        return Ajax.post('/purchaseOrder/approved/' + state, ids);
+    },
 }

@@ -77,6 +77,7 @@ const groupRoutes = [
     {name: 'SalesRankingReport', component: defineAsyncComponent(() => import('@views/sales/SalesRankingReport.vue'))},
     {name: 'PurchaseOrderList', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderList.vue'))},
     {name: 'PurchaseOrderForm', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderForm.vue'))},
+    {name: 'PurchaseOrderDetail', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderDetail.vue'))},
     {
         name: 'PurchaseInboundList',
         component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundList.vue'))

@@ -2,8 +2,11 @@ package com.flyemu.share.service.purchase;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.lang.Assert;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.NumberUtil;
+import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
@@ -30,6 +33,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -83,13 +88,13 @@ public class PurchaseOrderService extends AbsService {
         PurchaseOrder order = purchaseOrderForm.getPurchaseOrder();
         if (order.getId() != null) {
             PurchaseOrder original = purchaseOrderRepository.getById(purchaseOrderForm.getPurchaseOrder().getId());
-
+            Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能更新~");
             BeanUtil.copyProperties(order, original, CopyOptions.create().ignoreNullValue());
 
             Set<Long> ids = new HashSet<>();
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(),d.getQuantity(),2)));
+                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
 //                保存更新购货商品价格
                 PriceRecord priceRecord = new PriceRecord();
                 priceRecord.setUnitPrice(d.getUnitPrice());
@@ -115,7 +120,7 @@ public class PurchaseOrderService extends AbsService {
             purchaseOrderRepository.save(order);
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(),d.getQuantity(),2)));
+                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
 
 //                保存更新购货商品价格
                 PriceRecord priceRecord = new PriceRecord();
@@ -139,6 +144,10 @@ public class PurchaseOrderService extends AbsService {
 
     @Transactional
     public void delete(Long purchaseOrderId, Long merchantId, Long accountBookId) {
+        PurchaseOrder original = purchaseOrderRepository.getById(purchaseOrderId);
+
+        Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能删除~");
+
         jqf.delete(qPurchaseOrder)
                 .where(qPurchaseOrder.id.eq(purchaseOrderId).and(qPurchaseOrder.merchantId.eq(merchantId)).and(qPurchaseOrder.accountBookId.eq(accountBookId)))
                 .execute();
@@ -146,6 +155,38 @@ public class PurchaseOrderService extends AbsService {
 
     public List<PurchaseOrder> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qPurchaseOrder).where(qPurchaseOrder.merchantId.eq(merchantId).and(qPurchaseOrder.accountBookId.eq(accountBookId))).fetch();
+    }
+
+    @Transactional
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        List<PurchaseOrder> orders = bqf.selectFrom(qPurchaseOrder).where(qPurchaseOrder.merchantId.eq(merchantId).and(qPurchaseOrder.id.in(ids))).fetch();
+        Assert.isFalse(CollUtil.isEmpty(orders), "未找到数据~");
+        List<Long> setIds = new ArrayList<>();
+        if (OrderStatus.已审核.equals(state)) {
+            for (PurchaseOrder order : orders) {
+                if (OrderStatus.已保存.equals(order.getOrderStatus())) {
+                    setIds.add(order.getId());
+                } else {
+                    log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
+                }
+            }
+        } else if (OrderStatus.已保存.equals(state)) {
+            for (PurchaseOrder order : orders) {
+                if (OrderStatus.已审核.equals(order.getOrderStatus())) {
+                    setIds.add(order.getId());
+                } else {
+                    log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
+                }
+            }
+        }
+        if (CollUtil.isNotEmpty(setIds)) {
+            jqf.update(qPurchaseOrder)
+                    .set(qPurchaseOrder.orderStatus, state)
+                    .set(qPurchaseOrder.approvedAt, LocalDateTime.now()).
+                    set(qPurchaseOrder.approvedBy, adminId)
+                    .where(qPurchaseOrder.id.in(setIds))
+                    .execute();
+        }
     }
 
     public Dict load(Long merchantId, Long orderId) {
@@ -157,6 +198,7 @@ public class PurchaseOrderService extends AbsService {
         QUnit qUnit1 = new QUnit("id");
 
         PurchaserOrderDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseOrder), PurchaserOrderDto.class);
+        orderDto.setSupplierName(fetchFirst.get(qSupplier.name));
         ArrayList<PurchaseOrderItemDto> collect = jqf.selectFrom(qPurchaseOrderItem)
                 .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
@@ -171,6 +213,7 @@ public class PurchaseOrderService extends AbsService {
                     dto.setProductCode(tuple.get(qProduct.code));
                     dto.setProductName(tuple.get(qProduct.name));
                     dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setWarehouseName(tuple.get(qWarehouse.name));
                     dto.setSecondaryUnitName(tuple.get(qUnit1.name));
                     list.add(dto);
                 }, List::addAll);
@@ -179,6 +222,32 @@ public class PurchaseOrderService extends AbsService {
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
+
+
+        public void setState(OrderStatus state) {
+            if (state != null) {
+                builder.and(qPurchaseOrder.orderStatus.eq(state));
+            }
+        }
+
+        public void setFilter(String filter) {
+            if (StrUtil.isNotEmpty(filter)) {
+                builder.and(qPurchaseOrder.orderNo.contains(filter).or(qSupplier.name.contains(filter)));
+            }
+        }
+
+        public void setStart(LocalDate start) {
+            if (start != null) {
+                builder.and(qPurchaseOrder.orderDate.goe(start));
+            }
+        }
+
+        public void setEnd(LocalDate end) {
+            if (end != null) {
+                builder.and(qPurchaseOrder.orderDate.loe(end));
+            }
+        }
+
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {

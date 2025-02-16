@@ -107,6 +107,11 @@ public class PurchaseOrderItemDto {
     private Long warehouseId;
 
     /**
+     * 仓库Name
+     */
+    private String warehouseName;
+
+    /**
      * 创建人
      */
     private Long createdBy;

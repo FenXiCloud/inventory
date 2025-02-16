@@ -1,16 +1,20 @@
 package com.flyemu.share.controller.purchase;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
+import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.PurchaseOrderForm;
 import com.flyemu.share.service.purchase.PurchaseOrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * @功能描述: 采购订单
@@ -58,6 +62,20 @@ public class PurchaseOrderController {
     @GetMapping("select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(purchaseOrderService.select(merchantId, accountBookId));
+    }
+
+    /**
+     * 批量审核
+     *
+     * @param ids
+     * @param state
+     * @param accountDto
+     * @return
+     */
+    @PostMapping("/approved/{state}")
+    public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
+        purchaseOrderService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
+        return JsonResult.successful();
     }
 
 

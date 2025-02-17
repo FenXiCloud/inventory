@@ -16,19 +16,27 @@ import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesOrderForm;
+import com.flyemu.share.form.SalesReportForm;
 import com.flyemu.share.repository.SalesOrderItemRepository;
 import com.flyemu.share.repository.SalesOrderRepository;
+import com.flyemu.share.repository.SalesOutboundItemRepository;
+import com.flyemu.share.repository.SalesReturnItemRepository;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import jakarta.persistence.criteria.Predicate;
 import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.sagacity.sqltoy.dao.SqlToyLazyDao;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +48,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @功能描述: 销售报表
@@ -52,6 +61,9 @@ import java.util.Map;
 public class SalesReportService extends AbsService {
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
+
+    private final SalesOutboundItemRepository salesOutboundItemRepository;
+    private final SalesReturnItemRepository salesReturnItemRepository;
 
 
     public PageResults<SalesReportItemDTO> salesItem(Page page, SalesReportService.Query query) {
@@ -154,6 +166,63 @@ public class SalesReportService extends AbsService {
 
         // 执行查询并映射结果
         List<SalesReportItemDTO> dtos = lazyDao.findBySql(sql, params, SalesReportItemDTO.class);
+
+        return new PageResults<>(dtos, page, totalSize);
+    }
+
+    public PageResults<SalesReportItemDTO> salesSummary(Page page, SalesReportForm form) {
+        Specification<SalesOutboundItem> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            // 添加各种条件
+            if (form.getCustomerId() != null) {
+                predicates.add(cb.equal(root.get("customerId"), form.getCustomerId()));
+            }
+
+            if (form.getStart() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("outboundDate"), form.getStart()));
+            }
+
+            if (form.getEnd() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("outboundDate"), form.getEnd()));
+            }
+
+            if (StringUtils.isNotBlank(form.getFilter())) {
+                predicates.add(cb.like(root.get("orderNo"), "%" + form.getFilter() + "%"));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        long totalSize = salesOutboundItemRepository.count(spec);
+        //查询销售出库单
+        List<SalesOutboundItem> list = salesOutboundItemRepository.findAll(spec);
+
+        List<SalesReportItemDTO> dtos = list.stream()
+                .map(item -> {
+                    SalesReportItemDTO dto = new SalesReportItemDTO();
+                    BeanUtils.copyProperties(item, dto);
+                    // 设置额外的属性
+//                    dto.setCustomerName(item.getSalesOutbound().getCustomer().getName());
+//                    dto.setProductName(item.getProduct().getName());
+//                    dto.setProductCode(item.getProduct().getCode());
+//                    dto.setWarehouseName(item.getWarehouse().getName());
+//                    dto.setUnitName(item.getBaseUnit().getName());
+//                    dto.setOrderNo(item.getSalesOutbound().getOrderNo());
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        //根据销售出库单中的退货单id,查询出已经退货的商品
+        Specification<SalesReturnItem> returnSpec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            //根据
+            List<Long> salesReturnIdList = new ArrayList<>();
+            predicates.add(root.get("salesReturnId").in(salesReturnIdList));
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        List<SalesReturnItem> returnList = salesReturnItemRepository.findAll(returnSpec);
+
 
         return new PageResults<>(dtos, page, totalSize);
     }

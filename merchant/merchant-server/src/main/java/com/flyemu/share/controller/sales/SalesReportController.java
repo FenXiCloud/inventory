@@ -7,6 +7,7 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.form.SalesOrderForm;
+import com.flyemu.share.form.SalesReportForm;
 import com.flyemu.share.service.sales.SalesOrderService;
 import com.flyemu.share.service.sales.SalesReportService;
 import jakarta.validation.Valid;
@@ -45,6 +46,27 @@ public class SalesReportController {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(salesReportService.salesItem(page, query));
+    }
+
+    /**
+     * 销售汇总报表
+     *
+     * @param page
+     * @param salesReportForm
+     * @param accountBookId
+     * @param merchantId
+     * @return
+     */
+    @GetMapping("/salesSummary")
+    public JsonResult salesSummary(
+            Page page,
+            SalesReportForm salesReportForm,
+            @SaAccountBookId Long accountBookId,
+            @SaMerchantId Long merchantId
+    ) {
+        salesReportForm.setMerchantId(merchantId);
+        salesReportForm.setAccountBookId(accountBookId);
+        return JsonResult.successful(salesReportService.salesSummary(page, salesReportForm));
     }
 
 }

@@ -61,6 +61,7 @@ public class SalesReportService extends AbsService {
     private final SalesOutboundRepository salesOutboundRepository;
     private final ProductRepository productRepository;
     private final UnitRepository unitRepository;
+    private final WarehouseRepository warehouseRepository;
 
 
     public PageResults<SalesReportItemDTO> salesItem(Page page, SalesReportService.Query query) {
@@ -222,6 +223,7 @@ public class SalesReportService extends AbsService {
 
         List<Product> productList = productRepository.findAll();
         List<Unit> unitList = unitRepository.findAll();
+        List<Warehouse> warehouseList = warehouseRepository.findAll();
 
         String salesGroup = form.getSalesGroup();
 
@@ -267,44 +269,59 @@ public class SalesReportService extends AbsService {
                     if (outboundItemProductId.equals(returnItemProductId)) {
                         //计算销售数量
                         outboundItem.setQuantity(outboundItem.getQuantity() - returnItem.getQuantity());
-//                        if (outboundItem.getWarehouseId().equals(returnItem.getWarehouseId())){
-//
-//                        }
                     }
-
                 }
             }
 
         } else if (StringUtils.equals("PRODUCT_WAREHOUSE",salesGroup)){
-            // Group by both productId and warehouseId
-            Map<String, SalesReportItemDTO> productWarehouseSummary = outboundItemList.stream()
-                    .collect(Collectors.groupingBy(
-                            item -> item.getProductId() + "-" + item.getWarehouseId(),
-                            Collectors.collectingAndThen(
-                                    Collectors.toList(),
-                                    items -> {
-                                        SalesReportItemDTO dto = new SalesReportItemDTO();
-                                        SalesOutboundItem firstItem = items.get(0);
-                                        dto.setProductId(firstItem.getProductId());
-//                                        dto.setProductName(firstItem.getProductName());
-//                                        dto.setProductCode(firstItem.getProductCode());
-//                                        dto.setUnitName(firstItem.getUnitName());
-                                        dto.setWarehouseId(firstItem.getWarehouseId());
-//                                        dto.setWarehouseName(firstItem.getWarehouseName());
+            Map<String, SalesReportItemDTO> productWarehouseSummary = outboundItemList.stream().collect(Collectors.groupingBy(item -> item.getProductId() + "-" + item.getWarehouseId(),
+                Collectors.collectingAndThen(Collectors.toList(),
+                    items -> {
+                        SalesReportItemDTO dto = new SalesReportItemDTO();
+                        SalesOutboundItem firstItem = items.get(0);
+                        dto.setProductId(firstItem.getProductId());
+                        //产品信息
+                        Optional<Product> productOptional = productList.stream().filter(product -> product.getId().equals(firstItem.getProductId())).findFirst();
+                        productOptional.ifPresent(product -> {
+                            dto.setProductName(product.getName());
+                            dto.setProductCode(product.getCode());
+                        });
+                        //单位信息
+                        Long baseUnitId = firstItem.getBaseUnitId();
+                        unitList.stream().filter(unit -> unit.getId().equals(baseUnitId)).findFirst().ifPresent(unit -> {
+                            dto.setUnitName(unit.getName());
+                        });
 
-                                        // Sum up quantities and amounts
-                                        dto.setQuantity(items.stream()
-                                                .mapToDouble(SalesOutboundItem::getQuantity)
-                                                .sum());
-                                        dto.setSubtotal(items.stream()
-                                                .map(SalesOutboundItem::getSubtotal)
-                                                .reduce(BigDecimal.ZERO, BigDecimal::add));
-                                        return dto;
-                                    }
-                            )
-                    ));
-
+                        Long warehouseId = firstItem.getWarehouseId();
+                        dto.setWarehouseId(warehouseId);
+                        warehouseList.stream().filter(warehouse -> warehouse.getId().equals(warehouseId)).findFirst().ifPresent(warehouse -> {
+                            dto.setWarehouseName(warehouse.getName());
+                        });
+//
+                        dto.setQuantity(items.stream()
+                                .mapToDouble(SalesOutboundItem::getQuantity)
+                                .sum());
+                        dto.setSubtotal(items.stream()
+                                .map(SalesOutboundItem::getSubtotal)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add));
+                        return dto;
+                    }
+                )
+            ));
             dtos.addAll(productWarehouseSummary.values());
+            //计算退货数据
+            for (SalesReportItemDTO outboundItem : dtos) {
+                Long outboundItemProductId = outboundItem.getProductId();
+                for (SalesReturnItem returnItem : returnItemList) {
+                    Long returnItemProductId = returnItem.getProductId();
+                    if (outboundItem.getWarehouseId().equals(returnItem.getWarehouseId())){
+                        if (outboundItemProductId.equals(returnItemProductId)) {
+                            //计算销售数量
+                            outboundItem.setQuantity(outboundItem.getQuantity() - returnItem.getQuantity());
+                        }
+                    }
+                }
+            }
         }
 
         //返回分页数据

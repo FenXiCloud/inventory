@@ -2,18 +2,24 @@ package com.flyemu.share.service.inventory;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.InventoryReportDto;
+import com.flyemu.share.entity.basic.QProduct;
+import com.flyemu.share.entity.basic.QProductCategory;
+import com.flyemu.share.entity.basic.QUnit;
+import com.flyemu.share.entity.basic.QWarehouse;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
 import com.flyemu.share.repository.InventoryRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Query;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +57,14 @@ public class InventoryService extends AbsService {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    private final static QProduct qProduct = QProduct.product;
+
+    private final static QProductCategory qProductCategory = QProductCategory.productCategory;
+
+    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
+
+    private final static QUnit qUnit = QUnit.unit;
 
     public PageResults<Inventory> query(Page page, Query query) {
         PagedList<Inventory> fetchPage = bqf.selectFrom(qInventory).where(query.builder).where(query.builders())
@@ -261,6 +275,51 @@ public class InventoryService extends AbsService {
         return nativeQuery.getResultList();
     }
 
+    /**
+     * 库存余额统计
+     */
+    public PageResults<InventoryReportDto> report(Page page, Query query) {
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qInventory)
+                .select(
+                        qProduct.id.as("productId"),
+                        qProduct.code.as("productCode"),
+                        qProduct.name.as("productName"),
+                        qProductCategory.name.as("productCategoryName"),
+                        qProduct.specification.as("productSpecification"),
+                        qUnit.name.as("productUnitName")
+                )
+                .leftJoin(qProduct).on(qInventory.productId.eq(qProduct.id))
+                .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventory.warehouseId))
+                .where(query.builders())
+                .groupBy(qProduct.id)
+                .orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+        List<InventoryReportDto> dtos = new ArrayList<>();
+        InventoryReportDto dto;
+        for (Tuple tuple : fetchPage) {
+            dto = new InventoryReportDto();
+            dto.setProductId(tuple.get(qProduct.id.as("productId")));
+            dto.setProductCode(tuple.get(qProduct.code.as("productCode")));
+            dto.setProductName(tuple.get(qProduct.name.as("productName")));
+            dto.setProductCategoryName(tuple.get(qProductCategory.name.as("productCategoryName")));
+            dto.setProductSpecification(tuple.get(qProduct.specification.as("productSpecification")));
+            dto.setProductUnitName(tuple.get(qUnit.name.as("productUnitName")));
+            dtos.add(dto);
+        }
+        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+    }
+
+    public List<Inventory> reportInventory(Query query) {
+        return jqf.selectFrom(qInventory)
+                .leftJoin(qWarehouse).on(qInventory.warehouseId.eq(qWarehouse.id))
+                .leftJoin(qProduct).on(qProduct.id.eq(qInventory.productId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .where(query.builders())
+                .orderBy(qInventory.productId.desc())
+                .fetch();
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
@@ -268,6 +327,10 @@ public class InventoryService extends AbsService {
         private Long warehouseId;
 
         private Long productId;
+
+        private Long productCategoryId;
+
+        private String filter;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -287,6 +350,15 @@ public class InventoryService extends AbsService {
             }
             if (productId != null) {
                 builder.and(qInventory.productId.eq(productId));
+            }
+            if (productCategoryId != null) {
+                builder.and(qProductCategory.id.eq(productCategoryId));
+            }
+            if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
+                builder.and(qProduct.name.contains(filter))
+                        .or(qProduct.code.contains(filter))
+                        .or(qProductCategory.name.contains(filter))
+                        .or(qProduct.specification.contains(filter));
             }
             return builder;
         }

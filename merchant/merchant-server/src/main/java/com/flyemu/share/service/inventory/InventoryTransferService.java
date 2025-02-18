@@ -8,6 +8,9 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.InventoryTransferDto;
+import com.flyemu.share.entity.basic.QProduct;
+import com.flyemu.share.entity.basic.QProductCategory;
+import com.flyemu.share.entity.basic.QUnit;
 import com.flyemu.share.entity.basic.QWarehouse;
 import com.flyemu.share.entity.inventory.*;
 import com.flyemu.share.entity.setting.QAdmin;
@@ -19,6 +22,11 @@ import com.flyemu.share.repository.InventoryTransferRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.core.types.dsl.StringTemplate;
+import com.querydsl.core.util.BeanMap;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +66,16 @@ public class InventoryTransferService extends AbsService {
     private final static QWarehouse formQWarehouse = new QWarehouse("form_warehouse");
 
     private final static QAdmin qAdmin = QAdmin.admin;
+
+    private final static QInventoryTransferItem qInventoryTransferItem = QInventoryTransferItem.inventoryTransferItem;
+
+    private final static QProduct qProduct = QProduct.product;
+
+    private final static QProductCategory qProductCategory = QProductCategory.productCategory;
+
+    private final static QUnit qUnit = QUnit.unit;
+
+    private final static QInventory qInventory = QInventory.inventory;
 
 
     public PageResults<InventoryTransferDto> query(Page page, InventoryTransferService.Query query) {
@@ -252,35 +270,77 @@ public class InventoryTransferService extends AbsService {
         });
     }
 
-    /**
-     * 获取库存明细列表
-     *
-     * @param inventoryTransferItem 调拨单明细
-     * @param baseUnitId            单位id
-     * @param orderNo               订单号
-     * @return inventoryItem
-     */
-    private InventoryItem getInventoryItem(InventoryTransferItem inventoryTransferItem,
-                                           Long baseUnitId, String orderNo) {
-        InventoryItem inventoryItem = new InventoryItem();
-        inventoryItem.setWarehouseId(inventoryTransferItem.getToWarehouseId());
-        inventoryItem.setProductId(inventoryTransferItem.getProductId());
-        double parsed = Double.parseDouble(inventoryTransferItem.getQuantity().toString());
-        inventoryItem.setQuantity((int) parsed);
-        inventoryItem.setBaseUnitId(baseUnitId);
-        inventoryItem.setOperationType(OperationType.调拨);
-        inventoryItem.setOrderId(inventoryTransferItem.getInventoryTransferId());
-        inventoryItem.setBatchNumber(orderNo);
-        inventoryItem.setMerchantId(inventoryTransferItem.getMerchantId());
-        inventoryItem.setAccountBookId(inventoryTransferItem.getAccountBookId());
-        inventoryItem.setCreatedAt(LocalDateTime.now());
-        inventoryItem.setCreatedBy(inventoryTransferItem.getCreatedBy());
-        return inventoryItem;
-    }
-
     public List<Map<String, Object>> load(Long id) {
-        //todo 获取调拨单信息待优化
-        return inventoryTransferRepository.findInventoryTransferById(id);
+        StringTemplate dateExpressions = Expressions.
+                stringTemplate("DATE_FORMAT({0},'%Y-%m-%d')", qInventoryTransfer.transferDate);
+        NumberExpression<Integer> numberExpression = new CaseBuilder()
+                .when(qInventoryTransferItem.productId.eq(qInventory.productId))
+                .then(qInventory.currentQuantity)
+                .otherwise(0);
+        List<Tuple> fetch = jqf.selectFrom(qInventoryTransfer)
+                .select(
+                        qInventoryTransfer.id.as("id"),
+                        dateExpressions.as("transferDate"),
+                        qInventoryTransfer.orderStatus.as("orderStatus"),
+                        qInventoryTransfer.FromWarehouseId.as("fromWarehouseId"),
+                        qInventoryTransfer.ToWarehouseId.as("toWarehouseId"),
+                        formQWarehouse.name.as("fromWarehouseName"),
+                        toQWarehouse.name.as("toWarehouseName"),
+                        qAdmin.name.as("adminName"),
+                        qInventoryTransfer.remarks.as("remarks"),
+                        qInventoryTransferItem.id.as("itemId"),
+                        qProduct.id.as("productId"),
+                        qProduct.imgPath.as("productUrl"),
+                        qProduct.code.as("productCode"),
+                        qProduct.name.as("productName"),
+                        qProduct.specification.as("productSpecification"),
+                        qProduct.productCategoryId.as("productCategoryId"),
+                        qProductCategory.name.as("productCategoryName"),
+                        qProduct.unitId.as("productUnitId"),
+                        qUnit.name.as("productUnitName"),
+                        qInventoryTransferItem.quantity.as("quantity"),
+                        qInventory.currentQuantity.sum().as("warehouseTotal"),
+                        numberExpression.sum().as("warehouseQuantity")
+                )
+                .leftJoin(qInventoryTransferItem).on(qInventoryTransferItem.inventoryTransferId.eq(qInventoryTransfer.id))
+                .leftJoin(qProduct).on(qProduct.id.eq(qInventoryTransferItem.productId))
+                .leftJoin(qInventory).on(qInventory.warehouseId.eq(qInventoryTransfer.FromWarehouseId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+                .leftJoin(qAdmin).on(qAdmin.id.eq(qInventoryTransfer.createdBy))
+                .leftJoin(toQWarehouse).on(toQWarehouse.id.eq(qInventoryTransfer.ToWarehouseId))
+                .leftJoin(formQWarehouse).on(formQWarehouse.id.eq(qInventoryTransfer.FromWarehouseId))
+                .where(qInventoryTransfer.id.eq(id))
+                .groupBy(qInventoryTransferItem.id).fetch();
+        List<Map<String, Object>> result = new ArrayList<>();
+        Map<String, Object> item;
+        for (Tuple tuple : fetch) {
+            item = new HashMap<>();
+            item.put("id", tuple.get(qInventoryTransfer.id.as("id")));
+            item.put("transferDate", tuple.get(dateExpressions.as("transferDate")));
+            item.put("orderStatus", tuple.get(qInventoryTransfer.orderStatus.as("orderStatus")));
+            item.put("fromWarehouseId", tuple.get(qInventoryTransfer.FromWarehouseId.as("fromWarehouseId")));
+            item.put("toWarehouseId", tuple.get(qInventoryTransfer.ToWarehouseId.as("toWarehouseId")));
+            item.put("fromWarehouseName", tuple.get(formQWarehouse.name.as("fromWarehouseName")));
+            item.put("toWarehouseName", tuple.get(toQWarehouse.name.as("toWarehouseName")));
+            item.put("adminName", tuple.get(qAdmin.name.as("adminName")));
+            item.put("remarks", tuple.get(qInventoryTransfer.remarks.as("remarks")));
+            item.put("itemId", tuple.get(qInventoryTransferItem.id.as("itemId")));
+            item.put("productId", tuple.get(qProduct.id.as("productId")));
+            item.put("productUrl", tuple.get(qProduct.imgPath.as("productUrl")));
+            item.put("productCode", tuple.get(qProduct.code.as("productCode")));
+            item.put("productName", tuple.get(qProduct.name.as("productName")));
+            item.put("productSpecification", tuple.get(qProduct.specification.as("productSpecification")));
+            item.put("productCategoryId", tuple.get(qProductCategory.name.as("productCategoryName")));
+            item.put("productCategoryName", tuple.get(qProduct.specification.as("productSpecification")));
+            item.put("productUnitId", tuple.get(qProduct.unitId.as("productUnitId")));
+            item.put("productUnitName", tuple.get(qUnit.name.as("productUnitName")));
+            item.put("quantity", tuple.get(qInventoryTransferItem.quantity.as("quantity")));
+            item.put("warehouseTotal", tuple.get(qInventory.currentQuantity.sum().as("warehouseTotal")));
+            item.put("warehouseQuantity", tuple.get(numberExpression.sum().as("warehouseQuantity")));
+            result.add(item);
+        }
+        return result;
     }
 
     @Data

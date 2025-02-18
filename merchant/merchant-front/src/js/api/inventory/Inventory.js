@@ -23,4 +23,10 @@ export default {
     products(param) {
         return Ajax.get("/inventory/products", param);
     },
+    report(param) {
+        return Ajax.get("/inventory/report", param);
+    },
+    reportInventory(param) {
+        return Ajax.get("/inventory/reportInventory", param);
+    },
 }

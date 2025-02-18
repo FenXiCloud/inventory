@@ -22,6 +22,8 @@ import com.flyemu.share.service.basic.UnitService;
 import com.flyemu.share.service.basic.WarehouseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.StringTemplate;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +67,14 @@ public class StockTakeService extends AbsService {
     private final static QAdmin qAdmin = QAdmin.admin;
 
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
+
+    private final static QStockTakeItem qStockTakeItem = QStockTakeItem.stockTakeItem;
+
+    private final static QProduct qProduct = QProduct.product;
+
+    private final static QProductCategory qProductCategory = QProductCategory.productCategory;
+
+    private final static QUnit qUnit = QUnit.unit;
 
     public PageResults<StockTakeDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qStockTake)
@@ -134,7 +144,69 @@ public class StockTakeService extends AbsService {
     }
 
     public List<Map<String, Object>> load(Long id) {
-        return stockTakeRepository.load(id);
+        StringTemplate dateExpressions = Expressions.
+                stringTemplate("DATE_FORMAT({0},'%Y-%m-%d')", qStockTake.checkDate);
+        List<Tuple> fetch = jqf.selectFrom(qStockTake)
+                .select(
+                        qStockTake.id.as("id"),
+                        dateExpressions.as("checkDate"),
+                        qStockTake.remarks.as("remarks"),
+                        qStockTake.warehouseId.as("mainWarehouseId"),
+                        qStockTakeItem.id.as("itemId"),
+                        qStockTakeItem.actualQuantity.as("actualQuantity"),
+                        qStockTakeItem.systemQuantity.as("systemQuantity"),
+                        qStockTakeItem.warehouseId.as("warehouseId"),
+                        qWarehouse.name.as("warehouseName"),
+                        qProduct.name.as("productName"),
+                        qProduct.code.as("productCode"),
+                        qProduct.imgPath.as("productImgPath"),
+                        qProduct.specification.as("productSpecification"),
+                        qProductCategory.name.as("productCategoryName"),
+                        qUnit.id.as("baseUnitId"),
+                        qUnit.name.as("productUnitName"),
+                        qAdmin.name.as("adminName"),
+                        qStockTakeItem.differenceReason.as("differenceReason")
+                )
+                .leftJoin(qStockTakeItem).on(qStockTakeItem.StockTakeId.eq(qStockTake.id))
+                .leftJoin(qProduct).on(qProduct.id.eq(qStockTakeItem.productId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qStockTakeItem.warehouseId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+                .leftJoin(qAdmin).on(qAdmin.id.eq(qStockTake.createdBy))
+                .where(qStockTake.id.eq(id))
+                .fetch();
+        List<Map<String, Object>> result = new ArrayList<>();
+        Map<String, Object> item;
+        for (Tuple tuple : fetch) {
+            item = new HashMap<>();
+            Integer actualQuantity = tuple.get(qStockTakeItem.actualQuantity.as("actualQuantity"));
+            Integer systemQuantity = tuple.get(qStockTakeItem.systemQuantity.as("systemQuantity"));
+            item.put("id", tuple.get(qStockTake.id.as("id")));
+            item.put("checkDate", tuple.get(dateExpressions.as("checkDate")));
+            item.put("remarks", tuple.get(qStockTake.remarks.as("remarks")));
+            item.put("mainWarehouseId", tuple.get(qStockTake.warehouseId.as("warehouseId")));
+            item.put("itemId", tuple.get(qStockTakeItem.id.as("itemId")));
+            item.put("actualQuantity", actualQuantity);
+            item.put("systemQuantity", systemQuantity);
+            item.put("warehouseId", tuple.get(qStockTakeItem.warehouseId.as("warehouseId")));
+            item.put("warehouseName", tuple.get(qWarehouse.name.as("warehouseName")));
+            item.put("productName", tuple.get(qProduct.name.as("productName")));
+            item.put("productCode", tuple.get(qProduct.code.as("productCode")));
+            item.put("productImgPath", tuple.get(qProduct.imgPath.as("productImgPath")));
+            item.put("productSpecification", tuple.get(qProduct.specification.as("productSpecification")));
+            item.put("productCategoryName", tuple.get(qProductCategory.name.as("productCategoryName")));
+            item.put("baseUnitId", tuple.get(qUnit.id.as("baseUnitId")));
+            item.put("productUnitName", tuple.get(qUnit.name.as("productUnitName")));
+            item.put("adminName", tuple.get(qAdmin.name.as("adminName")));
+            if (actualQuantity != null && systemQuantity != null) {
+                item.put("deficient", actualQuantity - systemQuantity);
+            } else {
+                item.put("deficient", 0);
+            }
+            item.put("differenceReason", tuple.get(qStockTakeItem.differenceReason.as("differenceReason")));
+            result.add(item);
+        }
+        return result;
     }
 
     @Transactional

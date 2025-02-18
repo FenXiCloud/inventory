@@ -504,6 +504,7 @@ export default {
               this.form.outboundType = data[0].outboundType;
               this.form.orderDate = data[0].inboundDate;
               this.form.adminName = data[0].adminName;
+              this.form.orderStatus = data[0].orderStatus;
               let totalAmount = 0;
               let totalQuantity = 0;
               data.forEach(item => {

@@ -42,11 +42,11 @@
         </vxe-column>
         <vxe-column title="单据编号" field="orderNo" align="center" width="230"/>
         <vxe-column title="单据日期" field="transferDate" align="center" width="230"/>
-<!--        <vxe-column title="单据来源" field="code" width="200"/>-->
+        <!--        <vxe-column title="单据来源" field="code" width="200"/>-->
         <vxe-column title="调出仓库" field="fromWarehouseName" width="200"/>
         <vxe-column title="调入仓库" field="toWarehouseName" min-width="200"/>
         <vxe-column title="制单人" field="createdByName" width="120"/>
-<!--        <vxe-column title="打印次数" field="discountAmount" width="120"/>-->
+        <!--        <vxe-column title="打印次数" field="discountAmount" width="120"/>-->
         <vxe-column title="单据备注" field="remarks" align="center" width="300"/>
         <vxe-column title="审核状态" field="orderStatus" width="150"/>
 
@@ -59,7 +59,7 @@
                  :total="pagination.total"
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
+          <!-- <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span> -->
           <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>

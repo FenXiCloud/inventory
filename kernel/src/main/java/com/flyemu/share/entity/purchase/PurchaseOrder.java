@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
@@ -68,6 +69,7 @@ public class PurchaseOrder {
     private Long createdBy;
 
     @Comment("创建时间")
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Comment("审核人")

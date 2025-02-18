@@ -3,8 +3,8 @@
     <vxe-toolbar>
       <template #buttons>
         <Button @click="addForm()" color="primary">新增</Button>
-        <Button>审核</Button>
-        <Button>反审核</Button>
+        <Button @click="approved()">审核</Button>
+        <Button @click="backApproved()">反审核</Button>
       </template>
       <template #tools>
         <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
@@ -15,7 +15,7 @@
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/客户名称" @search="doSearch">
+                placeholder="请输入订单号/供货商名称" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -36,8 +36,14 @@
         <vxe-column type="checkbox" width="40" align="center"/>
         <vxe-column title="操作" align="center" width="120">
           <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="addForm('edit',row.id)">编辑</span>
-            <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
+            <template v-if="row.orderStatus === '已保存'">
+              <span class="primary-color  text-hover ml-10px" @click="addForm('edit',row.id)">编辑</span>
+              <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
+            </template>
+            <template v-if="row.orderStatus === '已审核'">
+              <span class="primary-color  text-hover ml-10px" @click="detail(row.id)">详情</span>
+            </template>
+
           </template>
         </vxe-column>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
@@ -48,7 +54,7 @@
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
         <vxe-column title="制单人" field="createdName" align="center" width="100"/>
-        <vxe-column title="制单时间" field="orderDate" align="center" width="100"/>
+        <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
         <vxe-column title="审核状态" field="orderStatus" width="80"/>
 
       </vxe-table>
@@ -122,6 +128,60 @@ export default {
         params: {type: type, orderId: orderId}
       });
     },
+    detail(orderId = null) {
+      this.pushTab({
+        key: 'PurchaseOrderDetail',
+        title: '采购订单',
+        params: {orderId: orderId}
+      });
+    },
+    approved() {
+      let checkList = this.$refs.table.getCheckboxRecords();
+      console.log(checkList);
+      if (checkList.length) {
+        let ids = checkList.filter(val => val.orderStatus == '已保存').map(val => val.id);
+        if (ids.length) {
+          confirm({
+            title: "批量审核提示",
+            content: `本次审核${ids.length}条?`,
+            onConfirm: () => {
+              PurchaseOrder.approved('已审核', ids).then(() => {
+                message("操作成功~");
+                this.$refs.table.clearCheckboxRow()
+                this.loadList();
+              })
+            }
+          })
+        } else {
+          message.error("未找到需要审核数据~");
+        }
+      } else {
+        message.error("未选择数据~");
+      }
+    },
+    backApproved() {
+      let checkList = this.$refs.table.getCheckboxRecords();
+      if (checkList.length) {
+        let ids = checkList.filter(val => val.orderStatus == '已审核').map(val => val.id);
+        if (ids.length) {
+          confirm({
+            title: "批量反审核提示",
+            content: `本次反审核${ids.length}条?`,
+            onConfirm: () => {
+              PurchaseOrder.approved('已保存', ids).then(() => {
+                message("操作成功~");
+                this.$refs.table.clearCheckboxRow()
+                this.loadList();
+              })
+            }
+          })
+        } else {
+          message.error("未找到需要反审核数据~");
+        }
+      } else {
+        message.error("未选择数据~");
+      }
+    },
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {
@@ -142,7 +202,7 @@ export default {
       this.pagination.page = 1;
       this.loadList();
     },
-    loadList(type = true) {
+    loadList() {
       this.loading = true;
       PurchaseOrder.list(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];

@@ -1,10 +1,13 @@
 package com.flyemu.share.controller.purchase;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.purchase.PurchaseInbound;
+import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.form.PurchaseInboundForm;
 import com.flyemu.share.service.purchase.PurchaseInboundService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,16 +35,18 @@ public class PurchaseInboundController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PurchaseInbound purchaseInbound, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        purchaseInbound.setMerchantId(merchantId);
-        purchaseInbound.setAccountBookId(accountBookId);
-        purchaseInboundService.save(purchaseInbound);
+    public JsonResult save(@RequestBody @Valid PurchaseInboundForm purchaseInboundForm, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+        purchaseInboundForm.getPurchaseInbound().setCreatedBy(adminId);
+        purchaseInboundForm.getPurchaseInbound().setMerchantId(merchantId);
+        purchaseInboundForm.getPurchaseInbound().setAccountBookId(accountBookId);
+        purchaseInboundForm.getPurchaseInbound().setOrderStatus(OrderStatus.已保存);
+        purchaseInboundService.save(purchaseInboundForm, merchantId);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PurchaseInbound purchaseInbound) {
-        purchaseInboundService.save(purchaseInbound);
+    public JsonResult update(@RequestBody @Valid PurchaseInboundForm purchaseInboundForm, @SaMerchantId Long merchantId) {
+        purchaseInboundService.save(purchaseInboundForm, merchantId);
         return JsonResult.successful();
     }
 

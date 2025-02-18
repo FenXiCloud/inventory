@@ -1,13 +1,15 @@
 package com.flyemu.share.dto.purchase;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+
 /**
- * @功能描述: 采购订单明细Dto
+ * @功能描述: 采购入库单明细Dto
  * @创建时间: 2025/2/17
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -15,14 +17,14 @@ import java.time.LocalDateTime;
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
-public class PurchaseOrderItemDto {
+public class PurchaseInboundItemDto {
 
     private Long id;
 
     /**
-     * 采购订单主表ID
+     * 采购入库单主表ID
      */
-    private Long purchaseOrderId;
+    private Long PurchaseInboundId;
 
     /**
      * 产品ID

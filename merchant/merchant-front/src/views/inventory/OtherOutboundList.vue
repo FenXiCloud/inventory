@@ -154,6 +154,11 @@ export default {
       OtherOutbound.list(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
+        let amountTotal = 0;
+        this.dataList.forEach(item => {
+          amountTotal += Number(item.totalAmount);
+        });
+        this.amountTotal = amountTotal;
       }).finally(() => this.loading = false);
     },
     auditsForm(type) {

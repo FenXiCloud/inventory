@@ -8,8 +8,7 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.OtherInboundDto;
-import com.flyemu.share.entity.basic.QCustomer;
-import com.flyemu.share.entity.basic.QSupplier;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
 import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.enums.ApproveType;
@@ -21,6 +20,8 @@ import com.flyemu.share.repository.OtherInboundRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.StringTemplate;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +62,14 @@ public class OtherInboundService extends AbsService {
     private final static QCustomer qCustomer = QCustomer.customer;
 
     private final static QSupplier qSupplier = QSupplier.supplier;
+
+    private final static QProduct qProduct = QProduct.product;
+
+    private final static QProductCategory qProductCategory = QProductCategory.productCategory;
+
+    private final static QUnit qUnit = QUnit.unit;
+
+    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
 
 
     public PageResults<OtherInboundDto> query(Page page, Query query) {
@@ -231,8 +240,71 @@ public class OtherInboundService extends AbsService {
     }
 
     public List<Map<String, Object>> load(Long id) {
-        //todo 获取入库信息待优化
-        return otherInboundRepository.findOtherInboundById(id);
+        StringTemplate dateExpressions = Expressions.
+                stringTemplate("DATE_FORMAT({0},'%Y-%m-%d')", qOtherInbound.inboundDate);
+        List<Tuple> fetch = jqf.selectFrom(qOtherInbound)
+                .select(
+                        qOtherInbound.id.as("id"),
+                        dateExpressions.as("inboundDate"),
+                        qOtherInbound.customerId.as("customerId"),
+                        qOtherInbound.supplierId.as("supplierId"),
+                        qOtherInbound.inboundType.as("inboundType"),
+                        qOtherInbound.orderStatus.as("orderStatus"),
+                        qOtherInbound.remarks.as("remarks"),
+                        qOtherInboundItem.id.as("itemId"),
+                        qProduct.id.as("productId"),
+                        qProduct.imgPath.as("productUrl"),
+                        qProduct.code.as("productCode"),
+                        qProduct.name.as("productName"),
+                        qProduct.specification.as("productSpecification"),
+                        qProduct.productCategoryId.as("productCategoryId"),
+                        qProductCategory.name.as("productCategoryName"),
+                        qProduct.unitId.as("productUnitId"),
+                        qUnit.name.as("productUnitName"),
+                        qOtherInboundItem.warehouseId.as("warehouseId"),
+                        qWarehouse.name.as("warehouseName"),
+                        qOtherInboundItem.quantity.as("quantity"),
+                        qOtherInboundItem.unitPrice.as("unitPrice"),
+                        qOtherInboundItem.subtotal.as("subtotal"),
+                        qAdmin.name.as("adminName")
+                )
+                .leftJoin(qOtherInboundItem).on(qOtherInboundItem.otherInboundId.eq(qOtherInbound.id))
+                .leftJoin(qProduct).on(qProduct.id.eq(qOtherInboundItem.productId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+                .leftJoin(qAdmin).on(qAdmin.id.eq(qOtherInbound.createdBy))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qOtherInboundItem.warehouseId))
+                .where(qOtherInbound.id.eq(id)).fetch();
+        List<Map<String, Object>> result = new ArrayList<>();
+        Map<String, Object> item;
+        for (Tuple tuple : fetch) {
+            item = new HashMap<>();
+            item.put("id", tuple.get(qOtherInbound.id.as("id")));
+            item.put("inboundDate", tuple.get(dateExpressions.as("inboundDate")));
+            item.put("customerId", tuple.get(qOtherInbound.customerId.as("customerId")));
+            item.put("supplierId", tuple.get(qOtherInbound.supplierId.as("supplierId")));
+            item.put("inboundType", tuple.get(qOtherInbound.inboundType.as("inboundType")));
+            item.put("remarks", tuple.get(qOtherInbound.remarks.as("remarks")));
+            item.put("orderStatus", tuple.get(qOtherInbound.orderStatus.as("orderStatus")));
+            item.put("itemId", tuple.get(qOtherInboundItem.id.as("itemId")));
+            item.put("productId", tuple.get(qProduct.id.as("productId")));
+            item.put("productUrl", tuple.get(qProduct.imgPath.as("productUrl")));
+            item.put("productCode", tuple.get(qProduct.id.as("productId")));
+            item.put("productName", tuple.get(qProduct.imgPath.as("productUrl")));
+            item.put("productCategoryId", tuple.get(qProductCategory.name.as("productCategoryName")));
+            item.put("productSpecification", tuple.get(qProduct.specification.as("productSpecification")));
+            item.put("productCategoryName", tuple.get(qProduct.specification.as("productSpecification")));
+            item.put("productUnitId", tuple.get(qProduct.unitId.as("productUnitId")));
+            item.put("productUnitName", tuple.get(qUnit.name.as("productUnitName")));
+            item.put("warehouseId", tuple.get(qOtherInboundItem.warehouseId.as("warehouseId")));
+            item.put("warehouseName", tuple.get(qWarehouse.name.as("warehouseName")));
+            item.put("quantity", tuple.get(qOtherInboundItem.quantity.as("quantity")));
+            item.put("unitPrice", tuple.get(qOtherInboundItem.unitPrice.as("unitPrice")));
+            item.put("subtotal", tuple.get(qOtherInboundItem.subtotal.as("subtotal")));
+            item.put("adminName", tuple.get(qAdmin.name.as("adminName")));
+            result.add(item);
+        }
+        return result;
     }
 
     public List<OtherInbound> findByStockTakeId(Long stockTakeId) {

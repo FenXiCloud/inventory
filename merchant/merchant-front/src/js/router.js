@@ -83,6 +83,10 @@ const groupRoutes = [
         component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundList.vue'))
     },
     {
+        name: 'PurchaseInboundForm',
+        component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundForm.vue'))
+    },
+    {
         name: 'PurchaseReturnList',
         component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnList.vue'))
     },

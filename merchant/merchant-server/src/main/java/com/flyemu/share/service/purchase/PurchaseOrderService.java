@@ -10,13 +10,11 @@ import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.dto.PurchaserOrderDto;
+import com.flyemu.share.dto.purchase.PurchaseInboundItemDto;
+import com.flyemu.share.dto.purchase.PurchaseOrderDto;
 import com.flyemu.share.dto.purchase.PurchaseOrderItemDto;
 import com.flyemu.share.entity.basic.*;
-import com.flyemu.share.entity.purchase.PurchaseOrder;
-import com.flyemu.share.entity.purchase.PurchaseOrderItem;
-import com.flyemu.share.entity.purchase.QPurchaseOrder;
-import com.flyemu.share.entity.purchase.QPurchaseOrderItem;
+import com.flyemu.share.entity.purchase.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.PurchaseOrderForm;
@@ -39,6 +37,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static org.sagacity.sqltoy.config.model.OperateType.page;
 
 /**
  * @功能描述: 销售订单
@@ -65,16 +65,16 @@ public class PurchaseOrderService extends AbsService {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final PurchaseOrderItemRepository purchaseOrderItemRepository;
 
-    public PageResults<PurchaserOrderDto> query(Page page, Query query) {
+    public PageResults<PurchaseOrderDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseOrder)
                 .select(qPurchaseOrder, qSupplier.name, qMerchantUser.name)
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseOrder.createdBy))
                 .where(query.builder).orderBy(qPurchaseOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
-        List<PurchaserOrderDto> dtos = new ArrayList<>();
+        List<PurchaseOrderDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            PurchaserOrderDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrder), PurchaserOrderDto.class);
+            PurchaseOrderDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrder), PurchaseOrderDto.class);
             dto.setSupplierName(tuple.get(qSupplier.name));
             dto.setCreatedName(tuple.get(qMerchantUser.name));
             dtos.add(dto);
@@ -83,11 +83,36 @@ public class PurchaseOrderService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
+    public List<PurchaseInboundItemDto> loadToInbound(List<Long> orderIds, Long merchantId, Long supplierId) {
+        QUnit qUnit1 = new QUnit("id");
+
+        List<PurchaseInboundItemDto> collect = bqf.selectFrom(qPurchaseOrderItem)
+                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,
+                        qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
+                .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseOrderItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
+                .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseOrderItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseOrderItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
+                .where(qPurchaseOrderItem.purchaseOrderId.in(orderIds).and(qPurchaseOrderItem.merchantId.eq(merchantId)))
+                .orderBy(qPurchaseOrderItem.id.asc())
+                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
+                    PurchaseInboundItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrderItem), PurchaseInboundItemDto.class);
+                    dto.setId(null);
+                    dto.setProductCode(tuple.get(qProduct.code));
+                    dto.setProductName(tuple.get(qProduct.name));
+                    dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setWarehouseName(tuple.get(qWarehouse.name));
+                    dto.setSecondaryUnitName(tuple.get(qUnit1.name));
+                    list.add(dto);
+                }, List::addAll);
+        return collect;
+    }
+
     @Transactional
     public PurchaseOrder save(PurchaseOrderForm purchaseOrderForm, Long merchantId) {
         PurchaseOrder order = purchaseOrderForm.getPurchaseOrder();
         if (order.getId() != null) {
-            PurchaseOrder original = purchaseOrderRepository.getById(purchaseOrderForm.getPurchaseOrder().getId());
+            PurchaseOrder original = purchaseOrderRepository.getById(order.getId());
             Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能更新~");
             BeanUtil.copyProperties(order, original, CopyOptions.create().ignoreNullValue());
 
@@ -116,13 +141,12 @@ public class PurchaseOrderService extends AbsService {
             return purchaseOrderRepository.save(original);
         } else {
             order.setOrderNo(codeSeedService.generateCode(purchaseOrderForm.getPurchaseOrder().getMerchantId(), "采购订单"));
-            order.setOrderStatus(OrderStatus.已保存);
             purchaseOrderRepository.save(order);
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
                 d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
 
-//                保存更新购货商品价格
+                //保存更新购货商品价格
                 PriceRecord priceRecord = new PriceRecord();
                 priceRecord.setUnitPrice(d.getUnitPrice());
                 priceRecord.setBaseUnitId(d.getBaseUnitId());
@@ -197,7 +221,7 @@ public class PurchaseOrderService extends AbsService {
 
         QUnit qUnit1 = new QUnit("id");
 
-        PurchaserOrderDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseOrder), PurchaserOrderDto.class);
+        PurchaseOrderDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseOrder), PurchaseOrderDto.class);
         orderDto.setSupplierName(fetchFirst.get(qSupplier.name));
         ArrayList<PurchaseOrderItemDto> collect = jqf.selectFrom(qPurchaseOrderItem)
                 .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,

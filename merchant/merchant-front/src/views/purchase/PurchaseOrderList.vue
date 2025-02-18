@@ -15,7 +15,7 @@
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/客户名称" @search="doSearch">
+                placeholder="请输入订单号/供货商名称" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -54,7 +54,7 @@
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
         <vxe-column title="制单人" field="createdName" align="center" width="100"/>
-        <vxe-column title="制单时间" field="orderDate" align="center" width="100"/>
+        <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
         <vxe-column title="审核状态" field="orderStatus" width="80"/>
 
       </vxe-table>
@@ -128,11 +128,11 @@ export default {
         params: {type: type, orderId: orderId}
       });
     },
-    detail( orderId = null) {
+    detail(orderId = null) {
       this.pushTab({
         key: 'PurchaseOrderDetail',
         title: '采购订单',
-        params: { orderId: orderId}
+        params: {orderId: orderId}
       });
     },
     approved() {

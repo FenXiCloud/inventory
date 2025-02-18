@@ -8,10 +8,13 @@ import lombok.Setter;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.LazyCollection;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
+
 /**
  * @功能描述: 采购入库单
  * @创建时间: 2024年04月28日
@@ -42,7 +45,7 @@ public class PurchaseInbound {
 
     @Comment("入库日期")
     @CreationTimestamp
-    private Date inboundDate;
+    private LocalDate inboundDate;
 
     @Comment("订单金额")
     private BigDecimal totalAmount;
@@ -66,7 +69,7 @@ public class PurchaseInbound {
     private String remarks;
 
     @Comment("订单状态")
-    @Column(nullable = false,length = 32, columnDefinition = "varchar(20) default '已保存'")
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(20) default '已保存'")
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
 
@@ -74,6 +77,7 @@ public class PurchaseInbound {
     private Long createdBy;
 
     @Comment("创建时间")
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Comment("审核人")

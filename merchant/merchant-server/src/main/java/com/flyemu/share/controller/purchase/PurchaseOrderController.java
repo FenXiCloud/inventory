@@ -37,6 +37,11 @@ public class PurchaseOrderController {
         return JsonResult.successful(purchaseOrderService.query(page, query));
     }
 
+    @PostMapping("/toInbound/{supplierId}")
+    public JsonResult list(@RequestBody List<Long> orderIds, @PathVariable Long supplierId, @SaMerchantId Long merchantId) {
+        return JsonResult.successful(purchaseOrderService.loadToInbound(orderIds, merchantId, supplierId));
+    }
+
     @PostMapping
     public JsonResult save(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
         purchaseOrderForm.getPurchaseOrder().setCreatedBy(adminId);

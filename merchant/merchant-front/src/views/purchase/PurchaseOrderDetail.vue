@@ -115,7 +115,6 @@ export default {
   },
 
   created() {
-    console.log("322")
     loading("加载中....");
     //订单详情
     if (this.orderId) {

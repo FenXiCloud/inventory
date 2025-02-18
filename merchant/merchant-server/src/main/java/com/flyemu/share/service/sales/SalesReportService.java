@@ -8,19 +8,13 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
 import com.flyemu.share.dto.SalesReportItemDTO;
-import com.flyemu.share.entity.basic.QCustomer;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QUnit;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.form.SalesReportForm;
-import com.flyemu.share.repository.SalesOrderItemRepository;
-import com.flyemu.share.repository.SalesOrderRepository;
-import com.flyemu.share.repository.SalesOutboundItemRepository;
-import com.flyemu.share.repository.SalesReturnItemRepository;
+import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -42,13 +36,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @功能描述: 销售报表
@@ -64,6 +57,10 @@ public class SalesReportService extends AbsService {
 
     private final SalesOutboundItemRepository salesOutboundItemRepository;
     private final SalesReturnItemRepository salesReturnItemRepository;
+
+    private final SalesOutboundRepository salesOutboundRepository;
+    private final ProductRepository productRepository;
+    private final UnitRepository unitRepository;
 
 
     public PageResults<SalesReportItemDTO> salesItem(Page page, SalesReportService.Query query) {
@@ -171,60 +168,153 @@ public class SalesReportService extends AbsService {
     }
 
     public PageResults<SalesReportItemDTO> salesSummary(Page page, SalesReportForm form) {
-        Specification<SalesOutboundItem> spec = (root, query, cb) -> {
+
+        //销售出库单查询条件
+        Specification<SalesOutbound> salesOutboundSpecification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             // 添加各种条件
             if (form.getCustomerId() != null) {
                 predicates.add(cb.equal(root.get("customerId"), form.getCustomerId()));
             }
-
             if (form.getStart() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("outboundDate"), form.getStart()));
             }
-
             if (form.getEnd() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("outboundDate"), form.getEnd()));
             }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        List<SalesOutbound> salesOutboundList = salesOutboundRepository.findAll(salesOutboundSpecification);
 
-            if (StringUtils.isNotBlank(form.getFilter())) {
-                predicates.add(cb.like(root.get("orderNo"), "%" + form.getFilter() + "%"));
+        //销售出库单idList
+        List<Long> salesOutboundIdList = salesOutboundList.stream().map(SalesOutbound::getId).toList();
+        //销售退货单idList
+        List<Long> salesReturnIdList = salesOutboundList.stream()
+                .map(SalesOutbound::getReturnOrderId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        //销售出库单商品详情查询条件
+        Specification<SalesOutboundItem> salesOutboundItemSpecification = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            //查询销售出库单下面的商品
+            if (!salesOutboundIdList.isEmpty()){
+                predicates.add(root.get("salesOutboundId").in(salesOutboundIdList));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        long totalSize = salesOutboundItemRepository.count(spec);
-        //查询销售出库单
-        List<SalesOutboundItem> list = salesOutboundItemRepository.findAll(spec);
+        //销售出库单商品详情
+        List<SalesOutboundItem> outboundItemList = salesOutboundItemRepository.findAll(salesOutboundItemSpecification);
 
-        List<SalesReportItemDTO> dtos = list.stream()
-                .map(item -> {
-                    SalesReportItemDTO dto = new SalesReportItemDTO();
-                    BeanUtils.copyProperties(item, dto);
-                    // 设置额外的属性
-//                    dto.setCustomerName(item.getSalesOutbound().getCustomer().getName());
-//                    dto.setProductName(item.getProduct().getName());
-//                    dto.setProductCode(item.getProduct().getCode());
-//                    dto.setWarehouseName(item.getWarehouse().getName());
-//                    dto.setUnitName(item.getBaseUnit().getName());
-//                    dto.setOrderNo(item.getSalesOutbound().getOrderNo());
-                    return dto;
-                })
-                .collect(Collectors.toList());
 
-        //根据销售出库单中的退货单id,查询出已经退货的商品
+        //销售退货单商品详情查询条件
         Specification<SalesReturnItem> returnSpec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-
-            //根据
-            List<Long> salesReturnIdList = new ArrayList<>();
-            predicates.add(root.get("salesReturnId").in(salesReturnIdList));
-
+            if (!salesReturnIdList.isEmpty()){
+                predicates.add(root.get("salesReturnId").in(salesReturnIdList));
+            }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-        List<SalesReturnItem> returnList = salesReturnItemRepository.findAll(returnSpec);
+        //销售退货单商品详情
+        List<SalesReturnItem> returnItemList = salesReturnItemRepository.findAll(returnSpec);
 
 
-        return new PageResults<>(dtos, page, totalSize);
+        List<Product> productList = productRepository.findAll();
+        List<Unit> unitList = unitRepository.findAll();
+
+        String salesGroup = form.getSalesGroup();
+
+        List<SalesReportItemDTO> dtos = new ArrayList<>();
+        if (StringUtils.equals("PRODUCT", salesGroup)) {
+            // Group by productId and aggregate quantities and amounts
+            Map<Long, SalesReportItemDTO> productSummary = outboundItemList.stream().collect(Collectors.groupingBy(SalesOutboundItem::getProductId,
+                Collectors.collectingAndThen(Collectors.toList(), items -> {
+                    SalesReportItemDTO dto = new SalesReportItemDTO();
+                    SalesOutboundItem firstItem = items.get(0);
+                    dto.setProductId(firstItem.getProductId());
+                    //产品信息
+                    Optional<Product> productOptional = productList.stream().filter(product -> product.getId().equals(firstItem.getProductId())).findFirst();
+                    productOptional.ifPresent(product -> {
+                        dto.setProductName(product.getName());
+                        dto.setProductCode(product.getCode());
+                    });
+                    //单位信息
+                    Long baseUnitId = firstItem.getBaseUnitId();
+                    unitList.stream().filter(unit -> unit.getId().equals(baseUnitId)).findFirst().ifPresent(unit -> {
+                        dto.setUnitName(unit.getName());
+                    });
+
+                    //数量统计
+                    dto.setQuantity(items.stream()
+                            .mapToDouble(SalesOutboundItem::getQuantity)
+                            .sum());
+                    //小计统计
+                    dto.setSubtotal(items.stream()
+                            .map(SalesOutboundItem::getSubtotal)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add));
+                    return dto;
+                })
+            ));
+            //出库商品汇总
+            dtos.addAll(productSummary.values());
+
+            //计算退货数据
+            for (SalesReportItemDTO outboundItem : dtos) {
+                Long outboundItemProductId = outboundItem.getProductId();
+                for (SalesReturnItem returnItem : returnItemList) {
+                    Long returnItemProductId = returnItem.getProductId();
+                    if (outboundItemProductId.equals(returnItemProductId)) {
+                        //计算销售数量
+                        outboundItem.setQuantity(outboundItem.getQuantity() - returnItem.getQuantity());
+//                        if (outboundItem.getWarehouseId().equals(returnItem.getWarehouseId())){
+//
+//                        }
+                    }
+
+                }
+            }
+
+        } else if (StringUtils.equals("PRODUCT_WAREHOUSE",salesGroup)){
+            // Group by both productId and warehouseId
+            Map<String, SalesReportItemDTO> productWarehouseSummary = outboundItemList.stream()
+                    .collect(Collectors.groupingBy(
+                            item -> item.getProductId() + "-" + item.getWarehouseId(),
+                            Collectors.collectingAndThen(
+                                    Collectors.toList(),
+                                    items -> {
+                                        SalesReportItemDTO dto = new SalesReportItemDTO();
+                                        SalesOutboundItem firstItem = items.get(0);
+                                        dto.setProductId(firstItem.getProductId());
+//                                        dto.setProductName(firstItem.getProductName());
+//                                        dto.setProductCode(firstItem.getProductCode());
+//                                        dto.setUnitName(firstItem.getUnitName());
+                                        dto.setWarehouseId(firstItem.getWarehouseId());
+//                                        dto.setWarehouseName(firstItem.getWarehouseName());
+
+                                        // Sum up quantities and amounts
+                                        dto.setQuantity(items.stream()
+                                                .mapToDouble(SalesOutboundItem::getQuantity)
+                                                .sum());
+                                        dto.setSubtotal(items.stream()
+                                                .map(SalesOutboundItem::getSubtotal)
+                                                .reduce(BigDecimal.ZERO, BigDecimal::add));
+                                        return dto;
+                                    }
+                            )
+                    ));
+
+            dtos.addAll(productWarehouseSummary.values());
+        }
+
+        //返回分页数据
+        int totalSize = dtos.size();
+        int fromIndex = page.getOffset();
+        int toIndex = Math.min(fromIndex + page.getOffsetEnd(), dtos.size());
+
+        List<SalesReportItemDTO> pagedDtos = dtos.subList(fromIndex, toIndex);
+
+        return new PageResults<>(pagedDtos, page, totalSize);
     }
 
 

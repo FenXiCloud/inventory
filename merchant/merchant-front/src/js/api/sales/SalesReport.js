@@ -7,6 +7,9 @@ export default {
     salesItem(param) {
         return Ajax.get('/salesReport/salesItem', param)
     },
+    salesSummary(param) {
+        return Ajax.get('/salesReport/salesSummary', param)
+    },
     remove(id) {
         return Ajax.delete('/salesReport/' + id);
     },

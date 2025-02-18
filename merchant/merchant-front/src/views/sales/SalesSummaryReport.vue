@@ -41,14 +41,14 @@
 <!--        <vxe-column title="订单编号" field="orderNo" width="200"/>-->
 <!--        <vxe-column title="业务类别" field="orderType" width="200" :formatter="formatOrderType"/>-->
 <!--        <vxe-column title="客户" field="customerName" min-width="120"/>-->
-        <vxe-column title="商品编码" field="productCode" width="100"/>
-        <vxe-column title="商品名称" field="productName" width="100"/>
-        <vxe-column title="销售单位" field="unitName" width="100"/>
-        <vxe-column title="仓库名称" field="warehouseName" width="100"/>
-        <vxe-column title="数量" field="quantity" width="100"/>
-        <vxe-column title="单价" field="unitPrice" width="100"/>
+        <vxe-column title="商品编码" field="productCode" />
+        <vxe-column title="商品名称" field="productName" />
+        <vxe-column title="销售单位" field="unitName" />
+        <vxe-column title="仓库名称" field="warehouseName" />
+        <vxe-column title="数量" field="quantity" />
+        <vxe-column title="单价" field="unitPrice" />
         <!--        <vxe-column title="折扣金额" field="discountValue" width="120"/>-->
-<!--        <vxe-column title="销售收入" field="subtotal" width="120"/>-->
+        <vxe-column title="金额" field="subtotal"/>
 
       </vxe-table>
     </div>
@@ -59,7 +59,7 @@
                  :total="pagination.total"
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
+<!--          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>-->
           <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>

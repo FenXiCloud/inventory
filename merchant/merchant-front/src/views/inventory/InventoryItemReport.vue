@@ -1,20 +1,27 @@
 <template>
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
-      <template #buttons>
-        <Button @click="addForm()" color="primary">新 增</Button>
-        <Button>审 核</Button>
-      </template>
       <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
-                placeholder="审核状态："/>
         <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期：</span>
+          <span class="h-input-addon ml-8px">仓库：</span>
+          <Select v-model="params.warehouseId" class="w-120px" keyName="id" titleName="name" :datas="warehouseList"/>
+        </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">商品：</span>
+          <Select v-model="params.productId" class="w-120px" keyName="id" titleName="name" :datas="productList"/>
+        </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">业务类型：</span>
+          <Select v-model="params.operationType" class="w-120px"
+                  :datas="{入库:'入库',出库:'出库'}"/>
+        </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">单据日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/客户名称" @search="doSearch">
+                placeholder="请输入商品名称/单据编号" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -32,24 +39,97 @@
                  :column-config="{resizable: true}"
                  :sort-config="{remote:true}"
                  :loading="loading">
-        <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="操作" align="center" width="120">
-          <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="showForm('add',row.id)">编辑</span>
-            <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
+        <vxe-column title="商品编号" field="productCode" align="center" width="130"/>
+        <vxe-column title="商品名称" field="productName" width="200"/>
+        <vxe-column title="商品类别" field="productCategoryName" width="200"/>
+        <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
+        <vxe-column title="单据日期" field="createdAt" width="120"/>
+        <vxe-column title="业务类型" field="operationType" width="120"/>
+        <vxe-column title="往来单位" field="correspondents" width="120"/>
+        <vxe-column title="仓库" field="warehouseName" align="center" width="100"/>
+        <vxe-column title="单位" field="unitName" width="80"/>
+        <vxe-column title="商品名称备注" field="productRemarks" width="80"/>
+        <vxe-column title="入库数量" field="quantity" width="80">
+          <template #default="{ row }">
+            <div v-if="row['operationType'] === '入库'">
+              {{ row.quantity }}
+            </div>
+            <div v-else>
+            </div>
           </template>
         </vxe-column>
-        <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="code" width="200"/>
-        <vxe-column title="关联销售出库单" field="code" width="200"/>
-        <vxe-column title="客户" field="customerName" min-width="120"/>
-        <vxe-column title="销售金额" field="totalAmount" width="120"/>
-        <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-        <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        <vxe-column title="制单人" field="createDate" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createDate" align="center" width="100"/>
-        <vxe-column title="审核状态" field="orderStatus" width="80"/>
-
+        <vxe-colgroup title="入库" align="center">
+          <vxe-column title="基本单位数量" field="quantity" align="center" width="100">
+            <template #default="{ row }">
+              <div v-if="row['operationType'] === '入库'">
+                {{ row.quantity }}
+              </div>
+              <div v-else>
+              </div>
+            </template>
+          </vxe-column>
+          <vxe-column title="单位成本" field="unitPrice" align="center" width="100">
+            <template #default="{ row }">
+              <div v-if="row['operationType'] === '入库'">
+                {{ row.unitPrice }}
+              </div>
+              <div v-else>
+              </div>
+            </template>
+          </vxe-column>
+          <vxe-column title="成本" field="subtotal" align="center" width="100">
+            <template #default="{ row }">
+              <div v-if="row['operationType'] === '入库' || row['operationType'] === '成本调整'">
+                {{ row.subtotal }}
+              </div>
+              <div v-else>
+              </div>
+            </template>
+          </vxe-column>
+        </vxe-colgroup>
+        <vxe-column title="出库数量" field="quantity" width="80">
+          <template #default="{ row }">
+            <div v-if="row['operationType'] === '出库'">
+              {{ row.quantity }}
+            </div>
+            <div v-else>
+            </div>
+          </template>
+        </vxe-column>
+        <vxe-colgroup title="出库" align="center">
+          <vxe-column title="基本单位数量" field="quantity" align="center" width="100">
+            <template #default="{ row }">
+              <div v-if="row['operationType'] === '出库'">
+                {{ row.quantity }}
+              </div>
+              <div v-else>
+              </div>
+            </template>
+          </vxe-column>
+          <vxe-column title="单位成本" field="unitPrice" align="center" width="100">
+            <template #default="{ row }">
+              <div v-if="row['operationType'] === '出库'">
+                {{ row.unitPrice }}
+              </div>
+              <div v-else>
+              </div>
+            </template>
+          </vxe-column>
+          <vxe-column title="成本" field="subtotal" align="center" width="100">
+            <template #default="{ row }">
+              <div v-if="row['operationType'] === '出库'">
+                {{ row.unitPrice }}
+              </div>
+              <div v-else>
+              </div>
+            </template>
+          </vxe-column>
+        </vxe-colgroup>
+        <vxe-colgroup title="结存" align="center">
+          <vxe-column title="基本单位数量" field="currentQuantity" align="center" width="100"/>
+          <vxe-column title="单位成本" field="averageCost" align="center" width="100"/>
+          <vxe-column title="成本" field="totalCost" align="center" width="100"/>
+        </vxe-colgroup>
       </vxe-table>
     </div>
     <div class="flex justify-between items-center pt-5px">
@@ -59,7 +139,7 @@
                  :total="pagination.total"
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
+          <!--          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>-->
           <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
@@ -71,6 +151,10 @@
 import manba from "manba";
 import InventoryItem from "@js/api/inventory/InventoryItem";
 import {mapMutations} from "vuex";
+import {loading} from "heyui.ext";
+import Product from "@js/api/basic/Product";
+import Warehouse from "@js/api/basic/Warehouse";
+import ProductCategory from "@js/api/basic/ProductCategory";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -90,6 +174,9 @@ export default {
       },
       params: {
         filter: null,
+        productId: null,
+        warehouseId: null,
+        operationType: null,
         state: null,
         sortCol: null,
         sort: null,
@@ -98,6 +185,8 @@ export default {
         start: manba(startTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
       },
+      warehouseList: [],
+      productList: [],
     }
   },
   computed: {
@@ -113,34 +202,80 @@ export default {
   methods: {
     ...mapMutations(['pushTab']),
     footerMethod({columns, data}) {
-      let sums = [];
+      let inQuantity = 0;
+      let outQuantity = 0;
+      let inTotal = 0;
+      let outTotal = 0;
+      let currentQuantity = 0;
+      let totalCost = 0;
       columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
-          let total = 0;
+        if (column.property && ['quantity'].includes(column.property)) {
           data.forEach((row) => {
             let rd = row[column.property];
             if (rd) {
-              total += Number(rd || 0);
+              if (row.operationType === '入库') {
+                inQuantity += Number(rd || 0);
+              } else {
+                outQuantity += Number(rd || 0);
+              }
             }
           });
-          sums.push(total.toFixed(2));
+        }
+        if (column.property && ['subtotal'].includes(column.property)) {
+          data.forEach((row) => {
+            let rd = row[column.property];
+            if (rd) {
+              if (row.operationType === '入库') {
+                inTotal += Number(rd || 0);
+              } else {
+                outTotal += Number(rd || 0);
+              }
+            }
+          });
+        }
+        if (column.property && ['currentQuantity'].includes(column.property)) {
+          data.forEach((row) => {
+            let rd = row[column.property];
+            if (rd) {
+              currentQuantity += Number(rd || 0);
+            }
+          });
+        }
+        if (column.property && ['totalCost'].includes(column.property)) {
+          data.forEach((row) => {
+            let rd = row[column.property];
+            if (rd) {
+              totalCost += Number(rd || 0);
+            }
+          });
         }
       })
-      return [["", "", "", "", "", ""].concat(sums)];
+      return [['合计', '', '', '', '', '', '', '', '', '', inQuantity, inQuantity, '', inTotal.toFixed(2), outQuantity, outQuantity, '', outTotal.toFixed(2), currentQuantity, '', totalCost.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
     },
+    loadDict(callback) {
+      loading("加载中....");
+      Promise.all([Product.select(), Warehouse.select()])
+          .then((results) => {
+            this.productList = results[0].data || [];
+            this.warehouseList = results[1].data || [];
+            callback();
+          })
+          .finally(() => loading.close());
+    },
     loadList(type = true) {
       this.loading = true;
-      InventoryItem.list(this.queryParams).then(({data: {results, total}}) => {
+      InventoryItem.report(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
     },
   },
   created() {
+    this.loadDict();
     this.loadList();
   }
 }

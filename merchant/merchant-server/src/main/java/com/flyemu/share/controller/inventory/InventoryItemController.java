@@ -3,8 +3,10 @@ package com.flyemu.share.controller.inventory;
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
+import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.service.inventory.InventoryItemService;
+import com.flyemu.share.service.inventory.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -55,4 +57,24 @@ public class InventoryItemController {
         return JsonResult.successful(inventoryItemService.select(merchantId, accountBookId));
     }
 
+    @GetMapping("report")
+    public JsonResult report(Page page, InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(inventoryItemService.report(page, query));
+    }
+
+    @GetMapping("summary")
+    public JsonResult summary(Page page, InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(inventoryItemService.summary(page, query));
+    }
+
+    @GetMapping("summaryOperationType")
+    public JsonResult summaryOperationType(InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(inventoryItemService.summaryOperationType(query));
+    }
 }

@@ -20,4 +20,10 @@ export default {
     select(param) {
         return Ajax.get('/costAdjustment/select', param)
     },
+    load(id) {
+        return Ajax.get('/costAdjustment/load/' + id)
+    },
+    approve(param) {
+        return Ajax.get("/costAdjustment/approve", param);
+    }
 }

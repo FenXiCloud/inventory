@@ -97,6 +97,7 @@ const groupRoutes = [
         name: 'CostAdjustmentList',
         component: defineAsyncComponent(() => import('@views/inventory/CostAdjustmentList.vue'))
     },
+    {name: 'CostAdjustmentForm', component: defineAsyncComponent(() => import('@views/inventory/CostAdjustmentForm.vue'))},
     {
         name: 'InventoryItemReport',
         component: defineAsyncComponent(() => import('@views/inventory/InventoryItemReport.vue'))

@@ -232,11 +232,13 @@ public class OtherOutboundService extends AbsService {
         inventoryItem.setOperationType(OperationType.出库);
         inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
         inventoryItem.setOrderId(otherOutboundItem.getOtherOutboundId());
-        inventoryItem.setBatchNumber(otherOutboundItem.getBatchNumber());
         inventoryItem.setMerchantId(otherOutboundItem.getMerchantId());
+        inventoryItem.setBatchNumber(otherOutboundItem.getBatchNumber());
         inventoryItem.setAccountBookId(otherOutboundItem.getAccountBookId());
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(otherOutboundItem.getCreatedBy());
+        inventoryItem.setUnitPrice(otherOutboundItem.getUnitPrice());
+        inventoryItem.setSubtotal(otherOutboundItem.getSubtotal());
         return inventoryItem;
     }
 
@@ -289,8 +291,8 @@ public class OtherOutboundService extends AbsService {
             item.put("productId", tuple.get(qProduct.id.as("productId")));
             item.put("remarks", tuple.get(qOtherOutbound.remarks.as("remarks")));
             item.put("productUrl", tuple.get(qProduct.imgPath.as("productUrl")));
-            item.put("productCode", tuple.get(qProduct.id.as("productId")));
-            item.put("productName", tuple.get(qProduct.imgPath.as("productUrl")));
+            item.put("productName", tuple.get(qProduct.name.as("productName")));
+            item.put("productCode", tuple.get(qProduct.code.as("productCode")));
             item.put("productSpecification", tuple.get(qProduct.specification.as("productSpecification")));
             item.put("productCategoryId", tuple.get(qProductCategory.name.as("productCategoryName")));
             item.put("productUnitId", tuple.get(qProduct.unitId.as("productUnitId")));

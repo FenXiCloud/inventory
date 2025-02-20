@@ -134,6 +134,8 @@ public class StockTakeService extends AbsService {
 
     @Transactional
     public void delete(Long stockTakeId, Long merchantId, Long accountBookId) {
+        jqf.delete(qStockTakeItem).where(qStockTakeItem.StockTakeId.eq(stockTakeId).and(qStockTakeItem.merchantId.eq(merchantId)).and(qStockTakeItem.accountBookId.eq(accountBookId)))
+                .execute();
         jqf.delete(qStockTake)
                 .where(qStockTake.id.eq(stockTakeId).and(qStockTake.merchantId.eq(merchantId)).and(qStockTake.accountBookId.eq(accountBookId)))
                 .execute();
@@ -217,6 +219,7 @@ public class StockTakeService extends AbsService {
                 stockTake.setOrderStatus(OrderStatus.已审核);
                 stockTake.setApprovedBy(adminId);
                 stockTake.setApprovedAt(LocalDateTime.now());
+                // 调整对应库存
                 stockTakeRepository.save(stockTake);
             }
             case ANTI_AUDIT -> {

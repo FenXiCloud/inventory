@@ -277,6 +277,7 @@ CREATE TABLE `jxc_cost_adjustment_item`
   `remarks`          varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
   `total_cost` decimal(38,2) DEFAULT NULL COMMENT '调整前的产品总成本',
   `updated_at`       datetime(6) DEFAULT NULL COMMENT '更新时间',
+  `warehouse_id` bigint(20) DEFAULT NULL COMMENT '仓库ID',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -433,10 +434,15 @@ CREATE TABLE `jxc_inventory_item`
   `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
   `created_by` bigint DEFAULT NULL COMMENT '创建人',
   `merchant_id` bigint NOT NULL,
-  `operation_type` smallint DEFAULT NULL COMMENT '操作类型：入库、出库、调拨',
+  `operation_type` varchar(20) DEFAULT NULL COMMENT '操作类型：入库、出库、调拨',
   `order_id` bigint DEFAULT NULL COMMENT '关联单据ID',
   `product_id` bigint DEFAULT NULL COMMENT '产品ID',
-  `quantity` int DEFAULT NULL COMMENT '正数为入库，负数为出库',
+  `quantity` int DEFAULT NULL COMMENT '变更库存数',
+  `current_quantity` int(11) DEFAULT NULL COMMENT '库存数量',
+  `average_cost` decimal(38,2) DEFAULT NULL COMMENT '平均成本',
+  `total_cost` decimal(38,2) DEFAULT NULL COMMENT '成本总计',
+  `subtotal` decimal(38,2) DEFAULT NULL COMMENT '小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)',
+  `unit_price` decimal(38,2) DEFAULT NULL COMMENT '单价（以基本单位计）',
   `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
   `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
   PRIMARY KEY (`id`)

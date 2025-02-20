@@ -68,6 +68,11 @@ public class InventoryController {
         return JsonResult.successful(inventoryService.exist(productId, warehouseId, merchantId, accountBookId));
     }
 
+    @GetMapping("/totalCost/{productId}/{warehouseId}")
+    public JsonResult totalCost(@PathVariable("productId") Long productId, @PathVariable("warehouseId") Long warehouseId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(inventoryService.totalCost(productId, warehouseId, merchantId, accountBookId));
+    }
+
     @GetMapping("report")
     public JsonResult report(Page page, InventoryService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
@@ -81,5 +86,6 @@ public class InventoryController {
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(inventoryService.reportInventory(query));
     }
+
 
 }

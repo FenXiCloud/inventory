@@ -64,4 +64,7 @@ public class CostAdjustmentItem {
 
     @Column(nullable = false)
     private Long merchantId;
+
+    @Comment("仓库ID")
+    private Long warehouseId;
 }

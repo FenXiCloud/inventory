@@ -20,4 +20,13 @@ export default {
     select(param) {
         return Ajax.get('/inventoryItem/select', param)
     },
+    report(param) {
+        return Ajax.get('/inventoryItem/report', param)
+    },
+    summary(param) {
+        return Ajax.get('/inventoryItem/summary', param)
+    },
+    summaryOperationType(param) {
+        return Ajax.get('/inventoryItem/summaryOperationType', param)
+    },
 }

@@ -103,9 +103,10 @@ public class InventoryItemService extends AbsService {
      *
      * @param orderId 订单id
      */
-    public void deleteByOrderId(Long orderId) {
-        jqf.delete(qInventoryItem).where(qInventoryItem.orderId.eq(orderId)).execute();
+    public void deleteByOrderId(Long orderId, OperationType operationType) {
+        jqf.delete(qInventoryItem).where(qInventoryItem.orderId.eq(orderId).and(qInventoryItem.operationType.eq(operationType))).execute();
     }
+
 
     /**
      * 批量插入

@@ -148,7 +148,7 @@ public class OtherInboundService extends AbsService {
                 this.getComputedInventory(otherInboundItems, inventories, inventoryItems);
                 inventories.forEach(item -> {
                     // 加库存
-                    inventoryService.computedInventory(item, true, id, inventoryItems);
+                    inventoryService.computedInventory(item, true, id, OperationType.入库, inventoryItems);
                 });
                 otherInbound.setOrderStatus(OrderStatus.已审核);
                 otherInbound.setApprovedBy(adminId);
@@ -160,7 +160,7 @@ public class OtherInboundService extends AbsService {
                 this.getComputedInventory(otherInboundItems, inventories, inventoryItems);
                 inventories.forEach(item -> {
                     // 减库存
-                    inventoryService.computedInventory(item, false, id, null);
+                    inventoryService.computedInventory(item, false, id, OperationType.入库, null);
                 });
                 jqf.delete(qOtherInbound).where(qOtherInbound.id.eq(id)).execute();
                 otherInboundItemService.deleteByOtherInboundId(id);

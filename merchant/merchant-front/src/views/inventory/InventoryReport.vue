@@ -166,6 +166,7 @@ export default {
       Promise.all([Inventory.reportInventory(this.queryParams)])
           .then(results => {
             this.reportInventoryList = results[0].data || [];
+            this.amountTotal = 0;
             Inventory.report(this.queryParams).then(({data: {results, total}}) => {
               this.dataList = results || [];
               this.pagination.total = total;

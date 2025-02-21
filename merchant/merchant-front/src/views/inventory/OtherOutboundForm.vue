@@ -325,6 +325,11 @@ export default {
         loading.close();
         throw new Error("请填写数量~")
       }
+      let warehouseQuantity = filterOtherOutboundData.filter((c) => c.warehouseQuantity - c.quantity < 0);
+      if (warehouseQuantity.length > 0) {
+        loading.close();
+        throw new Error("出库数量不能大于仓库库存数量~")
+      }
     },
     //获取保存新增、保存方法提交数据
     getSaveOrderParams(filterOtherOutboundData, type) {
@@ -415,8 +420,10 @@ export default {
             }
           });
           this.otherOutboundData[rowIndex].quantityTips = `总库存：${totalQuantity}\r\n仓库库存：${quantity}`;
+          this.otherOutboundData[rowIndex].warehouseQuantity = quantity;
         } else {
           this.otherOutboundData[rowIndex].quantityTips = `总库存：0\r\n仓库库存：0`;
+          this.otherOutboundData[rowIndex].warehouseQuantity = 0;
         }
       });
     },

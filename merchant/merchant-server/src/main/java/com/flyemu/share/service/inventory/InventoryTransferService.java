@@ -187,28 +187,31 @@ public class InventoryTransferService extends AbsService {
             // 调入仓库处理
             this.operateTransferItem(increaseInventory, toWarehouseId, productId, fromInventory, transferQuantity, subtotal);
             // 获取处理仓库明细
-            InventoryItem inventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, fromInventory,
-                    transferQuantity, subtotal);
-            inventoryItems.add(inventoryItem);
+            InventoryItem toInventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, fromInventory,
+                    transferQuantity, subtotal, inventoryTransfer.getToWarehouseId(), false);
+            inventoryItems.add(toInventoryItem);
+            InventoryItem formInventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, fromInventory,
+                    transferQuantity, subtotal, inventoryTransfer.getFromWarehouseId(), true);
+            inventoryItems.add(formInventoryItem);
         }
         if (isRevoke) {
             increaseInventory.forEach(item -> {
                 // 减库存
-                inventoryService.computedInventory(item, false, inventoryTransfer.getId(), null, false);
+                inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨, null, false);
             });
             reduceInventory.forEach(item -> {
                 // 加库存
-                inventoryService.computedInventory(item, true, inventoryTransfer.getId(), inventoryItems);
+                inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨, null);
             });
             return;
         }
         reduceInventory.forEach(item -> {
             // 减库存
-            inventoryService.computedInventory(item, false, inventoryTransfer.getId(), null, false);
+            inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨, inventoryItems);
         });
         increaseInventory.forEach(item -> {
             // 加库存
-            inventoryService.computedInventory(item, true, inventoryTransfer.getId(), null);
+            inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨, inventoryItems);
         });
     }
 
@@ -219,11 +222,11 @@ public class InventoryTransferService extends AbsService {
      * @return inventoryItem 库存明细
      */
     private InventoryItem getInventoryItem(InventoryTransferItem inventoryTransferItem, InventoryTransfer inventoryTransfer,
-                                           Inventory inventory, Double transferQuantity, BigDecimal subtotal) {
+                                           Inventory inventory, Double transferQuantity, BigDecimal subtotal, Long warehouseId, Boolean isOut) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(inventoryTransferItem.getProductId());
-        inventoryItem.setWarehouseId(inventoryTransferItem.getToWarehouseId());
-        inventoryItem.setQuantity(inventoryTransferItem.getQuantity().intValue());
+        inventoryItem.setWarehouseId(warehouseId);
+        inventoryItem.setQuantity(isOut ? -inventoryTransferItem.getQuantity().intValue() : inventoryTransferItem.getQuantity().intValue());
         inventoryItem.setOperationType(OperationType.调拨);
         inventoryItem.setBaseUnitId(inventory.getBaseUnitId());
         inventoryItem.setOrderId(inventoryTransfer.getId());

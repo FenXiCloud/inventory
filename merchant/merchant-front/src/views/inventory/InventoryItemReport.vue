@@ -51,7 +51,7 @@
         <vxe-column title="商品名称备注" field="productRemarks" width="80"/>
         <vxe-column title="入库数量" field="quantity" width="80">
           <template #default="{ row }">
-            <div v-if="row['operationType'] === '入库'">
+            <div v-if="row['operationType'] === '入库' || (row['operationType'] === '调拨' && row.quantity > 0)">
               {{ row.quantity }}
             </div>
             <div v-else>
@@ -61,7 +61,7 @@
         <vxe-colgroup title="入库" align="center">
           <vxe-column title="基本单位数量" field="quantity" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '入库'">
+              <div v-if="row['operationType'] === '入库' || (row['operationType'] === '调拨' && row.quantity > 0)">
                 {{ row.quantity }}
               </div>
               <div v-else>
@@ -70,7 +70,7 @@
           </vxe-column>
           <vxe-column title="单位成本" field="unitPrice" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '入库'">
+              <div v-if="row['operationType'] === '入库' || (row['operationType'] === '调拨' && row.quantity > 0)">
                 {{ row.unitPrice }}
               </div>
               <div v-else>
@@ -79,7 +79,8 @@
           </vxe-column>
           <vxe-column title="成本" field="subtotal" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '入库' || row['operationType'] === '成本调整'">
+              <div
+                  v-if="row['operationType'] === '入库' || row['operationType'] === '成本调整' || (row['operationType'] === '调拨' && row.quantity > 0)">
                 {{ row.subtotal }}
               </div>
               <div v-else>
@@ -89,8 +90,8 @@
         </vxe-colgroup>
         <vxe-column title="出库数量" field="quantity" width="80">
           <template #default="{ row }">
-            <div v-if="row['operationType'] === '出库'">
-              {{ row.quantity }}
+            <div v-if="row['operationType'] === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)">
+              {{ getAbsoluteValue(row.quantity) }}
             </div>
             <div v-else>
             </div>
@@ -99,8 +100,8 @@
         <vxe-colgroup title="出库" align="center">
           <vxe-column title="基本单位数量" field="quantity" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '出库'">
-                {{ row.quantity }}
+              <div v-if="row['operationType'] === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)">
+                {{ getAbsoluteValue(row.quantity) }}
               </div>
               <div v-else>
               </div>
@@ -108,7 +109,7 @@
           </vxe-column>
           <vxe-column title="单位成本" field="unitPrice" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '出库'">
+              <div v-if="row['operationType'] === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)">
                 {{ row.unitPrice }}
               </div>
               <div v-else>
@@ -117,7 +118,7 @@
           </vxe-column>
           <vxe-column title="成本" field="subtotal" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '出库'">
+              <div v-if="row['operationType'] === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)">
                 {{ row.unitPrice }}
               </div>
               <div v-else>
@@ -273,6 +274,14 @@ export default {
         this.pagination.total = total;
       }).finally(() => this.loading = false);
     },
+    getAbsoluteValue(number) {
+      if (number < 0) {
+        return -number;
+      } else {
+        return number;
+      }
+    }
+
   },
   created() {
     this.loadDict();

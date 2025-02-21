@@ -287,7 +287,7 @@ public class StockTakeService extends AbsService {
         Long productId = stockTakeItem.getProductId();
         Long warehouseId = stockTakeItem.getWarehouseId();
         Product product = productService.loadById(productId, stockTakeItem.getMerchantId());
-        ProductCategory productCategory = productCategoryService.loadById(product.getProductCategoryId(), product.getMerchantId());
+        ProductCategory productCategory = productCategoryService.loadById(product.getMerchantId(), product.getProductCategoryId());
         Unit unit = unitService.selectByPrimaryKey(product.getUnitId());
         Warehouse warehouse = warehouseService.selectByPrimaryKey(warehouseId);
         item.put("productName", product.getName());

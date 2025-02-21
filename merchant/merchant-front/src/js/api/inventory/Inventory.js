@@ -29,4 +29,7 @@ export default {
     reportInventory(param) {
         return Ajax.get("/inventory/reportInventory", param);
     },
+    totalCost(productId, warehouseId) {
+        return Ajax.get(`/inventory/totalCost/${productId}/${warehouseId}`);
+    },
 }

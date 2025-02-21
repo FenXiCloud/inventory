@@ -124,6 +124,9 @@ public class OtherInboundService extends AbsService {
 
     @Transactional
     public void delete(Long otherInboundId, Long merchantId, Long accountBookId) {
+        jqf.delete(qOtherInboundItem)
+                .where(qOtherInboundItem.otherInboundId.eq(otherInboundId).and(qOtherInboundItem.merchantId.eq(merchantId)).and(qOtherInboundItem.accountBookId.eq(accountBookId)))
+                .execute();
         jqf.delete(qOtherInbound)
                 .where(qOtherInbound.id.eq(otherInboundId).and(qOtherInbound.merchantId.eq(merchantId)).and(qOtherInbound.accountBookId.eq(accountBookId)))
                 .execute();
@@ -236,6 +239,8 @@ public class OtherInboundService extends AbsService {
         inventoryItem.setAccountBookId(otherInboundItem.getAccountBookId());
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(otherInboundItem.getCreatedBy());
+        inventoryItem.setUnitPrice(otherInboundItem.getUnitPrice());
+        inventoryItem.setSubtotal(otherInboundItem.getSubtotal());
         return inventoryItem;
     }
 
@@ -289,8 +294,8 @@ public class OtherInboundService extends AbsService {
             item.put("itemId", tuple.get(qOtherInboundItem.id.as("itemId")));
             item.put("productId", tuple.get(qProduct.id.as("productId")));
             item.put("productUrl", tuple.get(qProduct.imgPath.as("productUrl")));
-            item.put("productCode", tuple.get(qProduct.id.as("productId")));
-            item.put("productName", tuple.get(qProduct.imgPath.as("productUrl")));
+            item.put("productName", tuple.get(qProduct.name.as("productName")));
+            item.put("productCode", tuple.get(qProduct.code.as("productCode")));
             item.put("productCategoryId", tuple.get(qProductCategory.name.as("productCategoryName")));
             item.put("productSpecification", tuple.get(qProduct.specification.as("productSpecification")));
             item.put("productCategoryName", tuple.get(qProduct.specification.as("productSpecification")));

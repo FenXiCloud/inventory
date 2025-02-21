@@ -8,11 +8,6 @@ import java.io.Serializable;
 public class InventoryReportDto implements Serializable {
 
     /**
-     * 库存id
-     */
-    private Long id;
-
-    /**
      * 商品id
      */
     private Long productId;

@@ -26,7 +26,6 @@ import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.core.types.dsl.StringTemplate;
-import com.querydsl.core.util.BeanMap;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -188,7 +187,8 @@ public class InventoryTransferService extends AbsService {
             // 调入仓库处理
             this.operateTransferItem(increaseInventory, toWarehouseId, productId, fromInventory, transferQuantity, subtotal);
             // 获取处理仓库明细
-            InventoryItem inventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, fromInventory);
+            InventoryItem inventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, fromInventory,
+                    transferQuantity, subtotal);
             inventoryItems.add(inventoryItem);
         }
         if (isRevoke) {
@@ -219,7 +219,7 @@ public class InventoryTransferService extends AbsService {
      * @return inventoryItem 库存明细
      */
     private InventoryItem getInventoryItem(InventoryTransferItem inventoryTransferItem, InventoryTransfer inventoryTransfer,
-                                           Inventory inventory) {
+                                           Inventory inventory, Double transferQuantity, BigDecimal subtotal) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(inventoryTransferItem.getProductId());
         inventoryItem.setWarehouseId(inventoryTransferItem.getToWarehouseId());
@@ -232,6 +232,8 @@ public class InventoryTransferService extends AbsService {
         inventoryItem.setAccountBookId(inventoryTransfer.getAccountBookId());
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(inventoryTransfer.getCreatedBy());
+        inventoryItem.setSubtotal(subtotal);
+        inventoryItem.setUnitPrice(subtotal.divide(BigDecimal.valueOf(transferQuantity), 2, RoundingMode.DOWN));
         return inventoryItem;
     }
 

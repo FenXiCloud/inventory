@@ -201,10 +201,10 @@ export default {
       let totalQuantity = 0;
       let totalAmount = 0.00;
       columns.forEach(column => {
-        if (column.property && ['quantity'].includes(column.property)) {
+        if (column.property && ['actualQuantity'].includes(column.property)) {
           data.forEach((row) => {
             switch (column.property) {
-              case 'quantity': {
+              case 'actualQuantity': {
                 let rd = row[column.property];
                 if (rd) {
                   totalQuantity += Number(rd || 0);

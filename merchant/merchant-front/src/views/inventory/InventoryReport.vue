@@ -123,9 +123,16 @@ export default {
   methods: {
     ...mapMutations(['pushTab']),
     footerMethod({columns, data}) {
-      let sums = [];
+      let sums = ["合计", "", "", "", "", ""];
+      let propertyNames = [];
+      this.warehouseList.forEach((warehouse) => {
+        propertyNames.push(warehouse.code + "_quantity");
+        propertyNames.push(warehouse.code + "_totalCost");
+      });
+      let index = 1;
+      console.info("propertyNames:", propertyNames);
       columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
+        if (column.property && propertyNames.includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             let rd = row[column.property];
@@ -133,10 +140,22 @@ export default {
               total += Number(rd || 0);
             }
           });
-          sums.push(total.toFixed(2));
+          if (index === 1) {
+            sums.push(total);
+          } else {
+            if (column.property && column.property.indexOf('_quantity') > -1) {
+              sums.push(total);
+            } else {
+              sums.push("");
+              sums.push(total.toFixed(2));
+            }
+
+          }
+          index++;
         }
       })
-      return [["", "", "", "", "", ""].concat(sums)];
+      console.log(sums);
+      return [sums];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -157,11 +176,12 @@ export default {
                       item[`${warehouse.code}_quantity`] = report.currentQuantity;
                       item[`${warehouse.code}_averageCost`] = report.averageCost;
                       item[`${warehouse.code}_totalCost`] = report.totalCost;
+                      this.amountTotal += parseFloat(report.totalCost);
                     }
                   });
                 });
               });
-              console.info(this.dataList);
+              this.amountTotal = this.amountTotal.toFixed(2);
             }).finally(() => this.loading = false);
           })
     },

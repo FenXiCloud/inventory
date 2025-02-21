@@ -1,10 +1,15 @@
 package com.flyemu.share.controller.inventory;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.inventory.CostAdjustment;
+import com.flyemu.share.entity.inventory.OtherOutbound;
+import com.flyemu.share.enums.ApproveType;
+import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.form.CostAdjustmentForm;
 import com.flyemu.share.service.inventory.CostAdjustmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,16 +37,14 @@ public class CostAdjustmentController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid CostAdjustment costAdjustment, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid CostAdjustmentForm costAdjustmentForm, @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+        CostAdjustment costAdjustment = costAdjustmentForm.getCostAdjustment();
         costAdjustment.setMerchantId(merchantId);
         costAdjustment.setAccountBookId(accountBookId);
-        costAdjustmentService.save(costAdjustment);
-        return JsonResult.successful();
-    }
-
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid CostAdjustment costAdjustment) {
-        costAdjustmentService.save(costAdjustment);
+        costAdjustment.setOrderStatus(OrderStatus.已保存);
+        costAdjustment.setCreatedBy(adminId);
+        costAdjustmentService.save(costAdjustmentForm);
         return JsonResult.successful();
     }
 
@@ -54,6 +57,18 @@ public class CostAdjustmentController {
     @GetMapping("select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(costAdjustmentService.select(merchantId, accountBookId));
+    }
+
+    @GetMapping("approve")
+    public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        costAdjustmentService.approve(id, type, adminId);
+        return JsonResult.successful();
+    }
+
+
+    @GetMapping("load/{id}")
+    public JsonResult load(@PathVariable Long id) {
+        return JsonResult.successful(costAdjustmentService.load(id));
     }
 
 }

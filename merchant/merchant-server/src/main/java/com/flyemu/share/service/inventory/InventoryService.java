@@ -129,13 +129,18 @@ public class InventoryService extends AbsService {
         Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(item.getProductId()))
                 .where(qInventory.warehouseId.eq(item.getWarehouseId())).fetchFirst();
         if (inventory == null) {
+            inventory = new Inventory();
             log.warn("计算库存获取库存对象失败 item:{},increase:{}", item, increase);
             //todo 获取库存失败，新增记录明细，待调整
-            item.setCurrentQuantity(0);
-            item.setAverageCost(BigDecimal.ZERO);
-            item.setTotalCost(BigDecimal.ZERO);
-            this.increaseInventory(item, inventoryItems, orderId);
-            return;
+            inventory.setCurrentQuantity(0);
+            inventory.setBaseUnitId(item.getBaseUnitId());
+            inventory.setUpdatedAt(LocalDateTime.now());
+            inventory.setProductId(item.getProductId());
+            inventory.setWarehouseId(item.getWarehouseId());
+            inventory.setMerchantId(item.getMerchantId());
+            inventory.setAccountBookId(item.getAccountBookId());
+            inventory.setAverageCost(BigDecimal.ZERO);
+            inventory.setTotalCost(BigDecimal.ZERO);
         }
         Integer computedQuantity = item.getCurrentQuantity();
         BigDecimal computedCost = item.getTotalCost();
@@ -160,23 +165,6 @@ public class InventoryService extends AbsService {
     }
 
     /**
-     * 新增库存，同步处理记录明细
-     *
-     * @param item           库存记录
-     * @param inventoryItems 明细
-     * @param orderId        订单id
-     */
-    private void increaseInventory(Inventory item, List<InventoryItem> inventoryItems, Long orderId) {
-        item.setUpdatedAt(LocalDateTime.now());
-        inventoryRepository.save(item);
-        if (inventoryItems == null) {
-            inventoryItemService.deleteByOrderId(orderId);
-        } else {
-            inventoryItemService.batchInsertList(inventoryItems);
-        }
-    }
-
-    /**
      * 操作库存
      *
      * @param orderId         订单id
@@ -193,17 +181,28 @@ public class InventoryService extends AbsService {
         if (currentQuantity != 0) {
             averageCost = totalCost.divide(BigDecimal.valueOf(currentQuantity), 2, RoundingMode.DOWN);
         }
-        jqf.update(qInventory).set(qInventory.currentQuantity, currentQuantity)
-                .set(qInventory.totalCost, totalCost)
-                .set(qInventory.averageCost, averageCost)
-                .where(qInventory.id.eq(inventory.getId())).execute();
+        inventory.setCurrentQuantity(currentQuantity);
+        inventory.setTotalCost(totalCost);
+        inventory.setAverageCost(averageCost);
+        inventoryRepository.save(inventory);
         if (!operateItems) {
             return;
         }
         if (inventoryItems == null) {
             inventoryItemService.deleteByOrderId(orderId);
         } else {
-            inventoryItemService.batchInsertList(inventoryItems);
+            List<InventoryItem> insertList = new ArrayList<>();
+            for (InventoryItem item : inventoryItems) {
+                if (item.getProductId().equals(inventory.getProductId()) && item.getWarehouseId().equals(inventory.getWarehouseId())) {
+                    item.setCurrentQuantity(currentQuantity);
+                    item.setTotalCost(totalCost);
+                    item.setAverageCost(averageCost);
+                    insertList.add(item);
+                }
+            }
+            if (!insertList.isEmpty()) {
+                inventoryItemService.batchInsertList(inventoryItems);
+            }
         }
     }
 
@@ -281,6 +280,7 @@ public class InventoryService extends AbsService {
     public PageResults<InventoryReportDto> report(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventory)
                 .select(
+                        qInventory.productId.count(),
                         qProduct.id.as("productId"),
                         qProduct.code.as("productCode"),
                         qProduct.name.as("productName"),
@@ -297,6 +297,7 @@ public class InventoryService extends AbsService {
                 .orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryReportDto> dtos = new ArrayList<>();
         InventoryReportDto dto;
+        Long totalCount = 0L;
         for (Tuple tuple : fetchPage) {
             dto = new InventoryReportDto();
             dto.setProductId(tuple.get(qProduct.id.as("productId")));
@@ -307,7 +308,13 @@ public class InventoryService extends AbsService {
             dto.setProductUnitName(tuple.get(qUnit.name.as("productUnitName")));
             dtos.add(dto);
         }
-        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+        if (!fetchPage.isEmpty()) {
+            totalCount = fetchPage.get(0).get(qInventory.productId.count());
+        }
+        if (totalCount == null) {
+            totalCount = 0L;
+        }
+        return new PageResults<>(dtos, page, totalCount);
     }
 
     public List<Inventory> reportInventory(Query query) {
@@ -319,6 +326,30 @@ public class InventoryService extends AbsService {
                 .orderBy(qInventory.productId.desc())
                 .fetch();
     }
+
+    public BigDecimal totalCost(Long productId, Long warehouseId, Long merchantId, Long accountBookId) {
+        Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(productId)
+                .and(qInventory.warehouseId.eq(warehouseId)).and(qInventory.merchantId.eq(merchantId))
+                .and(qInventory.accountBookId.eq(accountBookId))).fetchOne();
+        if (inventory == null) {
+            return BigDecimal.ZERO;
+        }
+        return inventory.getTotalCost();
+    }
+
+    public void processingCosts(List<Inventory> inventories, List<InventoryItem> inventoryItems, Boolean inversely) {
+        inventoryRepository.saveAll(inventories);
+        if (inversely) {
+            // 删除明细
+            List<Long> orderIds = inventoryItems.stream().map(InventoryItem::getOrderId).toList();
+            orderIds.forEach(inventoryItemService::deleteByOrderId);
+            return;
+        }
+        if (inventoryItems != null && !inventoryItems.isEmpty()) {
+            inventoryItemService.batchInsertList(inventoryItems);
+        }
+    }
+
 
     @Data
     public static class Query {

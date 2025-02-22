@@ -3,6 +3,7 @@ package com.flyemu.share.service.sales;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import com.flyemu.share.constant.SalesReportConstant;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesOrderDTO;
@@ -122,8 +123,7 @@ public class SalesReportService extends AbsService {
         };
         //销售出库单商品详情list
         List<SalesOutboundItem> outboundItemList = salesOutboundItemRepository.findAll(salesOutboundItemSpecification);
-
-        if (StringUtils.equals(salesType, "out")){
+        if (StringUtils.equals(salesType, SalesReportConstant.SALES_TYPE_OUT)){
             List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productList, unitList, warehouseList, salesOutboundList, customerList);
             return getSalesReportItemDTOPageResults(page, outItemDTOList);
         }
@@ -164,12 +164,12 @@ public class SalesReportService extends AbsService {
 
 
         List<SalesReportItemDTO> resultList = new ArrayList<>();
-        if (StringUtils.equals(salesType, "return")) {
+        if (StringUtils.equals(salesType, SalesReportConstant.SALES_TYPE_RETURN)) {
             List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productList, unitList, warehouseList, salesReturnList, customerList);
             return getSalesReportItemDTOPageResults(page, returnItemDTOList);
         }
 
-        if (StringUtils.equals(salesType, "all")){
+        if (StringUtils.equals(salesType, SalesReportConstant.SALES_TYPE_ALL)){
             List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productList, unitList, warehouseList, salesOutboundList, customerList);
             List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productList, unitList, warehouseList, salesReturnList, customerList);
             resultList.addAll(outItemDTOList);
@@ -207,8 +207,10 @@ public class SalesReportService extends AbsService {
                 salesReportItemDTO.setOrderNo(salesOutbound.getOrderNo());
                 //封装客户名称
                 Long customerId = salesOutbound.getCustomerId();
+                salesReportItemDTO.setCustomerId(customerId);
                 customerList.stream().filter(customer -> customer.getId().equals(customerId)).findFirst().ifPresent(customer -> {
                     salesReportItemDTO.setCustomerName(customer.getName());
+                    salesReportItemDTO.setCustomerCode(customer.getCode());
                 });
             });
             salesReportItemDTO.setSalesType("out");
@@ -244,8 +246,10 @@ public class SalesReportService extends AbsService {
                 salesReportItemDTO.setOrderNo(salesReturn.getOrderNo());
                 //封装客户名称
                 Long customerId = salesReturn.getCustomerId();
+                salesReportItemDTO.setCustomerId(customerId);
                 customerList.stream().filter(customer -> customer.getId().equals(customerId)).findFirst().ifPresent(customer -> {
                     salesReportItemDTO.setCustomerName(customer.getName());
+                    salesReportItemDTO.setCustomerCode(customer.getCode());
                 });
             });
 
@@ -370,7 +374,7 @@ public class SalesReportService extends AbsService {
         String salesGroup = form.getSalesGroup();
         List<SalesReportItemDTO> dtos = new ArrayList<>();
 
-        if (StringUtils.equals("PRODUCT", salesGroup)) {
+        if (StringUtils.equals(SalesReportConstant.SALES_GROUP_PRODUCT, salesGroup)) {
             Map<Long, SalesReportItemDTO> productSummary = resultList.stream()
                 .collect(Collectors.groupingBy(
                     SalesReportItemDTO::getProductId,
@@ -400,7 +404,7 @@ public class SalesReportService extends AbsService {
                     )
                 ));
             dtos.addAll(productSummary.values());
-        } else if (StringUtils.equals("PRODUCT_WAREHOUSE",salesGroup)){
+        } else if (StringUtils.equals(SalesReportConstant.SALES_GROUP_PRODUCT_WAREHOUSE,salesGroup)){
             Map<String, SalesReportItemDTO> productWarehouseSummary = resultList.stream().collect(Collectors.groupingBy(item -> item.getProductId() + "-" + item.getWarehouseId(),
                 Collectors.collectingAndThen(Collectors.toList(),
                     items -> {
@@ -429,6 +433,73 @@ public class SalesReportService extends AbsService {
                 )
             ));
             dtos.addAll(productWarehouseSummary.values());
+        }else if (StringUtils.equals(SalesReportConstant.SALES_GROUP_CUSTOMER_PRODUCT, salesGroup)) {
+            Map<String, SalesReportItemDTO> productCustomerSummary = resultList.stream().collect(Collectors.groupingBy(item -> item.getProductId() + "-" + item.getCustomerId(),
+                    Collectors.collectingAndThen(Collectors.toList(),
+                            items -> {
+                                SalesReportItemDTO dto = new SalesReportItemDTO();
+                                SalesReportItemDTO firstItem = items.get(0);
+                                dto.setProductId(firstItem.getProductId());
+                                dto.setProductName(firstItem.getProductName());
+                                dto.setProductCode(firstItem.getProductCode());
+                                dto.setUnitName(firstItem.getUnitName());
+                                dto.setCustomerId(firstItem.getCustomerId());
+                                dto.setCustomerName(firstItem.getCustomerName());
+                                dto.setCustomerCode(firstItem.getCustomerCode());
+
+                                dto.setQuantity(items.stream()
+                                        .mapToDouble(item -> item.getQuantity() != null ? item.getQuantity() : 0.0)
+                                        .sum());
+                                dto.setSubtotal(items.stream()
+                                        .map(item -> item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO)
+                                        .reduce(BigDecimal.ZERO, BigDecimal::add));
+                                //单价计算
+                                if (dto.getQuantity() != 0) {
+                                    dto.setUnitPrice(dto.getSubtotal().divide(BigDecimal.valueOf(dto.getQuantity()), 2, BigDecimal.ROUND_HALF_UP));
+                                } else {
+                                    dto.setUnitPrice(BigDecimal.ZERO);
+                                }
+                                return dto;
+                            }
+                    )
+            ));
+            dtos.addAll(productCustomerSummary.values());
+        }else if (StringUtils.equals(SalesReportConstant.SALES_GROUP_CUSTOMER_PRODUCT_WAREHOUSE, salesGroup)) {
+            Map<String, SalesReportItemDTO> productCustomerWarehouseSummary = resultList.stream().collect(
+                    Collectors.groupingBy(item -> item.getProductId() + "-" + item.getCustomerId() + "-"+item.getWarehouseId(),
+                    Collectors.collectingAndThen(Collectors.toList(),
+                            items -> {
+                                SalesReportItemDTO dto = new SalesReportItemDTO();
+                                SalesReportItemDTO firstItem = items.get(0);
+                                dto.setProductId(firstItem.getProductId());
+                                dto.setProductName(firstItem.getProductName());
+                                dto.setProductCode(firstItem.getProductCode());
+                                dto.setUnitName(firstItem.getUnitName());
+                                //客户信息
+                                dto.setCustomerId(firstItem.getCustomerId());
+                                dto.setCustomerName(firstItem.getCustomerName());
+                                dto.setCustomerCode(firstItem.getCustomerCode());
+                                //仓库信息
+                                dto.setWarehouseId(firstItem.getWarehouseId());
+                                dto.setWarehouseName(firstItem.getWarehouseName());
+
+                                dto.setQuantity(items.stream()
+                                        .mapToDouble(item -> item.getQuantity() != null ? item.getQuantity() : 0.0)
+                                        .sum());
+                                dto.setSubtotal(items.stream()
+                                        .map(item -> item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO)
+                                        .reduce(BigDecimal.ZERO, BigDecimal::add));
+                                //单价计算
+                                if (dto.getQuantity() != 0) {
+                                    dto.setUnitPrice(dto.getSubtotal().divide(BigDecimal.valueOf(dto.getQuantity()), 2, BigDecimal.ROUND_HALF_UP));
+                                } else {
+                                    dto.setUnitPrice(BigDecimal.ZERO);
+                                }
+                                return dto;
+                            }
+                    )
+            ));
+            dtos.addAll(productCustomerWarehouseSummary.values());
         }
         //移除数量为0的数据
         dtos.removeIf(item -> item.getQuantity() == 0);

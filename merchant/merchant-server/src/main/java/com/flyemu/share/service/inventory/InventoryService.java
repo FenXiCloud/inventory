@@ -149,13 +149,13 @@ public class InventoryService extends AbsService {
         BigDecimal totalCost = inventory.getTotalCost();
         if (increase) {
             currentQuantity += computedQuantity;
-            totalCost = totalCost.add(computedCost).setScale(2, RoundingMode.DOWN);
+            totalCost = totalCost.add(computedCost).setScale(2, RoundingMode.HALF_EVEN);
             this.operateInventory(orderId, operationType, inventoryItems, inventory, currentQuantity, totalCost, operateItems);
             return;
         }
         //todo 负值库存待处理
         currentQuantity -= computedQuantity;
-        totalCost = totalCost.subtract(computedCost).setScale(2, RoundingMode.DOWN);
+        totalCost = totalCost.subtract(computedCost).setScale(2, RoundingMode.HALF_EVEN);
         if (currentQuantity < 0) {
             currentQuantity = 0;
         }
@@ -181,7 +181,7 @@ public class InventoryService extends AbsService {
                                   BigDecimal totalCost, boolean operateItems) {
         BigDecimal averageCost = BigDecimal.ZERO;
         if (currentQuantity != 0) {
-            averageCost = totalCost.divide(BigDecimal.valueOf(currentQuantity), 2, RoundingMode.DOWN);
+            averageCost = totalCost.divide(BigDecimal.valueOf(currentQuantity), 2, RoundingMode.HALF_EVEN);
         }
         inventory.setCurrentQuantity(currentQuantity);
         inventory.setTotalCost(totalCost);

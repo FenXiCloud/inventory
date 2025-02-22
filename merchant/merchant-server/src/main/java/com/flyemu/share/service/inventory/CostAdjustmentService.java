@@ -239,7 +239,7 @@ public class CostAdjustmentService extends AbsService {
                 // 取反
                 adjustmentAmount = adjustmentAmount.negate();
             }
-            BigDecimal totalCost = beforeTotalCost.add(adjustmentAmount).setScale(2, RoundingMode.DOWN);
+            BigDecimal totalCost = beforeTotalCost.add(adjustmentAmount).setScale(2, RoundingMode.HALF_EVEN);
             BigDecimal averageCost = inventory.getAverageCost();
             inventory.setTotalCost(totalCost);
             inventories.add(inventory);

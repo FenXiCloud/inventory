@@ -182,7 +182,7 @@ public class InventoryTransferService extends AbsService {
             Inventory fromInventory = inventoryService.findByWarehouseIdAndProductId(fromWarehouseId, productId);
             Inventory toInventory = inventoryService.findByWarehouseIdAndProductId(toWarehouseId, productId);
             Double transferQuantity = inventoryTransferItem.getQuantity();
-            BigDecimal subtotal = fromInventory.getAverageCost().multiply(new BigDecimal(transferQuantity)).setScale(2, RoundingMode.DOWN);
+            BigDecimal subtotal = fromInventory.getAverageCost().multiply(new BigDecimal(transferQuantity)).setScale(2, RoundingMode.HALF_EVEN);
             // 调出仓库处理
             this.operateTransferItem(reduceInventory, fromWarehouseId, productId, fromInventory, transferQuantity, subtotal);
             // 调入仓库处理
@@ -237,7 +237,7 @@ public class InventoryTransferService extends AbsService {
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(inventoryTransfer.getCreatedBy());
         inventoryItem.setSubtotal(subtotal);
-        inventoryItem.setUnitPrice(subtotal.divide(BigDecimal.valueOf(transferQuantity), 2, RoundingMode.DOWN));
+        inventoryItem.setUnitPrice(subtotal.divide(BigDecimal.valueOf(transferQuantity), 2, RoundingMode.HALF_EVEN));
         return inventoryItem;
     }
 
@@ -259,7 +259,7 @@ public class InventoryTransferService extends AbsService {
             Integer currentQuantity = item.getCurrentQuantity();
             BigDecimal totalCost = item.getTotalCost();
             BigDecimal added = totalCost.add(subtotal)
-                    .setScale(2, RoundingMode.DOWN);
+                    .setScale(2, RoundingMode.HALF_EVEN);
             currentQuantity += transferQuantity.intValue();
             item.setCurrentQuantity(currentQuantity);
             item.setTotalCost(added);

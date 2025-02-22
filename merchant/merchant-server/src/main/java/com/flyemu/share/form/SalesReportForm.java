@@ -18,5 +18,10 @@ public class SalesReportForm {
     private String start;
     private String end;
     private String customerId;
+    private String warehouseId;
+    private String productId;
+
+    //销售类型 all out return
+    private String salesType;
 
 }

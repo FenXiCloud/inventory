@@ -31,7 +31,7 @@ public class SalesReportController {
      * 销售明细报表
      *
      * @param page
-     * @param query
+     * @param salesReportForm
      * @param accountBookId
      * @param merchantId
      * @return
@@ -39,13 +39,13 @@ public class SalesReportController {
     @GetMapping("/salesItem")
     public JsonResult salesItem(
         Page page,
-        SalesReportService.Query query,
+        SalesReportForm salesReportForm,
         @SaAccountBookId Long accountBookId,
         @SaMerchantId Long merchantId
     ) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
-        return JsonResult.successful(salesReportService.salesItem(page, query));
+        salesReportForm.setMerchantId(merchantId);
+        salesReportForm.setAccountBookId(accountBookId);
+        return JsonResult.successful(salesReportService.salesItem(page, salesReportForm));
     }
 
     /**

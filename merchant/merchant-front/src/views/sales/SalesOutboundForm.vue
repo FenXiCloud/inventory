@@ -29,19 +29,14 @@
           </template>
         </vxe-column>
         <vxe-column title="商品信息" width="180" align="center">
-          <template #default="{row,rowIndex}">
-            <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,rowIndex)" :datas="productList" v-model="row.productId"
+          <template #default="scope">
+            <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
+              <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
                       keyName="id" titleName="name" filterable placeholder="输入编码/名称">
                 <template v-slot:item="{ item }">
-                  <div>{{ item.code }} {{ item.name }}</div>
+                  <div>{{ item.name }}</div>
                 </template>
               </Select>
-            </div>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ row.productCode }}--{{ row.productName }}</div>
-              </div>
             </div>
           </template>
         </vxe-column>
@@ -229,16 +224,8 @@ export default {
 
     handleSelectedOrders(params) {
       let itemList = params.itemList;
-      // 将 productList 转换为 Map，以 productId 为键
-      const productMap = new Map(this.productList.map(product => [product.id, product]));
       const unitMap = new Map(this.unitList.map(unit => [unit.id, unit]));
       itemList.forEach(row => {
-        // 根据 productId 查找对应的 productName 和 unitName
-        const product = productMap.get(row.productId);
-        if (product) {
-          row.productName = product.name;
-          row.productCode = product.code;
-        }
         // 根据 baseUnitId 查找对应的 unitName
         const unit = unitMap.get(row.baseUnitId);
         if (unit) {
@@ -333,7 +320,6 @@ export default {
           })
         });
       }
-      this.product = null;
     },
 
     checkHttp() {
@@ -590,6 +576,9 @@ export default {
       this.productList = results[2].data || [];
       this.unitList = results[3].data || [];
       console.log("this.productList", this.productList);
+      this.productList.forEach(item => {
+        item.name = `${item.code}--${item.name}`;
+      });
       //订单详情/编辑订单
       const tabData = this.$store.state.currentTabDataOutbound;
       //清空参数

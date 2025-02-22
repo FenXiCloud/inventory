@@ -136,7 +136,29 @@ export default {
         propertyNames.push(warehouse.code + "_totalCost");
       });
       let index = 1;
-      console.info("propertyNames:", propertyNames);
+      let allQuantity = 0;
+      let allTotalCost = 0;
+      columns.forEach((column) => {
+        if (column.property && ['all_quantity'].includes(column.property)) {
+          data.forEach((row) => {
+            let rd = row[column.property];
+            if (rd) {
+              allQuantity += Number(rd || 0);
+            }
+          });
+        }
+        if (column.property && ['all_totalCost'].includes(column.property)) {
+          data.forEach((row) => {
+            let rd = row[column.property];
+            if (rd) {
+              allTotalCost += Number(rd || 0);
+            }
+          });
+        }
+      });
+      sums.push(allQuantity);
+      sums.push('');
+      sums.push(allTotalCost);
       columns.forEach((column) => {
         if (column.property && propertyNames.includes(column.property)) {
           let total = 0;

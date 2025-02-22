@@ -133,34 +133,33 @@ public class SalesReportService extends AbsService {
                 .map(SalesOutbound::getReturnOrderId)
                 .filter(Objects::nonNull)
                 .toList();
-
-        //销售退货单列表查询条件
-        Specification<SalesReturn> returnOrderQuery = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (!salesReturnIdList.isEmpty()){
+        List<SalesReturn> salesReturnList = new ArrayList<>();
+        List<SalesReturnItem> returnItemList = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(salesReturnIdList)) {
+            //销售退货单列表查询条件
+            Specification<SalesReturn> returnOrderQuery = (root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
                 predicates.add(root.get("id").in(salesReturnIdList));
-            }
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-        //销售退货单列表
-        List<SalesReturn> salesReturnList = salesReturnRepository.findAll(returnOrderQuery);
+                return cb.and(predicates.toArray(new Predicate[0]));
+            };
+            //销售退货单列表
+            salesReturnList = salesReturnRepository.findAll(returnOrderQuery);
 
-        //销售退货单商品详情查询条件
-        Specification<SalesReturnItem> returnOrderItemQuery = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (!salesReturnIdList.isEmpty()){
+            //销售退货单商品详情查询条件
+            Specification<SalesReturnItem> returnOrderItemQuery = (root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
                 predicates.add(root.get("salesReturnId").in(salesReturnIdList));
-            }
-            if (form.getProductId() != null){
-                predicates.add(cb.equal(root.get("productId"), form.getProductId()));
-            }
-            if (form.getWarehouseId() != null){
-                predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
-            }
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-        //销售退货单商品详情
-        List<SalesReturnItem> returnItemList = salesReturnItemRepository.findAll(returnOrderItemQuery);
+                if (form.getProductId() != null){
+                    predicates.add(cb.equal(root.get("productId"), form.getProductId()));
+                }
+                if (form.getWarehouseId() != null){
+                    predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
+                }
+                return cb.and(predicates.toArray(new Predicate[0]));
+            };
+            //销售退货单商品详情
+            returnItemList = salesReturnItemRepository.findAll(returnOrderItemQuery);
+        }
 
 
         List<SalesReportItemDTO> resultList = new ArrayList<>();
@@ -327,53 +326,48 @@ public class SalesReportService extends AbsService {
         };
         //销售出库单商品列表
         List<SalesOutboundItem> outboundItemList = salesOutboundItemRepository.findAll(salesOutboundItemSpecification);
-
+        //返回数据
+        List<SalesReportItemDTO> resultList = new ArrayList<>();
+        //封装销售出库单商品列表
         List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productList, unitList, warehouseList, salesOutboundList, customerList);
-
+        resultList.addAll(outItemDTOList);
 
         //销售退货单idList
         List<Long> salesReturnIdList = salesOutboundList.stream()
                 .map(SalesOutbound::getReturnOrderId)
                 .filter(Objects::nonNull)
                 .toList();
-        //销售退货单列表查询条件
-        Specification<SalesReturn> returnOrderQuery = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (!salesReturnIdList.isEmpty()){
+        if (!CollectionUtils.isEmpty(salesReturnIdList)) {
+            //销售退货单列表查询条件
+            Specification<SalesReturn> returnOrderQuery = (root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
                 predicates.add(root.get("id").in(salesReturnIdList));
-            }
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-        //销售退货单列表
-        List<SalesReturn> salesReturnList = salesReturnRepository.findAll(returnOrderQuery);
+                return cb.and(predicates.toArray(new Predicate[0]));
+            };
+            //销售退货单列表
+            List<SalesReturn> salesReturnList = salesReturnRepository.findAll(returnOrderQuery);
 
-        //销售退货单商品查询条件
-        Specification<SalesReturnItem> returnSpec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (!salesReturnIdList.isEmpty()){
+            //销售退货单商品查询条件
+            Specification<SalesReturnItem> returnSpec = (root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
                 predicates.add(root.get("salesReturnId").in(salesReturnIdList));
-            }
-            if (form.getProductId() != null){
-                predicates.add(cb.equal(root.get("productId"), form.getProductId()));
-            }
-            if (form.getWarehouseId() != null){
-                predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
-            }
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-        //销售退货单商品列表
-        List<SalesReturnItem> returnItemList = salesReturnItemRepository.findAll(returnSpec);
+                if (form.getProductId() != null){
+                    predicates.add(cb.equal(root.get("productId"), form.getProductId()));
+                }
+                if (form.getWarehouseId() != null){
+                    predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
+                }
+                return cb.and(predicates.toArray(new Predicate[0]));
+            };
+            //销售退货单商品列表
+            List<SalesReturnItem> returnItemList = salesReturnItemRepository.findAll(returnSpec);
 
-        List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productList, unitList, warehouseList, salesReturnList, customerList);
-
-
-        List<SalesReportItemDTO> resultList = new ArrayList<>();
-        resultList.addAll(outItemDTOList);
-        resultList.addAll(returnItemDTOList);
-
-        String salesGroup = form.getSalesGroup();
+            List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productList, unitList, warehouseList, salesReturnList, customerList);
+            resultList.addAll(returnItemDTOList);
+        }
+        //返回dtos
         List<SalesReportItemDTO> dtos = new ArrayList<>();
-
+        String salesGroup = form.getSalesGroup();
         if (StringUtils.equals(SalesReportConstant.SALES_GROUP_PRODUCT, salesGroup)) {
             Map<Long, SalesReportItemDTO> productSummary = resultList.stream()
                 .collect(Collectors.groupingBy(

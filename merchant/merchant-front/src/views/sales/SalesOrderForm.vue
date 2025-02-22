@@ -28,19 +28,14 @@
           </template>
         </vxe-column>
         <vxe-column title="商品信息" width="180" align="center">
-          <template #default="{row,rowIndex}">
-            <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,rowIndex)" :datas="productList" v-model="product"
+          <template #default="scope">
+            <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
+              <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
                       keyName="id" titleName="name" filterable placeholder="输入编码/名称">
                 <template v-slot:item="{ item }">
-                  <div>{{ item.code }} {{ item.name }}</div>
+                  <div>{{ item.name }}</div>
                 </template>
               </Select>
-            </div>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ row.productCode }}--{{ row.productName }}</div>
-              </div>
             </div>
           </template>
         </vxe-column>
@@ -259,7 +254,6 @@ export default {
           })
         });
       }
-      this.product = null;
     },
 
     checkHttp() {
@@ -511,6 +505,9 @@ export default {
       this.customerList = results[0].data || [];
       this.warehouseList = results[1].data || [];
       this.productList = results[2].data || [];
+      this.productList.forEach(item => {
+        item.name = `${item.code}--${item.name}`;
+      });
       console.log("this.productList", this.productList);
       //订单详情/编辑订单
       const tabData = this.$store.state.currentTabData;

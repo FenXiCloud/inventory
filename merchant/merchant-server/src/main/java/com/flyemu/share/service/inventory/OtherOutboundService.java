@@ -192,7 +192,7 @@ public class OtherOutboundService extends AbsService {
                                 Integer currentQuantity = item.getCurrentQuantity();
                                 BigDecimal totalCost = item.getTotalCost();
                                 BigDecimal added = totalCost.add(subtotal)
-                                        .setScale(2, RoundingMode.DOWN);
+                                        .setScale(2, RoundingMode.HALF_EVEN);
                                 double parsed = Double.parseDouble(quantity.toString());
                                 currentQuantity += (int) parsed;
                                 item.setCurrentQuantity(currentQuantity);

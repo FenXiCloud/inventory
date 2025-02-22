@@ -188,7 +188,7 @@ export default {
   // 待优化使用hook方式调用
   methods: {
     // 关闭tab
-    ...mapMutations(['closeSelfTab']),
+    ...mapMutations(['closeSelfTab', 'updateTab']),
     //footer合计
     footerMethod({columns, data}) {
       let totalQuantity = 0;
@@ -294,7 +294,7 @@ export default {
               message("保存成功~");
               this.clearForm();
               setTimeout(() => {
-                this.closeSelfTab(this.index);
+                this.closeWindow();
               }, 300);
             }
           })
@@ -484,7 +484,7 @@ export default {
             if (success) {
               message("审核成功~");
               setTimeout(() => {
-                this.closeSelfTab(this.index);
+                this.closeWindow();
               }, 300);
             }
           })
@@ -492,6 +492,7 @@ export default {
     },
     closeWindow() {
       this.closeSelfTab(this.index);
+      this.updateTab("CostAdjustmentList");
     },
   },
   beforeDestroy() {

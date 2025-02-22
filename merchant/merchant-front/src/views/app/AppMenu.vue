@@ -23,7 +23,10 @@
           <div class="second-menu-wrap">
             <ul class="second-menu-item" v-for="c1 in m.children" :key="c1.key">
               <span class="second-menu-title text-14px">{{ c1.title }}</span>
-              <li class="text-14px" v-for="c2 in c1.children" @click.stop="trigger(c2,2)" :key="c2.key">{{ c2.title }}</li>
+              <li class="text-14px" v-for="c2 in c1.children" @click.stop="trigger(c2,2)" :key="c2.key">{{
+                  c2.title
+                }}
+              </li>
             </ul>
           </div>
         </div>
@@ -34,7 +37,7 @@
 
 <script>
 import AppLogo from "@views/app/AppLogo";
-import {mapState,mapMutations} from 'vuex';
+import {mapState, mapMutations} from 'vuex';
 import {pick} from "xe-utils";
 
 /**
@@ -92,10 +95,16 @@ export default {
       if (data.key === 'DashboardMain') {
         this.updateTab('DashboardMain');
       } else if (data.key && level === 2) {
-        this.pushTab(data);
+        this.pushTab({
+          keepAlive: false,
+          ...data
+        });
       } else {
-        if (!data.children){
-          this.pushTab(data);
+        if (!data.children) {
+          this.pushTab({
+            keepAlive: false,
+            ...data
+          });
         }
       }
     },
@@ -183,33 +192,36 @@ export default {
         cursor: pointer;
         vertical-align: top;
         padding: 13px 40px;
-        &:hover{
+
+        &:hover {
           color: @yellow-color;
         }
       }
     }
   }
 
-  &:hover{
-    .h-menu-li-selected{
+  &:hover {
+    .h-menu-li-selected {
       color: #b3b3b3;
       background-color: transparent;
     }
   }
 
-  .h-menu-show-icon{
-    i{
+  .h-menu-show-icon {
+    i {
       font-size: 18px !important;
     }
   }
 
-  .h-menu-first-level:hover{
+  .h-menu-first-level:hover {
 
     background-color: #3d74ff;
-    .h-menu-show-desc{
+
+    .h-menu-show-desc {
       color: @white-color;
     }
-    .h-menu-show-icon{
+
+    .h-menu-show-icon {
       color: @white-color;
     }
   }

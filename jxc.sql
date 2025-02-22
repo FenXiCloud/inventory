@@ -445,6 +445,7 @@ CREATE TABLE `jxc_inventory_item`
   `unit_price` decimal(38,2) DEFAULT NULL COMMENT '单价（以基本单位计）',
   `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
   `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
+  `supplier_id` bigint(20) DEFAULT NULL COMMENT '供货商ID',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

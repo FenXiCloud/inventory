@@ -29,7 +29,12 @@
           </Suspense>
           <template v-for="(tab,index) in tabs">
             <Suspense>
-              <component class="h-full bg-white-color" v-show="tab.key===currentTab" :is="tab.key" v-bind="tab.params" :index="index" :pro="tab.params"/>
+              <template v-if="tab.keepAlive !== undefined && !tab.keepAlive">
+                <component class="h-full bg-white-color" v-if="tab.key===currentTab" :is="tab.key" v-bind="tab.params" :index="index" :pro="tab.params"/>
+              </template>
+              <template v-else>
+                <component class="h-full bg-white-color" v-show="tab.key===currentTab" :is="tab.key" v-bind="tab.params" :index="index" :pro="tab.params"/>
+              </template>
               <!-- 加载中状态 -->
               <template #fallback>
                 <div class="bg-white-color h-full flex justify-center items-center flex-column">

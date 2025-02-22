@@ -52,7 +52,7 @@ public class CostAdjustmentItemService extends AbsService {
         if (!costAdjustmentItems.isEmpty()) {
             costAdjustmentItemRepository.saveAll(costAdjustmentItems);
         }
-        return totalAmount[0].setScale(2, RoundingMode.DOWN);
+        return totalAmount[0].setScale(2, RoundingMode.HALF_EVEN);
     }
 
     /**

@@ -7,10 +7,7 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.InventoryItemReportDto;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QProductCategory;
-import com.flyemu.share.entity.basic.QUnit;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventoryItem;
 import com.flyemu.share.enums.OperationType;
@@ -55,6 +52,8 @@ public class InventoryItemService extends AbsService {
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
 
     private final static QUnit qUnit = QUnit.unit;
+
+    private final static QSupplier qSupplier = QSupplier.supplier;
 
     private final InventoryItemRepository inventoryItemRepository;
 
@@ -138,6 +137,7 @@ public class InventoryItemService extends AbsService {
                         qWarehouse.name.as("warehouseName"),
                         qProduct.remarks.as("productRemarks"),
                         qUnit.name.as("unitName"),
+                        qSupplier.name.as("supplierName"),
                         qInventoryItem.unitPrice.as("unitPrice"),
                         qInventoryItem.subtotal.as("subtotal"),
                         qInventoryItem.currentQuantity.as("currentQuantity"),
@@ -148,6 +148,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
                 .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
+                .leftJoin(qSupplier).on(qInventoryItem.supplierId.eq(qSupplier.id))
                 .where(query.builders())
                 .orderBy(qInventoryItem.id.asc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -160,6 +161,7 @@ public class InventoryItemService extends AbsService {
             dto.setProductCategoryId(tuple.get(qProduct.id.as("productCategoryId")));
             dto.setProductCode(tuple.get(qProduct.code.as("productCode")));
             dto.setProductName(tuple.get(qProduct.name.as("productName")));
+            dto.setSupplierName(tuple.get(qSupplier.name.as("supplierName")));
             dto.setCreatedAt(tuple.get(qInventoryItem.createdAt.as("createdAt")));
             dto.setProductCategoryName(tuple.get(qProductCategory.name.as("productCategoryName")));
             dto.setProductSpecification(tuple.get(qProduct.specification.as("productSpecification")));
@@ -278,6 +280,8 @@ public class InventoryItemService extends AbsService {
 
         private Long warehouseId;
 
+        private Long supplierId;
+
         private Long productId;
 
         @Enumerated(EnumType.STRING)
@@ -310,6 +314,9 @@ public class InventoryItemService extends AbsService {
             }
             if (warehouseId != null) {
                 builder.and(qInventoryItem.warehouseId.eq(warehouseId));
+            }
+            if (supplierId != null) {
+                builder.and(qInventoryItem.supplierId.eq(supplierId));
             }
             if (productId != null) {
                 builder.and(qInventoryItem.productId.eq(productId));

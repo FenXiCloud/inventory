@@ -82,4 +82,7 @@ public class InventoryItem {
 
     @Column(nullable = false)
     private Long merchantId;
+
+    @Comment("供应商ID")
+    private Long supplierId;
 }

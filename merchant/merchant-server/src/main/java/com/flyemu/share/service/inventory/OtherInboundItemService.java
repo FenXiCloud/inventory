@@ -61,7 +61,7 @@ public class OtherInboundItemService extends AbsService {
         if (!otherInboundItems.isEmpty()) {
             otherInboundItemRepository.saveAll(otherInboundItems);
         }
-        return totalAmount[0].setScale(2, RoundingMode.DOWN);
+        return totalAmount[0].setScale(2, RoundingMode.HALF_EVEN);
     }
 
     /**

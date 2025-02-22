@@ -151,7 +151,7 @@ export default {
       })
       this.quantityTotal = quantityTotal;
       this.subtotalTotal = subtotalTotal;
-      return [["", "", "", "", "", "", "", "", "", quantityTotal, "", subtotalTotal]];
+      return [["", "", "", "", "", "", "", "", quantityTotal, "", subtotalTotal]];
     },
 
     printEvent () {

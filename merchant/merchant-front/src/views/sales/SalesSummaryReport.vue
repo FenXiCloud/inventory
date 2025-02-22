@@ -68,7 +68,7 @@
         <vxe-column title="单价" field="unitPrice" />
         <vxe-column title="数量" field="quantity" />
         <!--        <vxe-column title="折扣金额" field="discountValue" width="120"/>-->
-        <vxe-column title="金额" field="subtotal"/>
+        <vxe-column title="销售收入" field="subtotal"/>
 
       </vxe-table>
     </div>
@@ -96,6 +96,7 @@ import Customer from "@js/api/basic/Customer";
 import {loading, message} from "heyui.ext";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
+import * as XLSX from "xlsx";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -190,6 +191,64 @@ export default {
       }
       this.params.salesGroupSearch = this.params.salesGroup;
       this.loadList();
+    },
+    exportData() {
+      if (this.dataList.length === 0) {
+        message.warn('没有可导出的数据');
+        return;
+      }
+
+      try {
+        loading.open('正在导出...');
+        // 准备导出数据
+        const exportData = this.dataList.map(item => ({
+          '客户编码': item.customerCode,
+          '客户名称': item.customerName,
+          '商品编码': item.productCode,
+          '商品名称': item.productName,
+          '销售单位': item.unitName,
+          '仓库名称': item.warehouseName,
+          '单价': item.unitPrice,
+          '数量': item.quantity,
+          '销售收入': item.subtotal
+        }));
+
+        // 如果有合计行，添加到导出数据中
+        exportData.push({
+          '单价': '合计',
+          '数量': this.quantityTotal,
+          '销售收入': this.subtotalTotal
+        });
+
+        // 创建工作簿和工作表
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+
+        // 设置标题行样式
+        ws['!cols'] = [
+          { wch: 10 }, // 客户编码
+          { wch: 15 }, // 客户名称
+          { wch: 12 }, // 商品编码
+          { wch: 20 }, // 商品名称
+          { wch: 10 }, // 销售单位
+          { wch: 12 }, // 仓库名称
+          { wch: 10 }, // 单价
+          { wch: 10 }, // 数量
+          { wch: 12 }  // 销售收入
+        ];
+        XLSX.utils.book_append_sheet(wb, ws, '销售明细');
+
+        // 导出文件
+        const fileName = `销售汇总报表_${manba().format('YYYY-MM-DD')}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+
+        message.success('导出成功');
+      } catch (error) {
+        console.error('导出错误:', error);
+        message.error('导出失败');
+      } finally {
+        loading.close();
+      }
     },
     loadList(type = true) {
       this.loading = true;

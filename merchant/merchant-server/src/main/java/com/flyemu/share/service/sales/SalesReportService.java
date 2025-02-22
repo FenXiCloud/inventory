@@ -430,6 +430,8 @@ public class SalesReportService extends AbsService {
             ));
             dtos.addAll(productWarehouseSummary.values());
         }
+        //移除数量为0的数据
+        dtos.removeIf(item -> item.getQuantity() == 0);
         //返回分页数据
         return getSalesReportItemDTOPageResults(page, dtos);
     }

@@ -152,6 +152,9 @@ public class SalesOutboundService extends AbsService {
             BeanUtil.copyProperties(salesOutbound, original, CopyOptions.create().ignoreNullValue());
             //修改
             SalesOutbound update = salesOutboundRepository.save(original);
+            //清除出库单商品
+            jqf.delete(qSalesOutboundItem).where(qSalesOutboundItem.salesOutboundId.eq(id)).execute();
+            //保存新关系
             if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                 salesOutboundItemList.forEach(item -> {
                     item.setSalesOutboundId(update.getId());

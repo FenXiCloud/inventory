@@ -114,6 +114,9 @@ public class SalesOrderService extends AbsService {
             BeanUtil.copyProperties(salesOrder, original, CopyOptions.create().ignoreNullValue());
             //修改销售订单
             SalesOrder update = salesOrderRepository.save(original);
+            //清除销售订单商品
+            jqf.delete(qSalesOrderItem).where(qSalesOrderItem.salesOrderId.eq(id)).execute();
+            //保存新关系
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
                     item.setSalesOrderId(update.getId());

@@ -9,16 +9,24 @@
         <Select v-model="params.salesGroup" class="w-120px" :datas="{PRODUCT:'商品',PRODUCT_WAREHOUSE:'商品+仓库'}"
                 placeholder="汇总条件："/>
         <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期：</span>
+          <span class="h-input-addon ml-8px">日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">客户：</span>
-          <Select class="w-178px" filterable :datas="customerList" keyName="id" titleName="name"
+          <Select class="w-120px" filterable :datas="customerList" keyName="id" titleName="name"
                   v-model="params.customerId" placeholder="请选择客户"  />
         </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">仓库：</span>
+          <Select v-model="params.warehouseId" class="w-100px" keyName="id" titleName="name" :datas="warehouseList" placeholder="请选择仓库"/>
+        </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">商品：</span>
+          <Select v-model="params.productId" class="w-100px" keyName="id" titleName="name" :datas="productList" placeholder="请选择商品"/>
+        </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-280px ml-8px"
+                show-search-button class="w-180px ml-8px"
                 placeholder="请输入订单号" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
@@ -74,6 +82,8 @@ import {mapMutations} from "vuex";
 import SalesReport from "@js/api/sales/SalesReport";
 import Customer from "@js/api/basic/Customer";
 import {loading} from "heyui.ext";
+import Product from "@js/api/basic/Product";
+import Warehouse from "@js/api/basic/Warehouse";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -102,7 +112,9 @@ export default {
         start: manba(startTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
       },
-      customerList:[]
+      customerList: [],
+      warehouseList: [],
+      productList: [],
     }
   },
   computed: {
@@ -118,20 +130,28 @@ export default {
   methods: {
     ...mapMutations(['pushTab']),
     footerMethod({columns, data}) {
-      let sums = [];
+      let quantityTotal = 0;
+      let subtotalTotal = 0;
       columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
-          let total = 0;
+        if (column.property && ['quantity', 'subtotal'].includes(column.property)) {
+
           data.forEach((row) => {
             let rd = row[column.property];
-            if (rd) {
-              total += Number(rd || 0);
+            if (column.property === 'quantity') {
+              if (rd) {
+                quantityTotal += Number(rd || 0);
+              }
+            } else if (column.property === 'subtotal') {
+              if (rd) {
+                subtotalTotal += Number(rd || 0);
+              }
             }
           });
-          sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", "", ""].concat(sums)];
+      this.quantityTotal = quantityTotal.toFixed(2);
+      this.subtotalTotal = subtotalTotal.toFixed(2);
+      return [["", "", "", "",quantityTotal.toFixed(2), "", subtotalTotal.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -146,8 +166,13 @@ export default {
 
       Promise.all([
         Customer.select(),
+        Product.select(),
+        Warehouse.select()
       ]).then((results) => {
         this.customerList = results[0].data || [];
+        this.warehouseList = results[1].data || [];
+        this.productList = results[2].data || [];
+
       }).finally(() => loading.close());
     },
   },

@@ -211,6 +211,7 @@ public class SalesReportService extends AbsService {
                     salesReportItemDTO.setCustomerName(customer.getName());
                 });
             });
+            salesReportItemDTO.setSalesType("out");
             return salesReportItemDTO;
         }).toList();
         return outItemDTOList;
@@ -257,6 +258,7 @@ public class SalesReportService extends AbsService {
             if (quantity != null) {
                 salesReportItemDTO.setQuantity(-quantity);
             }
+            salesReportItemDTO.setSalesType("return");
             return salesReportItemDTO;
         }).toList();
         return returnItemDTOList;

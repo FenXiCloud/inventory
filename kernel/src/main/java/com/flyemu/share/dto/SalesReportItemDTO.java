@@ -86,4 +86,6 @@ public class SalesReportItemDTO {
 
     @Comment("单据日期")
     private LocalDate orderDate;
+
+    private String salesType;
 }

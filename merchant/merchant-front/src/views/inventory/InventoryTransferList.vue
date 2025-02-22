@@ -37,7 +37,7 @@
         <vxe-column title="操作" align="center" width="120">
           <template #default="{row}">
             <span class="primary-color  text-hover ml-10px" @click="addForm('edit',row.id)">编辑</span>
-            <span v-if="editable(row)" class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
+            <span v-if="editable(row)" class="red-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
           </template>
         </vxe-column>
         <vxe-column title="单据编号" field="orderNo" align="center" width="230"/>

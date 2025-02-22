@@ -80,18 +80,44 @@ public class InventoryItemReportDto implements Serializable {
      */
     private String warehouseName;
 
+    /**
+     * 仓库id
+     */
     private Long warehouseId;
 
+    /**
+     * 基本单位成本
+     */
     private BigDecimal unitPrice;
 
+    /**
+     * 结存数量
+     */
     private Integer currentQuantity;
 
+    /**
+     * 结存成本
+     */
     private BigDecimal totalCost;
 
+    /**
+     * 单位数量
+     */
     private Integer quantity;
 
+    /**
+     * 成本
+     */
     private BigDecimal subtotal;
 
+    /**
+     * 结存单位成本
+     */
     private BigDecimal averageCost;
+
+    /**
+     * 往来单位
+     */
+    private String supplierName;
 
 }

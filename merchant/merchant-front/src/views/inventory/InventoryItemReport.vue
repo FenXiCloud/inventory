@@ -11,6 +11,10 @@
           <Select v-model="params.productId" class="w-120px" keyName="id" titleName="name" :datas="productList"/>
         </div>
         <div class="h-input-group">
+          <span class="h-input-addon ml-8px">往来单位：</span>
+          <Select v-model="params.supplierId" class="w-120px" keyName="id" titleName="name" :datas="supplierList"/>
+        </div>
+        <div class="h-input-group">
           <span class="h-input-addon ml-8px">业务类型：</span>
           <Select v-model="params.operationType" class="w-120px"
                   :datas="{入库:'入库',出库:'出库'}"/>
@@ -45,7 +49,7 @@
         <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
         <vxe-column title="单据日期" field="createdAt" width="120"/>
         <vxe-column title="业务类型" field="operationType" width="120"/>
-        <vxe-column title="往来单位" field="correspondents" width="120"/>
+        <vxe-column title="往来单位" field="supplierName" width="120"/>
         <vxe-column title="仓库" field="warehouseName" align="center" width="100"/>
         <vxe-column title="单位" field="unitName" width="80"/>
         <vxe-column title="商品名称备注" field="productRemarks" width="80"/>
@@ -156,6 +160,7 @@ import {loading} from "heyui.ext";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import ProductCategory from "@js/api/basic/ProductCategory";
+import Supplier from "@js/api/basic/Supplier";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -176,6 +181,7 @@ export default {
       params: {
         filter: null,
         productId: null,
+        supplierId: null,
         warehouseId: null,
         operationType: null,
         state: null,
@@ -188,6 +194,7 @@ export default {
       },
       warehouseList: [],
       productList: [],
+      supplierList: [],
     }
   },
   computed: {
@@ -259,10 +266,11 @@ export default {
     },
     loadDict(callback) {
       loading("加载中....");
-      Promise.all([Product.select(), Warehouse.select()])
+      Promise.all([Product.select(), Warehouse.select(), Supplier.select()])
           .then((results) => {
             this.productList = results[0].data || [];
             this.warehouseList = results[1].data || [];
+            this.supplierList = results[2].data || [];
             callback();
           })
           .finally(() => loading.close());

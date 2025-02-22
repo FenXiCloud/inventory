@@ -180,14 +180,15 @@ public class InventoryTransferService extends AbsService {
             Long productId = inventoryTransferItem.getProductId();
             // 调出仓库不会为空，前端已控制
             Inventory fromInventory = inventoryService.findByWarehouseIdAndProductId(fromWarehouseId, productId);
+            Inventory toInventory = inventoryService.findByWarehouseIdAndProductId(toWarehouseId, productId);
             Double transferQuantity = inventoryTransferItem.getQuantity();
             BigDecimal subtotal = fromInventory.getAverageCost().multiply(new BigDecimal(transferQuantity)).setScale(2, RoundingMode.DOWN);
             // 调出仓库处理
             this.operateTransferItem(reduceInventory, fromWarehouseId, productId, fromInventory, transferQuantity, subtotal);
             // 调入仓库处理
-            this.operateTransferItem(increaseInventory, toWarehouseId, productId, fromInventory, transferQuantity, subtotal);
+            this.operateTransferItem(increaseInventory, toWarehouseId, productId, toInventory, transferQuantity, subtotal);
             // 获取处理仓库明细
-            InventoryItem toInventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, fromInventory,
+            InventoryItem toInventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, toInventory,
                     transferQuantity, subtotal, inventoryTransfer.getToWarehouseId(), false);
             inventoryItems.add(toInventoryItem);
             InventoryItem formInventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, fromInventory,

@@ -180,7 +180,7 @@ public class SalesReportService extends AbsService {
         return getSalesReportItemDTOPageResults(page, resultList);
     }
 
-    private static @NotNull List<SalesReportItemDTO> getSalesReportOutItemDTOS(List<SalesOutboundItem> outboundItemList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesOutbound> salesOutboundList, List<Customer> customerList) {
+    private List<SalesReportItemDTO> getSalesReportOutItemDTOS(List<SalesOutboundItem> outboundItemList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesOutbound> salesOutboundList, List<Customer> customerList) {
         List<SalesReportItemDTO> outItemDTOList = outboundItemList.stream().map(item -> {
             SalesReportItemDTO salesReportItemDTO = new SalesReportItemDTO();
             BeanUtils.copyProperties(item, salesReportItemDTO);
@@ -217,7 +217,7 @@ public class SalesReportService extends AbsService {
         return outItemDTOList;
     }
 
-    private  List<SalesReportItemDTO> getSalesReportReturnItemDTOS(List<SalesReturnItem> returnItemList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesReturn> salesReturnList, List<Customer> customerList) {
+    private List<SalesReportItemDTO> getSalesReportReturnItemDTOS(List<SalesReturnItem> returnItemList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesReturn> salesReturnList, List<Customer> customerList) {
         List<SalesReportItemDTO> returnItemDTOList = returnItemList.stream().map(item -> {
             SalesReportItemDTO salesReportItemDTO = new SalesReportItemDTO();
             BeanUtils.copyProperties(item, salesReportItemDTO);
@@ -271,96 +271,6 @@ public class SalesReportService extends AbsService {
         int toIndex = Math.min(fromIndex + page.getOffsetEnd(), resultList.size());
         List<SalesReportItemDTO> pagedDTOList = resultList.subList(fromIndex, toIndex);
         return new PageResults<>(pagedDTOList, page, totalSize);
-    }
-
-    public PageResults<SalesReportItemDTO> salesOutItem(Page page, SalesReportService.Query query) {
-        // 获取动态生成的 WHERE 子句和参数
-        String whereClause = query.getWhereClause();
-        Map<String, Object> params = query.getParams();
-        // // 去除开头的 " AND "，确保 WHERE 子句正确
-        if (!whereClause.isEmpty()) {
-            whereClause = whereClause.substring(5);
-        }
-
-        // 查询总记录数
-        String countSql = "SELECT COUNT(*) FROM jxc_sales_outbound_item soi " +
-                "LEFT JOIN jxc_sales_outbound so ON so.id = soi.sales_outbound_id " +
-                "LEFT JOIN jxc_customer c ON c.id = so.customer_id " +
-                "LEFT JOIN jxc_warehouse w ON w.id = soi.warehouse_id " +
-                "LEFT JOIN jxc_product p ON p.id = soi.product_id " +
-                "LEFT JOIN jxc_unit u ON u.id = soi.base_unit_id " +
-                "WHERE " + whereClause;
-
-        long totalSize = lazyDao.getCount(countSql, params);
-
-        // 查询分页数据
-        String sql = "SELECT soi.*, c.name AS customer_name, w.name AS warehouse_name, p.name AS product_name, " +
-                "p.code AS product_code, u.name AS unit_name, so.order_no AS order_no , so.outbound_date AS orderDate " +
-                "FROM jxc_sales_outbound_item soi " +
-                "LEFT JOIN jxc_sales_outbound so ON so.id = soi.sales_outbound_id " +
-                "LEFT JOIN jxc_customer c ON c.id = so.customer_id " +
-                "LEFT JOIN jxc_warehouse w ON w.id = soi.warehouse_id " +
-                "LEFT JOIN jxc_product p ON p.id = soi.product_id " +
-                "LEFT JOIN jxc_unit u ON u.id = soi.base_unit_id " +
-                "WHERE " + whereClause +
-                " ORDER BY soi.id DESC " +
-                "LIMIT :limit OFFSET :offset";
-
-        // 添加分页参数
-        params.put("limit", page.getOffsetEnd());
-        params.put("offset", page.getOffset());
-
-        // 执行查询并映射结果
-        List<SalesReportItemDTO> dtos = lazyDao.findBySql(sql, params, SalesReportItemDTO.class);
-
-        return new PageResults<>(dtos, page, totalSize);
-    }
-
-    public PageResults<SalesReportItemDTO> salesReturnItem(Page page, SalesReportService.Query query) {
-        // 获取动态生成的 WHERE 子句和参数
-        String whereClause = query.getWhereClause();
-
-        Map<String, Object> params = query.getParams();
-        // // 去除开头的 " AND "，确保 WHERE 子句正确
-        if (!whereClause.isEmpty()) {
-            whereClause = whereClause.substring(5);
-        }
-
-        //退货单修改时间查询字段
-        whereClause = whereClause.replaceAll("outbound_date", "return_date");
-
-        // 查询总记录数
-        String countSql = "SELECT COUNT(*) FROM jxc_sales_return_item sri " +
-                "LEFT JOIN jxc_sales_return so ON so.id = sri.sales_return_id " +
-                "LEFT JOIN jxc_customer c ON c.id = so.customer_id " +
-                "LEFT JOIN jxc_warehouse w ON w.id = sri.warehouse_id " +
-                "LEFT JOIN jxc_product p ON p.id = sri.product_id " +
-                "LEFT JOIN jxc_unit u ON u.id = sri.base_unit_id " +
-                "WHERE " + whereClause;
-
-        long totalSize = lazyDao.getCount(countSql, params);
-
-        // 查询分页数据
-        String sql = "SELECT sri.*, c.name AS customer_name, w.name AS warehouse_name, p.name AS product_name, " +
-                "p.code AS product_code, u.name AS unit_name, so.order_no AS order_no , so.return_date AS orderDate " +
-                "FROM jxc_sales_return_item sri " +
-                "LEFT JOIN jxc_sales_return so ON so.id = sri.sales_return_id " +
-                "LEFT JOIN jxc_customer c ON c.id = so.customer_id " +
-                "LEFT JOIN jxc_warehouse w ON w.id = sri.warehouse_id " +
-                "LEFT JOIN jxc_product p ON p.id = sri.product_id " +
-                "LEFT JOIN jxc_unit u ON u.id = sri.base_unit_id " +
-                "WHERE " + whereClause +
-                " ORDER BY sri.id DESC " +
-                "LIMIT :limit OFFSET :offset";
-
-        // 添加分页参数
-        params.put("limit", page.getOffsetEnd());
-        params.put("offset", page.getOffset());
-
-        // 执行查询并映射结果
-        List<SalesReportItemDTO> dtos = lazyDao.findBySql(sql, params, SalesReportItemDTO.class);
-
-        return new PageResults<>(dtos, page, totalSize);
     }
 
     public PageResults<SalesReportItemDTO> salesSummary(Page page, SalesReportForm form) {

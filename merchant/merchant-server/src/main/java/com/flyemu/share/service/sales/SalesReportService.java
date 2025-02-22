@@ -275,6 +275,7 @@ public class SalesReportService extends AbsService {
 
     public PageResults<SalesReportItemDTO> salesSummary(Page page, SalesReportForm form) {
 
+        PageResults<SalesReportItemDTO> results = new PageResults<>(new ArrayList<>(),page,0);
         //销售出库单查询条件
         Specification<SalesOutbound> salesOutboundSpecification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -288,147 +289,147 @@ public class SalesReportService extends AbsService {
             if (form.getEnd() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("outboundDate"), form.getEnd()));
             }
+            if(StringUtils.isNotBlank(form.getFilter())){
+                predicates.add(cb.like(root.get("orderNo"), "%" + form.getFilter() + "%"));
+            }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+        //销售出库单列表
         List<SalesOutbound> salesOutboundList = salesOutboundRepository.findAll(salesOutboundSpecification);
+        if (CollectionUtils.isEmpty(salesOutboundList)) {
+            return results;
+        }
+        List<Product> productList = productRepository.findAll();
+        List<Unit> unitList = unitRepository.findAll();
+        List<Warehouse> warehouseList = warehouseRepository.findAll();
+        List<Customer> customerList = customerRepository.findAll();
 
         //销售出库单idList
         List<Long> salesOutboundIdList = salesOutboundList.stream().map(SalesOutbound::getId).toList();
-        //销售退货单idList
-        List<Long> salesReturnIdList = salesOutboundList.stream()
-                .map(SalesOutbound::getReturnOrderId)
-                .filter(Objects::nonNull)
-                .toList();
-
-        //销售出库单商品详情查询条件
+        //销售出库单商品查询条件
         Specification<SalesOutboundItem> salesOutboundItemSpecification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             //查询销售出库单下面的商品
             if (!salesOutboundIdList.isEmpty()){
                 predicates.add(root.get("salesOutboundId").in(salesOutboundIdList));
             }
+            if (form.getProductId() != null){
+                predicates.add(cb.equal(root.get("productId"), form.getProductId()));
+            }
+            if (form.getWarehouseId() != null){
+                predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
+            }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-
-        //销售出库单商品详情
+        //销售出库单商品列表
         List<SalesOutboundItem> outboundItemList = salesOutboundItemRepository.findAll(salesOutboundItemSpecification);
 
+        List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productList, unitList, warehouseList, salesOutboundList, customerList);
 
-        //销售退货单商品详情查询条件
+
+        //销售退货单idList
+        List<Long> salesReturnIdList = salesOutboundList.stream()
+                .map(SalesOutbound::getReturnOrderId)
+                .filter(Objects::nonNull)
+                .toList();
+        //销售退货单列表查询条件
+        Specification<SalesReturn> returnOrderQuery = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (!salesReturnIdList.isEmpty()){
+                predicates.add(root.get("id").in(salesReturnIdList));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        //销售退货单列表
+        List<SalesReturn> salesReturnList = salesReturnRepository.findAll(returnOrderQuery);
+
+        //销售退货单商品查询条件
         Specification<SalesReturnItem> returnSpec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (!salesReturnIdList.isEmpty()){
                 predicates.add(root.get("salesReturnId").in(salesReturnIdList));
             }
+            if (form.getProductId() != null){
+                predicates.add(cb.equal(root.get("productId"), form.getProductId()));
+            }
+            if (form.getWarehouseId() != null){
+                predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
+            }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-        //销售退货单商品详情
+        //销售退货单商品列表
         List<SalesReturnItem> returnItemList = salesReturnItemRepository.findAll(returnSpec);
 
+        List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productList, unitList, warehouseList, salesReturnList, customerList);
 
-        List<Product> productList = productRepository.findAll();
-        List<Unit> unitList = unitRepository.findAll();
-        List<Warehouse> warehouseList = warehouseRepository.findAll();
+
+        List<SalesReportItemDTO> resultList = new ArrayList<>();
+        resultList.addAll(outItemDTOList);
+        resultList.addAll(returnItemDTOList);
 
         String salesGroup = form.getSalesGroup();
-
         List<SalesReportItemDTO> dtos = new ArrayList<>();
+
         if (StringUtils.equals("PRODUCT", salesGroup)) {
-            // Group by productId and aggregate quantities and amounts
-            Map<Long, SalesReportItemDTO> productSummary = outboundItemList.stream().collect(Collectors.groupingBy(SalesOutboundItem::getProductId,
-                Collectors.collectingAndThen(Collectors.toList(), items -> {
-                    SalesReportItemDTO dto = new SalesReportItemDTO();
-                    SalesOutboundItem firstItem = items.get(0);
-                    dto.setProductId(firstItem.getProductId());
-                    //产品信息
-                    Optional<Product> productOptional = productList.stream().filter(product -> product.getId().equals(firstItem.getProductId())).findFirst();
-                    productOptional.ifPresent(product -> {
-                        dto.setProductName(product.getName());
-                        dto.setProductCode(product.getCode());
-                    });
-                    //单位信息
-                    Long baseUnitId = firstItem.getBaseUnitId();
-                    unitList.stream().filter(unit -> unit.getId().equals(baseUnitId)).findFirst().ifPresent(unit -> {
-                        dto.setUnitName(unit.getName());
-                    });
+            Map<Long, SalesReportItemDTO> productSummary = resultList.stream()
+                .collect(Collectors.groupingBy(
+                    SalesReportItemDTO::getProductId,
+                    Collectors.collectingAndThen(Collectors.toList(),
+                        items -> {
+                            SalesReportItemDTO dto = new SalesReportItemDTO();
+                            SalesReportItemDTO firstItem = items.get(0);
+                            dto.setProductId(firstItem.getProductId());
+                            dto.setProductName(firstItem.getProductName());
+                            dto.setProductCode(firstItem.getProductCode());
+                            dto.setUnitName(firstItem.getUnitName());
 
-                    //数量统计
-                    dto.setQuantity(items.stream()
-                            .mapToDouble(SalesOutboundItem::getQuantity)
-                            .sum());
-                    //小计统计
-                    dto.setSubtotal(items.stream()
-                            .map(SalesOutboundItem::getSubtotal)
-                            .reduce(BigDecimal.ZERO, BigDecimal::add));
-                    return dto;
-                })
-            ));
-            //出库商品汇总
+                            dto.setQuantity(items.stream()
+                                .mapToDouble(item -> item.getQuantity() != null ? item.getQuantity() : 0.0)
+                                .sum());
+                            dto.setSubtotal(items.stream()
+                                .map(item -> item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add));
+                            //单价计算
+                            if (dto.getQuantity() != 0) {
+                                dto.setUnitPrice(dto.getSubtotal().divide(BigDecimal.valueOf(dto.getQuantity()), 2, BigDecimal.ROUND_HALF_UP));
+                            } else {
+                                dto.setUnitPrice(BigDecimal.ZERO);
+                            }
+                            return dto;
+                        }
+                    )
+                ));
             dtos.addAll(productSummary.values());
-
-            //计算退货数据
-            for (SalesReportItemDTO outboundItem : dtos) {
-                Long outboundItemProductId = outboundItem.getProductId();
-                for (SalesReturnItem returnItem : returnItemList) {
-                    Long returnItemProductId = returnItem.getProductId();
-                    if (outboundItemProductId.equals(returnItemProductId)) {
-                        //计算销售数量
-                        outboundItem.setQuantity(outboundItem.getQuantity() - returnItem.getQuantity());
-                    }
-                }
-            }
-
         } else if (StringUtils.equals("PRODUCT_WAREHOUSE",salesGroup)){
-            Map<String, SalesReportItemDTO> productWarehouseSummary = outboundItemList.stream().collect(Collectors.groupingBy(item -> item.getProductId() + "-" + item.getWarehouseId(),
+            Map<String, SalesReportItemDTO> productWarehouseSummary = resultList.stream().collect(Collectors.groupingBy(item -> item.getProductId() + "-" + item.getWarehouseId(),
                 Collectors.collectingAndThen(Collectors.toList(),
                     items -> {
                         SalesReportItemDTO dto = new SalesReportItemDTO();
-                        SalesOutboundItem firstItem = items.get(0);
+                        SalesReportItemDTO firstItem = items.get(0);
                         dto.setProductId(firstItem.getProductId());
-                        //产品信息
-                        Optional<Product> productOptional = productList.stream().filter(product -> product.getId().equals(firstItem.getProductId())).findFirst();
-                        productOptional.ifPresent(product -> {
-                            dto.setProductName(product.getName());
-                            dto.setProductCode(product.getCode());
-                        });
-                        //单位信息
-                        Long baseUnitId = firstItem.getBaseUnitId();
-                        unitList.stream().filter(unit -> unit.getId().equals(baseUnitId)).findFirst().ifPresent(unit -> {
-                            dto.setUnitName(unit.getName());
-                        });
+                        dto.setProductName(firstItem.getProductName());
+                        dto.setProductCode(firstItem.getProductCode());
+                        dto.setUnitName(firstItem.getUnitName());
+                        dto.setWarehouseName(firstItem.getWarehouseName());
 
-                        Long warehouseId = firstItem.getWarehouseId();
-                        dto.setWarehouseId(warehouseId);
-                        warehouseList.stream().filter(warehouse -> warehouse.getId().equals(warehouseId)).findFirst().ifPresent(warehouse -> {
-                            dto.setWarehouseName(warehouse.getName());
-                        });
-//
                         dto.setQuantity(items.stream()
-                                .mapToDouble(SalesOutboundItem::getQuantity)
+                                .mapToDouble(item -> item.getQuantity() != null ? item.getQuantity() : 0.0)
                                 .sum());
                         dto.setSubtotal(items.stream()
-                                .map(SalesOutboundItem::getSubtotal)
+                                .map(item -> item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO)
                                 .reduce(BigDecimal.ZERO, BigDecimal::add));
+                        //单价计算
+                        if (dto.getQuantity() != 0) {
+                            dto.setUnitPrice(dto.getSubtotal().divide(BigDecimal.valueOf(dto.getQuantity()), 2, BigDecimal.ROUND_HALF_UP));
+                        } else {
+                            dto.setUnitPrice(BigDecimal.ZERO);
+                        }
                         return dto;
                     }
                 )
             ));
             dtos.addAll(productWarehouseSummary.values());
-            //计算退货数据
-            for (SalesReportItemDTO outboundItem : dtos) {
-                Long outboundItemProductId = outboundItem.getProductId();
-                for (SalesReturnItem returnItem : returnItemList) {
-                    Long returnItemProductId = returnItem.getProductId();
-                    if (outboundItem.getWarehouseId().equals(returnItem.getWarehouseId())){
-                        if (outboundItemProductId.equals(returnItemProductId)) {
-                            //计算销售数量
-                            outboundItem.setQuantity(outboundItem.getQuantity() - returnItem.getQuantity());
-                        }
-                    }
-                }
-            }
         }
-
         //返回分页数据
         return getSalesReportItemDTOPageResults(page, dtos);
     }

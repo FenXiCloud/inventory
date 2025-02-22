@@ -166,8 +166,8 @@ export default {
 
       Promise.all([
         Customer.select(),
+        Warehouse.select(),
         Product.select(),
-        Warehouse.select()
       ]).then((results) => {
         this.customerList = results[0].data || [];
         this.warehouseList = results[1].data || [];

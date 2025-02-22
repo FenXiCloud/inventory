@@ -13,6 +13,7 @@ public class SalesReportForm {
     private Long merchantId;
     private Long accountBookId;
 
+    //分组条件组合
     private String salesGroup;
     private String filter;
     private String start;

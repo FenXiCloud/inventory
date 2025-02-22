@@ -16,6 +16,7 @@ import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.repository.PurchaseOrderItemRepository;
 import com.flyemu.share.repository.SalesOrderItemRepository;
 import com.flyemu.share.repository.SalesOrderRepository;
+import com.flyemu.share.repository.SalesOutboundRepository;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -31,6 +32,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @功能描述: 销售订单
@@ -49,6 +51,7 @@ public class SalesOrderService extends AbsService {
     private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
+    private final SalesOutboundRepository salesOutboundRepository;
 
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderItemRepository salesOrderItemRepository;
@@ -157,6 +160,15 @@ public class SalesOrderService extends AbsService {
         if (orderStatus.equals(OrderStatus.已审核)) {
             throw new InvalidContextException("已审核单据不能删除");
         }
+        //已关联销售出库单不能删除
+        Long outOrderId = original.getOutOrderId();
+        if (outOrderId != null){
+            Optional<SalesOutbound> salesOutboundOptional = salesOutboundRepository.findById(outOrderId);
+            salesOutboundOptional.ifPresent(salesOutbound -> {
+                throw new InvalidContextException("已关联销售出库单不能删除");
+            });
+        }
+
         //删除销售订单
         jqf.delete(qSalesOrder)
                 .where(qSalesOrder.id.eq(salesOrderId).and(qSalesOrder.merchantId.eq(merchantId)).and(qSalesOrder.accountBookId.eq(accountBookId)))

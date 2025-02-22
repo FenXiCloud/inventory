@@ -67,6 +67,7 @@ public class SalesOutboundService extends AbsService {
     private final SalesOutboundItemRepository salesOutboundItemRepository;
     private final CodeSeedService codeSeedService;
     private final SalesOrderRepository salesOrderRepository;
+    private final SalesReturnRepository salesReturnRepository;
 
     private final ProductRepository productRepository;
     private final WarehouseRepository warehouseRepository;
@@ -206,6 +207,15 @@ public class SalesOutboundService extends AbsService {
         OrderStatus orderStatus = original.getOrderStatus();
         if (orderStatus.equals(OrderStatus.已审核)) {
             throw new InvalidContextException("已审核单据不能删除");
+        }
+
+        //已关联销售退货单不能删除
+        Long returnOrderId = original.getReturnOrderId();
+        if (returnOrderId != null){
+            Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
+            salesReturnOptional.ifPresent(salesReturn -> {
+                throw new InvalidContextException("已关联销售退货单不能删除");
+            });
         }
 
         jqf.delete(qSalesOutbound)

@@ -2,7 +2,7 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <!--        <Button @click="showForm()" color="primary">新 增</Button>-->
+
       </template>
       <template #tools>
         <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入名称"/>
@@ -20,20 +20,15 @@
                  :column-config="{resizable: true}"
                  :loading="loading">
         <vxe-column type="seq" width="40" title="#"/>
-        <vxe-column title="编码" field="code" width="150"/>
-        <vxe-column title="名称" field="name"/>
-        <vxe-column title="状态" field="enabled" width="120" align="center">
-          <template #default="{row:{enabled}}">
-            <Tag color="primary" v-if="enabled">启用</Tag>
-            <Tag color="red" v-else>禁用</Tag>
-          </template>
-        </vxe-column>
-        <vxe-column title="操作" align="center" width="150">
-          <template #default="{row}">
-            <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
-            <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
-          </template>
-        </vxe-column>
+        <vxe-column title="编码" field="code" align="left" width="100"/>
+        <vxe-column title="名称" field="name" align="left"/>
+        <vxe-column title="商品类别" field="productCategoryName" align="left"/>
+        <vxe-column title="规格" field="specification" align="left"/>
+        <vxe-column title="单位" field="unitName" align="left"/>
+        <vxe-column title="价格" field="price" align="left"/>
+        <vxe-column title="价格类型" field="" align="left"/>
+        <vxe-column title="价格来源" field="" align="left"/>
+        <vxe-column title="创建时间" field="" align="left"/>
       </vxe-table>
     </div>
   </div>
@@ -41,7 +36,6 @@
 
 <script>
 import PriceRecord from "@js/api/basic/PriceRecord";
-import {confirm, message} from "heyui.ext";
 
 /**
  * @功能描述: 价格记录表
@@ -71,18 +65,6 @@ export default {
         this.dataList = data;
       }).finally(() => this.loading = false);
     },
-    doRemove(row) {
-      confirm({
-        title: "系统提示",
-        content: `确认删除：${row.name}?`,
-        onConfirm: () => {
-          PriceRecord.remove(row.id).then(() => {
-            message("删除成功~");
-            this.loadList();
-          })
-        }
-      })
-    }
   },
   created() {
     this.loadList();

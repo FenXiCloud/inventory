@@ -10,21 +10,19 @@
                   search-button-theme="h-btn-default"
                   show-search-button
                   class="w-360px pl-8px"
-                  placeholder="请输入商品分类名称"
+                  placeholder="请输入商品名称"
                   @search="doSearch">
                 <i class="h-icon-search"/>
               </Search>
             </div>
           </div>
           <div class="table-toolbar-right">
-            <!--            <Button @click="download()" color="green">导 出</Button>-->
-            <Button @click="showForm()" color="primary">新 增</Button>
-            <!--            <Button @click="showImport()" color="green">导 入</Button>-->
+            <!--            <Button @click="showImport()" >导 入</Button>-->
+            <!--            <Button @click="download()" >导 出</Button>-->
           </div>
         </div>
         <vxe-table row-id="id"
                    :stripe="false"
-                   :tree-config="{transform:true, rowField: 'id', parentField: 'pid'}"
                    ref="table"
                    :data="dataList"
                    highlight-hover-row
@@ -33,24 +31,17 @@
                    :loading="loading">
           <vxe-column type="seq" width="80" title="#"/>
           <vxe-column title="编码" field="code" align="left" width="100"/>
-          <vxe-column title="排序" field="sort" align="left" width="100"/>
-          <vxe-column title="图片" width="400" field="imgPath">
-            <template #default="{row}">
-              <div class="flex">
-                <div class="flex">
-                  <img v-if="row.imgPath" :src="row.imgPath" style="width: 40px;height: 40px;">
-                  <img v-else src="@/assets/good-img-bg.png" style="height: 40px;width: 40px"/>
-                </div>
-              </div>
-            </template>
-          </vxe-column>
-          <vxe-column title="名称" field="name" tree-node align="left"/>
+          <vxe-column title="名称" field="name" align="left"/>
+          <vxe-column title="商品类别" field="productCategoryName" align="left"/>
+          <vxe-column title="规格" field="specification" align="left"/>
+          <vxe-column title="单位" field="unitName" align="left"/>
+          <vxe-column title="预计采购价" field="purchasePrice" align="left"/>
+          <vxe-column title="销售价（动态列）" field="" align="left"/>
+          <vxe-column title="最后修改时间" field="" align="left"/>
           <vxe-column title="操作" align="center" width="200" fixed="right">
             <template #default="{row}">
               <div class="flex items-center justify-center">
-                <span class=" primary-color text-hover ml-10px" @click="showForm(null,row)" size="s">创建下级</span>
-                <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
-                <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
+                <i class="primary-color h-icon-edit ml-10px" @click=""></i>
               </div>
             </template>
           </vxe-column>
@@ -61,27 +52,17 @@
 </template>
 
 <script>
-import {confirm, message} from "heyui.ext";
-import {layer} from "@layui/layer-vue";
-import {h} from "vue";
-import ProductCategory from "@js/api/basic/ProductCategory";
-import ProductCategoryForm from "@views/basic/ProductCategoryForm.vue";
+import Product from "@js/api/basic/Product";
 
 export default {
   name: "ProductPrice",
-  props: {
-    merchant: Object,
-  },
   data() {
     return {
-      opened: true,
       loading: false,
       params: {
         name: null,
       },
-      checkedRows: [],
       dataList: [],
-      merchantList: [],
     }
   },
   computed: {
@@ -90,47 +71,15 @@ export default {
     }
   },
   methods: {
-    download() {
-
-    },
-    showForm(productCategory, parent) {
-      let layerId = layer.open({
-        title: "分类信息",
-        shadeClose: false,
-        area: ['450px', '420px'],
-        content: h(ProductCategoryForm, {
-          productCategory, parent, list: this.dataList,
-          onClose: () => {
-            layer.close(layerId);
-          },
-          onSuccess: () => {
-            this.doSearch();
-            layer.close(layerId);
-          }
-        })
-      });
-    },
     loadList() {
       this.loading = true;
-      ProductCategory.list(this.queryParams).then(({data}) => {
+      Product.list(this.queryParams).then(({data}) => {
         this.dataList = data;
       }).finally(() => this.loading = false);
     },
     doSearch() {
       this.loadList();
     },
-    doRemove(row) {
-      confirm({
-        title: "系统提示",
-        content: `确认删除：${row.name}?`,
-        onConfirm: () => {
-          ProductCategory.remove(row.id).then(() => {
-            message("删除成功~");
-            this.doSearch();
-          })
-        }
-      })
-    }
   },
   created() {
     this.doSearch();

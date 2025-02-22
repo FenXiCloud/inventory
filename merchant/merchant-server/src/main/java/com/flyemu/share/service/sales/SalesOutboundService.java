@@ -10,25 +10,22 @@ import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
 import com.flyemu.share.dto.SalesOutboundDTO;
 import com.flyemu.share.dto.SalesOutboundItemDTO;
-import com.flyemu.share.entity.basic.QCustomer;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QUnit;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.form.SalesOutboundForm;
-import com.flyemu.share.repository.SalesOrderRepository;
-import com.flyemu.share.repository.SalesOutboundItemRepository;
-import com.flyemu.share.repository.SalesOutboundRepository;
+import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -70,6 +67,12 @@ public class SalesOutboundService extends AbsService {
     private final SalesOutboundItemRepository salesOutboundItemRepository;
     private final CodeSeedService codeSeedService;
     private final SalesOrderRepository salesOrderRepository;
+
+    private final ProductRepository productRepository;
+    private final WarehouseRepository warehouseRepository;
+
+    @Autowired
+    private InventoryService inventoryService;
 
     public PageResults<SalesOutboundDTO> query(Page page, SalesOutboundService.Query query) {
 
@@ -125,7 +128,19 @@ public class SalesOutboundService extends AbsService {
         SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
         Long id = salesOutbound.getId();
         List<SalesOutboundItem> salesOutboundItemList = salesOutboundForm.getSalesOutboundItemList();
-        // todo 根据产品id和仓库id 查询库存服务是否有库存;
+
+        for (SalesOutboundItem item : salesOutboundItemList) {
+            Boolean exist = inventoryService.exist(item.getProductId(), item.getWarehouseId(), salesOutbound.getMerchantId(), salesOutbound.getAccountBookId());
+            if (!exist) {
+                Optional<Product> productOptional = productRepository.findById(item.getProductId());
+                Optional<Warehouse> warehouseOptional = warehouseRepository.findById(item.getWarehouseId());
+
+                String productName = productOptional.map(Product::getName).orElse("未知产品");
+                String warehouseName = warehouseOptional.map(Warehouse::getName).orElse("未知仓库");
+
+                throw new InvalidContextException(String.format("库存不足：产品「%s」在仓库「%s」中库存不足", productName, warehouseName));
+            }
+        }
         if (id != null) {
             //查询
             SalesOutbound original = salesOutboundRepository.getById(id);

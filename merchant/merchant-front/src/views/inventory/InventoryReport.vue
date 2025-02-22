@@ -195,7 +195,7 @@ export default {
                     }
                   });
                   item['all_quantity'] = allQuantity;
-                  item['all_averageCost'] = allAverageCost;
+                  item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
                   item['all_totalCost'] = allTotalCost;
                 });
               });

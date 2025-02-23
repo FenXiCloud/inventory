@@ -245,9 +245,7 @@ export default {
     loadToInbound(params) {
       PurchaseOrder.toInbound(this.form.supplierId, params.orderIds).then(({data}) => {
         this.productData = data || [];
-
       })
-
     },
     handleEnter(e, index, num) {
       e.$event.stopPropagation();
@@ -473,7 +471,7 @@ export default {
     //修改优惠后金额
     changeFinalAmount() {
       this.form.finalAmount = parseFloat(this.form.finalAmount) || 0;
-      this.form.discountAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2)
+      this.form.discountAmount = (this.allFinalAmount - this.form.finalAmount).toFixed(2)
       this.form.discountRate = this.form.finalAmount === 0 ? 0 : ((this.form.finalAmount / this.allFinalAmount) * 100).toFixed(2)
     },
     //修改商品多单位

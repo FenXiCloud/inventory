@@ -210,7 +210,6 @@ export default {
       }).finally(() => this.loading = false);
     },
     doRemove(row) {
-      console.log(row)
       confirm({
         title: "系统提示",
         content: `确认删除：${row.orderNo}?`,

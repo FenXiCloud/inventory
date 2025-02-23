@@ -3,7 +3,8 @@
     <vxe-toolbar>
       <template #buttons>
         <Button @click="addForm()" color="primary">新 增</Button>
-        <Button>审 核</Button>
+        <Button @click="approved()">审核</Button>
+        <Button @click="backApproved()">反审核</Button>
       </template>
       <template #tools>
         <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
@@ -14,7 +15,7 @@
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/客户名称" @search="doSearch">
+                placeholder="请输入订单号/供货商名称" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -35,19 +36,20 @@
         <vxe-column type="checkbox" width="40" align="center"/>
         <vxe-column title="操作" align="center" width="120">
           <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="showForm('add',row.id)">编辑</span>
+            <span class="primary-color  text-hover ml-10px" @click="addForm('add',row.id)">编辑</span>
             <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
           </template>
         </vxe-column>
-        <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="code" width="200"/>
-        <vxe-column title="关联销售出库单" field="code" width="200"/>
-        <vxe-column title="客户" field="customerName" min-width="120"/>
-        <vxe-column title="销售金额" field="totalAmount" width="120"/>
+        <vxe-column title="订单日期" field="returnDate" align="center" width="130"/>
+        <vxe-column title="订单编号" field="orderNo" width="200"/>
+        <vxe-column title="关联入库单" field="code" width="200"/>
+        <vxe-column title="供货商" field="supplierName" min-width="120"/>
+        <vxe-column title="退货金额" field="refundAmount" width="120"/>
+        <vxe-column title="商户承担" field="supplierAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        <vxe-column title="制单人" field="createDate" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createDate" align="center" width="100"/>
+        <vxe-column title="制单人" field="createdName" align="center" width="100"/>
+        <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
         <vxe-column title="审核状态" field="orderStatus" width="80"/>
 
       </vxe-table>
@@ -71,6 +73,8 @@
 import manba from "manba";
 import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 import {mapMutations} from "vuex";
+import {confirm, message} from "heyui.ext";
+import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -112,6 +116,13 @@ export default {
   },
   methods: {
     ...mapMutations(['pushTab']),
+    addForm(type = 'add', orderId = null) {
+      this.pushTab({
+        key: 'PurchaseReturnForm',
+        title: type == 'edit' ? '编辑采购退货单' : '新增采购退货单',
+        params: {type: type, orderId: orderId}
+      });
+    },
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {
@@ -139,7 +150,67 @@ export default {
         this.pagination.total = total;
       }).finally(() => this.loading = false);
     },
-  },
+    approved() {
+      let checkList = this.$refs.table.getCheckboxRecords();
+      console.log(checkList);
+      if (checkList.length) {
+        let ids = checkList.filter(val => val.orderStatus == '已保存').map(val => val.id);
+        if (ids.length) {
+          confirm({
+            title: "批量审核提示",
+            content: `本次审核${ids.length}条?`,
+            onConfirm: () => {
+              PurchaseReturn.approved('已审核', ids).then(() => {
+                message("操作成功~");
+                this.$refs.table.clearCheckboxRow()
+                this.loadList();
+              })
+            }
+          })
+        } else {
+          message.error("未找到需要审核数据~");
+        }
+      } else {
+        message.error("未选择数据~");
+      }
+    },
+    backApproved() {
+      let checkList = this.$refs.table.getCheckboxRecords();
+      if (checkList.length) {
+        let ids = checkList.filter(val => val.orderStatus == '已审核').map(val => val.id);
+        if (ids.length) {
+          confirm({
+            title: "批量反审核提示",
+            content: `本次反审核${ids.length}条?`,
+            onConfirm: () => {
+              PurchaseReturn.approved('已保存', ids).then(() => {
+                message("操作成功~");
+                this.$refs.table.clearCheckboxRow()
+                this.loadList();
+              })
+            }
+          })
+        } else {
+          message.error("未找到需要反审核数据~");
+        }
+      } else {
+        message.error("未选择数据~");
+      }
+    },
+    doRemove(row) {
+      confirm({
+        title: "系统提示",
+        content: `确认删除：${row.orderNo}?`,
+        onConfirm: () => {
+          PurchaseReturn.remove(row.id).then(() => {
+            message("删除成功~");
+            this.loadList();
+          })
+        }
+      })
+    },
+  }
+  ,
   created() {
     this.loadList();
   }

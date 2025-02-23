@@ -6,9 +6,12 @@
           <label class="mr-20px" style="font-size: 16px !important;">供货商：</label>
           <Select class="w-300px" filterable required :datas="supplierList" keyName="id" titleName="name"
                   :deletable="false" @change="changeSupplier($event)" v-model="supplierId" placeholder="请选择供货商"/>
-          <label class="mr-20px ml-16px" style="font-size: 16px !important;">单据日期：</label>
-          <DatePicker v-model="form.orderDate" :option="{start:accountBook.checkoutDate}"
+          <label class="mr-20px ml-16px" style="font-size: 16px !important;">退货日期：</label>
+          <DatePicker v-model="form.returnDate" :option="{start:accountBook.checkoutDate}"
                       :clearable="false"></DatePicker>
+          <Button v-if="type==='add'" @click="selectPurchaseOrder()" color="primary" style="margin-left: 20px">
+            选择源单
+          </Button>
         </template>
       </vxe-toolbar>
       <vxe-table
@@ -23,22 +26,12 @@
         <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
         <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
           <template #default="{row,rowIndex}">
-            <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert',rowIndex)"></div>
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
           </template>
         </vxe-column>
         <vxe-column title="商品信息" width="300">
           <template #default="{row,rowIndex}">
-            <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,rowIndex)" v-model="product" :datas="productList"
-                      filterable
-                      placeholder="输入编码/名称" keyName="productId">
-                <template v-slot:item="{ item }">
-                  <div>{{ item.productCode }} {{ item.productName }}</div>
-                </template>
-              </Select>
-            </div>
-            <div v-else class="flex">
+            <div class="flex">
               <div class="flex1 ml-8px">
                 <div>{{ row.productCode }}--{{ row.productName }}</div>
               </div>
@@ -74,7 +67,7 @@
         </vxe-column>
         <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
         <vxe-column title="基本数量" field="quantity" width="90"/>
-        <vxe-column title="购货单价" field="secondaryPrice" width="100">
+        <vxe-column title="退货单价" field="secondaryPrice" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
                        @blur="updatePrice(row)" v-model.number="row.secondaryPrice" type="float" min="0"
@@ -95,21 +88,27 @@
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
-        <vxe-column title="购货金额" field="subtotal" width="100">
+        <vxe-column title="退货金额" field="subtotal" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+7" @keyup="handleEnter($event,rowIndex,7)"
                        @blur="updateSubtotal(row)" v-model.number="row.subtotal" type="float" min="0"
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
-        <vxe-column title="备注" field="remark">
+        <vxe-column title="备注" field="returnReason">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8" @keyup="handleEnter($event,rowIndex,8)"
-                       v-model="row.remark" placeholder="输入备注" :controls="false"></vxe-input>
+                       v-model="row.returnReason" placeholder="输入备注" :controls="false"></vxe-input>
           </template>
         </vxe-column>
       </vxe-table>
       <div class="mt-10px"></div>
+      <div class="filler-panel">
+        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+          <label class="mr-16px  w-80px">退货原因：</label>
+          <Input placeholder="请输入退货原因" maxlength="150" style="width: 90%" v-model="form.returnReason"/>
+        </div>
+      </div>
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
           <label class="mr-16px  w-80px">备注说明：</label>
@@ -122,8 +121,10 @@
           <Input v-model="form.discountRate" @blur="changeDiscountRate"/>
           <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
           <Input v-model="form.discountAmount" @blur="changeDiscountAmount"/>
-          <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
-          <Input v-model="form.finalAmount" @blur="changeFinalAmount"/>
+          <label class="ml-10px mr-16px  w-100px">供货商承担：</label>
+          <Input v-model="form.supplierAmount" @blur="changeSupplierAmount"/>
+          <label class="ml-16px mr-16px  w-100px">本次退款：</label>
+          <Input v-model="form.refundAmount" @blur="changeRefundAmount"/>
         </div>
       </div>
     </div>
@@ -160,16 +161,20 @@ import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapState} from "vuex";
+import {layer} from "@layui/layer-vue";
+import {h} from "vue";
+import PurchaseReturnOrderSelect from "@views/purchase/PurchaseReturnOrderSelect.vue";
+import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 
 export default {
-  name: "PurchaseOrderForm",
+  name: "PurchaseReturnForm",
   props: {
     orderId: [String, Number],
     type: String,
   },
   computed: {
     ...mapState(['accountBook']),
-    finalAmount() {
+    refundAmount() {
       let total = 0;
       this.productData.forEach(val => {
         if (val.quantity > 0) {
@@ -187,30 +192,69 @@ export default {
       loading: false,
       productList: [],
       product: null,
-      allFinalAmount: 0,
+      allRefundAmount: 0,
       warehouseList: [],
       supplierList: [],
       supplierId: null,
       warehouseId: null,
       form: {
         id: null,
-        orderDate: manba().format("YYYY-MM-dd"),
+        returnDate: manba().format("YYYY-MM-dd"),
         supplierId: null,
         discountAmount: 0.00,
+        supplierAmount: 0.00,
         discountRate: 0.00,
-        finalAmount: 0.00,
+        refundAmount: 0.00,
         remarks: null,
+        returnReason: null,
       },
       productData: [],
     }
   },
   watch: {
-    allFinalAmount(val) {
+    allRefundAmount(val) {
       this.form.discountAmount = (val * this.form.discountRate * 0.01).toFixed(2)
-      this.form.finalAmount = (val - this.form.discountAmount).toFixed(2)
+      this.form.refundAmount = (val - this.form.discountAmount).toFixed(2)
     }
   },
   methods: {
+    //添加行或减少行
+    adjustRows(type, index) {
+      if (type === 'insert') {
+        this.productData.splice(index + 1, 0, {isNew: true});
+      } else {
+        this.productData.splice(index, 1);
+      }
+    },
+    selectPurchaseOrder(entity) {
+      if (!this.form.supplierId) {
+        message.error("请选择供货商~");
+        return
+      }
+      let layerId = layer.drawer({
+        title: "请选择采购订单",
+        shadeClose: false,
+        closeBtn: false,
+        area: ['1200px', '100vh'],
+        content: h(PurchaseReturnOrderSelect, {
+          supplierId: this.supplierId,
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: (params) => {
+            console.log(params)
+            this.loadToInbound(params);
+            layer.close(layerId);
+          },
+        }),
+      });
+    },
+
+    loadToInbound(params) {
+      PurchaseOrder.toReturn(this.form.supplierId, params.orderIds).then(({data}) => {
+        this.productData = data || [];
+      })
+    },
     handleEnter(e, index, num) {
       e.$event.stopPropagation();
       if (e.$event.keyCode === 13) {
@@ -277,46 +321,8 @@ export default {
           }
         }
       })
-      this.allFinalAmount = sums[1]
+      this.allRefundAmount = sums[1]
       return [["", "", "", "", "", "", "", quantity.toFixed(2), "", ""].concat(sums)];
-    },
-
-    //选择商品
-    selectProduct(d, index) {
-      if (d) {
-        console.log('d', d)
-        console.log('d', this.warehouseId)
-        let g = {
-          quantity: 1,
-          secondaryQuantity: 1,
-          secondaryPrice: d.price || 0,
-          warehouseId: this.warehouseId || null,
-          price: d.price || 0,
-          discountAmount: 0.00,
-          discountRate: 0.00,
-          subtotal: d.price || 0,
-          conversionRate: 1,
-          secondaryUnitId: d.unitId,
-          baseUnitId: d.unitId,
-          baseUnitName: d.unitName,
-          remark: ""
-        };
-        this.productData[index] = Object.assign(Object.assign(g, d), d);
-        if (!this.productData[index + 1]) {
-          this.productData.push({isNew: true});
-        }
-        this.$refs.xTable.loadData(this.productData).then(() => {
-          this.$nextTick(() => {
-            let str = index + '' + 3
-            let element = document.querySelector('#r' + str + ' input');
-            setTimeout(() => {
-              element.focus()
-              element.select()
-            }, 100);
-          })
-        });
-      }
-      this.product = null;
     },
 
     //保存订单
@@ -339,10 +345,10 @@ export default {
         loading.close()
         return
       }
-      PurchaseOrder.save({
-        purchaseOrder: Object.assign(this.form, {finalAmount: this.finalAmount}),
+      PurchaseReturn.save({
+        purchaseReturn: Object.assign(this.form, {refundAmount: this.refundAmount}),
         type: this.type,
-        purchaseOrderItemList: productData
+        purchaseReturnItemList: productData
       }).then((success) => {
         if (success) {
           message("保存成功~");
@@ -356,25 +362,17 @@ export default {
     clearForm() {
       this.form = {
         id: null,
-        orderDate: manba().format("YYYY-MM-dd"),
+        returnDate: manba().format("YYYY-MM-dd"),
         supplierId: null,
         remark: null,
         discountAmount: 0.00,
         discountRate: 0.00,
-        finalAmount: 0.00,
+        supplierAmount: 0.00,
+        refundAmount: 0.00,
       }
-      this.allFinalAmount = 0
+      this.allRefundAmount = 0
       this.productData = []
       this.supplierId = null
-    },
-
-    //添加行或减少行
-    adjustRows(type, index) {
-      if (type === 'insert') {
-        this.productData.splice(index + 1, 0, {isNew: true});
-      } else {
-        this.productData.splice(index, 1);
-      }
     },
 
     //修改供货商
@@ -395,48 +393,32 @@ export default {
           })
         } else {
           this.form.supplierId = e.id;
-          this.productData = [{isNew: true}];
-          this.loadProductsBySupplier();
         }
-      }
-    },
-
-    //根据供货商加载商品列表
-    loadProductsBySupplier() {
-      if (this.form.supplierId) {
-        Supplier.selectProduct(this.form.supplierId).then(({data}) => {
-          this.productList = data || [];
-          if (!this.form.id) {
-            this.productData = [{isNew: true}];
-          }
-        }).finally(() =>
-            this.$refs.xTable.loadData(this.productData).then(() => {
-              this.$nextTick(() => {
-                this.$refs.ms.$el.querySelector('input').click()
-                this.$refs.ms.$el.querySelector('input').select()
-              })
-            })
-        );
       }
     },
 
     //修改优惠率
     changeDiscountRate() {
       this.form.discountRate = parseFloat(this.form.discountRate) || 0;
-      this.form.discountAmount = (this.allFinalAmount * this.form.discountRate * 0.01).toFixed(2)
-      this.form.finalAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2)
+      this.form.discountAmount = (this.allRefundAmount * this.form.discountRate * 0.01).toFixed(2)
+      this.form.refundAmount = (this.allRefundAmount - this.form.discountAmount - this.form.supplierAmount).toFixed(2)
     },
     //修改优惠金额
     changeDiscountAmount() {
       this.form.discountAmount = parseFloat(this.form.discountAmount) || 0;
-      this.form.finalAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2)
-      this.form.discountRate = this.form.discountAmount === 0 ? 0 : ((this.form.discountAmount / this.allFinalAmount) * 100).toFixed(2)
+      this.form.refundAmount = (this.allRefundAmount - this.form.discountAmount - this.form.supplierAmount).toFixed(2)
+      this.form.discountRate = this.form.discountAmount === 0 ? 0 : ((this.form.discountAmount / this.allRefundAmount) * 100).toFixed(2)
     },
     //修改优惠后金额
-    changeFinalAmount() {
-      this.form.finalAmount = parseFloat(this.form.finalAmount) || 0;
-      this.form.discountAmount = (this.allFinalAmount - this.form.finalAmount).toFixed(2)
-      this.form.discountRate = this.form.finalAmount === 0 ? 0 : ((this.form.finalAmount / this.allFinalAmount) * 100).toFixed(2)
+    changeRefundAmount() {
+      this.form.refundAmount = parseFloat(this.form.refundAmount) || 0;
+      this.form.discountAmount = (this.allRefundAmount - this.form.refundAmount - this.form.supplierAmount).toFixed(2)
+      this.form.discountRate = this.form.discountAmount === 0 ? 0 : ((this.form.discountAmount / this.allRefundAmount) * 100).toFixed(2)
+    },
+    //修改供货商承担金额
+    changeSupplierAmount() {
+      this.form.supplierAmount = parseFloat(this.form.supplierAmount) || 0;
+      this.form.refundAmount = (this.allRefundAmount - this.form.supplierAmount).toFixed(2);
     },
     //修改商品多单位
     changeProductUnit(item, row) {
@@ -528,17 +510,15 @@ export default {
       }
       //订单详情/编辑订单
       if (this.orderId) {
-        PurchaseOrder.load(this.orderId).then(({data: {purchaseOrder, purchaseOrderItemList}}) => {
-          if (purchaseOrder) {
-            CopyObj(this.form, purchaseOrder);
-            this.supplierId = purchaseOrder.supplierId
+        PurchaseReturn.load(this.orderId).then(({data: {purchaseReturn, purchaseReturnItemList}}) => {
+          if (purchaseReturn) {
+            CopyObj(this.form, purchaseReturn);
+            this.supplierId = purchaseReturn.supplierId
             if ('copy' === this.type) {
               this.form.id = null;
             }
           }
-          this.loadProductsBySupplier();
-          this.productData = purchaseOrderItemList || [];
-          this.productData.push({isNew: true});
+          this.productData = purchaseReturnItemList || [];
         })
       }
     }).finally(() => loading.close());

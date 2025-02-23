@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
@@ -43,6 +44,9 @@ public class PurchaseReturn {
     @Comment("退单日期")
     private LocalDate returnDate;
 
+    @Comment("供货商承担金额")
+    private BigDecimal supplierAmount;
+
     @Comment("退款金额")
     private BigDecimal refundAmount;
 
@@ -62,7 +66,7 @@ public class PurchaseReturn {
     private String remarks;
 
     @Comment("订单状态")
-    @Column(nullable = false,length = 32, columnDefinition = "varchar(20) default '已保存'")
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(20) default '已保存'")
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
 
@@ -70,6 +74,7 @@ public class PurchaseReturn {
     private Long createdBy;
 
     @Comment("创建时间")
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Comment("审核人")

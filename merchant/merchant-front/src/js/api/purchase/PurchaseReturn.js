@@ -12,5 +12,11 @@ export default {
     },
     select(param) {
         return Ajax.get('/purchaseReturn/select', param)
-    }
+    },
+    approved(state, ids) {
+        return Ajax.post('/purchaseReturn/approved/' + state, ids);
+    },
+    load(id) {
+        return Ajax.get('/purchaseReturn/load/' + id);
+    },
 }

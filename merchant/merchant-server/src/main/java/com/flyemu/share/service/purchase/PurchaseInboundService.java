@@ -2,6 +2,7 @@ package com.flyemu.share.service.purchase;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
@@ -29,14 +30,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
- * @功能描述: 销售出库单
- * @创建时间: 2023年08月08日
+ * @功能描述: 采购入库表
+ * @创建时间: 2025年02月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
@@ -143,6 +145,38 @@ public class PurchaseInboundService extends AbsService {
 
     public List<PurchaseInbound> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qPurchaseInbound).where(qPurchaseInbound.merchantId.eq(merchantId).and(qPurchaseInbound.accountBookId.eq(accountBookId))).fetch();
+    }
+
+    @Transactional
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        List<PurchaseInbound> orders = bqf.selectFrom(qPurchaseInbound).where(qPurchaseInbound.merchantId.eq(merchantId).and(qPurchaseInbound.id.in(ids))).fetch();
+        Assert.isFalse(CollUtil.isEmpty(orders), "未找到数据~");
+        List<Long> setIds = new ArrayList<>();
+        if (OrderStatus.已审核.equals(state)) {
+            for (PurchaseInbound order : orders) {
+                if (OrderStatus.已保存.equals(order.getOrderStatus())) {
+                    setIds.add(order.getId());
+                } else {
+                    log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
+                }
+            }
+        } else if (OrderStatus.已保存.equals(state)) {
+            for (PurchaseInbound order : orders) {
+                if (OrderStatus.已审核.equals(order.getOrderStatus())) {
+                    setIds.add(order.getId());
+                } else {
+                    log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
+                }
+            }
+        }
+        if (CollUtil.isNotEmpty(setIds)) {
+            jqf.update(qPurchaseInbound)
+                    .set(qPurchaseInbound.orderStatus, state)
+                    .set(qPurchaseInbound.approvedAt, LocalDateTime.now()).
+                    set(qPurchaseInbound.approvedBy, adminId)
+                    .where(qPurchaseInbound.id.in(setIds))
+                    .execute();
+        }
     }
 
     public static class Query {

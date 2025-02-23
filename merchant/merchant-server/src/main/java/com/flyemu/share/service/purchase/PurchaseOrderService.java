@@ -13,6 +13,7 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.PurchaseInboundItemDto;
 import com.flyemu.share.dto.purchase.PurchaseOrderDto;
 import com.flyemu.share.dto.purchase.PurchaseOrderItemDto;
+import com.flyemu.share.dto.purchase.PurchaseReturnItemDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.purchase.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
@@ -38,11 +39,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.sagacity.sqltoy.config.model.OperateType.page;
-
 /**
- * @功能描述: 销售订单
- * @创建时间: 2023年08月08日
+ * @功能描述: 采购订单
+ * @创建时间: 2025年02月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
@@ -83,6 +82,24 @@ public class PurchaseOrderService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
+    public PageResults<PurchaseOrderDto> listToReturn(Page page, Query query) {
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseOrder)
+                .select(qPurchaseOrder, qSupplier.name, qMerchantUser.name)
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseOrder.createdBy))
+                .where(query.builder.and(qPurchaseOrder.orderStatus.eq(OrderStatus.已审核))).orderBy(qPurchaseOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+
+        List<PurchaseOrderDto> dtos = new ArrayList<>();
+        fetchPage.forEach(tuple -> {
+            PurchaseOrderDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrder), PurchaseOrderDto.class);
+            dto.setSupplierName(tuple.get(qSupplier.name));
+            dto.setCreatedName(tuple.get(qMerchantUser.name));
+            dtos.add(dto);
+        });
+
+        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+    }
+
     public List<PurchaseInboundItemDto> loadToInbound(List<Long> orderIds, Long merchantId, Long supplierId) {
         QUnit qUnit1 = new QUnit("id");
 
@@ -97,6 +114,33 @@ public class PurchaseOrderService extends AbsService {
                 .orderBy(qPurchaseOrderItem.id.asc())
                 .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
                     PurchaseInboundItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrderItem), PurchaseInboundItemDto.class);
+                    dto.setId(null);
+                    dto.setProductCode(tuple.get(qProduct.code));
+                    dto.setProductName(tuple.get(qProduct.name));
+                    dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setWarehouseName(tuple.get(qWarehouse.name));
+                    dto.setSecondaryUnitName(tuple.get(qUnit1.name));
+                    list.add(dto);
+                }, List::addAll);
+        return collect;
+    }
+
+    public List<PurchaseReturnItemDto> loadToReturn(List<Long> orderIds, Long merchantId, Long supplierId) {
+        QUnit qUnit1 = new QUnit("id");
+
+        List<PurchaseReturnItemDto> collect = bqf.selectFrom(qPurchaseOrderItem)
+                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,
+                        qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
+                .leftJoin(qPurchaseOrder).on(qPurchaseOrder.id.eq(qPurchaseOrderItem.purchaseOrderId).and(qPurchaseOrder.merchantId.eq(merchantId)))
+                .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
+                .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseOrderItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
+                .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseOrderItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseOrderItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
+                .where(qPurchaseOrderItem.purchaseOrderId.in(orderIds).and(qPurchaseOrderItem.merchantId.eq(merchantId))
+                        .and(qPurchaseOrder.orderStatus.eq(OrderStatus.已审核)))
+                .orderBy(qPurchaseOrderItem.id.asc())
+                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
+                    PurchaseReturnItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrderItem), PurchaseReturnItemDto.class);
                     dto.setId(null);
                     dto.setProductCode(tuple.get(qProduct.code));
                     dto.setProductName(tuple.get(qProduct.name));
@@ -247,6 +291,12 @@ public class PurchaseOrderService extends AbsService {
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
+
+        public void setSupplierId(Long supplierId) {
+            if (supplierId != null) {
+                builder.and(qPurchaseOrder.supplierId.eq(supplierId));
+            }
+        }
 
         public void setState(OrderStatus state) {
             if (state != null) {

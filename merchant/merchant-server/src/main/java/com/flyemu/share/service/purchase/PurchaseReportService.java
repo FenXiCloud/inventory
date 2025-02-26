@@ -5,6 +5,7 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.PurchaseReportItemDto;
+import com.flyemu.share.dto.purchase.PurchaseReportSummaryDto;
 import com.flyemu.share.entity.basic.QProduct;
 import com.flyemu.share.entity.basic.QSupplier;
 import com.flyemu.share.entity.basic.QUnit;
@@ -14,16 +15,15 @@ import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.Expression;
+import com.querydsl.core.types.Path;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @功能描述: 采购订单报表
@@ -81,6 +81,61 @@ public class PurchaseReportService extends AbsService {
         }
     }
 
+    public PageResults<PurchaseReportSummaryDto> queryStat(Page page, Query query, Set<String> groupValues) {
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("startDate", query.start);
+        params.put("endDate", query.end);
+        params.put("merchantId", query.merchantId);
+        if (StrUtil.isNotBlank(query.filter)) {
+            params.put("filter", query.filter);
+        }
+        if (query.supplierId != null) {
+            params.put("supplierId", query.supplierId);
+        }
+        if (query.accountBookId != null) {
+            params.put("accountBookId", query.accountBookId);
+        }
+        if (query.warehouseId != null) {
+            params.put("warehouseId", query.warehouseId);
+        }
+        if (query.productId != null) {
+            params.put("productId", query.productId);
+        }
+
+        String groupBy = "po.product_id";
+        if (groupValues.contains("warehouse")) {
+            groupBy += ",po.warehouse_id";
+        }
+
+        params.put("groupBy", groupBy);
+        org.sagacity.sqltoy.model.Page sqlPage = new org.sagacity.sqltoy.model.Page(page.getSize(), page.getPage());
+
+        if ("in".equals(query.orderType)) {
+            if (groupValues.contains("supplier")) {
+                groupBy += ",p2_0.supplier_id";
+            }
+            org.sagacity.sqltoy.model.Page<PurchaseReportSummaryDto> summaryPage = lazyDao.findPageBySql(sqlPage, "purchaseOrderReportSummaryList", params, PurchaseReportSummaryDto.class);
+
+            return new PageResults<>(summaryPage.getRows(), page, summaryPage.getRecordCount());
+        } else if ("out".equals(query.orderType)) {
+            if (groupValues.contains("supplier")) {
+                groupBy += ",p2_0.supplier_id";
+            }
+            org.sagacity.sqltoy.model.Page<PurchaseReportSummaryDto> summaryPage = lazyDao.findPageBySql(sqlPage, "purchaseReturnReportSummaryList", params, PurchaseReportSummaryDto.class);
+
+            return new PageResults<>(summaryPage.getRows(), page, summaryPage.getRecordCount());
+        } else {
+
+            if (groupValues.contains("supplier")) {
+                groupBy += ",po.supplier_id";
+            }
+            org.sagacity.sqltoy.model.Page<PurchaseReportSummaryDto> summaryPage = lazyDao.findPageBySql(sqlPage, "purchaseReportSummaryList", params, PurchaseReportSummaryDto.class);
+
+            return new PageResults<>(summaryPage.getRows(), page, summaryPage.getRecordCount());
+        }
+    }
+
     public PageResults<PurchaseReportItemDto> queryReturn(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseReturnItem)
                 .select(qPurchaseReturnItem.secondaryPrice, qPurchaseReturnItem.subtotal, qWarehouse.name, qPurchaseReturnItem.secondaryQuantity,
@@ -90,7 +145,8 @@ public class PurchaseReportService extends AbsService {
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseReturnItem.warehouseId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseReturnItem.secondaryUnitId))
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseReturnItem.productId))
-                .where(query.builder.and(qPurchaseReturn.orderStatus.eq(OrderStatus.已审核))).orderBy(qPurchaseReturnItem.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+                .where(query.builder.and(qPurchaseReturn.orderStatus.eq(OrderStatus.已审核)))
+                .orderBy(qPurchaseReturnItem.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
         List<PurchaseReportItemDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
@@ -113,6 +169,7 @@ public class PurchaseReportService extends AbsService {
     }
 
     public PageResults<PurchaseReportItemDto> queryInbound(Page page, Query query) {
+
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInboundItem)
                 .select(qPurchaseInboundItem.secondaryPrice, qPurchaseInboundItem.subtotal, qWarehouse.name, qPurchaseInboundItem.secondaryQuantity, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qSupplier.name, qProduct.name, qProduct.code, qUnit.name)
                 .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
@@ -142,6 +199,101 @@ public class PurchaseReportService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
+    public PageResults<PurchaseReportSummaryDto> queryInboundStat(Page page, Query query, Set<String> groupValues) {
+        List<Path> groupByFields = new ArrayList<>();
+        List<Expression<?>> expressions = new ArrayList<>();
+        expressions.add(qPurchaseInboundItem.quantity.sum());
+        expressions.add(qPurchaseInboundItem.subtotal.sum());
+        expressions.add(qProduct.name);
+        expressions.add(qProduct.code);
+        expressions.add(qProduct.id);
+        expressions.add(qUnit.name);
+
+        groupByFields.add(qPurchaseInboundItem.productId);
+        if (groupValues.contains("supplier")) {
+            groupByFields.add(qPurchaseInbound.supplierId);
+            expressions.add(qSupplier.name);
+        }
+        if (groupValues.contains("warehouse")) {
+            groupByFields.add(qPurchaseInboundItem.warehouseId);
+            expressions.add(qWarehouse.name);
+        }
+
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInboundItem)
+                .select(expressions.toArray(new Expression[0]))
+                .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseInboundItem.warehouseId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseInboundItem.baseUnitId))
+                .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseInboundItem.productId))
+                .where(query.inboundBuilder.and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核)))
+                .groupBy(groupByFields.toArray(new Path[0]))
+                .orderBy(qPurchaseInboundItem.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+
+        List<PurchaseReportSummaryDto> dtos = new ArrayList<>();
+        fetchPage.forEach(tuple -> {
+            PurchaseReportSummaryDto dto = new PurchaseReportSummaryDto();
+            dto.setProductId(tuple.get(qProduct.id));
+            dto.setBaseUnitName(tuple.get(qUnit.name));
+            dto.setBaseQuantitySum(tuple.get(qPurchaseInboundItem.quantity.sum()));
+            dto.setSubtotalSum(tuple.get(qPurchaseInboundItem.subtotal.sum()));
+            dto.setOrderType("采购入库");
+            if (tuple.get(qWarehouse.name) != null) {
+                dto.setWarehouseName(tuple.get(qWarehouse.name));
+            }
+            if (tuple.get(qSupplier.name) != null) {
+                dto.setSupplierName(tuple.get(qSupplier.name));
+            }
+            dto.setProductCode(tuple.get(qProduct.code));
+            dto.setProductName(tuple.get(qProduct.name));
+            dtos.add(dto);
+        });
+
+        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+    }
+
+
+    public PageResults<PurchaseReportSummaryDto> queryReturnStat(Page page, Query query, Set<String> groupValues) {
+        List<Path> groupByFields = new ArrayList<>();
+        groupByFields.add(qPurchaseReturnItem.productId);
+
+
+        if (groupValues.contains("supplier")) {
+            groupByFields.add(qPurchaseReturn.supplierId);
+        }
+        if (groupValues.contains("warehouse")) {
+            groupByFields.add(qPurchaseReturnItem.warehouseId);
+        }
+
+        Path[] array = groupByFields.toArray(new Path[0]);
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseReturnItem)
+                .select(qSupplier.name, qWarehouse.name, qPurchaseReturnItem.quantity.sum(), qPurchaseReturnItem.subtotal.sum(), qProduct.id, qProduct.accountBookId, qProduct.name, qProduct.code, qUnit.name)
+                .leftJoin(qPurchaseReturn).on(qPurchaseReturn.id.eq(qPurchaseReturnItem.purchaseReturnId))
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseReturn.supplierId))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseReturnItem.warehouseId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseReturnItem.secondaryUnitId))
+                .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseReturnItem.productId))
+                .groupBy(qPurchaseReturnItem.productId)
+                .where(query.builder.and(qPurchaseReturn.orderStatus.eq(OrderStatus.已审核)))
+                .orderBy(qPurchaseReturnItem.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+
+        List<PurchaseReportSummaryDto> dtos = new ArrayList<>();
+        fetchPage.forEach(tuple -> {
+            PurchaseReportSummaryDto dto = new PurchaseReportSummaryDto();
+            dto.setProductId(tuple.get(qProduct.id));
+            dto.setBaseUnitName(tuple.get(qUnit.name));
+            dto.setBaseQuantitySum(tuple.get(qPurchaseReturnItem.quantity.sum()));
+            dto.setSubtotalSum(tuple.get(qPurchaseReturnItem.subtotal.sum()));
+            dto.setWarehouseName(tuple.get(qWarehouse.name));
+            dto.setOrderType("采购退货");
+            dto.setSupplierName(tuple.get(qSupplier.name));
+            dto.setProductCode(tuple.get(qProduct.code));
+            dto.setProductName(tuple.get(qProduct.name));
+            dtos.add(dto);
+        });
+
+        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+    }
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
@@ -156,6 +308,11 @@ public class PurchaseReportService extends AbsService {
         public Long accountBookId;
         public LocalDate end;
         public LocalDate start;
+        public List<String> groupValues;
+
+        public void setGroupValues(List<String> groupValues) {
+            this.groupValues = groupValues;
+        }
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -213,7 +370,7 @@ public class PurchaseReportService extends AbsService {
             }
         }
 
-        public void  setProductId(Long productId) {
+        public void setProductId(Long productId) {
             if (productId != null) {
                 this.productId = productId;
                 builder.and(qPurchaseReturnItem.productId.eq(productId));

@@ -36,8 +36,13 @@
         <vxe-column type="checkbox" width="40" align="center"/>
         <vxe-column title="操作" align="center" width="120">
           <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="addForm('add',row.id)">编辑</span>
-            <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
+            <template v-if="row.orderStatus === '已保存'">
+              <span class="primary-color  text-hover ml-10px" @click="addForm('edit',row.id)">编辑</span>
+              <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
+            </template>
+            <template v-if="row.orderStatus === '已审核'">
+              <span class="primary-color  text-hover ml-10px" >详情</span>
+            </template>
           </template>
         </vxe-column>
         <vxe-column title="订单日期" field="returnDate" align="center" width="130"/>

@@ -418,7 +418,7 @@ export default {
     //修改供货商承担金额
     changeSupplierAmount() {
       this.form.supplierAmount = parseFloat(this.form.supplierAmount) || 0;
-      this.form.refundAmount = (this.allRefundAmount - this.form.supplierAmount).toFixed(2);
+      this.form.refundAmount = (this.allRefundAmount - this.form.supplierAmount - this.form.discountAmount).toFixed(2);
     },
     //修改商品多单位
     changeProductUnit(item, row) {

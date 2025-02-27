@@ -2,22 +2,25 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #tools>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">仓库：</span>
-          <Select v-model="params.warehouseId" class="w-120px" keyName="id" titleName="name" :datas="warehouseList"/>
+          <Select :multiple="true" v-model="params.warehouseIds" class="w-120px" keyName="id" titleName="name"
+                  :datas="warehouseList"/>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">商品：</span>
-          <Select v-model="params.productId" class="w-120px" keyName="id" titleName="name" :datas="productList"/>
+          <Select :multiple="true" v-model="params.productIds" class="w-120px" keyName="id" titleName="name"
+                  :datas="productList"/>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">往来单位：</span>
-          <Select v-model="params.supplierId" class="w-120px" keyName="id" titleName="name" :datas="supplierList"/>
+          <Select :multiple="true" v-model="params.supplierIds" class="w-120px" keyName="id" titleName="name"
+                  :datas="supplierList"/>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">业务类型：</span>
-          <Select v-model="params.operationType" class="w-120px"
-                  :datas="{入库:'入库',出库:'出库'}"/>
+          <Select autosize :multiple="true" v-model="params.operationTypes" class="w-120px"
+                  :datas="{入库:'入库',出库:'出库',成本调整:'成本调整',调拨:'调拨'}"/>
         </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">单据日期：</span>
@@ -49,7 +52,19 @@
         <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
         <vxe-column title="单据日期" field="createdAt" width="120"/>
         <vxe-column title="业务类型" field="operationType" width="120"/>
-        <vxe-column title="往来单位" field="supplierName" width="120"/>
+        <vxe-column title="单据编号" field="batchNumber" width="200"/>
+        <vxe-column title="往来单位" field="supplierName" width="120">
+          <template #default="{ row }">
+            <div v-if="row['operationType'] === '入库'">
+              {{ row.supplierName }}
+            </div>
+            <div v-else-if="row['operationType'] === '出库'">
+              {{ row.customerName }}
+            </div>
+            <div v-else>
+            </div>
+          </template>
+        </vxe-column>
         <vxe-column title="仓库" field="warehouseName" align="center" width="100"/>
         <vxe-column title="单位" field="unitName" width="80"/>
         <vxe-column title="商品名称备注" field="productRemarks" width="80"/>
@@ -123,7 +138,7 @@
           <vxe-column title="成本" field="subtotal" align="center" width="100">
             <template #default="{ row }">
               <div v-if="row['operationType'] === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)">
-                {{ row.unitPrice }}
+                {{ row.subtotal }}
               </div>
               <div v-else>
               </div>
@@ -180,10 +195,10 @@ export default {
       },
       params: {
         filter: null,
-        productId: null,
-        supplierId: null,
-        warehouseId: null,
-        operationType: null,
+        productIds: [],
+        supplierIds: [],
+        warehouseIds: [],
+        operationTypes: [],
         state: null,
         sortCol: null,
         sort: null,
@@ -277,7 +292,12 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      InventoryItem.report(this.queryParams).then(({data: {results, total}}) => {
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.warehouseIds = params.warehouseIds.join(",");
+      params.productIds = params.productIds.join(",");
+      params.supplierIds = params.supplierIds.join(",");
+      params.operationTypes = params.operationTypes.join(",");
+      InventoryItem.report(params).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);

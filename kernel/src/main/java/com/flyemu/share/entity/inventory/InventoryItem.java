@@ -85,4 +85,7 @@ public class InventoryItem {
 
     @Comment("供应商ID")
     private Long supplierId;
+
+    @Comment("客户ID")
+    private Long customerId;
 }

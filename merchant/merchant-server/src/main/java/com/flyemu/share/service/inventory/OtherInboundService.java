@@ -258,6 +258,7 @@ public class OtherInboundService extends AbsService {
                         qOtherInbound.supplierId.as("supplierId"),
                         qOtherInbound.inboundType.as("inboundType"),
                         qOtherInbound.orderStatus.as("orderStatus"),
+                        qOtherInbound.stockTakeId.as("stockTakeId"),
                         qOtherInbound.remarks.as("remarks"),
                         qOtherInboundItem.id.as("itemId"),
                         qProduct.id.as("productId"),
@@ -291,6 +292,7 @@ public class OtherInboundService extends AbsService {
             item.put("inboundDate", tuple.get(dateExpressions.as("inboundDate")));
             item.put("customerId", tuple.get(qOtherInbound.customerId.as("customerId")));
             item.put("supplierId", tuple.get(qOtherInbound.supplierId.as("supplierId")));
+            item.put("stockTakeId", tuple.get(qOtherInbound.stockTakeId.as("stockTakeId")));
             item.put("inboundType", tuple.get(qOtherInbound.inboundType.as("inboundType")));
             item.put("remarks", tuple.get(qOtherInbound.remarks.as("remarks")));
             item.put("orderStatus", tuple.get(qOtherInbound.orderStatus.as("orderStatus")));

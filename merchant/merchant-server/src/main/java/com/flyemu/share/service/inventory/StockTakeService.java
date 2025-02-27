@@ -159,6 +159,7 @@ public class StockTakeService extends AbsService {
                         qStockTakeItem.systemQuantity.as("systemQuantity"),
                         qStockTakeItem.warehouseId.as("warehouseId"),
                         qWarehouse.name.as("warehouseName"),
+                        qProduct.id.as("productId"),
                         qProduct.name.as("productName"),
                         qProduct.code.as("productCode"),
                         qProduct.imgPath.as("productImgPath"),
@@ -192,6 +193,7 @@ public class StockTakeService extends AbsService {
             item.put("systemQuantity", systemQuantity);
             item.put("warehouseId", tuple.get(qStockTakeItem.warehouseId.as("warehouseId")));
             item.put("warehouseName", tuple.get(qWarehouse.name.as("warehouseName")));
+            item.put("productId", tuple.get(qProduct.id.as("productId")));
             item.put("productName", tuple.get(qProduct.name.as("productName")));
             item.put("productCode", tuple.get(qProduct.code.as("productCode")));
             item.put("productImgPath", tuple.get(qProduct.imgPath.as("productImgPath")));
@@ -266,10 +268,10 @@ public class StockTakeService extends AbsService {
         for (StockTakeItem stockTakeItem : stockTakeItems) {
             Integer systemQuantity = stockTakeItem.getSystemQuantity();
             Integer actualQuantity = stockTakeItem.getActualQuantity();
-            if (actualQuantity - systemQuantity > 0) {
+            if (actualQuantity - systemQuantity < 0) {
                 item = new HashMap<>();
-                // 盘盈
-                this.getStockBoundsItem(stockTakeItem, item, actualQuantity - systemQuantity);
+                // 盘亏
+                this.getStockBoundsItem(stockTakeItem, item, systemQuantity - actualQuantity);
                 outbounds.add(item);
             }
         }
@@ -315,10 +317,10 @@ public class StockTakeService extends AbsService {
         for (StockTakeItem stockTakeItem : stockTakeItems) {
             Integer systemQuantity = stockTakeItem.getSystemQuantity();
             Integer actualQuantity = stockTakeItem.getActualQuantity();
-            if (actualQuantity - systemQuantity < 0) {
+            if (actualQuantity - systemQuantity > 0) {
                 item = new HashMap<>();
-                // 盘亏
-                this.getStockBoundsItem(stockTakeItem, item, systemQuantity - actualQuantity);
+                // 盘盈
+                this.getStockBoundsItem(stockTakeItem, item, actualQuantity - systemQuantity);
                 inbounds.add(item);
             }
         }

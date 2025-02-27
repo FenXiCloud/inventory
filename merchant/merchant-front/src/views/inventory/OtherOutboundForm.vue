@@ -4,15 +4,17 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker v-model="form.orderDate" :disabled="auditOperate" :option="{ start: accountBook.checkoutDate }"
+          <DatePicker v-model="form.orderDate" :disabled="auditOperate || 'look' === type"
+                      :option="{ start: accountBook.checkoutDate }"
                       :clearable="false">
           </DatePicker>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">客户：</label>
           <Select class="w-178px" filterable required :datas="customerList" keyName="id" titleName="name"
-                  v-model="form.customerId" placeholder="请选择客户" :disabled="auditOperate"/>
+                  v-model="form.customerId" placeholder="请选择客户" :disabled="auditOperate || 'look' === type"/>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">业务类型：</label>
           <Select class="w-178px" filterable required :datas="outboundTypeList" keyName="id" titleName="name"
-                  :deletable="false" v-model="form.outboundType" :disabled="auditOperate" placeholder="请选择业务类型"/>
+                  :deletable="false" v-model="form.outboundType" :disabled="auditOperate || 'look' === type"
+                  placeholder="请选择业务类型"/>
         </template>
       </vxe-toolbar>
       <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border="border" show-overflow keep-source
@@ -36,7 +38,7 @@
         <vxe-column field="productCode" title="商品编码" width="100"></vxe-column>
         <vxe-column field="productName" title="商品名称" min-width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!auditOperate">
+            <div class="h-input-group goodsSelect" v-if="!auditOperate && 'look' !== type">
               <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable
                       placeholder="输入编码/名称" keyName="id" titleName="name" @change="changeRow(scope, 'product')">
                 <template v-slot:item="{ item }">
@@ -58,7 +60,7 @@
         <vxe-column title="单位" field="productUnitName" width="90"/>
         <vxe-column title="仓库" field="warehouseName" width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!auditOperate">
+            <div class="h-input-group goodsSelect" v-if="!auditOperate && 'look' !== type">
               <Select :deletable="false" ref="ms" v-model="scope.row.warehouseId" :datas="warehouseList" filterable
                       placeholder="请选择仓库" keyName="id" titleName="name" @change="changeRow(scope, 'warehouse')">
                 <template v-slot:item="{ item }">
@@ -75,7 +77,7 @@
         </vxe-column>
         <vxe-column title="数量" field="quantity" width="100">
           <template #default="scope">
-            <vxe-tooltip v-if="!auditOperate" theme="light" :content="scope.row.quantityTips">
+            <vxe-tooltip v-if="!auditOperate && 'look' !== type" theme="light" :content="scope.row.quantityTips">
               <vxe-input @focus="quantityFocus(scope)" @blur="quantityBlur"
                          v-model.number="scope.row.quantity" type="int" min="0" :controls="false">
               </vxe-input>
@@ -99,7 +101,8 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="auditOperate" placeholder="请输入备注" type="text" maxlength="150" style="width: 80%"
+          <Input :disabled="auditOperate || 'look' === type" placeholder="请输入备注" type="text" maxlength="150"
+                 style="width: 80%"
                  v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
         </div>
@@ -108,10 +111,12 @@
     <div class="modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button color="primary" v-if="!auditOperate" @click="saveOrder('increase')" :loading="loading">
+        <Button color="primary" v-if="!auditOperate && 'look' !== type" @click="saveOrder('increase')"
+                :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder" v-if="form.orderStatus !== '已审核' && !auditOperate" :loading="loading"> 保存
+        <Button @click="saveOrder" v-if="form.orderStatus !== '已审核' && !auditOperate && 'look' !== type"
+                :loading="loading"> 保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
         <Button v-if="type === 'audits'" @click="auditForm" :loading="loading"> 审核</Button>
@@ -157,6 +162,7 @@ export default {
       warehouseId: null,
       form: {
         id: null,
+        stockTakeId: null,
         orderDate: manba().format("YYYY-MM-dd"),
         remarks: null,
         customerId: null,
@@ -197,7 +203,7 @@ export default {
   // 待优化使用hook方式调用
   methods: {
     // 关闭tab
-    ...mapMutations(['closeSelfTab', 'updateTab']),
+    ...mapMutations(['closeSelfTab', 'updateTab', 'pushTab']),
     //footer合计
     footerMethod({columns, data}) {
       let totalQuantity = 0;
@@ -295,6 +301,13 @@ export default {
               this.clearForm();
               setTimeout(() => {
                 this.closeWindow();
+                if (type === "increase") {
+                  this.pushTab({
+                    key: 'OtherOutboundForm',
+                    title: '新增其他出库单',
+                    params: {type: 'add', otherOutboundId: null}
+                  });
+                }
               }, 300);
             }
           })
@@ -341,8 +354,9 @@ export default {
         inboundDate: this.form.orderDate,
         remarks: this.form.remarks
       };
-      if (type !== "increase") {
-        otherOutbound.id = this.form.id;
+      otherOutbound.id = this.form.id;
+      if (this.form.stockTakeId !== null) {
+        otherOutbound.stockTakeId = this.form.stockTakeId;
       } else {
         otherOutbound.stockTakeId = this.stockTakeId;
       }
@@ -363,6 +377,7 @@ export default {
     clearForm() {
       this.form = {
         id: null,
+        stockTakeId: null,
         orderDate: manba().format("YYYY-MM-dd"),
         remarks: null,
         customerId: null,
@@ -445,6 +460,7 @@ export default {
               this.form.remarks = data[0].remarks;
               this.form.outboundType = data[0].outboundType;
               this.form.orderDate = data[0].inboundDate;
+              this.form.stockTakeId = data[0].stockTakeId;
               this.form.adminName = data[0].adminName;
               let totalAmount = 0;
               let totalQuantity = 0;

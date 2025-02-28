@@ -1,6 +1,9 @@
 <template>
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
+      <template #buttons>
+        <Button @click="excel" color="primary">导出</Button>
+      </template>
       <template #tools>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">仓库：</span>
@@ -83,10 +86,11 @@
 import manba from "manba";
 import InventoryItem from "@js/api/inventory/InventoryItem";
 import {mapMutations} from "vuex";
-import {loading} from "heyui.ext";
+import {loading, message} from "heyui.ext";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import ProductCategory from "@js/api/basic/ProductCategory";
+import {exportExcelHeader} from "@js/excel";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -255,6 +259,86 @@ export default {
             callback();
           })
           .finally(() => loading.close());
+    },
+    excel() {
+      this.loading = true;
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.page = 1;
+      params.pageSize = 1199999;
+      InventoryItem.summary(params).then(({data: {results, total}}) => {
+        const dataList = results || [];
+        InventoryItem.summaryOperationType(params).then(({data}) => {
+          dataList.forEach((row) => {
+            const productId = row.productId;
+            const warehouseId = row.warehouseId;
+            data.forEach((data_row) => {
+              if (data_row.warehouseId === warehouseId && data_row.productId === productId) {
+                const operationType = data_row.operationType;
+                let inQuantity = row.inQuantity;
+                let inSubtotal = row.inSubtotal;
+                let outQuantity = row.outQuantity;
+                let outSubtotal = row.outSubtotal;
+                let costSubtotal = row.costSubtotal;
+                switch (operationType) {
+                  case "入库":
+                    row.inQuantity = data_row.quantity + (inQuantity || 0);
+                    row.inSubtotal = data_row.subtotal + (inSubtotal || 0);
+                    break;
+                  case "出库":
+                    row.outQuantity = data_row.quantity + (outQuantity || 0);
+                    row.outSubtotal = data_row.subtotal + (outSubtotal || 0);
+                    break;
+                  case "成本调整":
+                    row.costSubtotal = data_row.subtotal + (costSubtotal || 0);
+                    break;
+                  default:
+                    break;
+                }
+              }
+            });
+          });
+          this.callExcel(dataList);
+        }).finally(() => this.loading = false);
+      });
+    },
+    callExcel(dataList) {
+      if (dataList.length < 0) {
+        message.warn("暂无数据～");
+        return;
+      }
+      let headList = [
+        {label: "商品编号", key: "productCode"},
+        {label: "商品名称", key: "productName"},
+        {label: "商品类别", key: "productCategoryName"},
+        {label: "规格型号", key: "productSpecification"},
+        {label: "单位", key: "unitName"},
+        {label: "仓库", key: "warehouseName"},
+        {label: "数量", key: "inQuantity"},
+        {label: "成本", key: "inSubtotal"},
+        {label: "数量", key: "outQuantity"},
+        {label: "成本", key: "outSubtotal"},
+        {label: "数量", key: "costQuantity"},
+        {label: "成本", key: "costSubtotal"},
+        {label: "数量", key: "currentQuantity"},
+        {label: "成本", key: "totalCost"},
+      ];
+      const tHeader = ['商品编号', '商品名称', '商品类别', '规格型号', '单位', '仓库', '入库', null, '出库', null, '成本调整', null, '结存', null];
+      const secondHeader = [null, null, null, null, null, null, '数量', '成本', '数量', '成本', '数量', '成本', '数量', '成本'];
+      const merges = [
+        {s: {r: 0, c: 0}, e: {r: 1, c: 0}},
+        {s: {r: 0, c: 1}, e: {r: 1, c: 1}},
+        {s: {r: 0, c: 2}, e: {r: 1, c: 2}},
+        {s: {r: 0, c: 3}, e: {r: 1, c: 3}},
+        {s: {r: 0, c: 4}, e: {r: 1, c: 4}},
+        {s: {r: 0, c: 5}, e: {r: 1, c: 5}},
+        {s: {r: 0, c: 6}, e: {r: 0, c: 7}},
+        {s: {r: 0, c: 8}, e: {r: 0, c: 9}},
+        {s: {r: 0, c: 10}, e: {r: 0, c: 11}},
+        {s: {r: 0, c: 12}, e: {r: 0, c: 13}},
+      ];
+      const list = [secondHeader];
+      // 处理传递数据
+      exportExcelHeader(dataList, tHeader, headList, merges, list, manba(new Date()).format("YYYYMMddHHmmss") + "_进销存汇总表");
     }
   },
   created() {

@@ -7,49 +7,57 @@
  */
 const path = require('path');
 const webpack = require('webpack');
+const nodePolyfillPlugin = require('node-polyfill-webpack-plugin');
 const globalVars = require('./src/style/var.js');
 
 module.exports = {
-	pages: {
-		index: {
-			title: "纷析云",
-			entry: 'src/main.js',
-			chunks: ['chunk-vendors', 'chunk-common', 'index']
-		}
-	},
-	css: {
-		loaderOptions: {
-			less: {
-				lessOptions: {globalVars}
-			}
-		}
-	},
-	productionSourceMap: false,
-	devServer: {
-		port: 8411,
-		client: {
-			overlay: false
-		},
-		proxy: {
-			'^/api': {
-				target: 'http://localhost:8410',
-				pathRewrite: {'^/api': ''}
-			}
-		}
-	},
-	configureWebpack: {
-		resolve: {
-			alias: {
-				'@': path.resolve(__dirname, 'src/'),
-				'@components': path.resolve(__dirname, 'src/components/'),
-				'@views': path.resolve(__dirname, 'src/views/'),
-				'@common': path.resolve(__dirname, 'src/js/common/'),
-				'@js': path.resolve(__dirname, 'src/js/')
-			}
-		},
-		plugins: [new webpack.ProvidePlugin({})]
-	},
-	pluginOptions: {
-		windicss: {}
-	}
+    pages: {
+        index: {
+            title: "纷析云",
+            entry: 'src/main.js',
+            chunks: ['chunk-vendors', 'chunk-common', 'index']
+        }
+    },
+    css: {
+        loaderOptions: {
+            less: {
+                lessOptions: {globalVars}
+            }
+        }
+    },
+    productionSourceMap: false,
+    devServer: {
+        port: 8411,
+        client: {
+            overlay: false
+        },
+        proxy: {
+            '^/api': {
+                target: 'http://localhost:8410',
+                pathRewrite: {'^/api': ''}
+            }
+        }
+    },
+    configureWebpack: {
+        resolve: {
+            alias: {
+                '@': path.resolve(__dirname, 'src/'),
+                '@components': path.resolve(__dirname, 'src/components/'),
+                '@views': path.resolve(__dirname, 'src/views/'),
+                '@common': path.resolve(__dirname, 'src/js/common/'),
+                '@js': path.resolve(__dirname, 'src/js/')
+            },
+            fallback: {
+                fs: false,
+                crypto: false
+            },
+        },
+        externals: {
+            './cptable': 'var cptable'
+        },
+        plugins: [new webpack.ProvidePlugin({}), new nodePolyfillPlugin()]
+    },
+    pluginOptions: {
+        windicss: {}
+    }
 };

@@ -1,6 +1,9 @@
 <template>
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
+      <template #buttons>
+        <Button @click="excel" color="primary">导出</Button>
+      </template>
       <template #tools>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">仓库：</span>
@@ -79,7 +82,8 @@ import Product from "@js/api/basic/Product";
 import ProductCategory from "@js/api/basic/ProductCategory";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapMutations} from "vuex";
-import {loading} from "heyui.ext";
+import {loading, message} from "heyui.ext";
+import {exportExcelHeader} from "@js/excel";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -235,6 +239,88 @@ export default {
             callback();
           })
           .finally(() => loading.close());
+    },
+    excel() {
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.page = 1;
+      params.pageSize = 999999;
+      Promise.all([Inventory.reportInventory(params)])
+          .then(results => {
+            let reportInventoryList = results[0].data || [];
+            Inventory.report(params).then(({data: {results, total}}) => {
+              let dataList = results || [];
+              dataList.forEach(item => {
+                this.warehouseList.forEach(warehouse => {
+                  let allQuantity = 0;
+                  let allAverageCost = 0;
+                  let allTotalCost = 0;
+                  reportInventoryList.forEach(report => {
+                    if (report.warehouseId === warehouse.id && report.productId === item.productId) {
+                      item[`${warehouse.code}_quantity`] = report.currentQuantity;
+                      item[`${warehouse.code}_averageCost`] = report.averageCost;
+                      item[`${warehouse.code}_totalCost`] = report.totalCost;
+                    }
+                    if (report.productId === item.productId) {
+                      allQuantity += Number(report.currentQuantity || 0);
+                      allAverageCost += Number(report.averageCost || 0);
+                      allTotalCost += Number(report.totalCost || 0);
+                    }
+                  });
+                  item['all_quantity'] = allQuantity;
+                  item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
+                  item['all_totalCost'] = allTotalCost;
+                });
+              });
+              this.callExcel(dataList);
+            }).finally(() => this.loading = false);
+          })
+    },
+    callExcel(dataList) {
+      if (dataList.length < 0) {
+        message.warn("暂无数据～");
+        return;
+      }
+      let headList = [
+        {label: "商品图片", key: "productUrl"},
+        {label: "商品编码", key: "productCode"},
+        {label: "商品名称", key: "productName"},
+        {label: "商品类别", key: "productCategoryName"},
+        {label: "规格型号", key: "productSpecification"},
+        {label: "单位", key: "productUnitName"},
+        {label: "单位数量", key: "all_quantity"},
+        {label: "单位成本", key: "all_averageCost"},
+        {label: "成本小计", key: "all_totalCost"},
+      ];
+      const tHeader = ['商品图片', '商品编码', '商品名称', '商品类别', '规格型号', '单位', '全部仓库', null, null];
+      const secondHeader = [null, null, null, null, null, null, '单位数量', '单位成本', '成本小计'];
+      const merges = [
+        {s: {r: 0, c: 0}, e: {r: 1, c: 0}},
+        {s: {r: 0, c: 1}, e: {r: 1, c: 1}},
+        {s: {r: 0, c: 2}, e: {r: 1, c: 2}},
+        {s: {r: 0, c: 3}, e: {r: 1, c: 3}},
+        {s: {r: 0, c: 4}, e: {r: 1, c: 4}},
+        {s: {r: 0, c: 5}, e: {r: 1, c: 5}},
+        {s: {r: 0, c: 6}, e: {r: 0, c: 8}},
+      ];
+      let start = 6;
+      let end = 8;
+      this.warehouseList.forEach(warehouse => {
+        start += 3;
+        end += 3;
+        headList.push({label: "单位数量", key: `${warehouse.code}_quantity`});
+        headList.push({label: "单位成本", key: `${warehouse.code}_averageCost`});
+        headList.push({label: "成本小计", key: `${warehouse.code}_totalCost`});
+        tHeader.push(`${warehouse.code}-${warehouse.name}`);
+        tHeader.push(null);
+        tHeader.push(null);
+        secondHeader.push('单位数量');
+        secondHeader.push('单位成本');
+        secondHeader.push('成本小计');
+        merges.push({s: {r: 0, c: start}, e: {r: 0, c: end}});
+      });
+      const list = [secondHeader];
+      // 处理传递数据
+      exportExcelHeader(dataList, tHeader, headList, merges, list, manba(new Date()).format("YYYYMMddHHmmss") + "_库存余额");
     }
   },
   created() {

@@ -41,6 +41,12 @@
         <vxe-column title="商品类别" field="productCategoryName" min-width="120"/>
         <vxe-column title="规格型号" field="productSpecification" width="120"/>
         <vxe-column title="单位" field="productUnitName" width="120"/>
+        <vxe-colgroup align="center" title="全部仓库">
+          <vxe-column title="单位数量" field="all_quantity" align="center" width="130"/>
+          <!--          <vxe-column title="多单位数量" field="orderDate" align="center" width="130"/>-->
+          <vxe-column title="单位成本" field="all_averageCost" align="center" width="130"/>
+          <vxe-column title="成本小计" field="all_totalCost" align="center" width="130"/>
+        </vxe-colgroup>
         <!--        <vxe-column title="多单位" field="finalAmount" width="120"/>-->
         <vxe-colgroup v-for="(item,index) in warehouseList" align="center" :title="item.code + '-'+ item.name"
                       :key="index">
@@ -130,7 +136,29 @@ export default {
         propertyNames.push(warehouse.code + "_totalCost");
       });
       let index = 1;
-      console.info("propertyNames:", propertyNames);
+      let allQuantity = 0;
+      let allTotalCost = 0;
+      columns.forEach((column) => {
+        if (column.property && ['all_quantity'].includes(column.property)) {
+          data.forEach((row) => {
+            let rd = row[column.property];
+            if (rd) {
+              allQuantity += Number(rd || 0);
+            }
+          });
+        }
+        if (column.property && ['all_totalCost'].includes(column.property)) {
+          data.forEach((row) => {
+            let rd = row[column.property];
+            if (rd) {
+              allTotalCost += Number(rd || 0);
+            }
+          });
+        }
+      });
+      sums.push(allQuantity);
+      sums.push('');
+      sums.push(allTotalCost);
       columns.forEach((column) => {
         if (column.property && propertyNames.includes(column.property)) {
           let total = 0;
@@ -172,6 +200,9 @@ export default {
               this.pagination.total = total;
               this.dataList.forEach(item => {
                 this.warehouseList.forEach(warehouse => {
+                  let allQuantity = 0;
+                  let allAverageCost = 0;
+                  let allTotalCost = 0;
                   this.reportInventoryList.forEach(report => {
                     if (report.warehouseId === warehouse.id && report.productId === item.productId) {
                       item[`${warehouse.code}_quantity`] = report.currentQuantity;
@@ -179,7 +210,15 @@ export default {
                       item[`${warehouse.code}_totalCost`] = report.totalCost;
                       this.amountTotal += parseFloat(report.totalCost);
                     }
+                    if (report.productId === item.productId) {
+                      allQuantity += Number(report.currentQuantity || 0);
+                      allAverageCost += Number(report.averageCost || 0);
+                      allTotalCost += Number(report.totalCost || 0);
+                    }
                   });
+                  item['all_quantity'] = allQuantity;
+                  item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
+                  item['all_totalCost'] = allTotalCost;
                 });
               });
               this.amountTotal = this.amountTotal.toFixed(2);

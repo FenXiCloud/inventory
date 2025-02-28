@@ -4,7 +4,8 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker v-model="form.orderDate" :disabled="auditOperate" :option="{ start: accountBook.checkoutDate }"
+          <DatePicker v-model="form.orderDate" :disabled="auditOperate || 'look' === type"
+                      :option="{ start: accountBook.checkoutDate }"
                       :clearable="false">
           </DatePicker>
         </template>
@@ -30,7 +31,7 @@
         <vxe-column field="productCode" title="商品编码" width="100"></vxe-column>
         <vxe-column field="productName" title="商品名称" min-width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!auditOperate">
+            <div class="h-input-group goodsSelect" v-if="!auditOperate && 'look' !== type">
               <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable
                       placeholder="输入编码/名称" keyName="id" titleName="name" @change="changeRow(scope, 'product')">
                 <template v-slot:item="{ item }">
@@ -52,7 +53,7 @@
         <vxe-column title="单位" field="productUnitName" width="90"/>
         <vxe-column title="仓库" field="warehouseName" width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!auditOperate">
+            <div class="h-input-group goodsSelect" v-if="!auditOperate && 'look' !== type">
               <Select :deletable="false" ref="ms" v-model="scope.row.warehouseId" :datas="warehouseList" filterable
                       placeholder="请选择仓库" keyName="id" titleName="name" @change="changeRow(scope, 'warehouse')">
                 <template v-slot:item="{ item }">
@@ -69,8 +70,8 @@
         </vxe-column>
         <vxe-column title="调整金额" field="adjustmentAmount" width="100">
           <template #default="scope">
-            <vxe-tooltip v-if="!auditOperate" theme="light" :content="scope.row.quantityTips">
-              <vxe-input v-if="!auditOperate" @focus="getTotalCost(scope)"
+            <vxe-tooltip v-if="!auditOperate && 'look' !== type" theme="light" :content="scope.row.quantityTips">
+              <vxe-input v-if="!auditOperate &&'look' !== type" @focus="getTotalCost(scope)"
                          v-model.number="scope.row.adjustmentAmount" type="int" min="0" :controls="false">
               </vxe-input>
             </vxe-tooltip>
@@ -83,7 +84,7 @@
         </vxe-column>
         <vxe-column title="备注" field="remarks" width="100">
           <template #default="scope">
-            <vxe-input v-if="!auditOperate" v-model.number="scope.row.remarks" :controls="false">
+            <vxe-input v-if="!auditOperate && 'look' !== type" v-model.number="scope.row.remarks" :controls="false">
             </vxe-input>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
@@ -97,7 +98,8 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="auditOperate" placeholder="请输入备注" type="text" maxlength="150" style="width: 80%"
+          <Input :disabled="auditOperate || 'look' === type" placeholder="请输入备注" type="text" maxlength="150"
+                 style="width: 80%"
                  v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
         </div>
@@ -106,10 +108,12 @@
     <div class="modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button color="primary" v-if="!auditOperate" @click="saveOrder('increase')" :loading="loading">
+        <Button color="primary" v-if="!auditOperate  && 'look' !== type" @click="saveOrder('increase')"
+                :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder" v-if="form.orderStatus !== '已审核' && !auditOperate" :loading="loading"> 保存
+        <Button @click="saveOrder" v-if="form.orderStatus !== '已审核' && !auditOperate && 'look' !== type"
+                :loading="loading"> 保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
         <Button v-if="type === 'audits'" @click="auditForm" :loading="loading"> 审核</Button>
@@ -188,7 +192,7 @@ export default {
   // 待优化使用hook方式调用
   methods: {
     // 关闭tab
-    ...mapMutations(['closeSelfTab', 'updateTab']),
+    ...mapMutations(['closeSelfTab', 'updateTab', 'pushTab']),
     //footer合计
     footerMethod({columns, data}) {
       let totalQuantity = 0;
@@ -295,6 +299,13 @@ export default {
               this.clearForm();
               setTimeout(() => {
                 this.closeWindow();
+                if (type === "increase") {
+                  this.pushTab({
+                    key: 'CostAdjustmentForm',
+                    title: '新增成本调整单',
+                    params: {type: type, costAdjustmentId: null}
+                  });
+                }
               }, 300);
             }
           })
@@ -336,9 +347,7 @@ export default {
         djustmentDate: this.form.orderDate,
         remarks: this.form.remarks
       };
-      if (type !== "increase") {
-        costAdjustment.id = this.form.id;
-      }
+      costAdjustment.id = this.form.id;
       filterCostAdjustmentData.forEach(item => {
         costAdjustmentItems.push({
           productId: item.productId,

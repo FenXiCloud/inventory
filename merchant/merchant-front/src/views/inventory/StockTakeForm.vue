@@ -40,7 +40,7 @@
         <vxe-column title="系统库存" field="systemQuantity" width="100"/>
         <vxe-column title="盘点库存" field="actualQuantity" width="100">
           <template #default="scope">
-            <vxe-input v-if="!auditOperate" @input="quantityInput(scope)"
+            <vxe-input v-if="!auditOperate && 'look' !== type" @input="quantityInput(scope)"
                        v-model.number="scope.row.actualQuantity" type="int" min="0" :controls="false">
             </vxe-input>
             <div v-else class="flex">
@@ -62,7 +62,7 @@
         </vxe-column>
         <vxe-column title="备注" field="differenceReason" width="100">
           <template #default="scope">
-            <vxe-input v-if="!auditOperate" v-model="scope.row.differenceReason"></vxe-input>
+            <vxe-input v-if="!auditOperate && 'look' !== type" v-model="scope.row.differenceReason"></vxe-input>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
                 <div>{{ scope.row.differenceReason }}</div>
@@ -75,7 +75,8 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="auditOperate" placeholder="请输入备注" type="text" maxlength="150" style="width: 80%"
+          <Input :disabled="auditOperate || 'look' === type" placeholder="请输入备注" type="text" maxlength="150"
+                 style="width: 80%"
                  v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
         </div>
@@ -84,14 +85,16 @@
     <div class="modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button color="primary" v-if="!auditOperate" @click="saveOrder('increase')" :loading="loading">
+        <Button color="primary" v-if="!auditOperate && 'look' !== type" @click="saveOrder('increase')"
+                :loading="loading">
           保存并新增
         </Button>
         <Button color="primary" v-if="!auditOperate" :disabled="form.generatedDisabled" @click="openGeneratedModal"
                 :loading="loading">
           生成盘点单据
         </Button>
-        <Button @click="saveOrder" v-if="form.orderStatus !== '已审核' && !auditOperate && !form.id" :loading="loading">
+        <Button @click="saveOrder" v-if="form.orderStatus !== '已审核' && !auditOperate && 'look' !== type"
+                :loading="loading">
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
@@ -238,6 +241,13 @@ export default {
               this.clearForm();
               setTimeout(() => {
                 this.closeWindow();
+                if (type === "increase") {
+                  this.pushTab({
+                    key: 'StockTakeForm',
+                    title: '新增盘点单',
+                    params: {type: 'add', stockTakeId: null, status: null}
+                  });
+                }
               }, 300);
             }
           })
@@ -285,9 +295,7 @@ export default {
         remarks: this.form.remarks,
         warehouseId: this.form.warehouseId,
       };
-      if (type !== "increase") {
-        stockTake.id = this.form.id;
-      }
+      stockTake.id = this.form.id;
       filterStockTakeData.forEach(item => {
         stockTakeItems.push({
           actualQuantity: item.actualQuantity,
@@ -490,6 +498,7 @@ export default {
     getInventoryList() {
       if (this.stockTakeId) {
         StockTake.export(this.stockTakeId).then(res => {
+          console.info(res.data)
           const data = res.data;
           const {outbounds, inbounds} = data;
           if (outbounds && outbounds.length > 0) {

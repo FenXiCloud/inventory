@@ -18,6 +18,8 @@ public class InventoryItemReportDto implements Serializable {
      */
     private Long id;
 
+    private String batchNumber;
+
     /**
      * 商品id
      */
@@ -119,5 +121,10 @@ public class InventoryItemReportDto implements Serializable {
      * 往来单位
      */
     private String supplierName;
+
+    /**
+     * 往来单位
+     */
+    private String customerName;
 
 }

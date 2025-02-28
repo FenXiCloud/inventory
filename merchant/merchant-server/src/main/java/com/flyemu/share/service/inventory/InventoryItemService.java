@@ -8,7 +8,9 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.InventoryItemReportDto;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
+import com.flyemu.share.entity.inventory.QInventory;
 import com.flyemu.share.entity.inventory.QInventoryItem;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.repository.InventoryItemRepository;
@@ -23,12 +25,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * @功能描述: 库存明细交易流水
@@ -54,6 +54,10 @@ public class InventoryItemService extends AbsService {
     private final static QUnit qUnit = QUnit.unit;
 
     private final static QSupplier qSupplier = QSupplier.supplier;
+
+    private final static QInventory qInventory = QInventory.inventory;
+
+    private final static QCustomer qCustomer = QCustomer.customer;
 
     private final InventoryItemRepository inventoryItemRepository;
 
@@ -124,6 +128,7 @@ public class InventoryItemService extends AbsService {
                 .select(
                         qInventoryItem.id,
                         qInventoryItem.warehouseId,
+                        qInventoryItem.batchNumber,
                         qProduct.id.as("productId"),
                         qProduct.code.as("productCode"),
                         qProduct.name.as("productName"),
@@ -138,6 +143,7 @@ public class InventoryItemService extends AbsService {
                         qProduct.remarks.as("productRemarks"),
                         qUnit.name.as("unitName"),
                         qSupplier.name.as("supplierName"),
+                        qCustomer.name.as("customerName"),
                         qInventoryItem.unitPrice.as("unitPrice"),
                         qInventoryItem.subtotal.as("subtotal"),
                         qInventoryItem.currentQuantity.as("currentQuantity"),
@@ -149,6 +155,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
                 .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
                 .leftJoin(qSupplier).on(qInventoryItem.supplierId.eq(qSupplier.id))
+                .leftJoin(qCustomer).on(qInventoryItem.customerId.eq(qCustomer.id))
                 .where(query.builders())
                 .orderBy(qInventoryItem.id.asc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -157,11 +164,13 @@ public class InventoryItemService extends AbsService {
         for (Tuple tuple : fetchPage) {
             dto = new InventoryItemReportDto();
             dto.setId(tuple.get(qInventoryItem.id));
+            dto.setBatchNumber(tuple.get(qInventoryItem.batchNumber));
             dto.setProductId(tuple.get(qProduct.id.as("productId")));
             dto.setProductCategoryId(tuple.get(qProduct.id.as("productCategoryId")));
             dto.setProductCode(tuple.get(qProduct.code.as("productCode")));
             dto.setProductName(tuple.get(qProduct.name.as("productName")));
             dto.setSupplierName(tuple.get(qSupplier.name.as("supplierName")));
+            dto.setCustomerName(tuple.get(qCustomer.name.as("customerName")));
             dto.setCreatedAt(tuple.get(qInventoryItem.createdAt.as("createdAt")));
             dto.setProductCategoryName(tuple.get(qProductCategory.name.as("productCategoryName")));
             dto.setProductSpecification(tuple.get(qProduct.specification.as("productSpecification")));
@@ -201,9 +210,7 @@ public class InventoryItemService extends AbsService {
                         qWarehouse.name.as("warehouseName"),
                         qWarehouse.id.as("warehouseId"),
                         qProduct.remarks.as("productRemarks"),
-                        qUnit.name.as("unitName"),
-                        qInventoryItem.currentQuantity.sum().as("currentQuantity"),
-                        qInventoryItem.totalCost.sum().as("totalCost")
+                        qUnit.name.as("unitName")
                 )
                 .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
                 .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
@@ -228,8 +235,14 @@ public class InventoryItemService extends AbsService {
             dto.setUnitName(tuple.get(qUnit.name.as("unitName")));
             dto.setWarehouseName(tuple.get(qWarehouse.name.as("warehouseName")));
             dto.setWarehouseId(tuple.get(qWarehouse.id.as("warehouseId")));
-            dto.setTotalCost(tuple.get(qInventoryItem.totalCost.sum().as("totalCost")));
-            dto.setCurrentQuantity(tuple.get(qInventoryItem.currentQuantity.sum().as("currentQuantity")));
+            Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(dto.getProductId()).and(qInventory.warehouseId.eq(dto.getWarehouseId()))).fetchOne();
+            if (inventory != null) {
+                dto.setTotalCost(inventory.getTotalCost());
+                dto.setCurrentQuantity(inventory.getCurrentQuantity());
+            } else {
+                dto.setTotalCost(BigDecimal.ZERO);
+                dto.setCurrentQuantity(0);
+            }
             dtos.add(dto);
         }
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
@@ -280,12 +293,20 @@ public class InventoryItemService extends AbsService {
 
         private Long warehouseId;
 
+        private String warehouseIds;
+
         private Long supplierId;
+
+        private String supplierIds;
 
         private Long productId;
 
+        private String productIds;
+
         @Enumerated(EnumType.STRING)
         private OperationType operationType;
+
+        private String operationTypes;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -315,14 +336,26 @@ public class InventoryItemService extends AbsService {
             if (warehouseId != null) {
                 builder.and(qInventoryItem.warehouseId.eq(warehouseId));
             }
+            if (StrUtil.isNotBlank(warehouseIds)) {
+                builder.and(qInventoryItem.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+            }
             if (supplierId != null) {
                 builder.and(qInventoryItem.supplierId.eq(supplierId));
+            }
+            if (StrUtil.isNotBlank(supplierIds)) {
+                builder.and(qInventoryItem.supplierId.in(Arrays.stream(supplierIds.split(",")).map(Long::parseLong).toList()));
             }
             if (productId != null) {
                 builder.and(qInventoryItem.productId.eq(productId));
             }
+            if (StrUtil.isNotBlank(productIds)) {
+                builder.and(qInventoryItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+            }
             if (operationType != null) {
                 builder.and(qInventoryItem.operationType.eq(operationType));
+            }
+            if (StrUtil.isNotBlank(operationTypes)) {
+                builder.and(qInventoryItem.operationType.in(Arrays.stream(operationTypes.split(",")).map(OperationType::valueOf).toList()));
             }
             return builder;
         }

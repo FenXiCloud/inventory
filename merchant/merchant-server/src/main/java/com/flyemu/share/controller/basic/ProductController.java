@@ -7,6 +7,7 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.service.basic.ProductService;
+import com.flyemu.share.service.inventory.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -68,5 +69,10 @@ public class ProductController {
 //    public JsonResult goodsPrice(@PathVariable Long customersId, @SaMerchantId Long merchantId,@SaAccountBookId Long accountBookId) {
 //        return JsonResult.successful(productService.goodsPriceList(customersId, merchantId, accountBookId,null));
 //    }
-
+    @GetMapping("report")
+    public JsonResult report(Page page, ProductService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(productService.report(page, query));
+    }
 }

@@ -71,4 +71,10 @@ public class OtherInboundController {
         return JsonResult.successful(otherInboundService.load(id));
     }
 
+    @GetMapping("report")
+    public JsonResult report(OtherInboundService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(otherInboundService.report(query));
+    }
 }

@@ -32,5 +32,8 @@ export default {
 	// goodsPrice(customersId) {
 	// 	return Ajax.get('/product/goods/price/' + customersId)
 	// },
+    report(param) {
+        return Ajax.get("/product/report", param);
+    },
 }
 

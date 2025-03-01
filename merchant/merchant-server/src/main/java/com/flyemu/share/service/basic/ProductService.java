@@ -11,7 +11,6 @@ import com.flyemu.share.common.PinYinUtil;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
-import com.flyemu.share.dto.InventoryReportDto;
 import com.flyemu.share.dto.ProductDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.form.ProductForm;
@@ -210,7 +209,7 @@ public class ProductService extends AbsService {
         List<Tuple> fetch = bqf.selectFrom(qProduct)
                 .select(qProduct, qUnit.name)
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).where(qProduct.merchantId.eq(merchantId)
-                        .and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue())).fetch();
+                .and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue())).fetch();
         //封装产品单位返回;
         ArrayList<ProductDto> result = fetch.stream().collect(ArrayList::new, (list, tuple) -> {
             ProductDto dto = BeanUtil.toBean(tuple.get(qProduct), ProductDto.class);
@@ -227,36 +226,6 @@ public class ProductService extends AbsService {
 
     public Map<Long, CustomerLevelPrice> customerLevelPrice(Long productId, Long merchantId, Long accountBookId) {
         return jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(productId).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).fetch().stream().collect(Collectors.toMap(c -> c.getCustomerLevelId(), b -> b));
-    }
-
-    public PageResults<InventoryReportDto> report(Page page, ProductService.Query query) {
-        PagedList<Tuple> fetchPage = bqf.selectFrom(qProduct)
-                .select(
-                        qProduct.id.as("productId"),
-                        qProduct.code.as("productCode"),
-                        qProduct.name.as("productName"),
-                        qProductCategory.name.as("productCategoryName"),
-                        qProduct.specification.as("productSpecification"),
-                        qUnit.name.as("productUnitName")
-                )
-                .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
-                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
-                .where(query.builders())
-                .groupBy(qProduct.id)
-                .orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
-        List<InventoryReportDto> dtos = new ArrayList<>();
-        InventoryReportDto dto;
-        for (Tuple tuple : fetchPage) {
-            dto = new InventoryReportDto();
-            dto.setProductId(tuple.get(qProduct.id.as("productId")));
-            dto.setProductCode(tuple.get(qProduct.code.as("productCode")));
-            dto.setProductName(tuple.get(qProduct.name.as("productName")));
-            dto.setProductCategoryName(tuple.get(qProductCategory.name.as("productCategoryName")));
-            dto.setProductSpecification(tuple.get(qProduct.specification.as("productSpecification")));
-            dto.setProductUnitName(tuple.get(qUnit.name.as("productUnitName")));
-            dtos.add(dto);
-        }
-        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
     @Data

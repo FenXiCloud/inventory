@@ -29,7 +29,4 @@ export default {
     delete(id) {
         return Ajax.delete("/otherOutbound/delete/" + id);
     },
-    report(param) {
-        return Ajax.get("/otherOutbound/report", param);
-    },
 };

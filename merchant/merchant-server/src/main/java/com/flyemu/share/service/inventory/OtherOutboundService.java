@@ -326,34 +326,6 @@ public class OtherOutboundService extends AbsService {
         return jqf.selectFrom(qOtherOutbound).where(qOtherOutbound.stockTakeId.eq(stockTakeId)).fetch();
     }
 
-    public List<Map<String, Object>> report(Query query) {
-        List<Tuple> fetch = bqf.selectFrom(qOtherOutbound)
-                .select(
-                        qOtherOutboundItem.productId.as("productId"),
-                        qOtherOutboundItem.warehouseId.as("warehouseId"),
-                        qOtherOutboundItem.quantity.sum().as("quantity"),
-                        qOtherOutboundItem.subtotal.sum().as("subtotal")
-                )
-                .leftJoin(qOtherOutboundItem).on(qOtherOutbound.id.eq(qOtherOutboundItem.otherOutboundId))
-                .leftJoin(qProduct).on(qProduct.id.eq(qOtherOutboundItem.productId))
-                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
-                .where(query.builder)
-                .where(query.builders())
-                .groupBy(qOtherOutboundItem.productId, qOtherOutboundItem.warehouseId)
-                .fetch();
-        List<Map<String, Object>> result = new ArrayList<>();
-        Map<String, Object> item;
-        for (Tuple tuple : fetch) {
-            item = new HashMap<>();
-            item.put("productId", tuple.get(qOtherOutboundItem.productId.as("productId")));
-            item.put("quantity", tuple.get(qOtherOutboundItem.quantity.sum().as("quantity")));
-            item.put("warehouseId", tuple.get(qOtherOutboundItem.warehouseId.as("warehouseId")));
-            item.put("subtotal", tuple.get(qOtherOutboundItem.subtotal.sum().as("subtotal")));
-            result.add(item);
-        }
-        return result;
-    }
-
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
@@ -367,14 +339,6 @@ public class OtherOutboundService extends AbsService {
         private OrderStatus state;
 
         private String filter;
-
-        private Long productId;
-
-        private Long warehouseId;
-
-        private Long productCategoryId;
-
-        private String reportFilter;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -403,21 +367,6 @@ public class OtherOutboundService extends AbsService {
                 builder.and(qOtherOutbound.orderNo.contains(filter))
                         .or(qCustomer.name.contains(filter))
                         .or(qAdmin.name.contains(filter));
-            }
-            if (productId != null) {
-                builder.and(qOtherOutboundItem.productId.eq(productId));
-            }
-            if (warehouseId != null) {
-                builder.and(qOtherOutboundItem.warehouseId.eq(warehouseId));
-            }
-            if (productCategoryId != null) {
-                builder.and(qProductCategory.id.eq(productCategoryId));
-            }
-            if (StrUtil.isNotBlank(reportFilter) && StrUtil.isNotBlank(reportFilter.trim())) {
-                builder.and(qProduct.name.contains(reportFilter))
-                        .or(qProduct.code.contains(reportFilter))
-                        .or(qProductCategory.name.contains(reportFilter))
-                        .or(qProduct.specification.contains(reportFilter));
             }
             return builder;
         }

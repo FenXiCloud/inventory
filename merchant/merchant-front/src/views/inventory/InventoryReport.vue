@@ -5,8 +5,6 @@
         <Button @click="excel" color="primary">导出</Button>
       </template>
       <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
-                placeholder="审核状态：" :deletable="false"/>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">仓库：</span>
           <Select v-model="params.warehouseId" class="w-120px" keyName="id" titleName="name" :datas="warehouseList"/>
@@ -80,8 +78,6 @@
 <script>
 import manba from "manba";
 import Inventory from "@js/api/inventory/Inventory";
-import OtherInbound from "@js/api/inventory/OtherInbound";
-import OtherOutbound from "@js/api/inventory/OtherOutbound";
 import Product from "@js/api/basic/Product";
 import ProductCategory from "@js/api/basic/ProductCategory";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -110,8 +106,7 @@ export default {
         productId: null,
         productCategoryId: null,
         filter: null,
-        reportFilter: null,
-        state: '已审核',
+        state: null,
         sortCol: null,
         sort: null,
       },
@@ -123,8 +118,6 @@ export default {
       productList: [],
       productCategoryList: [],
       reportInventoryList: [],
-      reportInboundList: [],
-      reportOutboundList: [],
     }
   },
   computed: {
@@ -202,100 +195,39 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      const params = JSON.parse(JSON.stringify(this.queryParams));
-      params.reportFilter = params.filter;
-      let promiseMethod;
-      if (params.state === "已保存") {
-        promiseMethod = Promise.all([Inventory.reportInventory(params),
-          OtherInbound.report(params), OtherOutbound.report(params)]);
-      } else {
-        promiseMethod = Promise.all([Inventory.reportInventory(this.queryParams)])
-      }
-      promiseMethod.then(results => {
-        this.reportInventoryList = results[0].data || [];
-        if (params.state === "已保存") {
-          this.reportInboundList = results[1].data || [];
-          this.reportOutboundList = results[2].data || [];
-        } else {
-          this.reportInboundList = [];
-          this.reportOutboundList = [];
-        }
-        this.amountTotal = 0;
-        Product.report(this.queryParams).then(({data: {results, total}}) => {
-          this.dataList = results || [];
-          this.pagination.total = total;
-          this.dataList.forEach(item => {
-            this.warehouseList.forEach(warehouse => {
-              let allQuantity = 0;
-              let allTotalCost = 0;
-              this.reportInventoryList.forEach(report => {
-                if (report.warehouseId === warehouse.id && report.productId === item.productId) {
-                  item[`${warehouse.code}_quantity`] = report.currentQuantity;
-                  item[`${warehouse.code}_averageCost`] = report.averageCost;
-                  item[`${warehouse.code}_totalCost`] = report.totalCost;
-                  this.amountTotal += parseFloat(report.totalCost);
-                }
-                if (report.productId === item.productId) {
-                  allQuantity += Number(report.currentQuantity || 0);
-                  allTotalCost += Number(report.totalCost || 0);
-                }
+      Promise.all([Inventory.reportInventory(this.queryParams)])
+          .then(results => {
+            this.reportInventoryList = results[0].data || [];
+            this.amountTotal = 0;
+            Inventory.report(this.queryParams).then(({data: {results, total}}) => {
+              this.dataList = results || [];
+              this.pagination.total = total;
+              this.dataList.forEach(item => {
+                this.warehouseList.forEach(warehouse => {
+                  let allQuantity = 0;
+                  let allAverageCost = 0;
+                  let allTotalCost = 0;
+                  this.reportInventoryList.forEach(report => {
+                    if (report.warehouseId === warehouse.id && report.productId === item.productId) {
+                      item[`${warehouse.code}_quantity`] = report.currentQuantity;
+                      item[`${warehouse.code}_averageCost`] = report.averageCost;
+                      item[`${warehouse.code}_totalCost`] = report.totalCost;
+                      this.amountTotal += parseFloat(report.totalCost);
+                    }
+                    if (report.productId === item.productId) {
+                      allQuantity += Number(report.currentQuantity || 0);
+                      allAverageCost += Number(report.averageCost || 0);
+                      allTotalCost += Number(report.totalCost || 0);
+                    }
+                  });
+                  item['all_quantity'] = allQuantity;
+                  item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
+                  item['all_totalCost'] = allTotalCost;
+                });
               });
-              this.reportInboundList.forEach(report => {
-                if (report.warehouseId === warehouse.id && report.productId === item.productId) {
-                  let origin_quantity = item[`${warehouse.code}_quantity`] || 0;
-                  let origin_totalCost = item[`${warehouse.code}_totalCost`] || 0;
-                  item[`${warehouse.code}_quantity`] = origin_quantity + (report.quantity || 0);
-                  item[`${warehouse.code}_totalCost`] = origin_totalCost + (report.subtotal || 0);
-                  item[`${warehouse.code}_averageCost`] = (item[`${warehouse.code}_totalCost`] / item[`${warehouse.code}_quantity`]).toFixed(2);
-                  this.amountTotal += parseFloat(report.subtotal || 0);
-                }
-                if (report.productId === item.productId) {
-                  allQuantity += Number(report.currentQuantity || 0);
-                  allTotalCost += Number(report.subtotal || 0);
-                }
-              });
-              this.reportOutboundList.forEach(report => {
-                if (report.warehouseId === warehouse.id && report.productId === item.productId) {
-                  let origin_quantity = item[`${warehouse.code}_quantity`] || 0;
-                  let origin_totalCost = item[`${warehouse.code}_totalCost`] || 0;
-                  item[`${warehouse.code}_quantity`] = origin_quantity - (report.quantity || 0);
-                  item[`${warehouse.code}_totalCost`] = origin_totalCost - (report.subtotal || 0);
-                  if (item[`${warehouse.code}_totalCost`] < 0) {
-                    item[`${warehouse.code}_totalCost`] = 0;
-                  }
-                  if (item[`${warehouse.code}_quantity`] <= 0) {
-                    item[`${warehouse.code}_quantity`] = 0;
-                    item[`${warehouse.code}_averageCost`] = 0;
-                  } else {
-                    item[`${warehouse.code}_averageCost`] = (item[`${warehouse.code}_totalCost`] / item[`${warehouse.code}_quantity`]).toFixed(2);
-                  }
-                  this.amountTotal -= parseFloat(report.subtotal || 0);
-                }
-                if (report.productId === item.productId) {
-                  allQuantity -= Number(report.currentQuantity || 0);
-                  allTotalCost -= Number(report.subtotal || 0);
-                }
-              });
-              if (this.amountTotal < 0) {
-                this.amountTotal = 0;
-              }
-              if (item['all_totalCost'] < 0) {
-                item['all_totalCost'] = 0;
-              } else {
-                item['all_totalCost'] = allTotalCost;
-              }
-              if (item['all_quantity'] <= 0) {
-                item['all_quantity'] = 0;
-                item['all_averageCost'] = 0;
-              } else {
-                item['all_quantity'] = allQuantity;
-                item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
-              }
-            });
-          });
-          this.amountTotal = this.amountTotal.toFixed(2);
-        }).finally(() => this.loading = false);
-      })
+              this.amountTotal = this.amountTotal.toFixed(2);
+            }).finally(() => this.loading = false);
+          })
     },
     loadDict(callback) {
       loading("加载中....");
@@ -312,90 +244,36 @@ export default {
       const params = JSON.parse(JSON.stringify(this.queryParams));
       params.page = 1;
       params.pageSize = 999999;
-      params.reportFilter = params.filter;
-      let promiseMethod;
-      if (params.state === "已保存") {
-        promiseMethod = Promise.all([Inventory.reportInventory(params),
-          OtherInbound.report(params), OtherOutbound.report(params)]);
-      } else {
-        promiseMethod = Promise.all([Inventory.reportInventory(params)])
-      }
-      promiseMethod.then(results => {
-        let reportInboundList = [];
-        let reportOutboundList = [];
-        if (params.state === "已保存") {
-          reportInboundList = results[1].data || [];
-          reportOutboundList = results[2].data || [];
-        }
-        let reportInventoryList = results[0].data || [];
-        Product.report(params).then(({data: {results, total}}) => {
-          let dataList = results || [];
-          dataList.forEach(item => {
-            this.warehouseList.forEach(warehouse => {
-              let allQuantity = 0;
-              let allTotalCost = 0;
-              reportInventoryList.forEach(report => {
-                if (report.warehouseId === warehouse.id && report.productId === item.productId) {
-                  item[`${warehouse.code}_quantity`] = report.currentQuantity;
-                  item[`${warehouse.code}_averageCost`] = report.averageCost;
-                  item[`${warehouse.code}_totalCost`] = report.totalCost;
-                }
-                if (report.productId === item.productId) {
-                  allQuantity += Number(report.currentQuantity || 0);
-                  allTotalCost += Number(report.totalCost || 0);
-                }
+      Promise.all([Inventory.reportInventory(params)])
+          .then(results => {
+            let reportInventoryList = results[0].data || [];
+            Inventory.report(params).then(({data: {results, total}}) => {
+              let dataList = results || [];
+              dataList.forEach(item => {
+                this.warehouseList.forEach(warehouse => {
+                  let allQuantity = 0;
+                  let allAverageCost = 0;
+                  let allTotalCost = 0;
+                  reportInventoryList.forEach(report => {
+                    if (report.warehouseId === warehouse.id && report.productId === item.productId) {
+                      item[`${warehouse.code}_quantity`] = report.currentQuantity;
+                      item[`${warehouse.code}_averageCost`] = report.averageCost;
+                      item[`${warehouse.code}_totalCost`] = report.totalCost;
+                    }
+                    if (report.productId === item.productId) {
+                      allQuantity += Number(report.currentQuantity || 0);
+                      allAverageCost += Number(report.averageCost || 0);
+                      allTotalCost += Number(report.totalCost || 0);
+                    }
+                  });
+                  item['all_quantity'] = allQuantity;
+                  item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
+                  item['all_totalCost'] = allTotalCost;
+                });
               });
-              reportInboundList.forEach(report => {
-                if (report.warehouseId === warehouse.id && report.productId === item.productId) {
-                  let origin_quantity = item[`${warehouse.code}_quantity`] || 0;
-                  let origin_totalCost = item[`${warehouse.code}_totalCost`] || 0;
-                  item[`${warehouse.code}_quantity`] = origin_quantity + (report.quantity || 0);
-                  item[`${warehouse.code}_totalCost`] = origin_totalCost + (report.subtotal || 0);
-                  item[`${warehouse.code}_averageCost`] = (item[`${warehouse.code}_totalCost`] / item[`${warehouse.code}_quantity`]).toFixed(2);
-                }
-                if (report.productId === item.productId) {
-                  allQuantity += Number(report.currentQuantity || 0);
-                  allTotalCost += Number(report.subtotal || 0);
-                }
-              });
-              reportOutboundList.forEach(report => {
-                if (report.warehouseId === warehouse.id && report.productId === item.productId) {
-                  let origin_quantity = item[`${warehouse.code}_quantity`] || 0;
-                  let origin_totalCost = item[`${warehouse.code}_totalCost`] || 0;
-                  item[`${warehouse.code}_quantity`] = origin_quantity - (report.quantity || 0);
-                  item[`${warehouse.code}_totalCost`] = origin_totalCost - (report.subtotal || 0);
-                  if (item[`${warehouse.code}_totalCost`] < 0) {
-                    item[`${warehouse.code}_totalCost`] = 0;
-                  }
-                  if (item[`${warehouse.code}_quantity`] <= 0) {
-                    item[`${warehouse.code}_quantity`] = 0;
-                    item[`${warehouse.code}_averageCost`] = 0;
-                  } else {
-                    item[`${warehouse.code}_averageCost`] = (item[`${warehouse.code}_totalCost`] / item[`${warehouse.code}_quantity`]).toFixed(2);
-                  }
-                }
-                if (report.productId === item.productId) {
-                  allQuantity -= Number(report.currentQuantity || 0);
-                  allTotalCost -= Number(report.subtotal || 0);
-                }
-              });
-              if (item['all_totalCost'] < 0) {
-                item['all_totalCost'] = 0;
-              } else {
-                item['all_totalCost'] = allTotalCost;
-              }
-              if (item['all_quantity'] <= 0) {
-                item['all_quantity'] = 0;
-                item['all_averageCost'] = 0;
-              } else {
-                item['all_quantity'] = allQuantity;
-                item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
-              }
-            });
-          });
-          this.callExcel(dataList);
-        }).finally(() => this.loading = false);
-      })
+              this.callExcel(dataList);
+            }).finally(() => this.loading = false);
+          })
     },
     callExcel(dataList) {
       if (dataList.length < 0) {

@@ -74,12 +74,4 @@ public class OtherOutboundController {
     public JsonResult load(@PathVariable Long id) {
         return JsonResult.successful(otherOutboundService.load(id));
     }
-
-
-    @GetMapping("report")
-    public JsonResult report(OtherOutboundService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
-        return JsonResult.successful(otherOutboundService.report(query));
-    }
 }

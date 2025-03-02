@@ -12,5 +12,8 @@ export default {
     },
     select(param) {
         return Ajax.get('/pricingPolicy/select', param)
-    }
+    },
+    sort(param) {
+        return Ajax['put']('/pricingPolicy/sort', param)
+    },
 }

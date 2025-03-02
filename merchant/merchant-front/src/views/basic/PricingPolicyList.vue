@@ -5,7 +5,12 @@
     </div>
 
     <vxe-toolbar>
+      <template #buttons>
 
+      </template>
+      <template #tools>
+        <Button color="primary" :loading="loading" @click="doSearch">刷新</Button>
+      </template>
     </vxe-toolbar>
     <div class="flex1">
       <vxe-table row-id="id"
@@ -21,17 +26,22 @@
         <vxe-column title="取数来源" field="priceSource" width="150"/>
         <vxe-column title="应用说明" field="remarks"/>
         <vxe-column title="状态" field="enabled" width="120" align="center">
-          <template #default="{row:{enabled}}">
-            <Tag color="primary" v-if="enabled">启用</Tag>
-            <Tag color="red" v-else>禁用</Tag>
+          <template #default="{row}">
+            <Switch v-model="row.enabled" @change="toggleStatus(row)"></Switch>
           </template>
         </vxe-column>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
-            上移 下移
+            <span class="primary-color  text-hover ml-10px" @click="moveUp(row)">上移</span>
+            <span class="primary-color  text-hover ml-10px" @click="moveDown(row)">下移</span>
           </template>
         </vxe-column>
       </vxe-table>
+    </div>
+    <div class="flex justify-center items-center p-15px bg-white-color border">
+      <Button color="primary" @click="saveOrder" :loading="loading">
+        保存
+      </Button>
     </div>
   </div>
 </template>
@@ -56,7 +66,7 @@ export default {
       param: {
         module1: '销售价格取数',
         module2: '采购价格取数',
-        module3: '异常成本处理'
+        // module3: '异常成本处理'
       },
       selected: '销售价格取数',
       params: {
@@ -68,6 +78,7 @@ export default {
     change(data) {
       console.log(data)
       this.params.priceType = data.title;
+      this.loadList();
     },
     doSearch() {
       this.loadList();
@@ -89,6 +100,49 @@ export default {
           })
         }
       })
+    },
+    moveUp(row){
+      const index = this.dataList.findIndex(item => item.id === row.id);
+      if (index <= 0) {
+        message("已经是第一条数据了");
+        return;
+      }
+      // 创建新数组并交换位置
+      const newList = [...this.dataList];
+      [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
+      this.dataList = newList;
+
+    },
+    moveDown(row){
+      const index = this.dataList.findIndex(item => item.id === row.id);
+      if (index >= this.dataList.length - 1) {
+        message("已经是最后一条数据了");
+        return;
+      }
+      // 创建新数组并交换位置
+      const newList = [...this.dataList];
+      [newList[index], newList[index + 1]] = [newList[index + 1], newList[index]];
+      this.dataList = newList;
+    },
+    saveOrder(){
+      //保存排序
+      PricingPolicy.sort({
+        dataList: this.dataList
+      }).then(() => {
+        message("保存成功");
+      });
+    },
+    toggleStatus(row) {
+      console.log("row",row.enabled)
+      // PricingPolicy.toggleStatus({
+      //   id: row.id,
+      //   enabled: row.enabled
+      // }).then(() => {
+      //   message("状态修改成功");
+      // }).catch(() => {
+      //   // 如果失败，回滚状态
+      //   row.enabled = !row.enabled;
+      // });
     }
   },
   created() {

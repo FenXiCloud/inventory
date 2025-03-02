@@ -18,6 +18,8 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.purchase.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.PurchaseOrderForm;
 import com.flyemu.share.repository.PurchaseOrderItemRepository;
 import com.flyemu.share.repository.PurchaseOrderRepository;
@@ -172,7 +174,9 @@ public class PurchaseOrderService extends AbsService {
                 priceRecord.setMerchantId(merchantId);
                 priceRecord.setAccountBookId(order.getAccountBookId());
                 priceRecord.setSupplierId(order.getSupplierId());
-                priceRecordService.save(priceRecord);
+                priceRecord.setPriceType(PriceType.采购价格取数);
+                priceRecord.setPriceSource(PriceSource.最近采购单价);
+                priceRecordService.savePriceRecord(priceRecord);
 
                 if (d.getId() != null) {
                     ids.add(d.getId());
@@ -198,7 +202,9 @@ public class PurchaseOrderService extends AbsService {
                 priceRecord.setMerchantId(merchantId);
                 priceRecord.setSupplierId(order.getSupplierId());
                 priceRecord.setAccountBookId(order.getAccountBookId());
-                priceRecordService.save(priceRecord);
+                priceRecord.setPriceType(PriceType.采购价格取数);
+                priceRecord.setPriceSource(PriceSource.最近采购单价);
+                priceRecordService.savePriceRecord(priceRecord);
 
 
                 d.setAccountBookId(order.getAccountBookId());

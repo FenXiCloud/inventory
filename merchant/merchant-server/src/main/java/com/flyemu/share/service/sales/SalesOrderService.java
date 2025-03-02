@@ -12,18 +12,20 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.SalesOrderForm;
-import com.flyemu.share.repository.PurchaseOrderItemRepository;
-import com.flyemu.share.repository.SalesOrderItemRepository;
-import com.flyemu.share.repository.SalesOrderRepository;
-import com.flyemu.share.repository.SalesOutboundRepository;
+import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -61,6 +63,8 @@ public class SalesOrderService extends AbsService {
     private final static QProduct qProduct = QProduct.product;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final static QUnit qUnit = QUnit.unit;
+    private final PriceRecordService priceRecordService;
+    private final PriceRecordRepository priceRecordRepository;
 
     public PageResults<SalesOrderDTO> query(Page page, SalesOrderService.Query query) {
         long totalSize = bqf.selectFrom(qSalesOrder)
@@ -122,6 +126,8 @@ public class SalesOrderService extends AbsService {
             //保存新关系
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
+                    //保存价格记录
+                    savePrice(item, salesOrder);
                     item.setSalesOrderId(update.getId());
                     item.setAccountBookId(salesOrder.getAccountBookId());
                     item.setMerchantId(salesOrder.getMerchantId());
@@ -139,6 +145,8 @@ public class SalesOrderService extends AbsService {
             SalesOrder save = salesOrderRepository.save(salesOrder);
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
+                    //保存价格记录
+                    savePrice(item, salesOrder);
                     item.setSalesOrderId(save.getId());
                     item.setAccountBookId(salesOrder.getAccountBookId());
                     item.setMerchantId(salesOrder.getMerchantId());
@@ -150,6 +158,21 @@ public class SalesOrderService extends AbsService {
             }
             return save;
         }
+    }
+
+    private void savePrice(SalesOrderItem item, SalesOrder salesOrder) {
+        //保存价格记录
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setOrderId(salesOrder.getId());
+        priceRecord.setUnitPrice(item.getUnitPrice());
+        priceRecord.setBaseUnitId(item.getBaseUnitId());
+        priceRecord.setProductId(item.getProductId());
+        priceRecord.setMerchantId(salesOrder.getMerchantId());
+        priceRecord.setAccountBookId(salesOrder.getAccountBookId());
+        priceRecord.setCustomerId(salesOrder.getCustomerId());
+        priceRecord.setPriceType(PriceType.销售价格取数);
+        priceRecord.setPriceSource(PriceSource.最近销售单价);
+        priceRecordService.savePriceRecord(priceRecord);
     }
 
     @Transactional

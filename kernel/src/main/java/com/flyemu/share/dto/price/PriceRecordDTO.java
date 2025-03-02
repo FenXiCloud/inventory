@@ -1,6 +1,8 @@
 package com.flyemu.share.dto.price;
 
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.Getter;
@@ -74,8 +76,11 @@ public class PriceRecordDTO {
 
     @Comment("价格类别")
     @Enumerated(EnumType.STRING)
-    @Column(length = 32, columnDefinition = "varchar(32)  default '入库'")
     private PriceType priceType;
+
+    @Comment("价格来源")
+    @Enumerated(EnumType.STRING)
+    private PriceSource priceSource;
 
     @Column(nullable = false)
     private Long accountBookId;
@@ -83,7 +88,4 @@ public class PriceRecordDTO {
     @Column(nullable = false)
     private Long merchantId;
 
-    public enum PriceType {
-        最近采购价格, 最近销售价格,商品资料价格
-    }
 }

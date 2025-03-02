@@ -306,5 +306,11 @@ public class PriceRecordService extends AbsService {
                 builder.and(qPriceRecord.priceType.eq(PriceType.valueOf(priceType)));
             }
         }
+
+        public void setPriceSource(String priceSource) {
+            if (StringUtils.isNotBlank(priceSource)) {
+                builder.and(qPriceRecord.priceSource.eq(PriceSource.valueOf(priceSource)));
+            }
+        }
     }
 }

@@ -7,7 +7,7 @@
       <template #tools>
 <!--        <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入名称"/>-->
 
-        <Select v-model="params.priceType" class="w-120px" :datas="{商品资料价格:'商品资料价格',最近采购价格:'最近采购价格',最近销售价格:'最近销售价格'}"
+        <Select v-model="params.priceSource" class="w-120px" :datas="{商品资料价格:'商品资料价格',最近采购单价:'最近采购价格',最近销售单价:'最近销售价格'}"
                 placeholder="价格来源："/>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">商品：</span>
@@ -41,8 +41,8 @@
         <vxe-column title="规格" field="specification" align="left"/>
         <vxe-column title="单位" field="unitName" align="left"/>
         <vxe-column title="价格" field="unitPrice" align="left"/>
-        <vxe-column title="价格类型" field="" align="left"/>
-        <vxe-column title="价格来源" field="priceType" align="left"/>
+        <vxe-column title="价格类型" field="priceType" align="left"/>
+        <vxe-column title="价格来源" field="priceSource" align="left"/>
         <vxe-column title="创建时间" field="orderDate" align="left"/>
       </vxe-table>
       <vxe-pager perfect @page-change="loadList(false)"

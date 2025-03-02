@@ -11,6 +11,7 @@ import com.flyemu.share.dto.ProductDto;
 import com.flyemu.share.dto.ProductPriceDTO;
 import com.flyemu.share.dto.price.PriceRecordDTO;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.repository.PriceRecordRepository;
@@ -23,6 +24,7 @@ import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -206,9 +208,36 @@ public class PriceRecordService extends AbsService {
             ProductPriceDTO dto = BeanUtil.toBean(tuple.get(qProduct), ProductPriceDTO.class);
             dto.setProductCategoryName(tuple.get(qProductCategory.name));
             dto.setUnitName(tuple.get(qUnit.name));
+            //最近采购价格
+            BigDecimal recentlyPurchasePrice = getLastPrice(dto, PriceType.采购价格取数, PriceSource.最近采购单价);
+            dto.setRecentlyPurchasePrice(recentlyPurchasePrice);
+            //最近销售价格
+            BigDecimal recentlySalesPrice = getLastPrice(dto, PriceType.销售价格取数, PriceSource.最近销售单价);
+            dto.setRecentlySalesPrice(recentlySalesPrice);
             list.add(dto);
         }, List::addAll);
         return new PageResults<>(collect, page, pagedList.getTotalSize());
+    }
+
+    private BigDecimal getLastPrice(ProductPriceDTO dto,PriceType priceType, PriceSource priceSource) {
+        Specification<PriceRecord> priceRecordSpecification = (root, rootQuery, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("merchantId"), dto.getMerchantId()));
+            predicates.add(cb.equal(root.get("accountBookId"), dto.getAccountBookId()));
+            predicates.add(cb.equal(root.get("productId"), dto.getId()));
+            predicates.add(cb.equal(root.get("priceType"), priceType));
+            predicates.add(cb.equal(root.get("priceSource"), priceSource));
+            rootQuery.orderBy(cb.desc(root.get("id")));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        PageRequest pageRequest = PageRequest.of(0, 1);
+        List<PriceRecord> priceRecordList = priceRecordRepository.findAll(priceRecordSpecification, pageRequest).getContent();
+        if (CollectionUtils.isEmpty(priceRecordList)) {
+            return BigDecimal.ZERO;
+        } else {
+            PriceRecord priceRecord = priceRecordList.get(0);
+            return priceRecord.getUnitPrice();
+        }
     }
 
     @Transactional

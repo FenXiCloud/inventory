@@ -174,6 +174,7 @@ public class PurchaseOrderService extends AbsService {
                 priceRecord.setMerchantId(merchantId);
                 priceRecord.setAccountBookId(order.getAccountBookId());
                 priceRecord.setSupplierId(order.getSupplierId());
+                priceRecord.setOrderId(order.getId());
                 priceRecord.setPriceType(PriceType.采购价格取数);
                 priceRecord.setPriceSource(PriceSource.最近采购单价);
                 priceRecordService.savePriceRecord(priceRecord);
@@ -202,6 +203,7 @@ public class PurchaseOrderService extends AbsService {
                 priceRecord.setMerchantId(merchantId);
                 priceRecord.setSupplierId(order.getSupplierId());
                 priceRecord.setAccountBookId(order.getAccountBookId());
+                priceRecord.setOrderId(order.getId());
                 priceRecord.setPriceType(PriceType.采购价格取数);
                 priceRecord.setPriceSource(PriceSource.最近采购单价);
                 priceRecordService.savePriceRecord(priceRecord);

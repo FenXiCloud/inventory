@@ -40,7 +40,7 @@
         <vxe-column type="checkbox" width="40" align="center"/>
         <vxe-column title="操作" align="center" width="120">
           <template #default="{row}">
-            <span v-if="!editable(row)" class="primary-color  text-hover ml-10px" @click="addForm('edit',row.id)">查看</span>
+            <span v-if="!editable(row)" class="primary-color  text-hover ml-10px" @click="addForm('look',row.id)">查看</span>
             <span v-if="editable(row)" class="primary-color  text-hover ml-10px" @click="addForm('edit',row.id)">编辑</span>
             <span v-if="editable(row)" class="red-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
           </template>
@@ -126,7 +126,7 @@ export default {
       console.log(type, otherOutboundId);
       this.pushTab({
         key: 'OtherOutboundForm',
-        title: type == 'edit' ? '编辑其他出库单' : '新增其他出库单',
+        title: type == 'edit' ? '编辑其他出库单' : type === 'look' ? '查看其他出库单' : '新增其他出库单',
         params: {type: type, otherOutboundId: otherOutboundId}
       });
     },

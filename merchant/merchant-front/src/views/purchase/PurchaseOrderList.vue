@@ -43,7 +43,6 @@
             <template v-if="row.orderStatus === '已审核'">
               <span class="primary-color  text-hover ml-10px" @click="detail(row.id)">详情</span>
             </template>
-
           </template>
         </vxe-column>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>

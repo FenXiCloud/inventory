@@ -1,0 +1,47 @@
+<template>
+  <view class="login-container">
+    <form @submit="handleSubmit">
+      <view class="input-group">
+        <text class="label">用户名：</text>
+        <input type="text" placeholder="请输入用户名" v-model="username"/>
+      </view>
+      <view class="input-group">
+        <text class="label">密码：</text>
+        <input type="password" placeholder="请输入密码" v-model="password"/>
+      </view>
+      <button formType="submit">登录</button>
+    </form>
+  </view>
+</template>
+
+<script lang="uts">
+</script>
+
+<style scoped lang="scss">
+.login-container {
+  padding: 20px;
+}
+
+.input-group {
+  margin-bottom: 15px;
+}
+
+.label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  background-color: #1aad19;
+  color: white;
+  border: none;
+}
+</style>

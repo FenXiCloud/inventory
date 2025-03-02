@@ -2,6 +2,162 @@
 <sqltoy xmlns="http://www.sagframe.com/schema/sqltoy"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.sagframe.com/schema/sqltoy http://www.sagframe.com/schema/sqltoy/sqltoy.xsd">
+    <sql id="purchaseReportSummaryList">
+        <value>
+            <![CDATA[
+            SELECT
+	sum(po.subtotal) as subtotalSum,
+	po.product_id AS productId,
+	po.quantity AS baseQuantitySum,
+	jp.`name` as productName,
+	ju.`name` as baseUnitName,
+	jp.`code` as productCode,
+	js.`name` as supplierName,
+	jw.`name` as warehouseName
+FROM
+	(
+	SELECT
+		jpii.subtotal,
+		jpii.quantity,
+		jpii.base_unit_id,
+		jpii.warehouse_id,
+		jpii.product_id,
+		jpi.supplier_id
+	FROM
+		jxc_purchase_inbound_item AS jpii
+		LEFT JOIN jxc_purchase_inbound AS jpi ON jpii.purchase_inbound_id = jpi.id
+	WHERE
+		jpi.order_status = '已审核'
+		 and jpii.merchant_id = :merchantId
+		#[ AND jpi.inbound_date BETWEEN :startDate AND :endDate]
+		 UNION ALL
+	SELECT
+		- jpri.subtotal as subtotal,
+		- jpri.quantity as quantity,
+		jpri.base_unit_id,
+		jpri.warehouse_id,
+		jpri.product_id,
+		jpr.supplier_id
+	FROM
+		jxc_purchase_return_item AS jpri
+		LEFT JOIN jxc_purchase_return AS jpr ON jpri.purchase_return_id = jpr.id
+	WHERE
+		jpr.order_status = '已审核'
+		and jpri.merchant_id = :merchantId
+		#[AND jpr.return_date BETWEEN :startDate AND :endDate]
+	) AS po
+	LEFT JOIN jxc_warehouse AS jw ON jw.id = po.warehouse_id
+	LEFT JOIN jxc_unit AS ju ON ju.id = po.base_unit_id
+	LEFT JOIN jxc_product AS jp ON jp.id = po.product_id
+	LEFT JOIN jxc_supplier AS js ON js.id = po.supplier_id
+	WHERE jp.merchant_id = :merchantId
+	#[AND (po.order_no like :filter OR js.name like :filter)]
+	#[AND js.id =  :supplierId]
+	#[AND jp.id =  :productId]
+	#[AND jw.id =  :warehouseId]
+	group by @value(:groupBy)
+]]></value>
+    </sql>
+    <sql id="purchaseReturnReportSummaryList">
+        <value>
+            <![CDATA[
+            select
+        s1_0.name supplierName,
+        w1_0.name warehouseName,
+        sum(po.quantity) as baseQuantitySum,
+        sum(po.subtotal) as subtotalSum,
+        p3_0.id as productId,
+        p3_0.name as productName,
+        p3_0.code as productCode,
+        u1_0.name as baseUnitName
+    from
+        jxc_purchase_return_item po
+    left join
+        jxc_purchase_return p2_0
+            on (
+                p2_0.id=po.purchase_return_id
+            )
+    left join
+        jxc_supplier s1_0
+            on (
+                s1_0.id=p2_0.supplier_id
+            )
+    left join
+        jxc_warehouse w1_0
+            on (
+                w1_0.id=po.warehouse_id
+            )
+    left join
+        jxc_unit u1_0
+            on (
+                u1_0.id=po.secondary_unit_id
+            )
+    left join
+        jxc_product p3_0
+            on (
+                p3_0.id=po.product_id
+            )
+    where
+         p2_0.merchant_id= :merchantId
+        and p2_0.order_status='已审核'
+    #[AND p2_0.return_date BETWEEN :startDate AND :endDate]
+	#[AND (p2_0.order_no like :filter OR js.name like :filter)]
+	#[AND p2_0.supplier_id =  :supplierId]
+	#[AND po.product_id =  :productId]
+	#[AND po.warehouse_id =  :warehouseId]
+	group by @value(:groupBy)
+]]></value>
+    </sql>
+    <sql id="purchaseOrderReportSummaryList">
+        <value>
+            <![CDATA[
+             select
+        sum(po.quantity) as baseQuantitySum,
+        sum(po.subtotal) as subtotalSum,
+        p3_0.name as productName,
+        p3_0.code as productCode,
+        p3_0.id as productId,
+        u1_0.name as baseUnitName,
+        s1_0.name as supplierName,
+        w1_0.name as warehouseName
+    from
+        jxc_purchase_inbound_item po
+    left join
+        jxc_purchase_inbound p2_0
+            on (
+                p2_0.id=po.purchase_inbound_id
+            )
+    left join
+        jxc_supplier s1_0
+            on (
+                s1_0.id=p2_0.supplier_id
+            )
+    left join
+        jxc_warehouse w1_0
+            on (
+                w1_0.id=po.warehouse_id
+            )
+    left join
+        jxc_unit u1_0
+            on (
+                u1_0.id=po.base_unit_id
+            )
+    left join
+        jxc_product p3_0
+            on (
+                p3_0.id=po.product_id
+            )
+    where
+         p2_0.merchant_id= :merchantId
+        and p2_0.order_status='已审核'
+    #[AND p2_0.inbound_date BETWEEN :startDate AND :endDate]
+	#[AND (p2_0.order_no like :filter OR js.name like :filter)]
+	#[AND p2_0.supplier_id =  :supplierId]
+	#[AND po.product_id =  :productId]
+	#[AND po.warehouse_id =  :warehouseId]
+	group by @value(:groupBy)
+]]></value>
+    </sql>
     <sql id="purchaseReportItemList">
         <value>
             <![CDATA[

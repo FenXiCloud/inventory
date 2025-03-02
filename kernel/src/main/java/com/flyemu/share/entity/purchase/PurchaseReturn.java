@@ -47,6 +47,12 @@ public class PurchaseReturn {
     @Comment("供货商承担金额")
     private BigDecimal supplierAmount;
 
+    @Comment("折扣率")
+    private BigDecimal discountRate;
+
+    @Comment("折扣金额")
+    private BigDecimal discountAmount;
+
     @Comment("退款金额")
     private BigDecimal refundAmount;
 

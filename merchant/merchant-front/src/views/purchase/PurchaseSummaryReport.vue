@@ -2,19 +2,25 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Button @click="addForm()" color="primary">新 增</Button>
-        <Button>审 核</Button>
+        <Button color="primary">导 出</Button>
+        <Button>打 印</Button>
       </template>
       <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
-                placeholder="审核状态："/>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期：</span>
-          <DateRangePicker v-model="dateRange"></DateRangePicker>
-        </div>
+        <Select v-model="params.orderType" class="w-120px" :datas="{in:'入库单',out:'退货单',all:'全部'}"
+                placeholder="订单类型：" :deletable="false"/>
+        <Select v-model="groupValues" class="w-240px ml-8px"
+                :datas="{supplier:'供货商',warehouse:'仓库'}"
+                placeholder="统计字段：" :multiple="true"/>
+        <DateRangePicker v-model="dateRange" class="w-220px ml-8px"></DateRangePicker>
+        <Select class="w-120px ml-8px" filterable required :datas="supplierList" keyName="id" titleName="name"
+                v-model="params.supplierId" placeholder="供货商"/>
+        <Select class="w-120px ml-8px" filterable required :datas="warehouseList" keyName="id" titleName="name"
+                v-model="params.warehouseId" placeholder="仓库"/>
+        <Select class="w-120px ml-8px" filterable required :datas="productList" keyName="id" titleName="name"
+                :deletable="false" v-model="params.productId" placeholder="商品"/>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/客户名称" @search="doSearch">
+                show-search-button class="w-260px ml-8px"
+                placeholder="请输入订单号/供货商名称" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -33,23 +39,20 @@
                  :sort-config="{remote:true}"
                  :loading="loading">
         <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="操作" align="center" width="120">
-          <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="showForm('add',row.id)">编辑</span>
-            <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
+        <vxe-column title="商品信息" width="300">
+          <template #default="{row,rowIndex}">
+            <div class="flex">
+              <div class="flex1 ml-8px">
+                <div>{{ row.productCode }}--{{ row.productName }}</div>
+              </div>
+            </div>
           </template>
         </vxe-column>
-        <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="code" width="200"/>
-        <vxe-column title="关联销售出库单" field="code" width="200"/>
-        <vxe-column title="客户" field="customerName" min-width="120"/>
-        <vxe-column title="销售金额" field="totalAmount" width="120"/>
-        <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-        <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        <vxe-column title="制单人" field="createDate" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createDate" align="center" width="100"/>
-        <vxe-column title="审核状态" field="orderStatus" width="80"/>
-
+        <vxe-column title="供货商" field="supplierName" min-width="120" v-if="isSupplier"/>
+        <vxe-column title="仓库名称" field="warehouseName" min-width="120" v-if="isWarehouse"/>
+        <vxe-column title="基本数量" field="baseQuantitySum" min-width="200"/>
+        <vxe-column title="基本单位" field="baseUnitName" min-width="200"/>
+        <vxe-column title="总计" field="subtotalSum" min-width="120"/>
       </vxe-table>
     </div>
     <div class="flex justify-between items-center pt-5px">
@@ -71,6 +74,11 @@
 import manba from "manba";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import {mapMutations} from "vuex";
+import Supplier from "@js/api/basic/Supplier";
+import Warehouse from "@js/api/basic/Warehouse";
+import Product from "@js/api/basic/Product";
+import {loading} from "heyui.ext";
+import PurchaseReport from "@js/api/purchase/PurchaseReport";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -80,9 +88,15 @@ export default {
   data() {
     return {
       dataList: [],
+      productList: [],
+      warehouseList: [],
+      supplierList: [],
       loading: false,
+      isWarehouse: true,
+      isSupplier: true,
       amountTotal: 0,
       totalParams: {},
+      groupValues: ['supplier', 'warehouse'],
       pagination: {
         page: 1,
         pageSize: 20,
@@ -93,6 +107,7 @@ export default {
         state: null,
         sortCol: null,
         sort: null,
+        orderType: "in",
       },
       dateRange: {
         start: manba(startTime).format("YYYY-MM-dd"),
@@ -102,7 +117,12 @@ export default {
   },
   computed: {
     queryParams() {
+      if (this.groupValues) {
+        this.isSupplier = this.groupValues.find(item => item === 'supplier');
+        this.isWarehouse = this.groupValues.find(item => item === 'warehouse');
+      }
       return Object.assign(this.params, {
+        groupValues: this.groupValues.map(item => item).toString(),
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
         start: this.dateRange.start,
@@ -132,15 +152,27 @@ export default {
       this.pagination.page = 1;
       this.loadList();
     },
+    loadSelect() {
+      Promise.all([
+        Supplier.select(),
+        Warehouse.select(),
+        Product.select(),
+      ]).then((results) => {
+        this.supplierList = results[0].data || [];
+        this.warehouseList = results[1].data || [];
+        this.productList = results[2].data || [];
+      }).finally(() => loading.close());
+    },
     loadList(type = true) {
       this.loading = true;
-      PurchaseOrder.list(this.queryParams).then(({data: {results, total}}) => {
+      PurchaseReport.listStat(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
     },
   },
   created() {
+    this.loadSelect();
     this.loadList();
   }
 }

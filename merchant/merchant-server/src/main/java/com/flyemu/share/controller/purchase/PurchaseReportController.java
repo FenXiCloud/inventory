@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+import java.util.Set;
+
 /**
  * @功能描述: 采购订单报表
  * @创建时间: 2025年02月23日
@@ -31,5 +34,14 @@ public class PurchaseReportController {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(purchaseReportService.query(page, query));
+    }
+
+    @GetMapping("/stat")
+    public JsonResult listStat(Page page, PurchaseReportService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+
+        Set<String> groupValuesSet = Set.of(query.groupValues.toArray(new String[0]));
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(purchaseReportService.queryStat(page, query,groupValuesSet));
     }
 }

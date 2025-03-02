@@ -3,6 +3,7 @@
     <vxe-toolbar>
       <template #buttons>
         <Button color="primary">导出</Button>
+        <Button >打 印</Button>
       </template>
       <template #tools>
         <div class="h-input-group">
@@ -75,12 +76,10 @@
 </template>
 <script>
 import manba from "manba";
-import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import {mapMutations} from "vuex";
 import PurchaseReport from "@js/api/purchase/PurchaseReport";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
-import {CopyObj} from "@common/utils";
 import {loading} from "heyui.ext";
 import Product from "@js/api/basic/Product";
 

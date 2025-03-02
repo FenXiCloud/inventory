@@ -1,23 +1,29 @@
 <template>
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
+      <template #buttons>
+        <Button @click="excel" color="primary">导出</Button>
+      </template>
       <template #tools>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">仓库：</span>
-          <Select v-model="params.warehouseId" class="w-120px" keyName="id" titleName="name" :datas="warehouseList"/>
+          <Select :multiple="true" v-model="params.warehouseIds" class="w-120px" keyName="id" titleName="name"
+                  :datas="warehouseList"/>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">商品：</span>
-          <Select v-model="params.productId" class="w-120px" keyName="id" titleName="name" :datas="productList"/>
+          <Select :multiple="true" v-model="params.productIds" class="w-120px" keyName="id" titleName="name"
+                  :datas="productList"/>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">往来单位：</span>
-          <Select v-model="params.supplierId" class="w-120px" keyName="id" titleName="name" :datas="supplierList"/>
+          <Select :multiple="true" v-model="params.supplierIds" class="w-120px" keyName="id" titleName="name"
+                  :datas="supplierList"/>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">业务类型：</span>
-          <Select v-model="params.operationType" class="w-120px"
-                  :datas="{入库:'入库',出库:'出库'}"/>
+          <Select autosize :multiple="true" v-model="params.operationTypes" class="w-120px"
+                  :datas="{入库:'入库',出库:'出库',成本调整:'成本调整',调拨:'调拨'}"/>
         </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">单据日期：</span>
@@ -49,7 +55,19 @@
         <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
         <vxe-column title="单据日期" field="createdAt" width="120"/>
         <vxe-column title="业务类型" field="operationType" width="120"/>
-        <vxe-column title="往来单位" field="supplierName" width="120"/>
+        <vxe-column title="单据编号" field="batchNumber" width="200"/>
+        <vxe-column title="往来单位" field="supplierName" width="120">
+          <template #default="{ row }">
+            <div v-if="row['operationType'] === '入库'">
+              {{ row.supplierName }}
+            </div>
+            <div v-else-if="row['operationType'] === '出库'">
+              {{ row.customerName }}
+            </div>
+            <div v-else>
+            </div>
+          </template>
+        </vxe-column>
         <vxe-column title="仓库" field="warehouseName" align="center" width="100"/>
         <vxe-column title="单位" field="unitName" width="80"/>
         <vxe-column title="商品名称备注" field="productRemarks" width="80"/>
@@ -123,7 +141,7 @@
           <vxe-column title="成本" field="subtotal" align="center" width="100">
             <template #default="{ row }">
               <div v-if="row['operationType'] === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)">
-                {{ row.unitPrice }}
+                {{ row.subtotal }}
               </div>
               <div v-else>
               </div>
@@ -159,8 +177,8 @@ import {mapMutations} from "vuex";
 import {loading} from "heyui.ext";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
-import ProductCategory from "@js/api/basic/ProductCategory";
 import Supplier from "@js/api/basic/Supplier";
+import {exportExcel, exportExcelHeader} from "@js/excel";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -180,10 +198,10 @@ export default {
       },
       params: {
         filter: null,
-        productId: null,
-        supplierId: null,
-        warehouseId: null,
-        operationType: null,
+        productIds: [],
+        supplierIds: [],
+        warehouseIds: [],
+        operationTypes: [],
         state: null,
         sortCol: null,
         sort: null,
@@ -258,7 +276,7 @@ export default {
           });
         }
       })
-      return [['合计', '', '', '', '', '', '', '', '', '', inQuantity, inQuantity, '', inTotal.toFixed(2), outQuantity, outQuantity, '', outTotal.toFixed(2), currentQuantity, '', totalCost.toFixed(2)]];
+      return [['合计', '', '', '', '', '', '', '', '', '', '', inQuantity, inQuantity, '', inTotal.toFixed(2), outQuantity, outQuantity, '', outTotal.toFixed(2), currentQuantity, '', totalCost.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -277,7 +295,12 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      InventoryItem.report(this.queryParams).then(({data: {results, total}}) => {
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.warehouseIds = params.warehouseIds.join(",");
+      params.productIds = params.productIds.join(",");
+      params.supplierIds = params.supplierIds.join(",");
+      params.operationTypes = params.operationTypes.join(",");
+      InventoryItem.report(params).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
@@ -288,11 +311,114 @@ export default {
       } else {
         return number;
       }
+    },
+    excel() {
+      this.loading = true;
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.warehouseIds = params.warehouseIds.join(",");
+      params.productIds = params.productIds.join(",");
+      params.supplierIds = params.supplierIds.join(",");
+      params.operationTypes = params.operationTypes.join(",");
+      params.page = 1;
+      params.pageSize = 99999;
+      InventoryItem.report(params).then(({data: {results, total}}) => {
+        let dataList = results || [];
+        let headList = [
+          {label: "商品编号", key: "productCode"},
+          {label: "商品名称", key: "productName"},
+          {label: "商品类别", key: "productCategoryName"},
+          {label: "规格型号", key: "productSpecification"},
+          {label: "单据日期", key: "createdAt"},
+          {label: "业务类型", key: "operationType"},
+          {label: "单据编号", key: "batchNumber"},
+          {label: "往来单位", key: "correspondent"},
+          {label: "仓库", key: "warehouseName"},
+          {label: "单位", key: "unitName"},
+          {label: "商品名称备注", key: "productRemarks"},
+          {label: "入库数量", key: "inQuantity"},
+          {label: "基本单位数量", key: "inQuantity"},
+          {label: "单位成本", key: "inUnitPrice"},
+          {label: "成本", key: "inSubtotal"},
+          {label: "出库数量", key: "outQuantity"},
+          {label: "基本单位数量", key: "outQuantity"},
+          {label: "单位成本", key: "outUnitPrice"},
+          {label: "成本", key: "outSubtotal"},
+          {label: "基本单位数量", key: "currentQuantity"},
+          {label: "单位成本", key: "averageCost"},
+          {label: "成本", key: "totalCost"},
+        ];
+        const tHeader = ['商品编号', '商品名称', '商品类别', '规格型号', '单据日期', '业务类型', '单据编号', '往来单位', '仓库', '单位', '商品名称备注', '入库数量', '入库',
+          null, null, '出库数量', '出库', null, null, '结存', null, null
+        ];
+        const merges = [
+          {s: {r: 0, c: 0}, e: {r: 1, c: 0}},
+          {s: {r: 0, c: 1}, e: {r: 1, c: 1}},
+          {s: {r: 0, c: 2}, e: {r: 1, c: 2}},
+          {s: {r: 0, c: 3}, e: {r: 1, c: 3}},
+          {s: {r: 0, c: 4}, e: {r: 1, c: 4}},
+          {s: {r: 0, c: 5}, e: {r: 1, c: 5}},
+          {s: {r: 0, c: 6}, e: {r: 1, c: 6}},
+          {s: {r: 0, c: 7}, e: {r: 1, c: 7}},
+          {s: {r: 0, c: 8}, e: {r: 1, c: 8}},
+          {s: {r: 0, c: 9}, e: {r: 1, c: 9}},
+          {s: {r: 0, c: 10}, e: {r: 1, c: 10}},
+          {s: {r: 0, c: 11}, e: {r: 1, c: 11}},
+          {s: {r: 0, c: 12}, e: {r: 0, c: 14}},
+          {s: {r: 0, c: 15}, e: {r: 1, c: 15}},
+          {s: {r: 0, c: 16}, e: {r: 0, c: 18}},
+          {s: {r: 0, c: 19}, e: {r: 0, c: 21}},
+        ];
+        const list = [[null, null, null, null, null, null, null, null, null, null, null, null, '基本单位数量', '单位成本', '成本', null, '基本单位数量',
+          '单位成本', '成本', '基本单位数量', '单位成本', '成本']];
+        // 处理传递数据
+        dataList = this.handleDataList(dataList);
+        exportExcelHeader(dataList, tHeader, headList, merges, list, manba(new Date()).format("YYYYMMddHHmmss") + "_进销存明细");
+      }).finally(() => this.loading = false);
+    },
+    handleDataList(dataList) {
+      let list = [];
+      dataList.forEach((item) => {
+        const element = item;
+        const operationType = item.operationType;
+        const quantity = item.quantity;
+        switch (operationType) {
+          case "入库":
+            element.correspondent = item.supplierName;
+            element.inQuantity = quantity;
+            element.inUnitPrice = item.unitPrice;
+            element.inSubtotal = item.subtotal;
+            break;
+          case "出库":
+            element.correspondent = item.customerName;
+            element.outQuantity = quantity;
+            element.outUnitPrice = item.unitPrice;
+            element.outSubtotal = item.subtotal;
+            break;
+          case "调拨":
+            if (quantity > 0) {
+              element.inQuantity = quantity;
+              element.inUnitPrice = item.unitPrice;
+              element.inSubtotal = item.subtotal;
+            } else {
+              element.outQuantity = this.getAbsoluteValue(quantity);
+              element.outUnitPrice = item.unitPrice;
+              element.outSubtotal = item.subtotal;
+            }
+            break;
+          case "成本调整":
+            element.inSubtotal = item.subtotal;
+            break;
+          default:
+            break;
+        }
+        list.push(element);
+      });
+      return list;
     }
-
   },
   created() {
-    this.loadDict();
+    this.loadDict(() => {
+    });
     this.loadList();
   }
 }

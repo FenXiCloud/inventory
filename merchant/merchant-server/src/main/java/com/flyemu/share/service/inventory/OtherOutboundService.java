@@ -142,7 +142,7 @@ public class OtherOutboundService extends AbsService {
         switch (type) {
             case AUDITS -> {
                 //处理库存
-                this.getComputedInventory(otherOutboundItems, inventories, inventoryItems);
+                this.getComputedInventory(otherOutboundItems, inventories, inventoryItems, otherOutbound.getCustomerId());
                 inventories.forEach(item -> {
                     // 减库存
                     inventoryService.computedInventory(item, false, id, OperationType.出库, inventoryItems);
@@ -154,7 +154,7 @@ public class OtherOutboundService extends AbsService {
             }
             case ANTI_AUDIT -> {
                 //处理库存
-                this.getComputedInventory(otherOutboundItems, inventories, inventoryItems);
+                this.getComputedInventory(otherOutboundItems, inventories, inventoryItems, otherOutbound.getCustomerId());
                 inventories.forEach(item -> {
                     // 加库存
                     inventoryService.computedInventory(item, true, id, OperationType.出库, null);
@@ -177,7 +177,8 @@ public class OtherOutboundService extends AbsService {
      */
     private void getComputedInventory(List<OtherOutboundItem> otherOutboundItems,
                                       List<Inventory> inventories,
-                                      List<InventoryItem> inventoryItems) {
+                                      List<InventoryItem> inventoryItems,
+                                      Long customerId) {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         otherOutboundItems.forEach(otherOutboundItem -> {
@@ -210,7 +211,7 @@ public class OtherOutboundService extends AbsService {
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem);
+            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, customerId);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
@@ -222,7 +223,7 @@ public class OtherOutboundService extends AbsService {
      * @param otherOutboundItem 出库明细
      * @return inventoryItem
      */
-    private InventoryItem getInventoryItem(OtherOutboundItem otherOutboundItem) {
+    private InventoryItem getInventoryItem(OtherOutboundItem otherOutboundItem, Long customerId) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(otherOutboundItem.getProductId());
         inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
@@ -235,6 +236,7 @@ public class OtherOutboundService extends AbsService {
         inventoryItem.setMerchantId(otherOutboundItem.getMerchantId());
         inventoryItem.setBatchNumber(otherOutboundItem.getBatchNumber());
         inventoryItem.setAccountBookId(otherOutboundItem.getAccountBookId());
+        inventoryItem.setCustomerId(customerId);
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(otherOutboundItem.getCreatedBy());
         inventoryItem.setUnitPrice(otherOutboundItem.getUnitPrice());
@@ -251,6 +253,7 @@ public class OtherOutboundService extends AbsService {
                         dateExpressions.as("inboundDate"),
                         qOtherOutbound.customerId.as("customerId"),
                         qOtherOutbound.outboundType.as("outboundType"),
+                        qOtherOutbound.stockTakeId.as("stockTakeId"),
                         qOtherOutbound.orderStatus.as("orderStatus"),
                         qOtherOutboundItem.id.as("itemId"),
                         qProduct.id.as("productId"),
@@ -285,6 +288,7 @@ public class OtherOutboundService extends AbsService {
             item.put("id", tuple.get(qOtherOutbound.id.as("id")));
             item.put("inboundDate", tuple.get(dateExpressions.as("inboundDate")));
             item.put("customerId", tuple.get(qOtherOutbound.customerId.as("customerId")));
+            item.put("stockTakeId", tuple.get(qOtherOutbound.stockTakeId.as("stockTakeId")));
             item.put("orderStatus", tuple.get(qOtherOutbound.orderStatus.as("orderStatus")));
             item.put("outboundType", tuple.get(qOtherOutbound.outboundType.as("outboundType")));
             item.put("itemId", tuple.get(qOtherOutboundItem.id.as("itemId")));

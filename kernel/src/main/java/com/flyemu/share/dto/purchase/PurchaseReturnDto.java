@@ -3,6 +3,7 @@ package com.flyemu.share.dto.purchase;
 import com.flyemu.share.enums.OrderStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

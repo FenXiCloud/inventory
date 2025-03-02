@@ -1,7 +1,8 @@
-package com.flyemu.share.entity.basic;
+package com.flyemu.share.dto.price;
 
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import jakarta.persistence.*;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,22 +18,16 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * @功能描述: 产品价格记录
+ * @功能描述: 产品价格记录DTO
  * @创建时间: 2024年12月31日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-@Getter
-@Setter
-@Entity
-@NoArgsConstructor
-@DynamicUpdate
-@Table
-public class PriceRecord {
+@Data
+public class PriceRecordDTO {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+
     private Long id;
 
     @Comment("单据主表ID")
@@ -45,6 +40,15 @@ public class PriceRecord {
     @Comment("产品ID")
     private Long productId;
 
+    @Comment("产品name")
+    private String productName;
+
+    @Comment("产品code")
+    private String productCode;
+
+    @Comment("产品分类")
+    private String productCategory;
+
     @Comment("货商ID")
     private Long supplierId;
 
@@ -53,6 +57,10 @@ public class PriceRecord {
 
     @Comment("基本单位ID")
     private Long baseUnitId;
+    @Comment("基本单位名称")
+    private String unitName;
+    @Comment("规格")
+    private String specification;
 
     @Comment("数量（以基本单位计）")
     private Double quantity;
@@ -78,5 +86,4 @@ public class PriceRecord {
     public enum PriceType {
         最近采购价格, 最近销售价格,商品资料价格
     }
-
 }

@@ -2,16 +2,25 @@ package com.flyemu.share.service.basic;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
-import com.flyemu.share.entity.basic.PriceRecord;
-import com.flyemu.share.entity.basic.QPriceRecord;
+import com.flyemu.share.controller.Page;
+import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.SalesOrderDTO;
+import com.flyemu.share.dto.SalesOrderItemDTO;
+import com.flyemu.share.dto.SalesOutboundDTO;
+import com.flyemu.share.dto.price.PriceRecordDTO;
+import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.sales.SalesOrderItem;
 import com.flyemu.share.repository.PriceRecordRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -30,13 +39,38 @@ public class PriceRecordService extends AbsService {
     private final static QPriceRecord qPriceRecord = QPriceRecord.priceRecord;
 
     private final PriceRecordRepository priceRecordRepository;
+    private final static QProduct qProduct = QProduct.product;
+    private static final QProductCategory qProductCategory = QProductCategory.productCategory;
 
-    public List<PriceRecord> query(Query query) {
-        List<PriceRecord> priceRecords = bqf.selectFrom(qPriceRecord)
+    private final static QUnit qUnit = QUnit.unit;
+
+    public PageResults<PriceRecordDTO> query(Page page, Query query) {
+
+        long totalSize = bqf.selectFrom(qPriceRecord)
+                .where(query.builder)
+                .fetchCount();
+        List<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
+                .select(qPriceRecord, qProduct.name,qProduct.code,qProduct.specification,qProductCategory.name,
+                        qUnit.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qPriceRecord.productId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qPriceRecord.baseUnitId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(query.builder)
                 .orderBy(qPriceRecord.id.desc())
+                .offset(page.getOffset())
+                .limit(page.getOffsetEnd())
                 .fetch();
-        return priceRecords;
+        List<PriceRecordDTO> dtos = new ArrayList<>();
+        fetchPage.forEach(tuple -> {
+            PriceRecordDTO priceRecordDTO = BeanUtil.toBean(tuple.get(qPriceRecord), PriceRecordDTO.class);
+            priceRecordDTO.setProductName(tuple.get(qProduct.name));
+            priceRecordDTO.setProductCode(tuple.get(qProduct.code));
+            priceRecordDTO.setSpecification(tuple.get(qProduct.specification));
+            priceRecordDTO.setProductCategory(tuple.get(qProductCategory.name));
+            priceRecordDTO.setUnitName(tuple.get(qUnit.name));
+            dtos.add(priceRecordDTO);
+        });
+        return new PageResults<>(dtos, page, totalSize);
     }
 
     @Transactional
@@ -73,6 +107,18 @@ public class PriceRecordService extends AbsService {
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
                 builder.and(qPriceRecord.accountBookId.eq(accountBookId));
+            }
+        }
+
+        public void setProductId(Long productId) {
+            if (productId != null) {
+                builder.and(qPriceRecord.productId.eq(productId));
+            }
+        }
+
+        public void setPriceType(String priceType) {
+            if (StringUtils.isNotBlank(priceType)) {
+                builder.and(qPriceRecord.priceType.eq(PriceRecord.PriceType.valueOf(priceType)));
             }
         }
     }

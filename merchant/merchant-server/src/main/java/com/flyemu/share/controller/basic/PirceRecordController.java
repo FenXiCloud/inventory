@@ -3,6 +3,7 @@ package com.flyemu.share.controller.basic;
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
+import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.basic.PriceRecord;
 import com.flyemu.share.service.basic.PriceRecordService;
 import jakarta.validation.Valid;
@@ -24,10 +25,10 @@ public class PirceRecordController {
     private final PriceRecordService priceRecordService;
 
     @GetMapping
-    public JsonResult list(PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(priceRecordService.query(query));
+        return JsonResult.successful(priceRecordService.query(page,query));
     }
 
     @PostMapping

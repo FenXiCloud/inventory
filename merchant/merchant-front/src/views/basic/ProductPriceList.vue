@@ -6,11 +6,11 @@
           <div class="table-toolbar-left">
             <div class="h-input-group">
               <Search
-                  v-model="params.name"
+                  v-model="params.filter"
                   search-button-theme="h-btn-default"
                   show-search-button
                   class="w-360px pl-8px"
-                  placeholder="请输入商品名称"
+                  placeholder="请输入商品名称/编码等关键字"
                   @search="doSearch">
                 <i class="h-icon-search"/>
               </Search>
@@ -47,14 +47,24 @@
           <vxe-column title="最低销售价" field="minSalesPrice" align="left"/>
           <vxe-column title="最近销售价" field="recentlySalesPrice" align="left"/>
           <vxe-column title="最后修改时间" field="updatedAt" align="left"/>
-          <vxe-column title="操作" align="center" width="200" fixed="right">
+          <vxe-column title="操作" align="center" fixed="right">
             <template #default="{row}">
               <div class="flex items-center justify-center">
-                <i class="primary-color h-icon-edit ml-10px" @click=""></i>
+                <span class=" primary-color text-hover ml-10px" @click="showForm(row)" size="s">编辑</span>
               </div>
             </template>
           </vxe-column>
         </vxe-table>
+        <vxe-pager perfect @page-change="loadList(false)"
+                   v-model:current-page="pagination.page"
+                   v-model:page-size="pagination.pageSize"
+                   :total="pagination.total"
+                   :layouts="[ 'PrevPage', 'Number', 'NextPage', 'Sizes', 'Total']">
+          <template #left>
+            <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+                        :loading="loading"></vxe-button>
+          </template>
+        </vxe-pager>
       </div>
     </div>
   </div>
@@ -62,6 +72,11 @@
 
 <script>
 import PriceRecord from "@js/api/basic/PriceRecord";
+import ProductForm from "@views/basic/ProductForm.vue";
+import {layer} from "@layui/layer-vue";
+import {h} from "vue";
+import ProductPriceForm from "@views/basic/ProductPriceForm.vue";
+
 
 export default {
   name: "ProductPrice",
@@ -91,6 +106,40 @@ export default {
     }
   },
   methods: {
+    //添加或编辑产品Form
+    showForm(entity) {
+      let layerId = layer.open({
+        title: "产品信息",
+        shadeClose: false,
+        closeBtn: false,
+        area: ['1000px', '680px'],
+        content: h(ProductPriceForm, {
+          entity,
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: () => {
+            this.doSearch();
+            layer.close(layerId);
+          }
+        })
+      });
+      // let layerId = layer.open({
+      //   title: "规则编码",
+      //   shadeClose: false,
+      //   area: ['50vw', 'auto'],
+      //   content: h(CodeRuleForm, {
+      //     CodeRule,
+      //     onClose: () => {
+      //       layer.close(layerId);
+      //     },
+      //     onSuccess: () => {
+      //       this.doSearch();
+      //       layer.close(layerId);
+      //     }
+      //   })
+      // });
+    },
     loadList() {
       this.loading = true;
       PriceRecord.productList(this.queryParams).then(({data: {results, total}}) => {

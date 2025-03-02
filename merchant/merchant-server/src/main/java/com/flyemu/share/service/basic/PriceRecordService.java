@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.alibaba.fastjson2.JSON;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.PinYinUtil;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.ProductDto;
@@ -11,8 +12,10 @@ import com.flyemu.share.dto.ProductPriceDTO;
 import com.flyemu.share.dto.price.PriceRecordDTO;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.enums.PriceType;
+import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.repository.PriceRecordRepository;
 import com.flyemu.share.repository.PricingPolicyRepository;
+import com.flyemu.share.repository.ProductRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -25,8 +28,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -49,6 +55,8 @@ public class PriceRecordService extends AbsService {
     private static final QProductCategory qProductCategory = QProductCategory.productCategory;
 
     private final static QUnit qUnit = QUnit.unit;
+
+    private final ProductRepository productRepository;
 
     public PageResults<PriceRecordDTO> query(Page page, Query query) {
 
@@ -201,6 +209,46 @@ public class PriceRecordService extends AbsService {
             list.add(dto);
         }, List::addAll);
         return new PageResults<>(collect, page, pagedList.getTotalSize());
+    }
+
+    @Transactional
+    public void productSave(ProductForm productForm, Long merchantId, Long accountBookId) {
+
+        Product product = productForm.getProduct();
+        Long id = product.getId();
+        Product dbProduct = productRepository.getById(id);
+        if(!Objects.equals(dbProduct.getAccountBookId(), accountBookId)){
+            throw new RuntimeException("accountBookId错误");
+        }
+        if(!Objects.equals(dbProduct.getMerchantId(), merchantId)){
+            throw new RuntimeException("merchantId错误");
+        }
+        BigDecimal purchasePrice = product.getPurchasePrice();
+        if (purchasePrice != null && purchasePrice.compareTo(BigDecimal.ZERO) >= 0) {
+            dbProduct.setPurchasePrice(purchasePrice);
+        }
+        BigDecimal maxPurchasePrice = product.getMaxPurchasePrice();
+        if (maxPurchasePrice != null && maxPurchasePrice.compareTo(BigDecimal.ZERO) >= 0) {
+            dbProduct.setMaxPurchasePrice(maxPurchasePrice);
+        }
+        BigDecimal retailCustomerPrice = product.getRetailCustomerPrice();
+        if (retailCustomerPrice != null && retailCustomerPrice.compareTo(BigDecimal.ZERO) >= 0){
+            dbProduct.setRetailCustomerPrice(retailCustomerPrice);
+        }
+        BigDecimal wholesaleCustomerPrice = product.getWholesaleCustomerPrice();
+        if (wholesaleCustomerPrice != null && wholesaleCustomerPrice.compareTo(BigDecimal.ZERO) >= 0){
+            dbProduct.setWholesaleCustomerPrice(wholesaleCustomerPrice);
+        }
+        BigDecimal vipCustomerPrice = product.getVipCustomerPrice();
+        if (vipCustomerPrice != null && vipCustomerPrice.compareTo(BigDecimal.ZERO) >= 0){
+            dbProduct.setVipCustomerPrice(vipCustomerPrice);
+        }
+        BigDecimal minSalesPrice = product.getMinSalesPrice();
+        if (minSalesPrice != null && minSalesPrice.compareTo(BigDecimal.ZERO) >= 0){
+            dbProduct.setMinSalesPrice(minSalesPrice);
+        }
+        log.info("产品价格修改：{}", JSON.toJSONString(dbProduct));
+        productRepository.save(dbProduct);
     }
 
     public static class Query {

@@ -5,6 +5,7 @@ import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.basic.PriceRecord;
+import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.basic.ProductService;
 import jakarta.validation.Valid;
@@ -66,6 +67,12 @@ public class PirceRecordController {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(priceRecordService.productList(page, query));
+    }
+
+    @PostMapping("/product/save")
+    public JsonResult productSave(@RequestBody ProductForm productForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        priceRecordService.productSave(productForm, merchantId,accountBookId);
+        return JsonResult.successful();
     }
 
 }

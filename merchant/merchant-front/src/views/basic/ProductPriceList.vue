@@ -35,9 +35,18 @@
           <vxe-column title="商品类别" field="productCategoryName" align="left"/>
           <vxe-column title="规格" field="specification" align="left"/>
           <vxe-column title="单位" field="unitName" align="left"/>
+
           <vxe-column title="预计采购价" field="purchasePrice" align="left"/>
-          <vxe-column title="销售价（动态列）" field="" align="left"/>
-          <vxe-column title="最后修改时间" field="" align="left"/>
+          <vxe-column title="最高采购价" field="maxPurchasePrice" align="left"/>
+          <vxe-column title="最近采购价" field="recentlyPurchasePrice" align="left"/>
+
+          <vxe-column title="零售客户价" field="retailCustomerPrice" align="left"/>
+          <vxe-column title="批发客户价" field="wholesaleCustomerPrice" align="left"/>
+          <vxe-column title="VIP客户价" field="vipCustomerPrice" align="left"/>
+
+          <vxe-column title="最低销售价" field="minSalesPrice" align="left"/>
+          <vxe-column title="最近销售价" field="recentlySalesPrice" align="left"/>
+          <vxe-column title="最后修改时间" field="updatedAt" align="left"/>
           <vxe-column title="操作" align="center" width="200" fixed="right">
             <template #default="{row}">
               <div class="flex items-center justify-center">
@@ -52,29 +61,41 @@
 </template>
 
 <script>
-import Product from "@js/api/basic/Product";
+import PriceRecord from "@js/api/basic/PriceRecord";
 
 export default {
   name: "ProductPrice",
   data() {
     return {
       loading: false,
+      dataList: [],
       params: {
+        filter: null,
+        productId:null,
         name: null,
       },
-      dataList: [],
+      pagination: {
+        page: 1,
+        pageSize: 10,
+        total: 0
+      },
     }
   },
   computed: {
+    //查询货商参数
     queryParams() {
-      return Object.assign(this.params, {})
+      return Object.assign(this.params, {
+        page: this.pagination.page,
+        pageSize: this.pagination.pageSize,
+      })
     }
   },
   methods: {
     loadList() {
       this.loading = true;
-      Product.list(this.queryParams).then(({data}) => {
-        this.dataList = data;
+      PriceRecord.productList(this.queryParams).then(({data: {results, total}}) => {
+        this.dataList = results || [];
+        this.pagination.total = total;
       }).finally(() => this.loading = false);
     },
     doSearch() {

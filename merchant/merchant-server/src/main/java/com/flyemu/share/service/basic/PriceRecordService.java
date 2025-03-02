@@ -3,8 +3,11 @@ package com.flyemu.share.service.basic;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.alibaba.fastjson2.JSON;
+import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.ProductDto;
+import com.flyemu.share.dto.ProductPriceDTO;
 import com.flyemu.share.dto.price.PriceRecordDTO;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.enums.PriceType;
@@ -175,6 +178,29 @@ public class PriceRecordService extends AbsService {
             dbPriceRecord.setBaseUnitId(priceRecord.getBaseUnitId());
             this.save(priceRecord);
         }
+    }
+
+    /**
+     * 产品价格资料
+     * @param page
+     * @param query
+     * @return
+     */
+    public PageResults<ProductPriceDTO> productList(Page page, ProductService.Query query) {
+        PagedList<Tuple> pagedList = bqf.selectFrom(qProduct)
+                .select(qProduct, qUnit.name, qProductCategory.name)
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .where(query.builders())
+                .orderBy(qProduct.id.desc())
+                .fetchPage(page.getOffset(), page.getOffsetEnd());
+        ArrayList<ProductPriceDTO> collect = pagedList.stream().collect(ArrayList::new, (list, tuple) -> {
+            ProductPriceDTO dto = BeanUtil.toBean(tuple.get(qProduct), ProductPriceDTO.class);
+            dto.setProductCategoryName(tuple.get(qProductCategory.name));
+            dto.setUnitName(tuple.get(qUnit.name));
+            list.add(dto);
+        }, List::addAll);
+        return new PageResults<>(collect, page, pagedList.getTotalSize());
     }
 
     public static class Query {

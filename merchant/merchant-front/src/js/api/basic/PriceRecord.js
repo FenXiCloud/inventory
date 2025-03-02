@@ -12,5 +12,8 @@ export default {
     },
     select(param) {
         return Ajax.get('/priceRecord/select', param)
-    }
+    },
+    productList(param) {
+        return Ajax.get('/priceRecord/product/list', param)
+    },
 }

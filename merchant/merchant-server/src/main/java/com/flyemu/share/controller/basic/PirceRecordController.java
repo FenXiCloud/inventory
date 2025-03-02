@@ -6,6 +6,7 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.basic.PriceRecord;
 import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.basic.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -54,6 +55,17 @@ public class PirceRecordController {
     @GetMapping("select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(priceRecordService.select(merchantId, accountBookId));
+    }
+
+    @GetMapping("/product/list")
+    public JsonResult productList(
+            Page page,
+            ProductService.Query query,
+            @SaMerchantId Long merchantId,
+            @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(priceRecordService.productList(page, query));
     }
 
 }

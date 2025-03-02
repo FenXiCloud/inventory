@@ -97,6 +97,19 @@ public class Product {
     @Comment("预警库存")
     private Integer alertQuantity;
 
+    @Comment("最高采购价")
+    private BigDecimal maxPurchasePrice ;
+
+    @Comment("零售客户价")
+    private BigDecimal retailCustomerPrice;
+    @Comment("批发客户价")
+    private BigDecimal wholesaleCustomerPrice;
+    @Comment("VIP客户价")
+    private BigDecimal vipCustomerPrice;
+
+    @Comment("最低销售价")
+    private BigDecimal minSalesPrice;
+
     @Comment("创建时间")
     private LocalDateTime createdAt;
 

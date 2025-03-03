@@ -21,6 +21,8 @@ const groupRoutes = [
 
     {name: 'SystemLogList', component: defineAsyncComponent(() => import('@views/setting/SystemLogList.vue'))},
 
+    {name: 'LinkingFinance', component: defineAsyncComponent(() => import('@views/setting/LinkingFinance.vue'))},
+
     {name: 'ProductCategoryList', component: defineAsyncComponent(() => import('@views/basic/ProductCategoryList'))},
 
     {name: 'ProductPriceList', component: defineAsyncComponent(() => import('@views/basic/ProductPriceList'))},

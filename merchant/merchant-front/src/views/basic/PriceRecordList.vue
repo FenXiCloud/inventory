@@ -16,7 +16,7 @@
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-280px ml-8px"
-                placeholder="请输入编码、名称、规格型号" @search="doSearch">
+                placeholder="请输入编码、名称" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
 

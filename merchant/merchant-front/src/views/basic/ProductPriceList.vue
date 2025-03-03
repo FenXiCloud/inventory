@@ -10,7 +10,7 @@
                   search-button-theme="h-btn-default"
                   show-search-button
                   class="w-360px pl-8px"
-                  placeholder="请输入商品名称/编码等关键字"
+                  placeholder="请输入编码、名称"
                   @search="doSearch">
                 <i class="h-icon-search"/>
               </Search>

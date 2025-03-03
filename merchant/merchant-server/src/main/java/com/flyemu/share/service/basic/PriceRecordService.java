@@ -62,10 +62,7 @@ public class PriceRecordService extends AbsService {
 
     public PageResults<PriceRecordDTO> query(Page page, Query query) {
 
-        long totalSize = bqf.selectFrom(qPriceRecord)
-                .where(query.builder)
-                .fetchCount();
-        List<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
                 .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification, qProductCategory.name,
                         qUnit.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPriceRecord.productId))
@@ -73,9 +70,7 @@ public class PriceRecordService extends AbsService {
                 .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(query.builder)
                 .orderBy(qPriceRecord.id.desc())
-                .offset(page.getOffset())
-                .limit(page.getOffsetEnd())
-                .fetch();
+                .fetchPage(page.getOffset(), page.getOffsetEnd());
         List<PriceRecordDTO> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
             PriceRecordDTO priceRecordDTO = BeanUtil.toBean(tuple.get(qPriceRecord), PriceRecordDTO.class);
@@ -86,7 +81,7 @@ public class PriceRecordService extends AbsService {
             priceRecordDTO.setUnitName(tuple.get(qUnit.name));
             dtos.add(priceRecordDTO);
         });
-        return new PageResults<>(dtos, page, totalSize);
+        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
     @Transactional
@@ -310,6 +305,12 @@ public class PriceRecordService extends AbsService {
         public void setPriceSource(String priceSource) {
             if (StringUtils.isNotBlank(priceSource)) {
                 builder.and(qPriceRecord.priceSource.eq(PriceSource.valueOf(priceSource)));
+            }
+        }
+
+        public void setFilter(String filter) {
+            if (StringUtils.isNotBlank(filter)) {
+                builder.and(qProduct.name.contains(filter).or(qProduct.code.contains(filter)));
             }
         }
     }

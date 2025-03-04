@@ -10,11 +10,13 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.StockTakeDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
+import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.StockTakeForm;
 import com.flyemu.share.repository.StockTakeRepository;
+import com.flyemu.share.repository.StockTakeWarehouseRepository;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.ProductCategoryService;
 import com.flyemu.share.service.basic.ProductService;
@@ -50,6 +52,8 @@ public class StockTakeService extends AbsService {
 
     private final StockTakeRepository stockTakeRepository;
 
+    private final StockTakeWarehouseRepository stockTakeWarehouseRepository;
+
     private final StockTakeItemService stockTakeItemService;
 
     private final WarehouseService warehouseService;
@@ -76,28 +80,34 @@ public class StockTakeService extends AbsService {
 
     private final static QUnit qUnit = QUnit.unit;
 
+    private final static QStockTakeWarehouse qStockTakeWarehouse = QStockTakeWarehouse.stockTakeWarehouse;
+
     public PageResults<StockTakeDto> query(Page page, Query query) {
-        PagedList<Tuple> fetchPage = bqf.selectFrom(qStockTake)
-                .select(qStockTake, qWarehouse.name, qAdmin.name)
-                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qStockTake.warehouseId))
-                .leftJoin(qAdmin).on(qAdmin.id.eq(qStockTake.createdBy))
+        PagedList<StockTake> fetchPage = bqf.selectFrom(qStockTake)
+                .select(qStockTake)
+                .leftJoin(qStockTakeWarehouse).on(qStockTakeWarehouse.stockTakeId.eq(qStockTake.id))
+                .leftJoin(qWarehouse).on(qStockTakeWarehouse.warehouseId.eq(qWarehouse.id))
                 .where(query.builder)
                 .where(query.builders())
+                .groupBy(qStockTake.id)
                 .orderBy(qStockTake.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
         List<StockTakeDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            StockTakeDto dto = BeanUtil.toBean(tuple.get(qStockTake), StockTakeDto.class);
-            String warehouseIds = dto.getWarehouseIds();
-            if (StrUtil.isBlank(warehouseIds)) {
+            StockTakeDto dto = BeanUtil.toBean(tuple, StockTakeDto.class);
+            List<String> fetched = jqf.selectFrom(qStockTakeWarehouse)
+                    .select(qWarehouse.name)
+                    .leftJoin(qWarehouse).on(qWarehouse.id.eq(qStockTakeWarehouse.warehouseId))
+                    .where(qStockTakeWarehouse.stockTakeId.eq(dto.getId())).fetch();
+            if (fetched.isEmpty()) {
                 dto.setWarehouseName("全部仓库");
             } else {
-                List<String> fetch = jqf.selectFrom(qWarehouse).select(
-                        qWarehouse.name
-                ).where(qWarehouse.id.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList())).fetch();
-                dto.setWarehouseName(String.join(",", fetch));
+                dto.setWarehouseName(String.join(",", fetched));
             }
-            dto.setCreatedByName(tuple.get(qAdmin.name));
+            Admin admin = jqf.selectFrom(qAdmin).where(qAdmin.id.eq(dto.getCreatedBy())).fetchOne();
+            if (admin != null) {
+                dto.setCreatedByName(admin.getName());
+            }
             // 获取对应关联的其他出库，其他入库订单
             List<String> orderNos = new ArrayList<>();
             List<OtherInbound> otherInbounds = otherInboundService.findByStockTakeId(dto.getId());
@@ -130,9 +140,39 @@ public class StockTakeService extends AbsService {
             stockTake.setOrderNo(snowflakeGenerator.next().toString());
             result = stockTakeRepository.save(stockTake);
         }
+        // 处理仓库关联
+        this.doStockTakeWarehouse(stockTake);
         //处理盘点单明细
         stockTakeItemService.generateStockTakeDetails(result, stockTakeForm.getStockTakeItems());
         return result;
+    }
+
+    /**
+     * 处理仓库关联
+     *
+     * @param stockTake 盘点单
+     */
+    private void doStockTakeWarehouse(StockTake stockTake) {
+        //处理历史仓库关联
+        jqf.delete(qStockTakeWarehouse).where(qStockTakeWarehouse.stockTakeId.eq(stockTake.getId())).execute();
+        //新增仓库关联
+        String warehouseIds = stockTake.getWarehouseIds();
+        List<StockTakeWarehouse> insertWarehouses = new ArrayList<>();
+        if (StrUtil.isNotBlank(warehouseIds)) {
+            Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).forEach(warehouseId -> {
+                StockTakeWarehouse stockTakeWarehouse = new StockTakeWarehouse();
+                stockTakeWarehouse.setWarehouseId(warehouseId);
+                stockTakeWarehouse.setStockTakeId(stockTake.getId());
+                stockTakeWarehouse.setAccountBookId(stockTake.getAccountBookId());
+                stockTakeWarehouse.setMerchantId(stockTake.getMerchantId());
+                stockTakeWarehouse.setCreatedBy(stockTake.getCreatedBy());
+                stockTakeWarehouse.setCreatedAt(stockTake.getCreatedAt());
+                insertWarehouses.add(stockTakeWarehouse);
+            });
+        }
+        if (!insertWarehouses.isEmpty()) {
+            stockTakeWarehouseRepository.saveAll(insertWarehouses);
+        }
     }
 
     @Transactional
@@ -386,8 +426,8 @@ public class StockTakeService extends AbsService {
                         .or(qStockTake.warehouseId.isNull());
             }
             if (StrUtil.isNotBlank(warehouseIds)) {
-                builder.and(qStockTake.warehouseIds.contains(warehouseIds))
-                        .or(qStockTake.warehouseIds.isNull());
+                builder.and(qStockTakeWarehouse.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()))
+                        .or(qStockTakeWarehouse.id.isNull());
             }
             return builder;
         }

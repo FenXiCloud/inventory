@@ -203,7 +203,7 @@ export default {
   // 待优化使用hook方式调用
   methods: {
     // 关闭tab
-    ...mapMutations(['closeSelfTab', 'updateTab', 'pushTab']),
+    ...mapMutations(['closeSelfTab', 'pushTab']),
     //footer合计
     footerMethod({columns, data}) {
       let totalQuantity = 0;
@@ -315,7 +315,11 @@ export default {
     },
     closeWindow() {
       this.closeSelfTab(this.index);
-      this.updateTab("OtherOutboundList");
+      this.pushTab({
+        keepAlive: false,
+        key: "OtherOutboundList",
+        title: "其他出库单"
+      });
     },
     //校验提交表单
     validatorsForm(filterOtherOutboundData) {

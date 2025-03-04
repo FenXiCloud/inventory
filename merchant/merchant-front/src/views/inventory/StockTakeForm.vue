@@ -198,7 +198,7 @@ export default {
   // 待优化使用hook方式调用
   methods: {
     // 关闭tab
-    ...mapMutations(['closeSelfTab', 'pushTab', 'updateTab']),
+    ...mapMutations(['closeSelfTab', 'pushTab']),
     //footer合计
     footerMethod({columns, data}) {
       let totalQuantity = 0;
@@ -464,7 +464,11 @@ export default {
     },
     closeWindow() {
       this.closeSelfTab(this.index);
-      this.updateTab("StockTakeList");
+      this.pushTab({
+        keepAlive: false,
+        key: "StockTakeList",
+        title: "盘点单"
+      });
     },
     doSearch() {
       if (this.stockTakeId) {

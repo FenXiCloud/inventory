@@ -180,7 +180,7 @@ export default {
   // 待优化使用hook方式调用
   methods: {
     // 关闭tab
-    ...mapMutations(['closeSelfTab', 'updateTab', 'pushTab']),
+    ...mapMutations(['closeSelfTab', 'pushTab']),
     //footer合计
     footerMethod({columns, data}) {
       let totalQuantity = 0;
@@ -556,7 +556,11 @@ export default {
     },
     closeWindow() {
       this.closeSelfTab(this.index);
-      this.updateTab("InventoryTransferList");
+      this.pushTab({
+        keepAlive: false,
+        key: "InventoryTransferList",
+        title: "调拨单"
+      });
     },
   },
   beforeDestroy() {

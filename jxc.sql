@@ -1967,6 +1967,24 @@ CREATE TABLE `jxc_stock_take_item`
 -- ----------------------------
 
 -- ----------------------------
+-- Table structure for jxc_stock_take_warehouse
+-- ----------------------------
+DROP TABLE IF EXISTS `jxc_stock_take_warehouse`;
+CREATE TABLE `jxc_stock_take_warehouse` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `stock_take_id` bigint DEFAULT NULL COMMENT '盘点主表ID',
+    `account_book_id` bigint NOT NULL,
+    `created_at` datetime(6) DEFAULT NULL COMMENT '创建时间',
+    `created_by` bigint DEFAULT NULL COMMENT '创建人',
+    `merchant_id` bigint NOT NULL,
+    `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+-- ----------------------------
+-- Records of jxc_stock_take_warehouse
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for jxc_supplier
 -- ----------------------------
 DROP TABLE IF EXISTS `jxc_supplier`;

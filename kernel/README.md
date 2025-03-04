@@ -68,5 +68,6 @@
     - inventory_transfer_item     库存调拨单明细
     - stock_take                  库存盘点
     - stock_take_item             库存盘点明细
+    - stock_take_warehouse        库存盘点仓库
     - cost_adjustment             成本调整单
     - cost_adjustment_item        成本调整单明细

@@ -33,9 +33,9 @@ public class InventoryController {
 
     @GetMapping("products")
     public JsonResult products(@RequestParam(required = false) Long warehouseId, @RequestParam(required = false) Long productId,
-                               @RequestParam(required = false) String filter,
+                               @RequestParam(required = false) String filter, @RequestParam(required = false) String warehouseIds,
                                @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(inventoryService.products(warehouseId, productId, filter, accountBookId, merchantId));
+        return JsonResult.successful(inventoryService.products(warehouseId, warehouseIds, productId, filter, accountBookId, merchantId));
     }
 
     @PostMapping

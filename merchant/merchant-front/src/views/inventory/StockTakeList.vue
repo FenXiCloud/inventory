@@ -13,9 +13,9 @@
           <span class="h-input-addon ml-8px">盘点日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">仓库：</span>
-          <Select v-model="params.warehouseId" class="w-120px" :datas="warehouseList" keyName="id" titleName="name"/>
+          <Select v-model="params.warehouseIds" :multiple="true" class="w-120px" :datas="warehouseList" keyName="id" titleName="name"/>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
@@ -107,6 +107,7 @@ export default {
       },
       params: {
         filter: null,
+        warehouseIds: [],
         state: null,
         sortCol: null,
         sort: null,
@@ -160,7 +161,9 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      StockTake.list(this.queryParams).then(({data: {results, total}}) => {
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.warehouseIds = params.warehouseIds.join(",");
+      StockTake.list(params).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);

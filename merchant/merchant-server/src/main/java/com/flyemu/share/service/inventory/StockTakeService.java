@@ -88,11 +88,14 @@ public class StockTakeService extends AbsService {
         List<StockTakeDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
             StockTakeDto dto = BeanUtil.toBean(tuple.get(qStockTake), StockTakeDto.class);
-            String warehouseName = tuple.get(qWarehouse.name);
-            if (StrUtil.isBlank(warehouseName)) {
+            String warehouseIds = dto.getWarehouseIds();
+            if (StrUtil.isBlank(warehouseIds)) {
                 dto.setWarehouseName("全部仓库");
             } else {
-                dto.setWarehouseName(warehouseName);
+                List<String> fetch = jqf.selectFrom(qWarehouse).select(
+                        qWarehouse.name
+                ).where(qWarehouse.id.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList())).fetch();
+                dto.setWarehouseName(String.join(",", fetch));
             }
             dto.setCreatedByName(tuple.get(qAdmin.name));
             // 获取对应关联的其他出库，其他入库订单
@@ -154,6 +157,7 @@ public class StockTakeService extends AbsService {
                         dateExpressions.as("checkDate"),
                         qStockTake.remarks.as("remarks"),
                         qStockTake.warehouseId.as("mainWarehouseId"),
+                        qStockTake.warehouseIds.as("mainWarehouseIds"),
                         qStockTakeItem.id.as("itemId"),
                         qStockTakeItem.actualQuantity.as("actualQuantity"),
                         qStockTakeItem.systemQuantity.as("systemQuantity"),
@@ -187,7 +191,8 @@ public class StockTakeService extends AbsService {
             item.put("id", tuple.get(qStockTake.id.as("id")));
             item.put("checkDate", tuple.get(dateExpressions.as("checkDate")));
             item.put("remarks", tuple.get(qStockTake.remarks.as("remarks")));
-            item.put("mainWarehouseId", tuple.get(qStockTake.warehouseId.as("warehouseId")));
+            item.put("mainWarehouseId", tuple.get(qStockTake.warehouseId.as("mainWarehouseId")));
+            item.put("mainWarehouseIds", tuple.get(qStockTake.warehouseIds.as("mainWarehouseIds")));
             item.put("itemId", tuple.get(qStockTakeItem.id.as("itemId")));
             item.put("actualQuantity", actualQuantity);
             item.put("systemQuantity", systemQuantity);
@@ -341,6 +346,8 @@ public class StockTakeService extends AbsService {
 
         private String filter;
 
+        private String warehouseIds;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qStockTake.merchantId.eq(merchantId));
@@ -377,6 +384,10 @@ public class StockTakeService extends AbsService {
             if (warehouseId != null) {
                 builder.and(qStockTake.warehouseId.eq(warehouseId))
                         .or(qStockTake.warehouseId.isNull());
+            }
+            if (StrUtil.isNotBlank(warehouseIds)) {
+                builder.and(qStockTake.warehouseIds.contains(warehouseIds))
+                        .or(qStockTake.warehouseIds.isNull());
             }
             return builder;
         }

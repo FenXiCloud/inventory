@@ -446,6 +446,7 @@ CREATE TABLE `jxc_inventory_item`
   `updated_at` datetime(6) DEFAULT NULL COMMENT '更新时间',
   `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
   `supplier_id` bigint(20) DEFAULT NULL COMMENT '供货商ID',
+  `customer_id` bigint(20) DEFAULT NULL COMMENT '客户ID',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -1933,6 +1934,7 @@ CREATE TABLE `jxc_stock_take`
   `order_status` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '已保存' COMMENT '订单状态',
   `remarks`  varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '备注',
   `warehouse_id` bigint DEFAULT NULL COMMENT '仓库ID',
+  `warehouse_ids` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '仓库ID集合',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

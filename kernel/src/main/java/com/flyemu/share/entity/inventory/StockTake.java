@@ -41,11 +41,14 @@ public class StockTake {
     @Comment("仓库ID")
     private Long warehouseId;
 
+    @Comment("仓库ID集合")
+    private String warehouseIds;
+
     @Comment("备注")
     private String remarks;
 
     @Comment("订单状态")
-    @Column(nullable = false,length = 32, columnDefinition = "varchar(20) default '已保存'")
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(20) default '已保存'")
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
 

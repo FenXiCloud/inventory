@@ -6,8 +6,9 @@
           <label class="mr-20px ml-16px" style="font-size: 16px !important">盘点日期：</label>
           <label style="font-size: 15px !important">{{ form.checkDate }}</label>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">仓库：</label>
-          <Select class="w-178px" filterable required :datas="warehouseList" keyName="id" titleName="name"
-                  v-model="form.warehouseId" placeholder="请选择仓库" :disabled="auditOperate || form.id"
+          <Select class="w-178px" filterable :multiple="true" required :datas="warehouseList" keyName="id"
+                  titleName="name"
+                  v-model="form.warehouseIds" placeholder="请选择仓库" :disabled="auditOperate || form.id"
                   @change="changeWarehouseId"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">商品：</label>
           <Select class="w-178px mr-20px" filterable required :datas="productList" keyName="id" titleName="name"
@@ -158,6 +159,7 @@ export default {
         checkDate: manba().format("YYYY-MM-dd"),
         remarks: null,
         warehouseId: null,
+        warehouseIds: [],
         productId: null,
         totalAmount: 0.00,
         totalQuantity: 0,
@@ -294,6 +296,7 @@ export default {
         checkDate: this.form.checkDate,
         remarks: this.form.remarks,
         warehouseId: this.form.warehouseId,
+        warehouseIds: this.form.warehouseIds.join(","),
       };
       stockTake.id = this.form.id;
       filterStockTakeData.forEach(item => {
@@ -316,6 +319,8 @@ export default {
         id: null,
         orderDate: manba().format("YYYY-MM-dd"),
         remarks: null,
+        warehouseId: null,
+        warehouseIds: [],
         toWarehouseId: null,
         fromWarehouseId: null,
         totalAmount: 0.00,
@@ -340,6 +345,7 @@ export default {
       // 获取所有商品、仓库展示
       Inventory.products({
         warehouseId: this.form.warehouseId,
+        warehouseIds: this.form.warehouseIds.join(","),
         productId: this.form.productId,
         filter: this.form.filter
       }).then((res) => {
@@ -380,6 +386,9 @@ export default {
             if (data && data.length > 0) {
               this.form.id = data[0].id;
               this.form.warehouseId = data[0].mainWarehouseId;
+              if (data[0].mainWarehouseIds) {
+                this.form.warehouseIds = data[0].mainWarehouseIds.split(',');
+              }
               this.form.remarks = data[0].remarks;
               this.form.checkDate = data[0].checkDate;
               this.form.adminName = data[0].adminName;
@@ -473,6 +482,7 @@ export default {
     doSearch() {
       if (this.stockTakeId) {
         const warehouseId = this.form.warehouseId;
+        const warehouseIds = this.form.warehouseIds;
         const productId = this.form.productId;
         const filter = this.form.filter;
         const newStockTakeData = [];
@@ -483,6 +493,9 @@ export default {
             isDone = false;
           }
           if (productId && productId !== item.productId) {
+            isDone = false;
+          }
+          if (warehouseIds && warehouseIds.length > 0 && !warehouseIds.includes(item.warehouseId)) {
             isDone = false;
           }
           if (!this.isEmpty(filter) && (filter.indexOf(item.productCode) === -1 && filter.indexOf(item.productName) === -1)) {

@@ -34,6 +34,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -240,11 +241,12 @@ public class InventoryService extends AbsService {
                 .where(qInventory.productId.eq(productId)).fetchOne();
     }
 
-    public List<Map<String, Object>> products(Long warehouseId, Long productId, String filter, Long accountBookId, Long merchantId) {
+    public List<Map<String, Object>> products(Long warehouseId, String warehouseIds, Long productId, String filter, Long accountBookId, Long merchantId) {
         String productSql = InventoryRepository.PRODUCT_SQL;
         int index = 3;
         int productIndex = 3;
         int warehouseIndex = 3;
+        int warehousesIndex = 3;
         int filterIndex = 3;
         if (productId != null) {
             productSql += " AND ji.product_id= ?" + index;
@@ -253,6 +255,11 @@ public class InventoryService extends AbsService {
         if (warehouseId != null) {
             productSql += " AND ji.warehouse_id= ?" + index;
             warehouseIndex = index;
+            index++;
+        }
+        if (StrUtil.isNotBlank(warehouseIds)) {
+            productSql += " AND ji.warehouse_id IN (?" + index + ") ";
+            warehousesIndex = index;
             index++;
         }
         if (StringUtils.hasText(filter)) {
@@ -267,6 +274,9 @@ public class InventoryService extends AbsService {
         }
         if (warehouseId != null) {
             nativeQuery.setParameter(warehouseIndex, warehouseId);
+        }
+        if (StrUtil.isNotBlank(warehouseIds)) {
+            nativeQuery.setParameter(warehousesIndex, Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList());
         }
         if (StringUtils.hasText(filter)) {
             nativeQuery.setParameter(filterIndex, filter);

@@ -23,7 +23,7 @@
                  :column-config="{resizable: true}"
                  :loading="loading">
         <vxe-column type="seq" width="40" title="#"/>
-        <vxe-column title="取数来源" field="priceSource" width="150"/>
+        <vxe-column title="取数来源" field="policySource" width="150"/>
         <vxe-column title="应用说明" field="remarks"/>
         <vxe-column title="状态" field="enabled" width="120" align="center">
           <template #default="{row}">
@@ -70,14 +70,14 @@ export default {
       },
       selected: '销售价格取数',
       params: {
-        priceType: '销售价格取数',
+        policyType: '销售价格取数',
       }
     }
   },
   methods: {
     change(data) {
       console.log(data)
-      this.params.priceType = data.title;
+      this.params.policyType = data.title;
       this.loadList();
     },
     doSearch() {

@@ -5,6 +5,7 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.flyemu.share.dto.price.PricingPolicyDTO;
 import com.flyemu.share.entity.basic.PricingPolicy;
 import com.flyemu.share.entity.basic.QPricingPolicy;
+import com.flyemu.share.enums.PolicyType;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.price.PricingPolicyForm;
 import com.flyemu.share.repository.PricingPolicyRepository;
@@ -83,11 +84,11 @@ public class PricingPolicyService extends AbsService {
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
-        public void setPriceType(PriceType priceType) {
-            if (priceType != null) {
-                builder.and(qPricingPolicy.priceType.eq(priceType));
+        public void setPolicyType(PolicyType policyType) {
+            if (policyType != null) {
+                builder.and(qPricingPolicy.policyType.eq(policyType));
             } else {
-                builder.and(qPricingPolicy.priceType.isNotNull());
+                builder.and(qPricingPolicy.policyType.isNotNull());
             }
         }
 

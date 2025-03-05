@@ -7,7 +7,7 @@
       <template #tools>
 <!--        <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入名称"/>-->
 
-        <Select v-model="params.priceSource" class="w-120px" :datas="{商品资料价格:'商品资料价格',最近采购单价:'最近采购价格',最近销售单价:'最近销售价格'}"
+        <Select v-model="params.priceSource" class="w-120px" :datas="{商品资料价格:'商品资料价格',最近采购价格:'最近采购价格',最近销售价格:'最近销售价格'}"
                 placeholder="价格来源："/>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">商品：</span>

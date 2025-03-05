@@ -204,10 +204,10 @@ public class PriceRecordService extends AbsService {
             dto.setProductCategoryName(tuple.get(qProductCategory.name));
             dto.setUnitName(tuple.get(qUnit.name));
             //最近采购价格
-            BigDecimal recentlyPurchasePrice = getLastPrice(dto, PriceType.采购价格取数, PriceSource.最近采购单价);
+            BigDecimal recentlyPurchasePrice = getLastPrice(dto, PriceType.采购价格取数, PriceSource.最近采购价格);
             dto.setRecentlyPurchasePrice(recentlyPurchasePrice);
             //最近销售价格
-            BigDecimal recentlySalesPrice = getLastPrice(dto, PriceType.销售价格取数, PriceSource.最近销售单价);
+            BigDecimal recentlySalesPrice = getLastPrice(dto, PriceType.销售价格取数, PriceSource.最近销售价格);
             dto.setRecentlySalesPrice(recentlySalesPrice);
             list.add(dto);
         }, List::addAll);

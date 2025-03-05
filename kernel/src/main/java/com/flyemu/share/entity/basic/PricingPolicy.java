@@ -1,5 +1,7 @@
 package com.flyemu.share.entity.basic;
 
+import com.flyemu.share.enums.PolicySource;
+import com.flyemu.share.enums.PolicyType;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import jakarta.persistence.*;
@@ -34,15 +36,15 @@ public class PricingPolicy implements Serializable {
     @Comment("优先级")
     private Integer priority;
 
-    @Comment("价格类型")
+    @Comment("取数类型")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private PriceType priceType;
+    private PolicyType policyType;
 
-    @Comment("价格来源")
+    @Comment("取数来源")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private PriceSource priceSource;
+    private PolicySource policySource;
 
     @Comment("状态")
     @Column(nullable = false)

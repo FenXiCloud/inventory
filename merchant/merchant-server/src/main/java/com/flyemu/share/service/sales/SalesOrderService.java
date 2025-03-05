@@ -170,8 +170,8 @@ public class SalesOrderService extends AbsService {
         priceRecord.setMerchantId(salesOrder.getMerchantId());
         priceRecord.setAccountBookId(salesOrder.getAccountBookId());
         priceRecord.setCustomerId(salesOrder.getCustomerId());
-        priceRecord.setPriceType(PriceType.销售价格取数);
         priceRecord.setPriceSource(PriceSource.最近销售价格);
+        priceRecord.setPriceType(PriceType.最近销售价格);
         priceRecordService.savePriceRecord(priceRecord);
     }
 

@@ -47,13 +47,13 @@
           <vxe-column title="最低销售价" field="minSalesPrice" align="left"/>
           <vxe-column title="最近销售价" field="recentlySalesPrice" align="left"/>
           <vxe-column title="最后修改时间" field="updatedAt" align="left"/>
-          <vxe-column title="操作" align="center" fixed="right">
-            <template #default="{row}">
-              <div class="flex items-center justify-center">
-                <span class=" primary-color text-hover ml-10px" @click="showForm(row)" size="s">编辑</span>
-              </div>
-            </template>
-          </vxe-column>
+<!--          <vxe-column title="操作" align="center" fixed="right">-->
+<!--            <template #default="{row}">-->
+<!--              <div class="flex items-center justify-center">-->
+<!--                <span class=" primary-color text-hover ml-10px" @click="showForm(row)" size="s">编辑</span>-->
+<!--              </div>-->
+<!--            </template>-->
+<!--          </vxe-column>-->
         </vxe-table>
         <vxe-pager perfect @page-change="loadList(false)"
                    v-model:current-page="pagination.page"

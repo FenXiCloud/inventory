@@ -211,6 +211,16 @@ public class PriceRecordService extends AbsService {
             //最近销售价格
             BigDecimal recentlySalesPrice = getLastPrice(dto, PriceSource.最近销售价格, PriceType.最近销售价格);
             dto.setRecentlySalesPrice(recentlySalesPrice);
+            //vip价格
+            BigDecimal vipCustomerPrice = getLastPrice(dto, PriceSource.商品价格资料, PriceType.VIP客户价格);
+            dto.setVipCustomerPrice(vipCustomerPrice);
+            //零售客户价格
+            BigDecimal retailCustomerPrice = getLastPrice(dto, PriceSource.商品价格资料, PriceType.零售客户价格);
+            dto.setRetailCustomerPrice(retailCustomerPrice);
+            //批发客户价格
+            BigDecimal wholesaleCustomerPrice = getLastPrice(dto, PriceSource.商品价格资料, PriceType.批发客户价格);
+            dto.setWholesaleCustomerPrice(wholesaleCustomerPrice);
+
             list.add(dto);
         }, List::addAll);
         return new PageResults<>(collect, page, pagedList.getTotalSize());

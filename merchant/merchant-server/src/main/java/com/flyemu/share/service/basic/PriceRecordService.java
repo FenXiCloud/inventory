@@ -221,9 +221,49 @@ public class PriceRecordService extends AbsService {
             BigDecimal wholesaleCustomerPrice = getLastPrice(dto, PriceSource.商品价格资料, PriceType.批发客户价格);
             dto.setWholesaleCustomerPrice(wholesaleCustomerPrice);
 
+            // 设置最高采购价格和最低销售价格
+            dto.setMaxPurchasePrice(getMaxPurchasePrice(dto));
+            dto.setMinSalesPrice(getMinSalesPrice(dto));
+
             list.add(dto);
         }, List::addAll);
         return new PageResults<>(collect, page, pagedList.getTotalSize());
+    }
+
+
+    private BigDecimal getMaxPurchasePrice(ProductPriceDTO dto) {
+        Specification<PriceRecord> specification = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("merchantId"), dto.getMerchantId()));
+            predicates.add(cb.equal(root.get("accountBookId"), dto.getAccountBookId()));
+            predicates.add(cb.equal(root.get("productId"), dto.getId()));
+            predicates.add(cb.equal(root.get("priceSource"), PriceSource.最近采购价格));
+            predicates.add(cb.equal(root.get("priceType"), PriceType.最近采购价格));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        return priceRecordRepository.findAll(specification)
+                .stream()
+                .map(PriceRecord::getUnitPrice)
+                .max(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+    }
+
+    private BigDecimal getMinSalesPrice(ProductPriceDTO dto) {
+        Specification<PriceRecord> specification = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("merchantId"), dto.getMerchantId()));
+            predicates.add(cb.equal(root.get("accountBookId"), dto.getAccountBookId()));
+            predicates.add(cb.equal(root.get("productId"), dto.getId()));
+            predicates.add(cb.equal(root.get("priceSource"), PriceSource.最近销售价格));
+            predicates.add(cb.equal(root.get("priceType"), PriceType.最近销售价格));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        return priceRecordRepository.findAll(specification)
+                .stream()
+                .map(PriceRecord::getUnitPrice)
+                .filter(price -> price.compareTo(BigDecimal.ZERO) > 0)
+                .min(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
     }
 
     private BigDecimal getLastPrice(ProductPriceDTO dto,PriceSource priceSource,PriceType priceType) {

@@ -127,7 +127,7 @@ public class SalesOrderService extends AbsService {
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
                     //保存价格记录
-                    savePrice(item, salesOrder);
+                    savePrice(item, update);
                     item.setSalesOrderId(update.getId());
                     item.setAccountBookId(salesOrder.getAccountBookId());
                     item.setMerchantId(salesOrder.getMerchantId());
@@ -146,7 +146,7 @@ public class SalesOrderService extends AbsService {
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
                     //保存价格记录
-                    savePrice(item, salesOrder);
+                    savePrice(item, save);
                     item.setSalesOrderId(save.getId());
                     item.setAccountBookId(salesOrder.getAccountBookId());
                     item.setMerchantId(salesOrder.getMerchantId());

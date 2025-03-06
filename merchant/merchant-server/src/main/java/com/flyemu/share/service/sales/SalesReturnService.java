@@ -10,19 +10,19 @@ import com.flyemu.share.dto.SalesOutboundDTO;
 import com.flyemu.share.dto.SalesOutboundItemDTO;
 import com.flyemu.share.dto.SalesReturnDTO;
 import com.flyemu.share.dto.SalesReturnItemDTO;
-import com.flyemu.share.entity.basic.QCustomer;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QUnit;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.SalesReturnForm;
 import com.flyemu.share.repository.SalesOutboundItemRepository;
 import com.flyemu.share.repository.SalesOutboundRepository;
 import com.flyemu.share.repository.SalesReturnItemRepository;
 import com.flyemu.share.repository.SalesReturnRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -69,6 +69,7 @@ public class SalesReturnService extends AbsService {
 
     private final SalesOutboundRepository salesOutboundRepository;
     private final SalesOutboundItemRepository salesOutboundItemRepository;
+    private final PriceRecordService priceRecordService;
 
     public PageResults<SalesReturnDTO> query(Page page, SalesReturnService.Query query) {
         long totalSize = bqf.selectFrom(qSalesReturn)
@@ -136,6 +137,7 @@ public class SalesReturnService extends AbsService {
             SalesReturn update = salesReturnRepository.save(original);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    savePrice(item, update);
                     item.setSalesReturnId(update.getId());
                     item.setAccountBookId(salesReturn.getAccountBookId());
                     item.setMerchantId(salesReturn.getMerchantId());
@@ -152,6 +154,8 @@ public class SalesReturnService extends AbsService {
             SalesReturn save = salesReturnRepository.save(salesReturn);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    //保存价格记录
+                    savePrice(item, save);
                     item.setSalesReturnId(save.getId());
                     item.setAccountBookId(salesReturn.getAccountBookId());
                     item.setMerchantId(salesReturn.getMerchantId());
@@ -175,6 +179,21 @@ public class SalesReturnService extends AbsService {
             return save;
         }
 
+    }
+
+    private void savePrice(SalesReturnItem item, SalesReturn save) {
+        //保存价格记录
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setOrderId(save.getId());
+        priceRecord.setUnitPrice(item.getUnitPrice());
+        priceRecord.setBaseUnitId(item.getBaseUnitId());
+        priceRecord.setProductId(item.getProductId());
+        priceRecord.setMerchantId(save.getMerchantId());
+        priceRecord.setAccountBookId(save.getAccountBookId());
+        priceRecord.setCustomerId(save.getCustomerId());
+        priceRecord.setPriceSource(PriceSource.最近销售价格);
+        priceRecord.setPriceType(PriceType.最近销售价格);
+        priceRecordService.savePriceRecord(priceRecord);
     }
 
     @Transactional

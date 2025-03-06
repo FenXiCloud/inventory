@@ -14,10 +14,13 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.form.SalesOutboundForm;
 import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -74,6 +77,7 @@ public class SalesOutboundService extends AbsService {
 
     @Autowired
     private InventoryService inventoryService;
+    private final PriceRecordService priceRecordService;
 
     public PageResults<SalesOutboundDTO> query(Page page, SalesOutboundService.Query query) {
 
@@ -158,6 +162,8 @@ public class SalesOutboundService extends AbsService {
             //保存新关系
             if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                 salesOutboundItemList.forEach(item -> {
+                    //保存价格记录
+                    savePrice(item, update);
                     item.setSalesOutboundId(update.getId());
                     item.setAccountBookId(salesOutbound.getAccountBookId());
                     item.setMerchantId(salesOutbound.getMerchantId());
@@ -175,6 +181,8 @@ public class SalesOutboundService extends AbsService {
             SalesOutbound save = salesOutboundRepository.save(salesOutbound);
             if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                 salesOutboundItemList.forEach(item -> {
+                    //保存价格记录
+                    savePrice(item, save);
                     item.setSalesOutboundId(save.getId());
                     item.setAccountBookId(salesOutbound.getAccountBookId());
                     item.setMerchantId(salesOutbound.getMerchantId());
@@ -197,6 +205,21 @@ public class SalesOutboundService extends AbsService {
             }
             return save;
         }
+    }
+
+    private void savePrice(SalesOutboundItem item, SalesOutbound save) {
+        //保存价格记录
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setOrderId(save.getId());
+        priceRecord.setUnitPrice(item.getUnitPrice());
+        priceRecord.setBaseUnitId(item.getBaseUnitId());
+        priceRecord.setProductId(item.getProductId());
+        priceRecord.setMerchantId(save.getMerchantId());
+        priceRecord.setAccountBookId(save.getAccountBookId());
+        priceRecord.setCustomerId(save.getCustomerId());
+        priceRecord.setPriceSource(PriceSource.最近销售价格);
+        priceRecord.setPriceType(PriceType.最近销售价格);
+        priceRecordService.savePriceRecord(priceRecord);
     }
 
     @Transactional

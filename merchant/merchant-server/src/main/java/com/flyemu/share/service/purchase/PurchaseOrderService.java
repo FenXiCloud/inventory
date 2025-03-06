@@ -166,25 +166,14 @@ public class PurchaseOrderService extends AbsService {
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
                 d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
-//                保存更新购货商品价格
-                PriceRecord priceRecord = new PriceRecord();
-                priceRecord.setUnitPrice(d.getUnitPrice());
-                priceRecord.setBaseUnitId(d.getBaseUnitId());
-                priceRecord.setProductId(d.getProductId());
-                priceRecord.setMerchantId(merchantId);
-                priceRecord.setAccountBookId(order.getAccountBookId());
-                priceRecord.setSupplierId(order.getSupplierId());
-                priceRecord.setOrderId(order.getId());
-                priceRecord.setPriceSource(PriceSource.最近采购价格);
-                priceRecord.setPriceType(PriceType.最近采购价格);
-                priceRecordService.savePriceRecord(priceRecord);
-
                 if (d.getId() != null) {
                     ids.add(d.getId());
                 }
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);
+                //保存更新购货商品价格
+                savePrice(d, order);
             }
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
             return purchaseOrderRepository.save(original);
@@ -194,28 +183,29 @@ public class PurchaseOrderService extends AbsService {
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
                 d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
-
-                //保存更新购货商品价格
-                PriceRecord priceRecord = new PriceRecord();
-                priceRecord.setUnitPrice(d.getUnitPrice());
-                priceRecord.setBaseUnitId(d.getBaseUnitId());
-                priceRecord.setProductId(d.getProductId());
-                priceRecord.setMerchantId(merchantId);
-                priceRecord.setSupplierId(order.getSupplierId());
-                priceRecord.setAccountBookId(order.getAccountBookId());
-                priceRecord.setOrderId(order.getId());
-                priceRecord.setPriceSource(PriceSource.最近采购价格);
-                priceRecord.setPriceType(PriceType.最近采购价格);
-                priceRecordService.savePriceRecord(priceRecord);
-
-
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);
+                //保存更新购货商品价格
+                savePrice(d, order);
             }
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
             return purchaseOrderRepository.save(purchaseOrderForm.getPurchaseOrder());
         }
+    }
+
+    private void savePrice( PurchaseOrderItem item, PurchaseOrder order) {
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setUnitPrice(item.getUnitPrice());
+        priceRecord.setBaseUnitId(item.getBaseUnitId());
+        priceRecord.setProductId(item.getProductId());
+        priceRecord.setMerchantId(item.getMerchantId());
+        priceRecord.setSupplierId(order.getSupplierId());
+        priceRecord.setAccountBookId(order.getAccountBookId());
+        priceRecord.setOrderId(order.getId());
+        priceRecord.setPriceSource(PriceSource.最近采购价格);
+        priceRecord.setPriceType(PriceType.最近采购价格);
+        priceRecordService.savePriceRecord(priceRecord);
     }
 
     @Transactional

@@ -10,17 +10,17 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.*;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QSupplier;
-import com.flyemu.share.entity.basic.QUnit;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.purchase.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.PurchaseReturnForm;
 import com.flyemu.share.repository.PurchaseReturnItemRepository;
 import com.flyemu.share.repository.PurchaseReturnRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -60,6 +60,7 @@ public class PurchaseReturnService extends AbsService {
     private final PurchaseReturnRepository purchaseReturnRepository;
     private final PurchaseReturnItemRepository purchaseReturnItemRepository;
     private final CodeSeedService codeSeedService;
+    private final PriceRecordService priceRecordService;
 
     public PageResults<PurchaseReturnDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseReturn)
@@ -98,6 +99,8 @@ public class PurchaseReturnService extends AbsService {
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseReturnId(order.getId());
                 d.setMerchantId(merchantId);
+                //保存更新购货商品价格
+                savePrice(d, order);
             }
             purchaseReturnItemRepository.saveAll(purchaseReturnForm.getPurchaseReturnItemList());
             return purchaseReturnRepository.save(original);
@@ -112,10 +115,26 @@ public class PurchaseReturnService extends AbsService {
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseReturnId(order.getId());
                 d.setMerchantId(merchantId);
+                //保存更新购货商品价格
+                savePrice(d, order);
             }
             purchaseReturnItemRepository.saveAll(purchaseReturnForm.getPurchaseReturnItemList());
             return order;
         }
+    }
+
+    private void savePrice(PurchaseReturnItem item, PurchaseReturn order) {
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setUnitPrice(item.getUnitPrice());
+        priceRecord.setBaseUnitId(item.getBaseUnitId());
+        priceRecord.setProductId(item.getProductId());
+        priceRecord.setMerchantId(item.getMerchantId());
+        priceRecord.setSupplierId(order.getSupplierId());
+        priceRecord.setAccountBookId(order.getAccountBookId());
+        priceRecord.setOrderId(order.getId());
+        priceRecord.setPriceSource(PriceSource.最近采购价格);
+        priceRecord.setPriceType(PriceType.最近采购价格);
+        priceRecordService.savePriceRecord(priceRecord);
     }
 
     @Transactional

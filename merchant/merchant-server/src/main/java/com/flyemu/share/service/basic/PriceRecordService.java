@@ -150,14 +150,14 @@ public class PriceRecordService extends AbsService {
             predicates.add(cb.equal(root.get("merchantId"), priceRecord.getMerchantId()));
             predicates.add(cb.equal(root.get("accountBookId"), priceRecord.getAccountBookId()));
             predicates.add(cb.equal(root.get("productId"), priceRecord.getProductId()));
-            Long customerId = priceRecord.getCustomerId();
-            if (customerId != null) {
-                predicates.add(cb.equal(root.get("customerId"), customerId));
-            }
-            Long supplierId = priceRecord.getSupplierId();
-            if (supplierId != null) {
-                predicates.add(cb.equal(root.get("supplierId"), supplierId));
-            }
+//            Long customerId = priceRecord.getCustomerId();
+//            if (customerId != null) {
+//                predicates.add(cb.equal(root.get("customerId"), customerId));
+//            }
+//            Long supplierId = priceRecord.getSupplierId();
+//            if (supplierId != null) {
+//                predicates.add(cb.equal(root.get("supplierId"), supplierId));
+//            }
             PriceType priceType = priceRecord.getPriceType();
             if (priceType != null) {
                 predicates.add(cb.equal(root.get("priceType"), priceType));

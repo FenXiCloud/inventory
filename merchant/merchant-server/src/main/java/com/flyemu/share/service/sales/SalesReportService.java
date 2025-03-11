@@ -79,6 +79,8 @@ public class SalesReportService extends AbsService {
         Specification<SalesOutbound> salesOutboundSpecification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             // 添加各种条件
+            // 新增审核状态条件
+            predicates.add(cb.equal(root.get("orderStatus"), OrderStatus.已审核));
             if (form.getCustomerId() != null) {
                 predicates.add(cb.equal(root.get("customerId"), form.getCustomerId()));
             }
@@ -140,15 +142,17 @@ public class SalesReportService extends AbsService {
             Specification<SalesReturn> returnOrderQuery = (root, query, cb) -> {
                 List<Predicate> predicates = new ArrayList<>();
                 predicates.add(root.get("id").in(salesReturnIdList));
+                predicates.add(cb.equal(root.get("orderStatus"), OrderStatus.已审核));
                 return cb.and(predicates.toArray(new Predicate[0]));
             };
             //销售退货单列表
             salesReturnList = salesReturnRepository.findAll(returnOrderQuery);
-
+            //已审核的退货单id
+            List<Long> returnIds = salesReturnList.stream().map(SalesReturn::getId).toList();
             //销售退货单商品详情查询条件
             Specification<SalesReturnItem> returnOrderItemQuery = (root, query, cb) -> {
                 List<Predicate> predicates = new ArrayList<>();
-                predicates.add(root.get("salesReturnId").in(salesReturnIdList));
+                predicates.add(root.get("salesReturnId").in(returnIds));
                 if (form.getProductId() != null){
                     predicates.add(cb.equal(root.get("productId"), form.getProductId()));
                 }
@@ -282,6 +286,8 @@ public class SalesReportService extends AbsService {
         //销售出库单查询条件
         Specification<SalesOutbound> salesOutboundSpecification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            // 新增审核状态条件
+            predicates.add(cb.equal(root.get("orderStatus"), OrderStatus.已审核));
             // 添加各种条件
             if (form.getCustomerId() != null) {
                 predicates.add(cb.equal(root.get("customerId"), form.getCustomerId()));
@@ -341,16 +347,19 @@ public class SalesReportService extends AbsService {
             //销售退货单列表查询条件
             Specification<SalesReturn> returnOrderQuery = (root, query, cb) -> {
                 List<Predicate> predicates = new ArrayList<>();
+                // 新增审核状态条件
+                predicates.add(cb.equal(root.get("orderStatus"), OrderStatus.已审核));
                 predicates.add(root.get("id").in(salesReturnIdList));
                 return cb.and(predicates.toArray(new Predicate[0]));
             };
             //销售退货单列表
             List<SalesReturn> salesReturnList = salesReturnRepository.findAll(returnOrderQuery);
-
+            //已审核的退货单id
+            List<Long> returnIds = salesReturnList.stream().map(SalesReturn::getId).toList();
             //销售退货单商品查询条件
             Specification<SalesReturnItem> returnSpec = (root, query, cb) -> {
                 List<Predicate> predicates = new ArrayList<>();
-                predicates.add(root.get("salesReturnId").in(salesReturnIdList));
+                predicates.add(root.get("salesReturnId").in(returnIds));
                 if (form.getProductId() != null){
                     predicates.add(cb.equal(root.get("productId"), form.getProductId()));
                 }

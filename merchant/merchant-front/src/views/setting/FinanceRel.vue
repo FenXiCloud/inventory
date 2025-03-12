@@ -1,35 +1,33 @@
 <template>
   <div class="frame-page flex flex-column">
-    <div class="flex1">
+    <div class="flex1" style="width: 980px;margin: 0 auto">
       <vxe-table
           ref="table"
           :data="dataList"
           highlight-hover-row
+          border
           show-overflow
           :loading="loading">
         <vxe-column title="关联状态" width="100">
           <template #default="{row}">
-            <div>已关联</div>
+            <div>{{ row.state }}</div>
           </template>
         </vxe-column>
-        <vxe-column title="进销存组织编码" field="organizationCode" width="150"/>
-        <vxe-column title="进销存组织名称" field="organizationName" min-width="150"/>
-        <vxe-column title="财务系统账号" min-width="150">
+        <vxe-column title="进销存软件账套" field="accountBookName" min-width="150"/>
+        <vxe-column title="财务软件帐套" field="accountSetsName" min-width="150"/>
+        <vxe-column title="操作" align="center" width="300" fixed="right">
           <template #default="{row}">
-            <div @click="editAccount(row)">
-              <template v-if="row.relationAccountMobile">
-                {{ row.relationAccountMobile }}
-                <i class="primary-color h-icon-edit ml-10px"></i>
-              </template>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="关联财务系统帐套" field="companyName" min-width="150"/>
-        <vxe-column title="操作" align="center" width="120" fixed="right">
-          <template #default="{row}">
-            <div class="flex items-center justify-center">
-              <span class=" primary-color text-hover ml-10px" @click="showForm()" size="s">编辑</span>
-            </div>
+            <template v-if="row.state==='已关联'">
+              <div class="flex items-center justify-center">
+                <span class=" primary-color text-hover ml-10px" @click="showForm()" size="s">编辑</span>
+                <span class=" primary-color text-hover ml-10px" @click="showForm()" size="s">进入云财务账套</span>
+              </div>
+            </template>
+            <template v-else>
+              <div class="flex items-center justify-center">
+                <span class=" primary-color text-hover ml-10px" @click="showForm()" size="s">关联云财务</span>
+              </div>
+            </template>
           </template>
         </vxe-column>
       </vxe-table>
@@ -87,23 +85,21 @@
 <script>
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
-// import RelationForm from "@components/group/setting/RelationForm.vue";
-import LinkingFinance from "@js/api/setting/LinkingFinance";
-import {message} from "heyui.ext";
+import FinanceRelForm from "./FinanceRelForm.vue";
+import FinanceRel from "@js/api/setting/FinanceRel";
 // import RelationSubjectFrom from "@components/group/setting/RelationSubjectFrom.vue";
 // import RelationAccountForm from "@components/group/setting/RelationAccountForm.vue";
 import {mapMutations} from "vuex";
 
 
 export default {
-  name: "LinkingFinance",
+  name: "FinanceRel",
   props: {
     merchant: Object,
   },
   data() {
     return {
       loading: false,
-      isRelation: false,
       dataList: [],
     }
   },
@@ -112,18 +108,15 @@ export default {
     toVoucher() {
       this.pushTab({key: 'OrderVoucher', title: '订单凭证'});
     },
-    editAccount(item) {
-      this.showAccountForm(item.id, item.relationAccountId)
-    },
     showForm() {
-      let cwRelation = this.dataList[0]
-      if (cwRelation.relationAccountId) {
+      let financeRel = this.dataList[0]
+      if (financeRel.state === '未关联') {
         let layerId = layer.open({
-          title: "关联财务系统",
+          title: "关联财务软件",
           shadeClose: false,
-          area: ['600px', '360px'],
-          content: h(RelationForm, {
-            cwRelation,
+          area: ['600px', '600px'],
+          content: h(FinanceRelForm, {
+            financeRel,
             onClose: () => {
               layer.close(layerId);
             },
@@ -134,56 +127,16 @@ export default {
           })
         });
       } else {
-        this.showAccountForm(cwRelation.id)
+        this.showAccountForm(financeRel.id)
       }
-    },
-    showAccountForm(cwId, id) {
-      console.log(cwId, id)
-      let layerId = layer.open({
-        title: "财务系统信息",
-        shadeClose: false,
-        area: ['600px', '360px'],
-        content: h(RelationAccountForm, {
-          cwId, id,
-          onClose: () => {
-            layer.close(layerId);
-          },
-          onSuccess: () => {
-            this.loadList();
-            layer.close(layerId);
-          }
-        })
-      });
     },
     loadList() {
       this.loading = true;
-      LinkingFinance.load().then(({data}) => {
+      FinanceRel.list().then(({data}) => {
+        console.log(data);
         this.dataList = data;
-        this.isRelation = this.dataList[0].isRelation
       }).finally(() => this.loading = false);
     },
-    toSubject() {
-      if (this.isRelation) {
-        let relationCwId = this.dataList[0].id
-        let layerId = layer.drawer({
-          title: "默认对应会计科目",
-          shadeClose: false,
-          area: ['80vw', '100vh'],
-          content: h(RelationSubjectFrom, {
-            relationCwId,
-            onClose: () => {
-              layer.close(layerId);
-            },
-            onSuccess: () => {
-              this.loadList();
-              layer.close(layerId);
-            }
-          })
-        });
-      } else {
-        message.error("请先关联财务系统帐套!")
-      }
-    }
   },
   created() {
     this.loadList();

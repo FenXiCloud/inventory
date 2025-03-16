@@ -44,15 +44,28 @@
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
               <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
-                      titleName="name"/>
+                      titleName="name" @change="handleWarehouseChange(row, $event)"/>
             </template>
           </template>
         </vxe-column>
         <vxe-column title="数量" field="quantity" width="90">
           <template #default="{row,rowIndex,columnIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3"
-                       @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.quantity" type="float"
-                       min="0" :controls="false"></vxe-input>
+            <vxe-tooltip theme="light">
+              <template #content>
+                <div>当前库存: {{row.currentStockQuantity || 0}}</div>
+                <div>总库存: {{row.totalStockQuantity || 0}}</div>
+              </template>
+              <vxe-input
+                  :id="'r'+rowIndex+''+3"
+                  @blur="updateQuantity(row)"
+                  @focus="showStockQuantity(row)"
+                  ref="inputQuantity"
+                  v-model.number="row.quantity"
+                  type="float"
+                  min="0"
+                  :controls="false">
+              </vxe-input>
+            </vxe-tooltip>
           </template>
         </vxe-column>
         <vxe-column title="单位" field="unitName" align="center" width="80"/>
@@ -154,6 +167,7 @@ import CustomerForm from "@views/basic/CustomerForm.vue";
 import SalesOrderSelect from "@views/sales/SalesOrderSelect.vue";
 import Unit from "@js/api/basic/Unit";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
+import Inventory from "@js/api/inventory/Inventory";
 
 export default {
   name: "SalesOutboundForm",
@@ -319,7 +333,43 @@ export default {
             }, 100);
           })
         });
+        this.showStockQuantity(g);
       }
+    },
+
+    // 仓库选择框变化时触发
+    handleWarehouseChange(row) {
+      this.showStockQuantity(row);
+    },
+
+    showStockQuantity(row) {
+      let productId = row.productId;
+      let warehouseId = row.warehouseId;
+      if (!productId) {
+        console.log("请选择产品")
+        return;
+      }
+      // 获取商品库存进行提示
+      let param = {
+        productId: productId,
+        page:1,
+        pageSize:1000
+      }
+      Inventory.list(param).then(res => {
+        const {data} = res;
+        if (data && data.results) {
+          let totalQuantity = 0;
+          let quantity = 0;
+          data.results.forEach(item => {
+            totalQuantity += Number(item.currentQuantity);
+            if (Number(item.warehouseId) === Number(warehouseId)) {
+              quantity = item.currentQuantity;
+            }
+          });
+          row.currentStockQuantity = quantity;
+          row.totalStockQuantity = totalQuantity;
+        }
+      });
     },
 
     checkHttp() {

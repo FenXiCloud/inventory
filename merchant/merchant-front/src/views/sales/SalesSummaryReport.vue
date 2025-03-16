@@ -1,43 +1,64 @@
 <template>
   <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
+<!--    <vxe-toolbar>-->
+<!--      <template #buttons>-->
+<!--        <Button @click="exportData" color="primary">导 出</Button>-->
+<!--        <Button @click="printEvent">打 印</Button>-->
+<!--      </template>-->
+<!--    </vxe-toolbar>-->
+
+    <div class="filter-row flex flex-wrap gap-8px p-10px bg-white-color border-b">
+      <div class="h-input-group">
         <Button @click="exportData" color="primary">导 出</Button>
-        <Button @click="printEvent">打 印</Button>
-      </template>
-      <template #tools>
-        <Select v-model="params.salesGroup" class="w-120px" placeholder="汇总条件："
-                :datas="
-                {
+        <Button @click="printEvent" class="ml-8px">打 印</Button>
+      </div>
+
+      <div class="h-input-group">
+        <span class="h-input-addon">汇总条件：</span>
+        <Select v-model="params.salesGroup" class="w-120px"
+                :datas="{
                    PRODUCT:'商品',
                    PRODUCT_WAREHOUSE:'商品+仓库',
                    CUSTOMER_PRODUCT:'客户+商品',
                    CUSTOMER_PRODUCT_WAREHOUSE:'客户+商品+仓库'
                 }"/>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">日期：</span>
-          <DateRangePicker v-model="dateRange"></DateRangePicker>
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">客户：</span>
-          <Select class="w-120px" filterable :datas="customerList" keyName="id" titleName="name"
-                  v-model="params.customerId" placeholder="请选择客户"  />
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">仓库：</span>
-          <Select v-model="params.warehouseId" class="w-100px" keyName="id" titleName="name" :datas="warehouseList" placeholder="请选择仓库"/>
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">商品：</span>
-          <Select v-model="params.productId" class="w-100px" keyName="id" titleName="name" :datas="productList" placeholder="请选择商品"/>
-        </div>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-180px ml-8px"
-                placeholder="请输入订单号" @search="doSearch">
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon">日期：</span>
+        <DateRangePicker v-model="dateRange"></DateRangePicker>
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon">客户：</span>
+        <Select class="w-150px" filterable :datas="customerList" keyName="id" titleName="name"
+                v-model="params.customerId" placeholder="请选择客户"/>
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon">仓库：</span>
+        <Select v-model="params.warehouseId" class="w-150px" keyName="id" titleName="name"
+                :datas="warehouseList" placeholder="请选择仓库"/>
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon">商品：</span>
+        <Select v-model="params.productId" class="w-150px" keyName="id" titleName="name"
+                :datas="productList" placeholder="请选择商品"/>
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon">商品类别：</span>
+        <Select class="w-150px" filterable :datas="productCategoryList" keyName="id" titleName="name"
+                v-model="params.productCategoryId" placeholder="请选择类别"/>
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon">订单号：</span>
+        <Search v-model.trim="params.filter" 
+                search-button-theme="h-btn-default"
+                show-search-button 
+                class="w-180px"
+                placeholder="请输入订单号" 
+                @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
-      </template>
-    </vxe-toolbar>
+      </div>
+    </div>
     <div class="flex1">
       <vxe-table row-id="id"
                  ref="table"
@@ -97,6 +118,7 @@ import {loading, message} from "heyui.ext";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import * as XLSX from "xlsx";
+import ProductCategory from "@js/api/basic/ProductCategory";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -129,6 +151,7 @@ export default {
       customerList: [],
       warehouseList: [],
       productList: [],
+      productCategoryList:[],
     }
   },
   computed: {
@@ -261,11 +284,12 @@ export default {
         Customer.select(),
         Warehouse.select(),
         Product.select(),
+        ProductCategory.select(),
       ]).then((results) => {
         this.customerList = results[0].data || [];
         this.warehouseList = results[1].data || [];
         this.productList = results[2].data || [];
-
+        this.productCategoryList = results[3].data || [];
       }).finally(() => loading.close());
     },
   },
@@ -274,3 +298,22 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.filter-row {
+  border-top: 1px solid #eee;
+  background-color: #fff;
+}
+
+.h-input-group {
+  display: flex;
+  align-items: center;
+  margin: 4px 0;
+}
+
+.h-input-addon {
+  white-space: nowrap;
+  padding: 0 8px;
+  color: #666;
+}
+</style>

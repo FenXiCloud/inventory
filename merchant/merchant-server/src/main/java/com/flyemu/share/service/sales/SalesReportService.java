@@ -115,11 +115,7 @@ public class SalesReportService extends AbsService {
         //根据销售出库单idList查询销售出库单商品详情
         Specification<SalesOutboundItem> salesOutboundItemSpecification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            
-            // 创建与产品表的关联
-            Root<Product> productRoot = query.from(Product.class);
-            predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
-            
+
             //查询销售出库单下面的商品
             if (!salesOutboundIdList.isEmpty()){
                 predicates.add(root.get("salesOutboundId").in(salesOutboundIdList));
@@ -129,10 +125,6 @@ public class SalesReportService extends AbsService {
             }
             if (form.getWarehouseId() != null){
                 predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
-            }
-            // 添加产品分类查询条件
-            if (form.getProductCategoryId() != null) {
-                predicates.add(cb.equal(productRoot.get("productCategoryId"), form.getProductCategoryId()));
             }
             
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -396,11 +388,12 @@ public class SalesReportService extends AbsService {
                     predicates.add(root.get("warehouseId").in(warehouseIds));
                 }
                 // 添加产品分类查询条件
-                if (form.getProductCategoryId() != null) {
+                List<Long> productCategoryIds = form.getProductCategoryIds();
+                if (!CollectionUtils.isEmpty(productCategoryIds)) {
                     // 通过 join 关联 Product 表
                     Root<Product> productRoot = query.from(Product.class);
                     predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
-                    predicates.add(cb.equal(productRoot.get("productCategoryId"), form.getProductCategoryId()));
+                    predicates.add(cb.in(productRoot.get("productCategoryId")).value(productCategoryIds));
                 }
                 return cb.and(predicates.toArray(new Predicate[0]));
             };

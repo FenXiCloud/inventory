@@ -21,6 +21,9 @@ import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
 import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +59,7 @@ import java.util.stream.Stream;
 public class SalesReportService extends AbsService {
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
+    private final static QProduct qProduct = QProduct.product;
 
     private final SalesOutboundItemRepository salesOutboundItemRepository;
     private final SalesReturnItemRepository salesReturnItemRepository;
@@ -111,6 +115,11 @@ public class SalesReportService extends AbsService {
         //根据销售出库单idList查询销售出库单商品详情
         Specification<SalesOutboundItem> salesOutboundItemSpecification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            
+            // 创建与产品表的关联
+            Root<Product> productRoot = query.from(Product.class);
+            predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
+            
             //查询销售出库单下面的商品
             if (!salesOutboundIdList.isEmpty()){
                 predicates.add(root.get("salesOutboundId").in(salesOutboundIdList));
@@ -121,6 +130,11 @@ public class SalesReportService extends AbsService {
             if (form.getWarehouseId() != null){
                 predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
             }
+            // 添加产品分类查询条件
+            if (form.getProductCategoryId() != null) {
+                predicates.add(cb.equal(productRoot.get("productCategoryId"), form.getProductCategoryId()));
+            }
+            
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         //销售出库单商品详情list
@@ -328,6 +342,14 @@ public class SalesReportService extends AbsService {
             if (form.getWarehouseId() != null){
                 predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
             }
+            // 添加产品分类查询条件
+            if (form.getProductCategoryId() != null) {
+                // 创建与产品表的关联
+                Root<Product> productRoot = query.from(Product.class);
+                predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
+                predicates.add(cb.equal(productRoot.get("productCategoryId"), form.getProductCategoryId()));
+            }
+            
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         //销售出库单商品列表
@@ -365,6 +387,13 @@ public class SalesReportService extends AbsService {
                 }
                 if (form.getWarehouseId() != null){
                     predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
+                }
+                // 添加产品分类查询条件
+                if (form.getProductCategoryId() != null) {
+                    // 通过 join 关联 Product 表
+                    Root<Product> productRoot = query.from(Product.class);
+                    predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
+                    predicates.add(cb.equal(productRoot.get("productCategoryId"), form.getProductCategoryId()));
                 }
                 return cb.and(predicates.toArray(new Predicate[0]));
             };

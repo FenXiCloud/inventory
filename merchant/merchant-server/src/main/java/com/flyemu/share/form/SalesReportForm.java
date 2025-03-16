@@ -21,6 +21,7 @@ public class SalesReportForm {
     private String customerId;
     private String warehouseId;
     private String productId;
+    private String productCategoryId;
 
     //销售类型 all out return
     private String salesType;

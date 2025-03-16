@@ -23,6 +23,11 @@ public class SalesReportConstant {
      * 销售分组 商品
      */
     public static final String SALES_GROUP_PRODUCT = "PRODUCT";
+
+    /**
+     * 销售分组 客户
+     */
+    public static final String SALES_GROUP_CUSTOMER = "CUSTOMER";
     /**
      * 销售分组 商品仓库
      */

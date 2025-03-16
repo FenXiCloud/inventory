@@ -436,7 +436,36 @@ public class SalesReportService extends AbsService {
                     )
                 ));
             dtos.addAll(productSummary.values());
-        } else if (StringUtils.equals(SalesReportConstant.SALES_GROUP_PRODUCT_WAREHOUSE,salesGroup)){
+        }if (StringUtils.equals(SalesReportConstant.SALES_GROUP_CUSTOMER, salesGroup)) {
+            Map<Long, SalesReportItemDTO> customerSummary = resultList.stream()
+                    .collect(Collectors.groupingBy(
+                            SalesReportItemDTO::getCustomerId,
+                            Collectors.collectingAndThen(Collectors.toList(),
+                                    items -> {
+                                        SalesReportItemDTO dto = new SalesReportItemDTO();
+                                        SalesReportItemDTO firstItem = items.get(0);
+                                        dto.setCustomerId(firstItem.getCustomerId());
+                                        dto.setCustomerName(firstItem.getCustomerName());
+                                        dto.setCustomerCode(firstItem.getCustomerCode());
+
+                                        dto.setQuantity(items.stream()
+                                                .mapToDouble(item -> item.getQuantity() != null ? item.getQuantity() : 0.0)
+                                                .sum());
+                                        dto.setSubtotal(items.stream()
+                                                .map(item -> item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO)
+                                                .reduce(BigDecimal.ZERO, BigDecimal::add));
+                                        //单价计算
+                                        if (dto.getQuantity() != 0) {
+                                            dto.setUnitPrice(dto.getSubtotal().divide(BigDecimal.valueOf(dto.getQuantity()), 2, BigDecimal.ROUND_HALF_UP));
+                                        } else {
+                                            dto.setUnitPrice(BigDecimal.ZERO);
+                                        }
+                                        return dto;
+                                    }
+                            )
+                    ));
+            dtos.addAll(customerSummary.values());
+        }  else if (StringUtils.equals(SalesReportConstant.SALES_GROUP_PRODUCT_WAREHOUSE,salesGroup)){
             Map<String, SalesReportItemDTO> productWarehouseSummary = resultList.stream().collect(Collectors.groupingBy(item -> item.getProductId() + "-" + item.getWarehouseId(),
                 Collectors.collectingAndThen(Collectors.toList(),
                     items -> {

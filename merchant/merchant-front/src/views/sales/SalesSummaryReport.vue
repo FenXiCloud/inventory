@@ -18,6 +18,7 @@
         <Select v-model="params.salesGroup" class="w-120px"
                 :datas="{
                    PRODUCT:'商品',
+                   CUSTOMER:'客户',
                    PRODUCT_WAREHOUSE:'商品+仓库',
                    CUSTOMER_PRODUCT:'客户+商品',
                    CUSTOMER_PRODUCT_WAREHOUSE:'客户+商品+仓库'
@@ -49,11 +50,11 @@
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">订单号：</span>
-        <Search v-model.trim="params.filter" 
+        <Search v-model.trim="params.filter"
                 search-button-theme="h-btn-default"
-                show-search-button 
+                show-search-button
                 class="w-180px"
-                placeholder="请输入订单号" 
+                placeholder="请输入订单号"
                 @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
@@ -75,13 +76,16 @@
 
 
         <template
-            v-if="this.params.salesGroupSearch === 'CUSTOMER_PRODUCT' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'">
+            v-if="this.params.salesGroupSearch === 'CUSTOMER_PRODUCT' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'
+                  || this.params.salesGroupSearch === 'CUSTOMER'">
           <vxe-column title="客户编码" field="customerCode"/>
           <vxe-column title="客户名称" field="customerName"/>
         </template>
-        <vxe-column title="商品编码" field="productCode" />
-        <vxe-column title="商品名称" field="productName" />
-        <vxe-column title="销售单位" field="unitName" />
+        <template v-if="this.params.salesGroupSearch !== 'CUSTOMER'" >
+          <vxe-column title="商品编码" field="productCode" />
+          <vxe-column title="商品名称" field="productName" />
+          <vxe-column title="销售单位" field="unitName" />
+        </template>
         <template
             v-if="this.params.salesGroupSearch === 'PRODUCT_WAREHOUSE' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'">
           <vxe-column title="仓库名称" field="warehouseName"/>

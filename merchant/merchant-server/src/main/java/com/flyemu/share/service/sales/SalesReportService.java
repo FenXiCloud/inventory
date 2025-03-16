@@ -85,8 +85,10 @@ public class SalesReportService extends AbsService {
             // 添加各种条件
             // 新增审核状态条件
             predicates.add(cb.equal(root.get("orderStatus"), OrderStatus.已审核));
-            if (form.getCustomerId() != null) {
-                predicates.add(cb.equal(root.get("customerId"), form.getCustomerId()));
+
+            List<Long> customerIds = form.getCustomerIds();
+            if (!CollectionUtils.isEmpty(customerIds)) {
+                predicates.add(root.get("customerId").in(customerIds));
             }
             if (form.getStart() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("outboundDate"), form.getStart()));
@@ -120,13 +122,14 @@ public class SalesReportService extends AbsService {
             if (!salesOutboundIdList.isEmpty()){
                 predicates.add(root.get("salesOutboundId").in(salesOutboundIdList));
             }
-            if (form.getProductId() != null){
-                predicates.add(cb.equal(root.get("productId"), form.getProductId()));
+            List<Long> productIds = form.getProductIds();
+            if (!CollectionUtils.isEmpty(productIds)){
+                predicates.add(root.get("productId").in(productIds));
             }
-            if (form.getWarehouseId() != null){
-                predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
+            List<Long> warehouseIds = form.getWarehouseIds();
+            if (!CollectionUtils.isEmpty(warehouseIds)){
+                predicates.add(root.get("warehouseId").in(warehouseIds));
             }
-            
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         //销售出库单商品详情list
@@ -159,11 +162,13 @@ public class SalesReportService extends AbsService {
             Specification<SalesReturnItem> returnOrderItemQuery = (root, query, cb) -> {
                 List<Predicate> predicates = new ArrayList<>();
                 predicates.add(root.get("salesReturnId").in(returnIds));
-                if (form.getProductId() != null){
-                    predicates.add(cb.equal(root.get("productId"), form.getProductId()));
+                List<Long> productIds = form.getProductIds();
+                if (!CollectionUtils.isEmpty(productIds)){
+                    predicates.add(root.get("productId").in(productIds));
                 }
-                if (form.getWarehouseId() != null){
-                    predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
+                List<Long> warehouseIds = form.getWarehouseIds();
+                if (!CollectionUtils.isEmpty(warehouseIds)){
+                    predicates.add(root.get("warehouseId").in(warehouseIds));
                 }
                 return cb.and(predicates.toArray(new Predicate[0]));
             };

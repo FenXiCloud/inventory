@@ -14,6 +14,11 @@
           <Select class="w-178px" filterable :datas="productList" keyName="id" titleName="name"
                   v-model="params.productId" placeholder="请选择商品"  />
         </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">商品类别：</span>
+          <Select class="w-178px" filterable :datas="productCategoryList" keyName="id" titleName="name"
+                  v-model="params.productCategoryId" placeholder="请选择类别"  />
+        </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-280px ml-8px"
                 placeholder="请输入编码、名称" @search="doSearch">
@@ -37,7 +42,7 @@
         <vxe-column type="seq" width="40" title="#"/>
         <vxe-column title="编码" field="productCode" align="left" width="100"/>
         <vxe-column title="名称" field="productName" align="left"/>
-        <vxe-column title="商品类别" field="productCategoryName" align="left"/>
+        <vxe-column title="商品类别" field="productCategory" align="left"/>
         <vxe-column title="规格" field="specification" align="left"/>
         <vxe-column title="单位" field="unitName" align="left"/>
         <vxe-column title="价格" field="unitPrice" align="left"/>
@@ -63,6 +68,7 @@
 import PriceRecord from "@js/api/basic/PriceRecord";
 import {confirm, loading, message} from "heyui.ext";
 import Product from "@js/api/basic/Product";
+import ProductCategory from "@js/api/basic/ProductCategory";
 
 /**
  * @功能描述: 价格记录表
@@ -86,7 +92,8 @@ export default {
         pageSize: 10,
         total: 0
       },
-      productList:[]
+      productList:[],
+      productCategoryList:[],
     }
   },
   computed: {
@@ -111,8 +118,10 @@ export default {
 
       Promise.all([
         Product.select(),
+        ProductCategory.select(),
       ]).then((results) => {
         this.productList = results[0].data || [];
+        this.productCategoryList = results[1].data || [];
       }).finally(() => loading.close());
     },
   },

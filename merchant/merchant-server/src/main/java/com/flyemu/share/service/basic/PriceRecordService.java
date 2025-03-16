@@ -68,7 +68,7 @@ public class PriceRecordService extends AbsService {
     public PageResults<PriceRecordDTO> query(Page page, Query query) {
 
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
-                .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification, qProductCategory.name,
+                .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification, qProductCategory.id,qProductCategory.name,
                         qUnit.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPriceRecord.productId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPriceRecord.baseUnitId))
@@ -345,6 +345,12 @@ public class PriceRecordService extends AbsService {
         public void setProductId(Long productId) {
             if (productId != null) {
                 builder.and(qPriceRecord.productId.eq(productId));
+            }
+        }
+
+        public void setProductCategoryId(Long productCategoryId) {
+            if (productCategoryId != null) {
+                builder.and(qProductCategory.id.eq(productCategoryId));
             }
         }
 

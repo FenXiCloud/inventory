@@ -30,23 +30,23 @@
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">客户：</span>
-        <Select class="w-150px" filterable :datas="customerList" keyName="id" titleName="name"
-                v-model="params.customerId" placeholder="请选择客户"/>
+        <Select :multiple="true" class="w-150px" filterable :datas="customerList" keyName="id" titleName="name"
+                v-model="params.customerIds" placeholder="请选择客户"/>
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">仓库：</span>
-        <Select v-model="params.warehouseId" class="w-150px" keyName="id" titleName="name"
+        <Select :multiple="true" v-model="params.warehouseIds" class="w-150px" keyName="id" titleName="name"
                 :datas="warehouseList" placeholder="请选择仓库"/>
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">商品：</span>
-        <Select v-model="params.productId" class="w-150px" keyName="id" titleName="name"
+        <Select :multiple="true" v-model="params.productIds" class="w-150px" keyName="id" titleName="name"
                 :datas="productList" placeholder="请选择商品"/>
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">商品类别：</span>
-        <Select class="w-150px" filterable :datas="productCategoryList" keyName="id" titleName="name"
-                v-model="params.productCategoryId" placeholder="请选择类别"/>
+        <Select :multiple="true" class="w-150px" filterable :datas="productCategoryList" keyName="id" titleName="name"
+                v-model="params.productCategoryIds" placeholder="请选择类别"/>
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">订单号：</span>

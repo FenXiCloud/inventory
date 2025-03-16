@@ -23,6 +23,11 @@ public class SalesReportForm {
     private String productId;
     private String productCategoryId;
 
+    private List<Long> customerIds;
+    private List<Long> warehouseIds;
+    private List<Long> productIds;
+    private List<Long> productCategoryIds;
+
     //销售类型 all out return
     private String salesType;
 

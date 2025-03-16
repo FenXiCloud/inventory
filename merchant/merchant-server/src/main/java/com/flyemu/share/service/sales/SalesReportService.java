@@ -303,8 +303,9 @@ public class SalesReportService extends AbsService {
             // 新增审核状态条件
             predicates.add(cb.equal(root.get("orderStatus"), OrderStatus.已审核));
             // 添加各种条件
-            if (form.getCustomerId() != null) {
-                predicates.add(cb.equal(root.get("customerId"), form.getCustomerId()));
+            List<Long> customerIds = form.getCustomerIds();
+            if (!CollectionUtils.isEmpty(customerIds)) {
+                predicates.add(root.get("customerId").in(customerIds));
             }
             if (form.getStart() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("outboundDate"), form.getStart()));
@@ -336,18 +337,21 @@ public class SalesReportService extends AbsService {
             if (!salesOutboundIdList.isEmpty()){
                 predicates.add(root.get("salesOutboundId").in(salesOutboundIdList));
             }
-            if (form.getProductId() != null){
-                predicates.add(cb.equal(root.get("productId"), form.getProductId()));
+            List<Long> productIds = form.getProductIds();
+            if (!CollectionUtils.isEmpty(productIds)){
+                predicates.add(root.get("productId").in(productIds));
             }
-            if (form.getWarehouseId() != null){
-                predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
+            List<Long> warehouseIds = form.getWarehouseIds();
+            if (!CollectionUtils.isEmpty(warehouseIds)){
+                predicates.add(root.get("warehouseId").in(warehouseIds));
             }
             // 添加产品分类查询条件
-            if (form.getProductCategoryId() != null) {
+            List<Long> productCategoryIds = form.getProductCategoryIds();
+            if (!CollectionUtils.isEmpty(productCategoryIds)) {
                 // 创建与产品表的关联
                 Root<Product> productRoot = query.from(Product.class);
                 predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
-                predicates.add(cb.equal(productRoot.get("productCategoryId"), form.getProductCategoryId()));
+                predicates.add(cb.in(productRoot.get("productCategoryId")).value(productCategoryIds));
             }
             
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -382,11 +386,14 @@ public class SalesReportService extends AbsService {
             Specification<SalesReturnItem> returnSpec = (root, query, cb) -> {
                 List<Predicate> predicates = new ArrayList<>();
                 predicates.add(root.get("salesReturnId").in(returnIds));
-                if (form.getProductId() != null){
-                    predicates.add(cb.equal(root.get("productId"), form.getProductId()));
+
+                List<Long> productIds = form.getProductIds();
+                if (!CollectionUtils.isEmpty(productIds)){
+                    predicates.add(root.get("productId").in(productIds));
                 }
-                if (form.getWarehouseId() != null){
-                    predicates.add(cb.equal(root.get("warehouseId"), form.getWarehouseId()));
+                List<Long> warehouseIds = form.getWarehouseIds();
+                if (!CollectionUtils.isEmpty(warehouseIds)){
+                    predicates.add(root.get("warehouseId").in(warehouseIds));
                 }
                 // 添加产品分类查询条件
                 if (form.getProductCategoryId() != null) {

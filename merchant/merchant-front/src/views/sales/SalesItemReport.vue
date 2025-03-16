@@ -13,16 +13,16 @@
         </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">客户：</span>
-          <Select class="w-120px" filterable :datas="customerList" keyName="id" titleName="name"
-                  v-model="params.customerId" placeholder="请选择客户"  />
+          <Select :multiple="true" class="w-120px" filterable :datas="customerList" keyName="id" titleName="name"
+                  v-model="params.customerIds" placeholder="请选择客户"  />
         </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">仓库：</span>
-          <Select v-model="params.warehouseId" class="w-100px" keyName="id" titleName="name" :datas="warehouseList" placeholder="请选择仓库"/>
+          <Select :multiple="true" v-model="params.warehouseIds" class="w-100px" keyName="id" titleName="name" :datas="warehouseList" placeholder="请选择仓库"/>
         </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">商品：</span>
-          <Select v-model="params.productId" class="w-100px" keyName="id" titleName="name" :datas="productList" placeholder="请选择商品"/>
+          <Select :multiple="true" v-model="params.productIds" class="w-100px" keyName="id" titleName="name" :datas="productList" placeholder="请选择商品"/>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-180px ml-8px"

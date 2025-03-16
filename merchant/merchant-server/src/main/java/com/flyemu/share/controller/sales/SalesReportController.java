@@ -57,10 +57,10 @@ public class SalesReportController {
      * @param merchantId
      * @return
      */
-    @GetMapping("/salesSummary")
+    @PostMapping("/salesSummary")
     public JsonResult salesSummary(
             Page page,
-            SalesReportForm salesReportForm,
+            @RequestBody SalesReportForm salesReportForm,
             @SaAccountBookId Long accountBookId,
             @SaMerchantId Long merchantId
     ) {

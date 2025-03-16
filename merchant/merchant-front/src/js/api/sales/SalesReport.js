@@ -5,10 +5,10 @@ export default {
         return Ajax[param.id ? 'put' : 'post']('/salesReport', param)
     },
     salesItem(param) {
-        return Ajax.get('/salesReport/salesItem', param)
+        return Ajax.post('/salesReport/salesItem', param)
     },
     salesSummary(param) {
-        return Ajax.get('/salesReport/salesSummary', param)
+        return Ajax.post('/salesReport/salesSummary', param)
     },
     remove(id) {
         return Ajax.delete('/salesReport/' + id);

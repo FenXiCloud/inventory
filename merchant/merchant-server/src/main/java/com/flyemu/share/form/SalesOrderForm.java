@@ -2,6 +2,7 @@ package com.flyemu.share.form;
 
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOrderItem;
+import com.flyemu.share.enums.OrderStatus;
 import lombok.Data;
 
 import java.util.List;
@@ -17,4 +18,6 @@ public class SalesOrderForm {
     private List<SalesOrderItem> salesOrderItemList;
 
     private List<Long> orderIds;
+
+    private OrderStatus orderStatus;
 }

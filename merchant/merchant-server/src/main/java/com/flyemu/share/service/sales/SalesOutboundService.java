@@ -1,5 +1,6 @@
 package com.flyemu.share.service.sales;
 
+import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
@@ -9,25 +10,25 @@ import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
 import com.flyemu.share.dto.SalesOutboundDTO;
 import com.flyemu.share.dto.SalesOutboundItemDTO;
-import com.flyemu.share.entity.basic.QCustomer;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QUnit;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.form.SalesOutboundForm;
-import com.flyemu.share.repository.SalesOrderRepository;
-import com.flyemu.share.repository.SalesOutboundItemRepository;
-import com.flyemu.share.repository.SalesOutboundRepository;
+import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -69,6 +70,14 @@ public class SalesOutboundService extends AbsService {
     private final SalesOutboundItemRepository salesOutboundItemRepository;
     private final CodeSeedService codeSeedService;
     private final SalesOrderRepository salesOrderRepository;
+    private final SalesReturnRepository salesReturnRepository;
+
+    private final ProductRepository productRepository;
+    private final WarehouseRepository warehouseRepository;
+
+    @Autowired
+    private InventoryService inventoryService;
+    private final PriceRecordService priceRecordService;
 
     public PageResults<SalesOutboundDTO> query(Page page, SalesOutboundService.Query query) {
 
@@ -124,15 +133,37 @@ public class SalesOutboundService extends AbsService {
         SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
         Long id = salesOutbound.getId();
         List<SalesOutboundItem> salesOutboundItemList = salesOutboundForm.getSalesOutboundItemList();
-        // todo 根据产品id和仓库id 查询库存服务是否有库存;
+
+        for (SalesOutboundItem item : salesOutboundItemList) {
+            Boolean exist = inventoryService.exist(item.getProductId(), item.getWarehouseId(), salesOutbound.getMerchantId(), salesOutbound.getAccountBookId());
+            if (!exist) {
+                Optional<Product> productOptional = productRepository.findById(item.getProductId());
+                Optional<Warehouse> warehouseOptional = warehouseRepository.findById(item.getWarehouseId());
+
+                String productName = productOptional.map(Product::getName).orElse("未知产品");
+                String warehouseName = warehouseOptional.map(Warehouse::getName).orElse("未知仓库");
+
+                throw new InvalidContextException(String.format("库存不足：产品「%s」在仓库「%s」中库存不足", productName, warehouseName));
+            }
+        }
         if (id != null) {
             //查询
             SalesOutbound original = salesOutboundRepository.getById(id);
+            //已审核单据不能修改
+            OrderStatus orderStatus = original.getOrderStatus();
+            if (orderStatus.equals(OrderStatus.已审核)) {
+                throw new InvalidContextException("已审核单据不能修改");
+            }
             BeanUtil.copyProperties(salesOutbound, original, CopyOptions.create().ignoreNullValue());
             //修改
             SalesOutbound update = salesOutboundRepository.save(original);
+            //清除出库单商品
+            jqf.delete(qSalesOutboundItem).where(qSalesOutboundItem.salesOutboundId.eq(id)).execute();
+            //保存新关系
             if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                 salesOutboundItemList.forEach(item -> {
+                    //保存价格记录
+                    savePrice(item, update);
                     item.setSalesOutboundId(update.getId());
                     item.setAccountBookId(salesOutbound.getAccountBookId());
                     item.setMerchantId(salesOutbound.getMerchantId());
@@ -150,6 +181,8 @@ public class SalesOutboundService extends AbsService {
             SalesOutbound save = salesOutboundRepository.save(salesOutbound);
             if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                 salesOutboundItemList.forEach(item -> {
+                    //保存价格记录
+                    savePrice(item, save);
                     item.setSalesOutboundId(save.getId());
                     item.setAccountBookId(salesOutbound.getAccountBookId());
                     item.setMerchantId(salesOutbound.getMerchantId());
@@ -174,8 +207,40 @@ public class SalesOutboundService extends AbsService {
         }
     }
 
+    private void savePrice(SalesOutboundItem item, SalesOutbound save) {
+        //保存价格记录
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setOrderId(save.getId());
+        priceRecord.setUnitPrice(item.getUnitPrice());
+        priceRecord.setBaseUnitId(item.getBaseUnitId());
+        priceRecord.setProductId(item.getProductId());
+        priceRecord.setMerchantId(save.getMerchantId());
+        priceRecord.setAccountBookId(save.getAccountBookId());
+        priceRecord.setCustomerId(save.getCustomerId());
+        priceRecord.setPriceSource(PriceSource.最近销售价格);
+        priceRecord.setPriceType(PriceType.最近销售价格);
+        priceRecordService.savePriceRecord(priceRecord);
+    }
+
     @Transactional
     public void delete(Long salesOutboundId, Long merchantId, Long accountBookId) {
+
+        SalesOutbound original = salesOutboundRepository.getById(salesOutboundId);
+        //已审核单据不能删除
+        OrderStatus orderStatus = original.getOrderStatus();
+        if (orderStatus.equals(OrderStatus.已审核)) {
+            throw new InvalidContextException("已审核单据不能删除");
+        }
+
+        //已关联销售退货单不能删除
+        Long returnOrderId = original.getReturnOrderId();
+        if (returnOrderId != null){
+            Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
+            salesReturnOptional.ifPresent(salesReturn -> {
+                throw new InvalidContextException("已关联销售退货单不能删除");
+            });
+        }
+
         jqf.delete(qSalesOutbound)
                 .where(qSalesOutbound.id.eq(salesOutboundId).and(qSalesOutbound.merchantId.eq(merchantId)).and(qSalesOutbound.accountBookId.eq(accountBookId)))
                 .execute();
@@ -227,12 +292,27 @@ public class SalesOutboundService extends AbsService {
         }
         SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
         salesOutboundList.forEach(order -> {
-            order.setOrderStatus(OrderStatus.已审核);
+            order.setOrderStatus(salesOutboundForm.getOrderStatus());
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(salesOutbound.getApprovedBy());
         });
 
         salesOutboundRepository.saveAll(salesOutboundList);
+    }
+
+    @Transactional
+    public void audit(SalesOutboundForm salesOutboundForm) {
+        SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
+        Long id = salesOutbound.getId();
+        SalesOutbound original = salesOutboundRepository.getById(id);
+        if (original.getId() == null) {
+            throw new IllegalArgumentException("单据不存在");
+        }
+        original.setApprovedAt(LocalDateTime.now());
+        original.setApprovedBy(salesOutbound.getApprovedBy());
+        original.setOrderStatus(salesOutbound.getOrderStatus());
+        //审核单据
+        salesOutboundRepository.save(original);
     }
 
     public static class Query {

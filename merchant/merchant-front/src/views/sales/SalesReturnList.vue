@@ -3,7 +3,8 @@
     <vxe-toolbar>
       <template #buttons>
         <Button @click="addForm()" color="primary">新 增</Button>
-        <Button @click="batchAudit()" > 审 核</Button>
+        <Button @click="batchAudit('已审核')" > 审 核</Button>
+        <Button @click="batchAudit('已保存')" > 反审核</Button>
       </template>
       <template #tools>
         <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
@@ -18,7 +19,7 @@
                   v-model="params.customerId" placeholder="请选择客户"  />
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-360px ml-8px"
+                show-search-button class="w-280px ml-8px"
                 placeholder="请输入订单号" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
@@ -86,13 +87,13 @@ export default {
   name: "SalesReturnList",
   watch: {
     // 监听 store 中的 currentTabData
-    '$store.state.currentTabData': {
+    '$store.state.currentTabDataReturn': {
       handler(newVal) {
-        console.log('currentTabData changed:', newVal)
+        console.log('currentTabDataReturn changed:', newVal)
         if (newVal && newVal.refresh) {
           this.loadList();
           // 重置刷新标志
-          this.$store.commit('SET_TAB_DATA', null);
+          this.$store.commit('SET_TAB_DATA_RETURN', null);
         }
       },
       deep: true
@@ -137,14 +138,14 @@ export default {
     ...mapMutations(['pushTab']),
 
     addForm(type = 'add', orderId = null) {
-      this.$store.commit('SET_TAB_DATA', {type, orderId});
+      this.$store.commit('SET_TAB_DATA_RETURN', {type, orderId});
       this.pushTab({
         key: 'SalesReturnForm',
         title: type === 'edit' ? '编辑销售退货单' : '新增销售退货单',
       });
     },
 
-    batchAudit() {
+    batchAudit(orderStatus) {
       const selectedRows = this.$refs.table.getCheckboxRecords();
       console.log(selectedRows);
       if (selectedRows.length === 0) {
@@ -157,11 +158,16 @@ export default {
         onConfirm: () => {
           const orderIds = selectedRows.map(row => row.id);
           let params = {
-            orderIds: orderIds
+            orderIds: orderIds,
+            orderStatus:orderStatus
           };
           SalesReturn.batchAudit(params).then((success) => {
             if (success) {
-              message.success("批量审核成功");
+              if(orderStatus === '已审核'){
+                message.success("批量审核成功");
+              }else{
+                message.success("批量反审核成功");
+              }
               this.loadList(); // Refresh the list
             }
           }).finally(() =>

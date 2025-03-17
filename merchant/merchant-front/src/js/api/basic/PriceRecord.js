@@ -12,5 +12,11 @@ export default {
     },
     select(param) {
         return Ajax.get('/priceRecord/select', param)
-    }
+    },
+    productList(param) {
+        return Ajax.get('/priceRecord/product/list', param)
+    },
+    productSave(param) {
+        return Ajax[ 'post']('/priceRecord/product/save', param)
+    },
 }

@@ -21,6 +21,8 @@ const groupRoutes = [
 
     {name: 'SystemLogList', component: defineAsyncComponent(() => import('@views/setting/SystemLogList.vue'))},
 
+    {name: 'FinanceRel', component: defineAsyncComponent(() => import('@views/setting/FinanceRel.vue'))},
+
     {name: 'ProductCategoryList', component: defineAsyncComponent(() => import('@views/basic/ProductCategoryList'))},
 
     {name: 'ProductPriceList', component: defineAsyncComponent(() => import('@views/basic/ProductPriceList'))},
@@ -77,13 +79,22 @@ const groupRoutes = [
     {name: 'SalesRankingReport', component: defineAsyncComponent(() => import('@views/sales/SalesRankingReport.vue'))},
     {name: 'PurchaseOrderList', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderList.vue'))},
     {name: 'PurchaseOrderForm', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderForm.vue'))},
+    {name: 'PurchaseOrderDetail', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderDetail.vue'))},
     {
         name: 'PurchaseInboundList',
         component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundList.vue'))
     },
     {
+        name: 'PurchaseInboundForm',
+        component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundForm.vue'))
+    },
+    {
         name: 'PurchaseReturnList',
         component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnList.vue'))
+    },
+    {
+        name: 'PurchaseReturnForm',
+        component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnForm.vue'))
     },
     {
         name: 'PurchaseItemReport',

@@ -2,20 +2,24 @@ package com.flyemu.share.service.purchase;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.lang.Assert;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.NumberUtil;
+import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.dto.PurchaserOrderDto;
+import com.flyemu.share.dto.purchase.PurchaseInboundItemDto;
+import com.flyemu.share.dto.purchase.PurchaseOrderDto;
 import com.flyemu.share.dto.purchase.PurchaseOrderItemDto;
+import com.flyemu.share.dto.purchase.PurchaseReturnItemDto;
 import com.flyemu.share.entity.basic.*;
-import com.flyemu.share.entity.purchase.PurchaseOrder;
-import com.flyemu.share.entity.purchase.PurchaseOrderItem;
-import com.flyemu.share.entity.purchase.QPurchaseOrder;
-import com.flyemu.share.entity.purchase.QPurchaseOrderItem;
+import com.flyemu.share.entity.purchase.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.PurchaseOrderForm;
 import com.flyemu.share.repository.PurchaseOrderItemRepository;
 import com.flyemu.share.repository.PurchaseOrderRepository;
@@ -30,14 +34,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
- * @功能描述: 销售订单
- * @创建时间: 2023年08月08日
+ * @功能描述: 采购订单
+ * @创建时间: 2025年02月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
@@ -60,16 +66,16 @@ public class PurchaseOrderService extends AbsService {
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final PurchaseOrderItemRepository purchaseOrderItemRepository;
 
-    public PageResults<PurchaserOrderDto> query(Page page, Query query) {
+    public PageResults<PurchaseOrderDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseOrder)
                 .select(qPurchaseOrder, qSupplier.name, qMerchantUser.name)
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseOrder.createdBy))
                 .where(query.builder).orderBy(qPurchaseOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
-        List<PurchaserOrderDto> dtos = new ArrayList<>();
+        List<PurchaseOrderDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            PurchaserOrderDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrder), PurchaserOrderDto.class);
+            PurchaseOrderDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrder), PurchaseOrderDto.class);
             dto.setSupplierName(tuple.get(qSupplier.name));
             dto.setCreatedName(tuple.get(qMerchantUser.name));
             dtos.add(dto);
@@ -78,67 +84,136 @@ public class PurchaseOrderService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
+    public PageResults<PurchaseOrderDto> listToReturn(Page page, Query query) {
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseOrder)
+                .select(qPurchaseOrder, qSupplier.name, qMerchantUser.name)
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseOrder.createdBy))
+                .where(query.builder.and(qPurchaseOrder.orderStatus.eq(OrderStatus.已审核))).orderBy(qPurchaseOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+
+        List<PurchaseOrderDto> dtos = new ArrayList<>();
+        fetchPage.forEach(tuple -> {
+            PurchaseOrderDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrder), PurchaseOrderDto.class);
+            dto.setSupplierName(tuple.get(qSupplier.name));
+            dto.setCreatedName(tuple.get(qMerchantUser.name));
+            dtos.add(dto);
+        });
+
+        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+    }
+
+    public List<PurchaseInboundItemDto> loadToInbound(List<Long> orderIds, Long merchantId, Long supplierId) {
+        QUnit qUnit1 = new QUnit("id");
+
+        List<PurchaseInboundItemDto> collect = bqf.selectFrom(qPurchaseOrderItem)
+                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,
+                        qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
+                .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseOrderItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
+                .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseOrderItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseOrderItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
+                .where(qPurchaseOrderItem.purchaseOrderId.in(orderIds).and(qPurchaseOrderItem.merchantId.eq(merchantId)))
+                .orderBy(qPurchaseOrderItem.id.asc())
+                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
+                    PurchaseInboundItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrderItem), PurchaseInboundItemDto.class);
+                    dto.setId(null);
+                    dto.setProductCode(tuple.get(qProduct.code));
+                    dto.setProductName(tuple.get(qProduct.name));
+                    dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setWarehouseName(tuple.get(qWarehouse.name));
+                    dto.setSecondaryUnitName(tuple.get(qUnit1.name));
+                    list.add(dto);
+                }, List::addAll);
+        return collect;
+    }
+
+    public List<PurchaseReturnItemDto> loadToReturn(List<Long> orderIds, Long merchantId, Long supplierId) {
+        QUnit qUnit1 = new QUnit("id");
+
+        List<PurchaseReturnItemDto> collect = bqf.selectFrom(qPurchaseOrderItem)
+                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,
+                        qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
+                .leftJoin(qPurchaseOrder).on(qPurchaseOrder.id.eq(qPurchaseOrderItem.purchaseOrderId).and(qPurchaseOrder.merchantId.eq(merchantId)))
+                .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
+                .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseOrderItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
+                .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseOrderItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseOrderItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
+                .where(qPurchaseOrderItem.purchaseOrderId.in(orderIds).and(qPurchaseOrderItem.merchantId.eq(merchantId))
+                        .and(qPurchaseOrder.orderStatus.eq(OrderStatus.已审核)))
+                .orderBy(qPurchaseOrderItem.id.asc())
+                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
+                    PurchaseReturnItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrderItem), PurchaseReturnItemDto.class);
+                    dto.setId(null);
+                    dto.setProductCode(tuple.get(qProduct.code));
+                    dto.setProductName(tuple.get(qProduct.name));
+                    dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setWarehouseName(tuple.get(qWarehouse.name));
+                    dto.setSecondaryUnitName(tuple.get(qUnit1.name));
+                    list.add(dto);
+                }, List::addAll);
+        return collect;
+    }
+
     @Transactional
     public PurchaseOrder save(PurchaseOrderForm purchaseOrderForm, Long merchantId) {
         PurchaseOrder order = purchaseOrderForm.getPurchaseOrder();
         if (order.getId() != null) {
-            PurchaseOrder original = purchaseOrderRepository.getById(purchaseOrderForm.getPurchaseOrder().getId());
-
+            PurchaseOrder original = purchaseOrderRepository.getById(order.getId());
+            Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能更新~");
             BeanUtil.copyProperties(order, original, CopyOptions.create().ignoreNullValue());
 
             Set<Long> ids = new HashSet<>();
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(),d.getQuantity(),2)));
-//                保存更新购货商品价格
-                PriceRecord priceRecord = new PriceRecord();
-                priceRecord.setUnitPrice(d.getUnitPrice());
-                priceRecord.setBaseUnitId(d.getBaseUnitId());
-                priceRecord.setProductId(d.getProductId());
-                priceRecord.setMerchantId(merchantId);
-                priceRecord.setAccountBookId(order.getAccountBookId());
-                priceRecord.setSupplierId(order.getSupplierId());
-                priceRecordService.save(priceRecord);
-
+                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
                 if (d.getId() != null) {
                     ids.add(d.getId());
                 }
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);
+                //保存更新购货商品价格
+                savePrice(d, order);
             }
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
             return purchaseOrderRepository.save(original);
         } else {
             order.setOrderNo(codeSeedService.generateCode(purchaseOrderForm.getPurchaseOrder().getMerchantId(), "采购订单"));
-            order.setOrderStatus(OrderStatus.已保存);
             purchaseOrderRepository.save(order);
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(),d.getQuantity(),2)));
-
-//                保存更新购货商品价格
-                PriceRecord priceRecord = new PriceRecord();
-                priceRecord.setUnitPrice(d.getUnitPrice());
-                priceRecord.setBaseUnitId(d.getBaseUnitId());
-                priceRecord.setProductId(d.getProductId());
-                priceRecord.setMerchantId(merchantId);
-                priceRecord.setSupplierId(order.getSupplierId());
-                priceRecord.setAccountBookId(order.getAccountBookId());
-                priceRecordService.save(priceRecord);
-
-
+                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);
+                //保存更新购货商品价格
+                savePrice(d, order);
             }
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
             return purchaseOrderRepository.save(purchaseOrderForm.getPurchaseOrder());
         }
     }
 
+    private void savePrice( PurchaseOrderItem item, PurchaseOrder order) {
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setUnitPrice(item.getUnitPrice());
+        priceRecord.setBaseUnitId(item.getBaseUnitId());
+        priceRecord.setProductId(item.getProductId());
+        priceRecord.setMerchantId(item.getMerchantId());
+        priceRecord.setSupplierId(order.getSupplierId());
+        priceRecord.setAccountBookId(order.getAccountBookId());
+        priceRecord.setOrderId(order.getId());
+        priceRecord.setPriceSource(PriceSource.最近采购价格);
+        priceRecord.setPriceType(PriceType.最近采购价格);
+        priceRecordService.savePriceRecord(priceRecord);
+    }
+
     @Transactional
     public void delete(Long purchaseOrderId, Long merchantId, Long accountBookId) {
+        PurchaseOrder original = purchaseOrderRepository.getById(purchaseOrderId);
+
+        Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能删除~");
+
         jqf.delete(qPurchaseOrder)
                 .where(qPurchaseOrder.id.eq(purchaseOrderId).and(qPurchaseOrder.merchantId.eq(merchantId)).and(qPurchaseOrder.accountBookId.eq(accountBookId)))
                 .execute();
@@ -146,6 +221,38 @@ public class PurchaseOrderService extends AbsService {
 
     public List<PurchaseOrder> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qPurchaseOrder).where(qPurchaseOrder.merchantId.eq(merchantId).and(qPurchaseOrder.accountBookId.eq(accountBookId))).fetch();
+    }
+
+    @Transactional
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        List<PurchaseOrder> orders = bqf.selectFrom(qPurchaseOrder).where(qPurchaseOrder.merchantId.eq(merchantId).and(qPurchaseOrder.id.in(ids))).fetch();
+        Assert.isFalse(CollUtil.isEmpty(orders), "未找到数据~");
+        List<Long> setIds = new ArrayList<>();
+        if (OrderStatus.已审核.equals(state)) {
+            for (PurchaseOrder order : orders) {
+                if (OrderStatus.已保存.equals(order.getOrderStatus())) {
+                    setIds.add(order.getId());
+                } else {
+                    log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
+                }
+            }
+        } else if (OrderStatus.已保存.equals(state)) {
+            for (PurchaseOrder order : orders) {
+                if (OrderStatus.已审核.equals(order.getOrderStatus())) {
+                    setIds.add(order.getId());
+                } else {
+                    log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
+                }
+            }
+        }
+        if (CollUtil.isNotEmpty(setIds)) {
+            jqf.update(qPurchaseOrder)
+                    .set(qPurchaseOrder.orderStatus, state)
+                    .set(qPurchaseOrder.approvedAt, LocalDateTime.now()).
+                    set(qPurchaseOrder.approvedBy, adminId)
+                    .where(qPurchaseOrder.id.in(setIds))
+                    .execute();
+        }
     }
 
     public Dict load(Long merchantId, Long orderId) {
@@ -156,7 +263,8 @@ public class PurchaseOrderService extends AbsService {
 
         QUnit qUnit1 = new QUnit("id");
 
-        PurchaserOrderDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseOrder), PurchaserOrderDto.class);
+        PurchaseOrderDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseOrder), PurchaseOrderDto.class);
+        orderDto.setSupplierName(fetchFirst.get(qSupplier.name));
         ArrayList<PurchaseOrderItemDto> collect = jqf.selectFrom(qPurchaseOrderItem)
                 .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
@@ -171,6 +279,7 @@ public class PurchaseOrderService extends AbsService {
                     dto.setProductCode(tuple.get(qProduct.code));
                     dto.setProductName(tuple.get(qProduct.name));
                     dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setWarehouseName(tuple.get(qWarehouse.name));
                     dto.setSecondaryUnitName(tuple.get(qUnit1.name));
                     list.add(dto);
                 }, List::addAll);
@@ -179,6 +288,38 @@ public class PurchaseOrderService extends AbsService {
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
+
+
+        public void setSupplierId(Long supplierId) {
+            if (supplierId != null) {
+                builder.and(qPurchaseOrder.supplierId.eq(supplierId));
+            }
+        }
+
+        public void setState(OrderStatus state) {
+            if (state != null) {
+                builder.and(qPurchaseOrder.orderStatus.eq(state));
+            }
+        }
+
+        public void setFilter(String filter) {
+            if (StrUtil.isNotEmpty(filter)) {
+                builder.and(qPurchaseOrder.orderNo.contains(filter).or(qSupplier.name.contains(filter)));
+            }
+        }
+
+        public void setStart(LocalDate start) {
+            if (start != null) {
+                builder.and(qPurchaseOrder.orderDate.goe(start));
+            }
+        }
+
+        public void setEnd(LocalDate end) {
+            if (end != null) {
+                builder.and(qPurchaseOrder.orderDate.loe(end));
+            }
+        }
+
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {

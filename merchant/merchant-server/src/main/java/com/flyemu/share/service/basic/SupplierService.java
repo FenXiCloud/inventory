@@ -108,7 +108,6 @@ public class SupplierService extends AbsService {
                     dto.setPrice(tuple.get(qPriceRecord.unitPrice));
                     List<AuxiliaryUnitPrice> units = tuple.get(qProduct.auxiliaryUnitPrices);
 
-
                     if (CollUtil.isNotEmpty(units) && tuple.get(qProduct.enableMultiUnit)) {
                         units.add(0, new AuxiliaryUnitPrice(dto.getUnitId(), dto.getUnitName(), 1d, dto.getPrice()));
                         List<AuxiliaryUnitPrice> finalUnits = units;

@@ -1,5 +1,9 @@
 package com.flyemu.share.entity.basic;
 
+import com.flyemu.share.enums.PolicySource;
+import com.flyemu.share.enums.PolicyType;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,15 +36,15 @@ public class PricingPolicy implements Serializable {
     @Comment("优先级")
     private Integer priority;
 
-    @Comment("价格类型")
+    @Comment("取数类型")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private PriceType priceType;
+    private PolicyType policyType;
 
-    @Comment("价格来源")
+    @Comment("取数来源")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private PriceSource priceSource;
+    private PolicySource policySource;
 
     @Comment("状态")
     @Column(nullable = false)
@@ -55,16 +59,6 @@ public class PricingPolicy implements Serializable {
 
     @Column(nullable = false)
     private Long merchantId;
-
-    //客户等级售价 ： 取的是当前客户级别的商品档案定价
-    public enum PriceSource {
-        客户等级售价, 最近销售单价, 预计采购单价, 最近采购单价, 上次入库成本, 上次出库成本
-    }
-
-    //异常成本处理：（当负库存出库、负结存出库等情形导致商品发出成本小于等于零时会采用本规则）
-    public enum PriceType {
-        销售价格取数, 采购价格取数, 异常成本处理
-    }
 
 }
 

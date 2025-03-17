@@ -1,28 +1,31 @@
 package com.flyemu.share.service.sales;
 
+import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.dto.PurchaserOrderDto;
 import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.SalesOrderForm;
-import com.flyemu.share.repository.PurchaseOrderItemRepository;
-import com.flyemu.share.repository.SalesOrderItemRepository;
-import com.flyemu.share.repository.SalesOrderRepository;
+import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -31,6 +34,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @功能描述: 销售订单
@@ -49,6 +53,7 @@ public class SalesOrderService extends AbsService {
     private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
+    private final SalesOutboundRepository salesOutboundRepository;
 
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderItemRepository salesOrderItemRepository;
@@ -58,6 +63,8 @@ public class SalesOrderService extends AbsService {
     private final static QProduct qProduct = QProduct.product;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final static QUnit qUnit = QUnit.unit;
+    private final PriceRecordService priceRecordService;
+    private final PriceRecordRepository priceRecordRepository;
 
     public PageResults<SalesOrderDTO> query(Page page, SalesOrderService.Query query) {
         long totalSize = bqf.selectFrom(qSalesOrder)
@@ -106,11 +113,21 @@ public class SalesOrderService extends AbsService {
         if (id != null) {
             //查询
             SalesOrder original = salesOrderRepository.getById(id);
+            //已审核单据不能修改
+            OrderStatus orderStatus = original.getOrderStatus();
+            if (orderStatus.equals(OrderStatus.已审核)) {
+                throw new InvalidContextException("已审核单据不能修改");
+            }
             BeanUtil.copyProperties(salesOrder, original, CopyOptions.create().ignoreNullValue());
             //修改销售订单
             SalesOrder update = salesOrderRepository.save(original);
+            //清除销售订单商品
+            jqf.delete(qSalesOrderItem).where(qSalesOrderItem.salesOrderId.eq(id)).execute();
+            //保存新关系
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
+                    //保存价格记录
+                    savePrice(item, update);
                     item.setSalesOrderId(update.getId());
                     item.setAccountBookId(salesOrder.getAccountBookId());
                     item.setMerchantId(salesOrder.getMerchantId());
@@ -128,6 +145,8 @@ public class SalesOrderService extends AbsService {
             SalesOrder save = salesOrderRepository.save(salesOrder);
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
+                    //保存价格记录
+                    savePrice(item, save);
                     item.setSalesOrderId(save.getId());
                     item.setAccountBookId(salesOrder.getAccountBookId());
                     item.setMerchantId(salesOrder.getMerchantId());
@@ -141,16 +160,46 @@ public class SalesOrderService extends AbsService {
         }
     }
 
+    private void savePrice(SalesOrderItem item, SalesOrder salesOrder) {
+        //保存价格记录
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setOrderId(salesOrder.getId());
+        priceRecord.setUnitPrice(item.getUnitPrice());
+        priceRecord.setBaseUnitId(item.getBaseUnitId());
+        priceRecord.setProductId(item.getProductId());
+        priceRecord.setMerchantId(salesOrder.getMerchantId());
+        priceRecord.setAccountBookId(salesOrder.getAccountBookId());
+        priceRecord.setCustomerId(salesOrder.getCustomerId());
+        priceRecord.setPriceSource(PriceSource.最近销售价格);
+        priceRecord.setPriceType(PriceType.最近销售价格);
+        priceRecordService.savePriceRecord(priceRecord);
+    }
+
     @Transactional
-    public void delete(Long SalesOrderId, Long merchantId, Long accountBookId) {
+    public void delete(Long salesOrderId, Long merchantId, Long accountBookId) {
+        SalesOrder original = salesOrderRepository.getById(salesOrderId);
+        //已审核单据不能删除
+        OrderStatus orderStatus = original.getOrderStatus();
+        if (orderStatus.equals(OrderStatus.已审核)) {
+            throw new InvalidContextException("已审核单据不能删除");
+        }
+        //已关联销售出库单不能删除
+        Long outOrderId = original.getOutOrderId();
+        if (outOrderId != null){
+            Optional<SalesOutbound> salesOutboundOptional = salesOutboundRepository.findById(outOrderId);
+            salesOutboundOptional.ifPresent(salesOutbound -> {
+                throw new InvalidContextException("已关联销售出库单不能删除");
+            });
+        }
+
         //删除销售订单
         jqf.delete(qSalesOrder)
-                .where(qSalesOrder.id.eq(SalesOrderId).and(qSalesOrder.merchantId.eq(merchantId)).and(qSalesOrder.accountBookId.eq(accountBookId)))
+                .where(qSalesOrder.id.eq(salesOrderId).and(qSalesOrder.merchantId.eq(merchantId)).and(qSalesOrder.accountBookId.eq(accountBookId)))
                 .execute();
 
         //删除销售订单商品
         jqf.delete(qSalesOrderItem)
-                .where(qSalesOrderItem.salesOrderId.eq(SalesOrderId).and(qSalesOrderItem.merchantId.eq(merchantId)).and(qSalesOrderItem.accountBookId.eq(accountBookId)))
+                .where(qSalesOrderItem.salesOrderId.eq(salesOrderId).and(qSalesOrderItem.merchantId.eq(merchantId)).and(qSalesOrderItem.accountBookId.eq(accountBookId)))
                 .execute();
     }
 
@@ -195,12 +244,27 @@ public class SalesOrderService extends AbsService {
         }
         SalesOrder salesOrder = salesOrderForm.getSalesOrder();
         salesOrders.forEach(order -> {
-            order.setOrderStatus(OrderStatus.已审核);
+            order.setOrderStatus(salesOrderForm.getOrderStatus());
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(salesOrder.getApprovedBy());
         });
 
         salesOrderRepository.saveAll(salesOrders);
+    }
+
+    @Transactional
+    public void audit(SalesOrderForm salesOrderForm) {
+        SalesOrder salesOrder = salesOrderForm.getSalesOrder();
+        Long id = salesOrder.getId();
+        SalesOrder original = salesOrderRepository.getById(id);
+        if (original.getId() == null) {
+            throw new IllegalArgumentException("单据不存在");
+        }
+        original.setApprovedAt(LocalDateTime.now());
+        original.setApprovedBy(salesOrder.getApprovedBy());
+        original.setOrderStatus(salesOrder.getOrderStatus());
+        //审核单据
+        salesOrderRepository.save(original);
     }
 
     public static class Query {
@@ -242,6 +306,12 @@ public class SalesOrderService extends AbsService {
         public void setEnd(String end) {
             if (StringUtils.isNotBlank(end)) {
                 builder.and(qSalesOrder.orderDate.loe(LocalDate.parse(end)));
+            }
+        }
+
+        public void setCustomerId(Long customerId) {
+            if (customerId != null) {
+                builder.and(qSalesOrder.customerId.eq(customerId));
             }
         }
 

@@ -9,6 +9,7 @@ import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
 /**
  * @功能描述: 采购入库单明细
  * @创建时间: 2024年04月28日
@@ -43,11 +44,14 @@ public class PurchaseInboundItem {
     @Comment("数量（以基本单位计）")
     private Double quantity;
 
-    @Comment("辅助单位ID(可为空)")
+    @Comment("入库单位ID")
     private Long secondaryUnitId;
 
-    @Comment("辅助单位数量 (可为空")
+    @Comment("入库单位数量")
     private Double secondaryQuantity;
+
+    @Comment("入库单价")
+    private Double secondaryPrice;
 
     @Comment("换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)")
     private BigDecimal conversionRate;

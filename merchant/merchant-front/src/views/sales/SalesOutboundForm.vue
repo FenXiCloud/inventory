@@ -29,19 +29,14 @@
           </template>
         </vxe-column>
         <vxe-column title="商品信息" width="180" align="center">
-          <template #default="{row,rowIndex}">
-            <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,rowIndex)" :datas="productList" v-model="row.productId"
+          <template #default="scope">
+            <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
+              <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
                       keyName="id" titleName="name" filterable placeholder="输入编码/名称">
                 <template v-slot:item="{ item }">
-                  <div>{{ item.code }} {{ item.name }}</div>
+                  <div>{{ item.name }}</div>
                 </template>
               </Select>
-            </div>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ row.productCode }}--{{ row.productName }}</div>
-              </div>
             </div>
           </template>
         </vxe-column>
@@ -49,15 +44,28 @@
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
               <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
-                      titleName="name"/>
+                      titleName="name" @change="handleWarehouseChange(row, $event)"/>
             </template>
           </template>
         </vxe-column>
         <vxe-column title="数量" field="quantity" width="90">
           <template #default="{row,rowIndex,columnIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3"
-                       @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.quantity" type="float"
-                       min="0" :controls="false"></vxe-input>
+            <vxe-tooltip theme="light">
+              <template #content>
+                <div>当前库存: {{row.currentStockQuantity || 0}}</div>
+                <div>总库存: {{row.totalStockQuantity || 0}}</div>
+              </template>
+              <vxe-input
+                  :id="'r'+rowIndex+''+3"
+                  @blur="updateQuantity(row)"
+                  @focus="showStockQuantity(row)"
+                  ref="inputQuantity"
+                  v-model.number="row.quantity"
+                  type="float"
+                  min="0"
+                  :controls="false">
+              </vxe-input>
+            </vxe-tooltip>
           </template>
         </vxe-column>
         <vxe-column title="单位" field="unitName" align="center" width="80"/>
@@ -97,10 +105,10 @@
         </vxe-column>
       </vxe-table>
       <div class="mt-10px"></div>
-      <div class="filler-panel">
+      <div class="filler-panel" v-if="type==='edit'">
         <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
-          <label class="mr-16px  w-80px">备注说明：</label>
-          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
+          <label class="mr-16px  w-100px">单据编号：</label>
+          <Input v-model="form.orderNo" readonly/>
         </div>
       </div>
       <div class="filler-panel">
@@ -111,6 +119,12 @@
           <Input v-model="form.discountAmount" type="number" readonly/>
           <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
           <Input v-model="form.finalAmount" type="number" readonly/>
+        </div>
+      </div>
+      <div class="filler-panel">
+        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+          <label class="mr-16px  w-100px">备注说明：</label>
+          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
         </div>
       </div>
     </div>
@@ -153,6 +167,7 @@ import CustomerForm from "@views/basic/CustomerForm.vue";
 import SalesOrderSelect from "@views/sales/SalesOrderSelect.vue";
 import Unit from "@js/api/basic/Unit";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
+import Inventory from "@js/api/inventory/Inventory";
 
 export default {
   name: "SalesOutboundForm",
@@ -193,12 +208,18 @@ export default {
 
     //添加或编辑Form
     addOrEditForm(entity) {
+      if (!this.form.customerId) {
+        message.error("请选择客户~");
+        return
+      }
       let layerId = layer.open({
         title: "请选择销售订单",
         shadeClose: false,
         closeBtn: false,
         area: ['1000px', '600px'],
         content: h(SalesOrderSelect, {
+          // 传递参数到子组件
+          customerId: this.customerId,  // 客户ID
           onClose: () => {
             layer.close(layerId);
           },
@@ -217,16 +238,8 @@ export default {
 
     handleSelectedOrders(params) {
       let itemList = params.itemList;
-      // 将 productList 转换为 Map，以 productId 为键
-      const productMap = new Map(this.productList.map(product => [product.id, product]));
       const unitMap = new Map(this.unitList.map(unit => [unit.id, unit]));
       itemList.forEach(row => {
-        // 根据 productId 查找对应的 productName 和 unitName
-        const product = productMap.get(row.productId);
-        if (product) {
-          row.productName = product.name;
-          row.productCode = product.code;
-        }
         // 根据 baseUnitId 查找对应的 unitName
         const unit = unitMap.get(row.baseUnitId);
         if (unit) {
@@ -320,8 +333,43 @@ export default {
             }, 100);
           })
         });
+        this.showStockQuantity(g);
       }
-      this.product = null;
+    },
+
+    // 仓库选择框变化时触发
+    handleWarehouseChange(row) {
+      this.showStockQuantity(row);
+    },
+
+    showStockQuantity(row) {
+      let productId = row.productId;
+      let warehouseId = row.warehouseId;
+      if (!productId) {
+        console.log("请选择产品")
+        return;
+      }
+      // 获取商品库存进行提示
+      let param = {
+        productId: productId,
+        page:1,
+        pageSize:1000
+      }
+      Inventory.list(param).then(res => {
+        const {data} = res;
+        if (data && data.results) {
+          let totalQuantity = 0;
+          let quantity = 0;
+          data.results.forEach(item => {
+            totalQuantity += Number(item.currentQuantity);
+            if (Number(item.warehouseId) === Number(warehouseId)) {
+              quantity = item.currentQuantity;
+            }
+          });
+          row.currentStockQuantity = quantity;
+          row.totalStockQuantity = totalQuantity;
+        }
+      });
     },
 
     checkHttp() {
@@ -399,7 +447,7 @@ export default {
           loading("保存中....");
           let salesOutbound = Object.assign(this.form);
           salesOutbound.orderStatus = orderStatus
-          SalesOutbound.save({
+          SalesOutbound.audit({
             salesOutbound: salesOutbound,
           }).then((success) => {
             if (success) {
@@ -552,7 +600,7 @@ export default {
       // 使用 nextTick 确保在 DOM 更新后执行
       this.$nextTick(() => {
         // 通过 eventBus 或 vuex 触发刷新
-        this.$store.commit('SET_TAB_DATA', { refresh: true });
+        this.$store.commit('SET_TAB_DATA_OUTBOUND', { refresh: true });
       });
     }
   },
@@ -578,10 +626,13 @@ export default {
       this.productList = results[2].data || [];
       this.unitList = results[3].data || [];
       console.log("this.productList", this.productList);
+      this.productList.forEach(item => {
+        item.name = `${item.code}--${item.name}`;
+      });
       //订单详情/编辑订单
-      const tabData = this.$store.state.currentTabData;
+      const tabData = this.$store.state.currentTabDataOutbound;
       //清空参数
-      this.$store.commit('SET_TAB_DATA', null);
+      this.$store.commit('SET_TAB_DATA_OUTBOUND', null);
       console.log("tabData", tabData)
       this.type = tabData?.type;
       this.orderId = tabData?.orderId;

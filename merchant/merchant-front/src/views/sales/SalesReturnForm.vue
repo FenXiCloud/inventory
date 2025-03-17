@@ -57,7 +57,7 @@
           <template #default="{row,rowIndex,columnIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3"
                        @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.quantity" type="float"
-                       min="0" :controls="false" readonly disabled></vxe-input>
+                       min="0" :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="单位" field="unitName" align="center" width="80"/>
@@ -65,28 +65,28 @@
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4"
                        @blur="updatePrice(row)" v-model.number="row.unitPrice" type="float" min="0"
-                       :controls="false" readonly disabled></vxe-input>
+                       :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="折扣率(%)" field="discountRate" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5"
                        @blur="updateDiscount(row)" v-model.number="row.discountRate" type="float" min="0"
-                       :controls="false" readonly disabled></vxe-input>
+                       :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="折扣额" field="discountValue" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+6"
                        @blur="updateDiscountAmount(row)" v-model.number="row.discountValue" type="float" min="0"
-                       :controls="false" readonly disabled></vxe-input>
+                       :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="金额" field="subtotal" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+7"
                        @blur="updateFinalAmount(row)" v-model.number="row.subtotal" type="float" min="0"
-                       :controls="false" readonly disabled></vxe-input>
+                       :controls="false"></vxe-input>
           </template>
         </vxe-column>
         <vxe-column title="备注" field="remark">
@@ -97,10 +97,10 @@
         </vxe-column>
       </vxe-table>
       <div class="mt-10px"></div>
-      <div class="filler-panel">
+      <div class="filler-panel" v-if="type==='edit'">
         <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
-          <label class="mr-16px  w-80px">备注说明：</label>
-          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
+          <label class="mr-16px  w-100px">单据编号：</label>
+          <Input v-model="form.orderNo" readonly/>
         </div>
       </div>
       <div class="filler-panel">
@@ -113,6 +113,12 @@
           <Input v-model="form.customerAmount" type="number" @blur="updateCustomerAmount"/>
           <label class="ml-16px mr-16px  w-100px">本次退款：</label>
           <Input v-model="form.refundAmount" type="number" readonly/>
+        </div>
+      </div>
+      <div class="filler-panel">
+        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+          <label class="mr-16px  w-100px">备注说明：</label>
+          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
         </div>
       </div>
 
@@ -183,6 +189,7 @@ export default {
         customerAmount: 0.00,
         refundAmount: 0.00,
         remarks: null,
+        orderNo: null,
       },
       productData: [],
       //保存选择的源单
@@ -196,12 +203,18 @@ export default {
 
     //添加或编辑Form
     addOrEditForm(entity) {
+      if (!this.form.customerId) {
+        message.error("请选择客户~");
+        return
+      }
       let layerId = layer.open({
         title: "请选择销售出库单",
         shadeClose: false,
         closeBtn: false,
         area: ['1000px', '600px'],
         content: h(SalesOutboundSelect, {
+          // 传递参数到子组件
+          customerId: this.customerId,  // 客户ID
           onClose: () => {
             layer.close(layerId);
           },
@@ -408,7 +421,7 @@ export default {
           loading("保存中....");
           let salesReturn = Object.assign(this.form);
           salesReturn.orderStatus = orderStatus
-          SalesReturn.save({
+          SalesReturn.audit({
             salesReturn: salesReturn,
           }).then((success) => {
             if (success) {
@@ -492,13 +505,13 @@ export default {
             title: "系统提示",
             content: `修改供货商后，将清除已选择的商品数据，确定修改？`,
             onConfirm: () => {
-              this.productData = [{isNew: true}];
+              //this.productData = [{isNew: true}];
               this.form.customerId = e.id;
             }
           })
         } else {
           this.form.customerId = e.id;
-          this.productData = [{isNew: true}];
+          //this.productData = [{isNew: true}];
         }
       }
     },
@@ -566,7 +579,7 @@ export default {
       // 使用 nextTick 确保在 DOM 更新后执行
       this.$nextTick(() => {
         // 通过 eventBus 或 vuex 触发刷新
-        this.$store.commit('SET_TAB_DATA', { refresh: true });
+        this.$store.commit('SET_TAB_DATA_RETURN', { refresh: true });
       });
     }
   },
@@ -593,9 +606,9 @@ export default {
       this.unitList = results[3].data || [];
       console.log("this.productList", this.productList);
       //订单详情/编辑订单
-      const tabData = this.$store.state.currentTabData;
+      const tabData = this.$store.state.currentTabDataReturn;
       //清空参数
-      this.$store.commit('SET_TAB_DATA', null);
+      this.$store.commit('SET_TAB_DATA_RETURN', null);
       console.log("tabData", tabData)
       this.type = tabData?.type;
       this.orderId = tabData?.orderId;

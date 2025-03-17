@@ -50,6 +50,9 @@ public class PurchaseReturnItem {
     @Comment("辅助单位数量 (可为空")
     private Double secondaryQuantity;
 
+    @Comment("辅助单价")
+    private Double secondaryPrice;
+
     @Comment("换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)")
     private BigDecimal conversionRate;
 

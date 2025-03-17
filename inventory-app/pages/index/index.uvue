@@ -1,0 +1,47 @@
+<template>
+  <view>
+    <uni-collapse>
+
+    </uni-collapse>
+  </view>
+</template>
+
+<script lang="uts">
+
+
+export default {
+  data() {
+    return {
+
+    }
+  }
+}
+</script>
+
+<style lang="scss">
+.menu {
+  border-bottom: 1px solid #dbd9d9;
+
+  &.open {
+    border-bottom: none;
+  }
+}
+
+.page-item {
+  padding: 12px 10px;
+  border-bottom: 1px solid #dbd9d9;
+
+  &.first-child {
+    border-top: 1px solid #dbd9d9;
+  }
+
+  .text {
+    font-size: 14px;
+    color: #333;
+
+    &.text-disabled {
+      color: #999;
+    }
+  }
+}
+</style>

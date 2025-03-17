@@ -13,8 +13,13 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.ProductDto;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.sales.SalesOrder;
+import com.flyemu.share.entity.sales.SalesOrderItem;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.repository.CustomerLevelPriceRepository;
+import com.flyemu.share.repository.CustomerLevelRepository;
 import com.flyemu.share.repository.ProductRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -22,6 +27,7 @@ import com.querydsl.core.Tuple;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,6 +63,9 @@ public class ProductService extends AbsService {
 
     private final QCustomer qCustomers = QCustomer.customer;
 
+    private final PriceRecordService priceRecordService;
+
+    private final CustomerLevelRepository customerLevelRepository;
 
     public PageResults<ProductDto> query(Page page, Query query) {
         PagedList<Tuple> pagedList = bqf.selectFrom(qProduct)
@@ -111,6 +120,8 @@ public class ProductService extends AbsService {
                 original.setPinyin(PinYinUtil.getFirstLettersLo(product.getName()) + "," + PinYinUtil.getPinyinString(product.getName()));
             }
             BeanUtil.copyProperties(product, original, CopyOptions.create().ignoreNullValue());
+            //保存价格记录
+            savePrice(original);
             product = productRepository.save(original);
 
         } else {
@@ -144,6 +155,8 @@ public class ProductService extends AbsService {
                     }
                     levelPrice.setAuxiliaryUnitPrices(ups);
                 }
+                //保存价格记录
+                savePrice(levelPrice);
                 cps.add(levelPrice);
             }
             jqf.delete(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(product.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).
@@ -192,6 +205,53 @@ public class ProductService extends AbsService {
                 customerLevelPriceRepository.saveAll(priceList);
             }
         }
+    }
+
+    /**
+     * 保存预计采购价格
+     * @param product
+     */
+    private void savePrice(Product product) {
+        //保存价格记录
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setUnitPrice(product.getPurchasePrice());
+        priceRecord.setBaseUnitId(product.getUnitId());
+        priceRecord.setProductId(product.getId());
+        priceRecord.setMerchantId(product.getMerchantId());
+        priceRecord.setAccountBookId(product.getAccountBookId());
+        priceRecord.setPriceSource(PriceSource.商品价格资料);
+        priceRecord.setPriceType(PriceType.预计采购价格);
+        priceRecordService.savePriceRecord(priceRecord);
+    }
+
+    /**
+     * 保存客户等级价格
+     * @param customerLevelPrice
+     */
+    private void savePrice(CustomerLevelPrice customerLevelPrice) {
+        //保存价格记录
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setUnitPrice(customerLevelPrice.getPrice());
+        priceRecord.setBaseUnitId(customerLevelPrice.getUnitId());
+        priceRecord.setProductId(customerLevelPrice.getProductId());
+        priceRecord.setMerchantId(customerLevelPrice.getMerchantId());
+        priceRecord.setAccountBookId(customerLevelPrice.getAccountBookId());
+        priceRecord.setPriceSource(PriceSource.商品价格资料);
+        Long customerLevelId = customerLevelPrice.getCustomerLevelId();
+        CustomerLevel customerLevel = customerLevelRepository.getById(customerLevelId);
+        String name = customerLevel.getName();
+
+        PriceType priceType = null;
+        if(StringUtils.equals(name,"会员价")){
+            priceType = PriceType.VIP客户价格;
+        }else if(StringUtils.equals(name,"零售价")){
+            priceType = PriceType.零售客户价格;
+        }else {
+            log.info("客户等级价格保存失败：{}",name);
+            return;
+        }
+        priceRecord.setPriceType(priceType);
+        priceRecordService.savePriceRecord(priceRecord);
     }
 
     @Transactional

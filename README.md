@@ -41,20 +41,14 @@
 | develop   | 开发分支，默认为下个版本的SNAPSHOT版本，接受修改或pr                 |
 | release   | 发布分支，不接收任何pr或修改                                      |
 
-### 🐞提供bug反馈或建议
-
-提交问题反馈请说明具体环境
-
-- [Gitee issue](https://gitee.com/chcm/inventory/issues)
-
 
 ### 🧬贡献代码的步骤
 
-1. 在Gitee上fork项目到自己的repo
+1. 在Git上fork项目到自己的repo
 2. 把fork过去的项目也就是你的项目clone到你的本地
 3. 修改代码（记得一定要修改develop分支）
 4. commit后push到自己的库（develop分支）
-5. 登录Gitee在你首页可以看到一个 pull request 按钮，点击它，填写一些说明信息，然后提交即可。
+5. 登录Git在你首页可以看到一个 pull request 按钮，点击它，填写一些说明信息，然后提交即可。
 6. 等待维护者合并
 
 ### 📐PR遵照的原则

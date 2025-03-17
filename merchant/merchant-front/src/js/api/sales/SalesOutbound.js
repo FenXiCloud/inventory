@@ -19,4 +19,7 @@ export default {
     batchAudit(param) {
         return Ajax.put('/salesOutbound/batchAudit', param)
     },
+    audit(param) {
+        return Ajax.put('/salesOutbound/audit', param)
+    },
 }

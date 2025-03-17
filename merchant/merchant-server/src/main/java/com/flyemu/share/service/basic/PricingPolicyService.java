@@ -2,8 +2,12 @@ package com.flyemu.share.service.basic;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import com.flyemu.share.dto.price.PricingPolicyDTO;
 import com.flyemu.share.entity.basic.PricingPolicy;
 import com.flyemu.share.entity.basic.QPricingPolicy;
+import com.flyemu.share.enums.PolicyType;
+import com.flyemu.share.enums.PriceType;
+import com.flyemu.share.form.price.PricingPolicyForm;
 import com.flyemu.share.repository.PricingPolicyRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -34,7 +38,7 @@ public class PricingPolicyService extends AbsService {
     public List<PricingPolicy> query(Query query) {
         List<PricingPolicy> pricingPolicys = bqf.selectFrom(qPricingPolicy)
                 .where(query.builder)
-                .orderBy(qPricingPolicy.id.desc())
+                .orderBy(qPricingPolicy.priority.asc())
                 .fetch();
         return pricingPolicys;
     }
@@ -61,14 +65,30 @@ public class PricingPolicyService extends AbsService {
         return bqf.selectFrom(qPricingPolicy).where(qPricingPolicy.merchantId.eq(merchantId).and(qPricingPolicy.accountBookId.eq(accountBookId))).fetch();
     }
 
+    @Transactional
+    public void sort(PricingPolicyForm pricingPolicyForm) {
+        List<PricingPolicyDTO> dataList = pricingPolicyForm.getDataList();
+        if (dataList == null || dataList.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < dataList.size(); i++) {
+            PricingPolicyDTO pricingPolicyDTO = dataList.get(i);
+            PricingPolicy pricingPolicy = pricingPolicyRepository.getById(pricingPolicyDTO.getId());
+            pricingPolicy.setPriority(i+1);
+            //修改状态
+            pricingPolicy.setEnabled(pricingPolicyDTO.getEnabled());
+            pricingPolicyRepository.save(pricingPolicy);
+        }
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
-        public void setPriceType(PricingPolicy.PriceType priceType) {
-            if (priceType != null) {
-                builder.and(qPricingPolicy.priceType.eq(priceType));
+        public void setPolicyType(PolicyType policyType) {
+            if (policyType != null) {
+                builder.and(qPricingPolicy.policyType.eq(policyType));
             } else {
-                builder.and(qPricingPolicy.priceType.isNotNull());
+                builder.and(qPricingPolicy.policyType.isNotNull());
             }
         }
 

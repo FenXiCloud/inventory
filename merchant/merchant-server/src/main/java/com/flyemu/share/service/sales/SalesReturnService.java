@@ -1,5 +1,6 @@
 package com.flyemu.share.service.sales;
 
+import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
@@ -9,19 +10,19 @@ import com.flyemu.share.dto.SalesOutboundDTO;
 import com.flyemu.share.dto.SalesOutboundItemDTO;
 import com.flyemu.share.dto.SalesReturnDTO;
 import com.flyemu.share.dto.SalesReturnItemDTO;
-import com.flyemu.share.entity.basic.QCustomer;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QUnit;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.SalesReturnForm;
 import com.flyemu.share.repository.SalesOutboundItemRepository;
 import com.flyemu.share.repository.SalesOutboundRepository;
 import com.flyemu.share.repository.SalesReturnItemRepository;
 import com.flyemu.share.repository.SalesReturnRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -68,6 +69,7 @@ public class SalesReturnService extends AbsService {
 
     private final SalesOutboundRepository salesOutboundRepository;
     private final SalesOutboundItemRepository salesOutboundItemRepository;
+    private final PriceRecordService priceRecordService;
 
     public PageResults<SalesReturnDTO> query(Page page, SalesReturnService.Query query) {
         long totalSize = bqf.selectFrom(qSalesReturn)
@@ -124,10 +126,18 @@ public class SalesReturnService extends AbsService {
         if (id != null) {
             //更新
             SalesReturn original = salesReturnRepository.getById(salesReturn.getId());
+
+            //已审核单据不能修改
+            OrderStatus orderStatus = original.getOrderStatus();
+            if (orderStatus.equals(OrderStatus.已审核)) {
+                throw new InvalidContextException("已审核单据不能修改");
+            }
+
             BeanUtil.copyProperties(salesReturn, original, CopyOptions.create().ignoreNullValue());
             SalesReturn update = salesReturnRepository.save(original);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    savePrice(item, update);
                     item.setSalesReturnId(update.getId());
                     item.setAccountBookId(salesReturn.getAccountBookId());
                     item.setMerchantId(salesReturn.getMerchantId());
@@ -144,6 +154,8 @@ public class SalesReturnService extends AbsService {
             SalesReturn save = salesReturnRepository.save(salesReturn);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    //保存价格记录
+                    savePrice(item, save);
                     item.setSalesReturnId(save.getId());
                     item.setAccountBookId(salesReturn.getAccountBookId());
                     item.setMerchantId(salesReturn.getMerchantId());
@@ -169,8 +181,31 @@ public class SalesReturnService extends AbsService {
 
     }
 
+    private void savePrice(SalesReturnItem item, SalesReturn save) {
+        //保存价格记录
+        PriceRecord priceRecord = new PriceRecord();
+        priceRecord.setOrderId(save.getId());
+        priceRecord.setUnitPrice(item.getUnitPrice());
+        priceRecord.setBaseUnitId(item.getBaseUnitId());
+        priceRecord.setProductId(item.getProductId());
+        priceRecord.setMerchantId(save.getMerchantId());
+        priceRecord.setAccountBookId(save.getAccountBookId());
+        priceRecord.setCustomerId(save.getCustomerId());
+        priceRecord.setPriceSource(PriceSource.最近销售价格);
+        priceRecord.setPriceType(PriceType.最近销售价格);
+        priceRecordService.savePriceRecord(priceRecord);
+    }
+
     @Transactional
     public void delete(Long salesReturnId, Long merchantId, Long accountBookId) {
+
+        SalesReturn original = salesReturnRepository.getById(salesReturnId);
+        //已审核单据不能删除
+        OrderStatus orderStatus = original.getOrderStatus();
+        if (orderStatus.equals(OrderStatus.已审核)) {
+            throw new InvalidContextException("已审核单据不能删除");
+        }
+
         jqf.delete(qSalesReturn)
                 .where(qSalesReturn.id.eq(salesReturnId).and(qSalesReturn.merchantId.eq(merchantId)).and(qSalesReturn.accountBookId.eq(accountBookId)))
                 .execute();
@@ -222,11 +257,26 @@ public class SalesReturnService extends AbsService {
         }
         SalesReturn salesReturn = salesReturnForm.getSalesReturn();
         salesReturnList.forEach(order -> {
-            order.setOrderStatus(OrderStatus.已审核);
+            order.setOrderStatus(salesReturnForm.getOrderStatus());
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(salesReturn.getApprovedBy());
         });
         salesReturnRepository.saveAll(salesReturnList);
+    }
+
+    @Transactional
+    public void audit(SalesReturnForm salesReturnForm) {
+        SalesReturn salesReturn = salesReturnForm.getSalesReturn();
+        Long id = salesReturn.getId();
+        SalesReturn original = salesReturnRepository.getById(id);
+        if (original.getId() == null) {
+            throw new IllegalArgumentException("单据不存在");
+        }
+        original.setApprovedAt(LocalDateTime.now());
+        original.setApprovedBy(salesReturn.getApprovedBy());
+        original.setOrderStatus(salesReturn.getOrderStatus());
+        //审核单据
+        salesReturnRepository.save(original);
     }
 
     public static class Query {

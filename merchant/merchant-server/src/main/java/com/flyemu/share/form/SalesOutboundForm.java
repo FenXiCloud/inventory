@@ -25,4 +25,6 @@ public class SalesOutboundForm {
     private List<Long> orderIds;
     //选择的源单id
     private List<Long> selectSalesOrderIdList;
+
+    private OrderStatus orderStatus;
 }

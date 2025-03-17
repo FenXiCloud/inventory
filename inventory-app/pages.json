@@ -1,0 +1,42 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "主页"
+      }
+    }
+  ],
+  "globalStyle": {
+    "pageOrientation": "portrait",
+    "navigationBarTitleText": "纷析云进销存",
+    "navigationBarTextStyle": "white",
+    "navigationBarBackgroundColor": "#007AFF",
+    "backgroundColor": "#F8F8F8",
+    "backgroundColorTop": "#F4F5F6",
+    "backgroundColorBottom": "#F4F5F6",
+    "h5": {
+      "maxWidth": 1190,
+      "navigationBarTextStyle": "white",
+      "navigationBarBackgroundColor": "#007AFF"
+    }
+  },
+  "uniIdRouter": {},
+  "condition": {
+    "current": 0,
+    "list": [
+      {
+        "name": "",
+        "path": "",
+        "query": ""
+      }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-package com.flyemu.share.dto;
+package com.flyemu.share.dto.purchase;
 
 import com.flyemu.share.enums.OrderStatus;
 import lombok.Data;
@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(callSuper = false)
 
-public class PurchaserOrderDto {
+public class PurchaseInboundDto {
     private Long id;
 
     /**
@@ -30,9 +30,9 @@ public class PurchaserOrderDto {
     private Long supplierId;
 
     /**
-     * 下单日期
+     * 入库日期
      */
-    private LocalDate orderDate;
+    private LocalDate inboundDate;
 
     /**
      * 订单金额

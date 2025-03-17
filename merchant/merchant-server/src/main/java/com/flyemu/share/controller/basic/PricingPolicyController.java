@@ -4,6 +4,7 @@ import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.basic.PricingPolicy;
+import com.flyemu.share.form.price.PricingPolicyForm;
 import com.flyemu.share.service.basic.PricingPolicyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +54,12 @@ public class PricingPolicyController {
     @GetMapping("select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(pricingPolicyService.select(merchantId, accountBookId));
+    }
+
+    @PutMapping("sort")
+    public JsonResult sort(@RequestBody @Valid PricingPolicyForm pricingPolicyForm) {
+        pricingPolicyService.sort(pricingPolicyForm);
+        return JsonResult.successful();
     }
 
 }

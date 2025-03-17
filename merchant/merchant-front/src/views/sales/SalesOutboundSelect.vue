@@ -11,7 +11,7 @@
           <div class="h-input-group">
             <span class="h-input-addon ml-8px">客户：</span>
             <Select class="w-180px" filterable :datas="customerList" keyName="id" titleName="name"
-                    v-model="params.customerId" placeholder="请选择客户"  />
+                    v-model="params.customerId" placeholder="请选择客户"  readonly disabled/>
           </div>
           <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                   show-search-button class="w-200px ml-8px"
@@ -77,6 +77,12 @@ const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
 
 export default {
   name: "SalesOutboundSelect",
+  props: {
+    customerId: {
+      type: [String, Number],
+      default: null
+    }
+  },
   data() {
     return {
       dataList: [],
@@ -170,8 +176,8 @@ export default {
           });
         }
       })
-      this.amountTotal = totalAmount;
-      return [["", "", "", "",totalAmount,discountAmount,finalAmount]];
+      this.amountTotal = totalAmount.toFixed(2);
+      return [["", "", "", "",totalAmount.toFixed(2),discountAmount.toFixed(2),finalAmount.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -192,6 +198,10 @@ export default {
     },
   },
   created() {
+    // 使用传入的参数初始化查询条件
+    if (this.customerId) {
+      this.params.customerId = this.customerId;
+    }
     this.loadList();
   }
 }

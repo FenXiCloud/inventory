@@ -13,6 +13,11 @@
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">供货商：</span>
+          <Select class="w-160px" filterable required :datas="supplierList" keyName="id" titleName="name"
+                  :deletable="false"  v-model="params.supplierId" placeholder="请选择供货商"/>
+        </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
                 placeholder="请输入订单号/供货商名称" @search="doSearch">
@@ -80,6 +85,7 @@ import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 import {mapMutations} from "vuex";
 import {confirm, message} from "heyui.ext";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
+import Supplier from "@js/api/basic/Supplier";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -89,6 +95,7 @@ export default {
   data() {
     return {
       dataList: [],
+      supplierList: [],
       loading: false,
       amountTotal: 0,
       totalParams: {},
@@ -102,6 +109,7 @@ export default {
         state: null,
         sortCol: null,
         sort: null,
+        supplierId: null,
       },
       dateRange: {
         start: manba(startTime).format("YYYY-MM-dd"),
@@ -154,6 +162,11 @@ export default {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
+    },
+    loadSupplier() {
+      Supplier.select().then(({data}) => {
+        this.supplierList = data || [];
+      })
     },
     approved() {
       let checkList = this.$refs.table.getCheckboxRecords();
@@ -217,6 +230,7 @@ export default {
   }
   ,
   created() {
+    this.loadSupplier();
     this.loadList();
   }
 }

@@ -4,14 +4,17 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
+import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.PurchaseInboundDto;
-import com.flyemu.share.entity.basic.PriceRecord;
-import com.flyemu.share.entity.basic.QSupplier;
+import com.flyemu.share.dto.purchase.PurchaseInboundItemDto;
+import com.flyemu.share.dto.purchase.PurchaseOrderDto;
+import com.flyemu.share.dto.purchase.PurchaseOrderItemDto;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.purchase.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
@@ -52,8 +55,12 @@ import java.util.Set;
 public class PurchaseInboundService extends AbsService {
 
     private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
+    private final static QPurchaseInboundItem qPurchaseInboundItem = QPurchaseInboundItem.purchaseInboundItem;
     private final static QSupplier qSupplier = QSupplier.supplier;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
+    private final static QProduct qProduct = QProduct.product;
+    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
+    private final static QUnit qUnit = QUnit.unit;
 
     private final PurchaseInboundRepository purchaseInboundRepository;
     private final PurchaseInboundItemRepository inboundItemRepository;
@@ -177,6 +184,37 @@ public class PurchaseInboundService extends AbsService {
         }
     }
 
+    public Dict load(Long merchantId, Long orderId) {
+        Tuple fetchFirst = jqf.selectFrom(qPurchaseInbound)
+                .select(qPurchaseInbound, qSupplier.name)
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
+                .where(qPurchaseInbound.merchantId.eq(merchantId).and(qPurchaseInbound.id.eq(orderId))).fetchFirst();
+
+        QUnit qUnit1 = new QUnit("id");
+
+        PurchaseOrderDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseInbound), PurchaseOrderDto.class);
+        orderDto.setSupplierName(fetchFirst.get(qSupplier.name));
+        ArrayList<PurchaseInboundItemDto> collect = jqf.selectFrom(qPurchaseInboundItem)
+                .select(qPurchaseInboundItem, qProduct.code, qProduct.name, qWarehouse.name,
+                        qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseInboundItem.productId).and(qProduct.merchantId.eq(merchantId)))
+                .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseInboundItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
+                .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseInboundItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseInboundItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
+                .where(qPurchaseInboundItem.purchaseInboundId.eq(orderId).and(qPurchaseInboundItem.merchantId.eq(merchantId)))
+                .orderBy(qPurchaseInboundItem.id.asc())
+                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
+                    PurchaseInboundItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseInboundItem), PurchaseInboundItemDto.class);
+                    dto.setProductCode(tuple.get(qProduct.code));
+                    dto.setProductName(tuple.get(qProduct.name));
+                    dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setWarehouseName(tuple.get(qWarehouse.name));
+                    dto.setSecondaryUnitName(tuple.get(qUnit1.name));
+                    list.add(dto);
+                }, List::addAll);
+        return Dict.create().set("purchaseInbound", orderDto).set("purchaseInboundItemList", collect);
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
@@ -209,6 +247,12 @@ public class PurchaseInboundService extends AbsService {
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qPurchaseInbound.merchantId.eq(merchantId));
+            }
+        }
+
+        public void setSupplierId(Long supplierId) {
+            if (supplierId != null) {
+                builder.and(qPurchaseInbound.supplierId.eq(supplierId));
             }
         }
 

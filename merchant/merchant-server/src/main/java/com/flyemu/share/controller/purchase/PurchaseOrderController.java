@@ -97,7 +97,7 @@ public class PurchaseOrderController {
 
 
     /**
-     * 入库单详情
+     * 采购单详情
      *
      * @param merchantId
      * @param orderId

@@ -78,4 +78,16 @@ public class PurchaseInboundController {
         purchaseInboundService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
         return JsonResult.successful();
     }
+
+    /**
+     * 入库单详情
+     *
+     * @param merchantId
+     * @param orderId
+     * @return
+     */
+    @GetMapping("load/{orderId}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long orderId) {
+        return JsonResult.successful(purchaseInboundService.load(merchantId, orderId));
+    }
 }

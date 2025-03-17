@@ -6,6 +6,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.NumberUtil;
+import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
@@ -30,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -105,7 +107,9 @@ public class PurchaseReturnService extends AbsService {
             purchaseReturnItemRepository.saveAll(purchaseReturnForm.getPurchaseReturnItemList());
             return purchaseReturnRepository.save(original);
         } else {
-            order.setOrderNo(codeSeedService.generateCode(order.getMerchantId(), "采购退货单"));
+            String code = codeSeedService.generateCode(order.getMerchantId(), "采购退货单");
+            Assert.notNull(code, "生成单号失败~");
+            order.setOrderNo(code);
             order.setOrderStatus(OrderStatus.已保存);
             purchaseReturnRepository.save(order);
             for (PurchaseReturnItem d : purchaseReturnForm.getPurchaseReturnItemList()) {
@@ -215,9 +219,31 @@ public class PurchaseReturnService extends AbsService {
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
+        public void setStart(LocalDate start) {
+            if (start != null) {
+                builder.and(qPurchaseReturn.returnDate.goe(start));
+            }
+        }
+
+        public void setEnd(LocalDate end) {
+            if (end != null) {
+                builder.and(qPurchaseReturn.returnDate.loe(end));
+            }
+        }
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qPurchaseReturn.merchantId.eq(merchantId));
+            }
+        }
+        public void setFilter(String filter) {
+            if (StrUtil.isNotEmpty(filter)) {
+                builder.and(qPurchaseReturn.orderNo.contains(filter).or(qSupplier.name.contains(filter)));
+            }
+        }
+        public void setSupplierId(Long supplierId) {
+            if (supplierId != null) {
+                builder.and(qPurchaseReturn.supplierId.eq(supplierId));
             }
         }
 

@@ -7,7 +7,7 @@
         <Button @click="auditsForm('antiAudits')">反审核</Button>
       </template>
       <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
+        <Select v-model="params.state" class="w-120px" :datas="{未审核:'未审核',已审核:'已审核'}"
                 placeholder="审核状态："/>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">日期：</span>
@@ -74,7 +74,7 @@
 import manba from "manba";
 import InventoryTransfer from "@js/api/inventory/InventoryTransfer";
 import {mapMutations} from "vuex";
-import {confirm, message} from "heyui.ext";
+import {confirm, loading, message} from "heyui.ext";
 import OtherInbound from "@js/api/inventory/OtherInbound";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
@@ -159,22 +159,28 @@ export default {
         return;
       }
       if (type === "audits") {
-        const filterRecords = selectRecords.filter(item => item.orderStatus === "已保存");
+        const filterRecords = selectRecords.filter(item => item.orderStatus === "未审核");
         if (!filterRecords || filterRecords.length === 0) {
-          message.warn("请选择状态为已保存的数据，进行审核~");
+          message.warn("请选择状态为未审核的数据，进行审核~");
           return;
         }
-        if (filterRecords.length > 1) {
-          message.warn("请选择单条数据，进行审核~");
-          return;
-        }
-        filterRecords.forEach(item => {
-          this.pushTab({
-            key: 'InventoryTransferForm',
-            title: '审核调拨单',
-            params: {type: type, inventoryTransferId: item.id}
-          });
+        const ids = filterRecords.map(item => {
+          return item.id
         });
+        const params = {
+          ids: ids.join(','),
+          type: "AUDITS",
+        };
+        console.info(filterRecords, ids);
+        loading("审核中....");
+        InventoryTransfer.approves(params)
+            .then((success) => {
+              if (success) {
+                message("审核成功~");
+                this.loadList();
+              }
+            })
+            .finally(() => loading.close());
         return;
       }
       if (type === "antiAudits") {
@@ -184,17 +190,23 @@ export default {
           message.warn("请选择状态为已审核的数据，进行审核~");
           return;
         }
-        if (filterRecords.length > 1) {
-          message.warn("请选择单条数据，进行审核~");
-          return;
-        }
-        filterRecords.forEach(item => {
-          this.pushTab({
-            key: 'InventoryTransferForm',
-            title: '反审核调拨单',
-            params: {type: type, inventoryTransferId: item.id}
-          });
+        const ids = filterRecords.map(item => {
+          return item.id
         });
+        const params = {
+          ids: ids.join(','),
+          type: "ANTI_AUDIT",
+        };
+        console.info(filterRecords, ids);
+        loading("审核中....");
+        InventoryTransfer.approves(params)
+            .then((success) => {
+              if (success) {
+                message("审核成功~");
+                this.loadList();
+              }
+            })
+            .finally(() => loading.close());
       }
     },
     doRemove({id}) {
@@ -211,7 +223,7 @@ export default {
       });
     },
     editable(row) {
-      return ['已保存'].includes(row.orderStatus);
+      return ['未审核'].includes(row.orderStatus);
     }
   },
   created() {

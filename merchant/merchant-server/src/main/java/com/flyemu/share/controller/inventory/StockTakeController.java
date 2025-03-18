@@ -14,7 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import static com.flyemu.share.entity.inventory.QStockTake.stockTake;
+import java.util.Arrays;
 
 /**
  * @功能描述: 盘点单
@@ -43,10 +43,10 @@ public class StockTakeController {
         StockTake stockTake = stockTakeForm.getStockTake();
         stockTake.setMerchantId(merchantId);
         stockTake.setAccountBookId(accountBookId);
-        stockTake.setOrderStatus(OrderStatus.已保存);
+        stockTake.setOrderStatus(OrderStatus.未审核);
         stockTake.setCreatedBy(adminId);
-        stockTakeService.save(stockTakeForm);
-        return JsonResult.successful();
+        StockTake take = stockTakeService.save(stockTakeForm);
+        return JsonResult.successful(take);
     }
 
     @DeleteMapping("/{stockTakeId}")
@@ -63,6 +63,14 @@ public class StockTakeController {
     @GetMapping("approve")
     public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
         stockTakeService.approve(id, type, adminId);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("approves")
+    public JsonResult approves(@RequestParam("ids") String ids, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        Arrays.stream(ids.split(",")).map(Long::parseLong).forEach(id -> {
+            stockTakeService.approve(id, type, adminId);
+        });
         return JsonResult.successful();
     }
 

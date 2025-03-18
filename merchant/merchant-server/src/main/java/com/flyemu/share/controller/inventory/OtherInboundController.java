@@ -14,6 +14,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
+
 /**
  * @功能描述: 其他入库单
  * @创建时间: 2023年08月08日
@@ -50,6 +52,14 @@ public class OtherInboundController {
     @GetMapping("approve")
     public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
         otherInboundService.approve(id, type, adminId);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("approves")
+    public JsonResult approves(@RequestParam("ids") String ids, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        Arrays.stream(ids.split(",")).map(Long::parseLong).forEach(id -> {
+            otherInboundService.approve(id, type, adminId);
+        });
         return JsonResult.successful();
     }
 

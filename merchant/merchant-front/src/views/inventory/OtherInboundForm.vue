@@ -4,20 +4,23 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker v-model="form.orderDate" :disabled="auditOperate || 'look' !== type"
+          <DatePicker v-model="form.orderDate" :disabled="looked"
                       :option="{ start: accountBook.checkoutDate }"
                       :clearable="false">
           </DatePicker>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">供应商：</label>
           <Select class="w-178px" filterable required :datas="supplierList" keyName="id" titleName="name"
-                  v-model="form.supplierId" placeholder="请选择供应商" :disabled="auditOperate || 'look' === type"/>
+                  v-model="form.supplierId" placeholder="请选择供应商" :disabled="looked"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">客户：</label>
           <Select class="w-178px" filterable required :datas="customerList" keyName="id" titleName="name"
-                  v-model="form.customerId" placeholder="请选择客户" :disabled="auditOperate || 'look' === type"/>
+                  v-model="form.customerId" placeholder="请选择客户" :disabled="looked"/>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">业务类型：</label>
           <Select class="w-178px" filterable required :datas="inboundTypeList" keyName="id" titleName="name"
-                  :deletable="false" v-model="form.inboundType" :disabled="auditOperate || 'look' === type"
+                  :deletable="false" v-model="form.inboundType" :disabled="looked"
                   placeholder="请选择业务类型"/>
+        </template>
+        <template #tools>
+          <Stamp v-if="approved"/>
         </template>
       </vxe-toolbar>
       <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border="border" show-overflow keep-source
@@ -41,7 +44,7 @@
         <vxe-column field="productCode" title="商品编码" width="100"></vxe-column>
         <vxe-column field="productName" title="商品名称" min-width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!auditOperate && 'look' !== type">
+            <div class="h-input-group goodsSelect" v-if="!looked">
               <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable
                       placeholder="输入编码/名称" keyName="id" titleName="name" @change="changeRow(scope, 'product')">
                 <template v-slot:item="{ item }">
@@ -63,7 +66,7 @@
         <vxe-column title="单位" field="productUnitName" width="90"/>
         <vxe-column title="仓库" field="warehouseName" width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!auditOperate && 'look' !== type">
+            <div class="h-input-group goodsSelect" v-if="!looked">
               <Select :deletable="false" ref="ms" v-model="scope.row.warehouseId" :datas="warehouseList" filterable
                       placeholder="请选择仓库" keyName="id" titleName="name" @change="changeRow(scope, 'warehouse')">
                 <template v-slot:item="{ item }">
@@ -80,7 +83,7 @@
         </vxe-column>
         <vxe-column title="数量" field="quantity" width="100">
           <template #default="scope">
-            <vxe-tooltip v-if="!auditOperate && 'look' !== type" :content="scope.row.quantityTips" theme="light">
+            <vxe-tooltip v-if="!looked" :content="scope.row.quantityTips" theme="light">
               <vxe-input @focus="quantityFocus(scope)" @blur="quantityBlur('quantity',scope)"
                          v-model.number="scope.row.quantity" type="int" min="0" :controls="false">
               </vxe-input>
@@ -94,7 +97,7 @@
         </vxe-column>
         <vxe-column title="入库单价" field="unitPrice" width="125">
           <template #default="scope">
-            <vxe-input v-if="!auditOperate && 'look' !== type" @focus="quantityFocus(scope)"
+            <vxe-input v-if="!looked" @focus="quantityFocus(scope)"
                        @blur="quantityBlur('unitPrice',scope)"
                        v-model.number="scope.row.unitPrice" type="int" min="0" :controls="false">
             </vxe-input>
@@ -107,7 +110,7 @@
         </vxe-column>
         <vxe-column title="入库金额" field="subtotal" width="125">
           <template #default="scope">
-            <vxe-input v-if="!auditOperate && 'look' !== type" @focus="quantityFocus(scope)"
+            <vxe-input v-if="!looked" @focus="quantityFocus(scope)"
                        @blur="quantityBlur('subtotal',scope)"
                        v-model.number="scope.row.subtotal" type="int" min="0" :controls="false">
             </vxe-input>
@@ -128,7 +131,7 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="auditOperate || 'look' === type" placeholder="请输入备注" type="text" maxlength="150"
+          <Input :disabled="looked" placeholder="请输入备注" type="text" maxlength="150"
                  style="width: 80%"
                  v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
@@ -138,17 +141,17 @@
     <div class="modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button color="primary" v-if="!auditOperate && 'look' !== type" @click="saveOrder('increase')"
+        <Button color="primary" v-if="!approved && !looked" @click="saveOrder('increase')"
                 :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder" v-if="form.orderStatus !== '已审核' && !auditOperate && 'look' !== type"
+        <Button @click="saveOrder" v-if="!approved && !looked"
                 :loading="loading"> 保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button v-if="type === 'audits'" @click="auditForm" :loading="loading"> 审核</Button>
+        <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
         <!-- 仅当状态为审核时显示 -->
-        <Button v-if="type === 'antiAudits'" @click="auditForm" :loading="loading"> 反审核</Button>
+        <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
       </div>
     </div>
   </div>
@@ -156,7 +159,6 @@
 <script>
 import {confirm, loading, message} from "heyui.ext";
 import manba from "manba";
-import {CopyObj} from "@common/utils";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import Customer from "@js/api/basic/Customer";
@@ -164,9 +166,11 @@ import Supplier from "@js/api/basic/Supplier";
 import OtherInbound from "@js/api/inventory/OtherInbound";
 import Inventory from "@js/api/inventory/Inventory";
 import {mapMutations, mapState} from "vuex";
+import Stamp from "../common/Stamp.vue";
 
 export default {
   name: "OtherInboundForm",
+  components: {Stamp},
   props: {
     otherInboundId: [String, Number],
     stockTakeId: [String, Number],
@@ -176,8 +180,11 @@ export default {
   },
   computed: {
     ...mapState(["user", "accountBook"]),
-    auditOperate() {
-      return ['audits', 'antiAudits'].includes(this.type);
+    approved() {
+      return ['已审核'].includes(this.form.orderStatus);
+    },
+    looked() {
+      return ['look'].includes(this.type);
     }
   },
   data() {
@@ -324,18 +331,30 @@ export default {
       // 操作对象
       const params = this.getSaveOrderParams(filterOtherInboundData, type);
       OtherInbound.save(params)
-          .then((success) => {
+          .then(({success, data}) => {
             if (success) {
               message("保存成功~");
-              this.clearForm();
               setTimeout(() => {
-                this.closeWindow();
                 if (type === "increase") {
+                  this.clearForm();
+                  // 刷新列表为编辑
+                  this.closeWindow();
                   this.pushTab({
                     key: 'OtherInboundForm',
                     title: '新增其他入库单',
                     params: {type: 'add', otherInboundId: null}
                   });
+                } else {
+                  // 刷新列表为编辑
+                  this.closeWindow();
+                  this.pushTab({
+                    key: 'OtherInboundForm',
+                    title: '新增其他入库单',
+                    params: {type: 'edit', otherInboundId: data.id}
+                  });
+                  this.$emit("update:otherInboundId", data.id);
+                  this.$emit("update:type", "edit");
+                  this.loadEditForm(data.id);
                 }
               }, 300);
             }
@@ -440,7 +459,7 @@ export default {
     },
     //行是否选中
     rowIsSelect(rowIndex) {
-      return (this.increase || rowIndex === this.selectRowIndex) && !this.auditOperate;
+      return !this.looked;
     },
     //行选中事件
     currentChangeEvent({rowIndex}) {
@@ -505,11 +524,11 @@ export default {
       }
     },
     //加载编辑表单
-    loadEditForm() {
+    loadEditForm(id) {
       this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
       this.otherInboundData = [];
-      OtherInbound.load(this.otherInboundId).then(
+      OtherInbound.load(this.otherInboundId || id).then(
           ({data}) => {
             if (data && data.length > 0) {
               this.form.id = data[0].id;
@@ -590,13 +609,21 @@ export default {
       this.editConfig = {};
     },
     //审核表单
-    auditForm() {
+    async auditForm(operateType) {
       const type = this.type;
-      let operateType = "AUDITS";
-      if (type !== "audits") {
-        operateType = "ANTI_AUDIT";
+      let {id} = this.form;
+      if (!id) {
+        const filterOtherInboundData = this.otherInboundData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
+        // 校验
+        this.validatorsForm(filterOtherInboundData);
+        // 操作对象
+        const params = this.getSaveOrderParams(filterOtherInboundData, type);
+        const res = await OtherInbound.save(params);
+        if (!res.success) {
+          return;
+        }
+        id = res.data.id;
       }
-      const {id} = this.form;
       const params = {id, type: operateType};
       loading("审核中....");
       OtherInbound.approve(params)
@@ -604,7 +631,7 @@ export default {
             if (success) {
               message("审核成功~");
               setTimeout(() => {
-                this.closeWindow();
+                this.loadEditForm(id);
               }, 300);
             }
           })

@@ -48,6 +48,11 @@
         <Select :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
                 v-model="params.productCategoryIds" placeholder="请选择类别"/>
       </div>
+      <div class="h-input-group">
+        <span class="h-input-addon">客户类别：</span>
+        <Select :multiple="true" :datas="customerCategoryList" keyName="id" titleName="name"
+                v-model="params.customerCategoryIds" placeholder="请选择类别"/>
+      </div>
 
       <div class="h-input-group" style="margin-left: 10px">
         <Button @click="doSearch" color="primary">查 询</Button>
@@ -73,6 +78,11 @@
                   || this.params.salesGroupSearch === 'CUSTOMER'">
           <vxe-column title="客户编码" field="customerCode"/>
           <vxe-column title="客户名称" field="customerName"/>
+          <vxe-column title="客户类别" field="customerCategoryId">
+            <template #default="{row}">
+              {{ customerCategoryList.find(item => item.id === row.customerCategoryId)?.name || '-' }}
+            </template>
+          </vxe-column>
         </template>
         <template v-if="this.params.salesGroupSearch !== 'CUSTOMER'" >
           <vxe-column title="商品编码" field="productCode" />
@@ -117,6 +127,7 @@ import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import * as XLSX from "xlsx";
 import ProductCategory from "@js/api/basic/ProductCategory";
+import CustomerCategory from "@js/api/basic/CustomerCategory";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -150,6 +161,7 @@ export default {
       warehouseList: [],
       productList: [],
       productCategoryList:[],
+      customerCategoryList:[],
     }
   },
   computed: {
@@ -283,11 +295,13 @@ export default {
         Warehouse.select(),
         Product.select(),
         ProductCategory.select(),
+        CustomerCategory.select(),
       ]).then((results) => {
         this.customerList = results[0].data || [];
         this.warehouseList = results[1].data || [];
         this.productList = results[2].data || [];
         this.productCategoryList = results[3].data || [];
+        this.customerCategoryList = results[4].data || [];
       }).finally(() => loading.close());
     },
   },

@@ -226,6 +226,7 @@ public class SalesReportService extends AbsService {
                 customerList.stream().filter(customer -> customer.getId().equals(customerId)).findFirst().ifPresent(customer -> {
                     salesReportItemDTO.setCustomerName(customer.getName());
                     salesReportItemDTO.setCustomerCode(customer.getCode());
+                    salesReportItemDTO.setCustomerCategoryId(customer.getCustomerCategoryId());
                 });
             });
             salesReportItemDTO.setSalesType("out");
@@ -266,6 +267,7 @@ public class SalesReportService extends AbsService {
                 customerList.stream().filter(customer -> customer.getId().equals(customerId)).findFirst().ifPresent(customer -> {
                     salesReportItemDTO.setCustomerName(customer.getName());
                     salesReportItemDTO.setCustomerCode(customer.getCode());
+                    salesReportItemDTO.setCustomerCategoryId(customer.getCustomerCategoryId());
                 });
             });
 
@@ -314,6 +316,14 @@ public class SalesReportService extends AbsService {
             }
             if(StringUtils.isNotBlank(form.getFilter())){
                 predicates.add(cb.like(root.get("orderNo"), "%" + form.getFilter() + "%"));
+            }
+            // 添加客户分类查询条件
+            List<Long> customerCategoryIds = form.getCustomerCategoryIds();
+            if (!CollectionUtils.isEmpty(customerCategoryIds)) {
+                // 创建与产品表的关联
+                Root<Customer> customerRoot = query.from(Customer.class);
+                predicates.add(cb.equal(root.get("customerId"), customerRoot.get("id")));
+                predicates.add(cb.in(customerRoot.get("customerCategoryId")).value(customerCategoryIds));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
@@ -454,6 +464,7 @@ public class SalesReportService extends AbsService {
                                         dto.setCustomerId(firstItem.getCustomerId());
                                         dto.setCustomerName(firstItem.getCustomerName());
                                         dto.setCustomerCode(firstItem.getCustomerCode());
+                                        dto.setCustomerCategoryId(firstItem.getCustomerCategoryId());
 
                                         dto.setQuantity(items.stream()
                                                 .mapToDouble(item -> item.getQuantity() != null ? item.getQuantity() : 0.0)
@@ -482,6 +493,7 @@ public class SalesReportService extends AbsService {
                         dto.setProductName(firstItem.getProductName());
                         dto.setProductCode(firstItem.getProductCode());
                         dto.setUnitName(firstItem.getUnitName());
+                        dto.setSpecification(firstItem.getSpecification());
                         dto.setWarehouseName(firstItem.getWarehouseName());
 
                         dto.setQuantity(items.stream()
@@ -511,9 +523,11 @@ public class SalesReportService extends AbsService {
                                 dto.setProductName(firstItem.getProductName());
                                 dto.setProductCode(firstItem.getProductCode());
                                 dto.setUnitName(firstItem.getUnitName());
+                                dto.setSpecification(firstItem.getSpecification());
                                 dto.setCustomerId(firstItem.getCustomerId());
                                 dto.setCustomerName(firstItem.getCustomerName());
                                 dto.setCustomerCode(firstItem.getCustomerCode());
+                                dto.setCustomerCategoryId(firstItem.getCustomerCategoryId());
 
                                 dto.setQuantity(items.stream()
                                         .mapToDouble(item -> item.getQuantity() != null ? item.getQuantity() : 0.0)
@@ -543,10 +557,12 @@ public class SalesReportService extends AbsService {
                                 dto.setProductName(firstItem.getProductName());
                                 dto.setProductCode(firstItem.getProductCode());
                                 dto.setUnitName(firstItem.getUnitName());
+                                dto.setSpecification(firstItem.getSpecification());
                                 //客户信息
                                 dto.setCustomerId(firstItem.getCustomerId());
                                 dto.setCustomerName(firstItem.getCustomerName());
                                 dto.setCustomerCode(firstItem.getCustomerCode());
+                                dto.setCustomerCategoryId(firstItem.getCustomerCategoryId());
                                 //仓库信息
                                 dto.setWarehouseId(firstItem.getWarehouseId());
                                 dto.setWarehouseName(firstItem.getWarehouseName());

@@ -83,6 +83,8 @@ public class SalesReportItemDTO {
     @Comment("单据编号")
     private String orderNo;
 
+    @Comment("客户分类id")
+    private Long customerCategoryId;
     @Comment("客户name")
     private String customerName;
     @Comment("客户name")

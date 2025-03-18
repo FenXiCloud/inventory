@@ -8,13 +8,14 @@
           <label class="mr-20px ml-20px" style="font-size: 16px !important">仓库：</label>
           <Select class="w-178px" filterable :multiple="true" required :datas="warehouseList" keyName="id"
                   titleName="name"
-                  v-model="form.warehouseIds" placeholder="请选择仓库" :disabled="auditOperate || form.id"
+                  v-model="form.warehouseIds" placeholder="请选择仓库" :disabled="looked || form.id"
                   @change="changeWarehouseId"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">商品：</label>
           <Select class="w-178px mr-20px" filterable required :datas="productList" keyName="id" titleName="name"
-                  v-model="form.productId" placeholder="请选择商品" :disabled="auditOperate || form.id"/>
+                  v-model="form.productId" placeholder="请选择商品" :disabled="looked || form.id"/>
         </template>
         <template #tools>
+          <Stamp v-if="approved"/>
           <Search v-if="!form.id" v-model.trim="form.filter" search-button-theme="h-btn-default"
                   show-search-button class="w-360px ml-8px"
                   placeholder="请输入商品编号/商品名称" @search="doSearch">
@@ -41,7 +42,7 @@
         <vxe-column title="系统库存" field="systemQuantity" width="100"/>
         <vxe-column title="盘点库存" field="actualQuantity" width="100">
           <template #default="scope">
-            <vxe-input v-if="!auditOperate && 'look' !== type" @input="quantityInput(scope)"
+            <vxe-input v-if="!looked" @input="quantityInput(scope)"
                        v-model.number="scope.row.actualQuantity" type="int" min="0" :controls="false">
             </vxe-input>
             <div v-else class="flex">
@@ -63,7 +64,7 @@
         </vxe-column>
         <vxe-column title="备注" field="differenceReason" width="100">
           <template #default="scope">
-            <vxe-input v-if="!auditOperate && 'look' !== type" v-model="scope.row.differenceReason"></vxe-input>
+            <vxe-input v-if="!looked" v-model="scope.row.differenceReason"></vxe-input>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
                 <div>{{ scope.row.differenceReason }}</div>
@@ -76,7 +77,7 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="auditOperate || 'look' === type" placeholder="请输入备注" type="text" maxlength="150"
+          <Input :disabled="looked" placeholder="请输入备注" type="text" maxlength="150"
                  style="width: 80%"
                  v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
@@ -86,22 +87,17 @@
     <div class="modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button color="primary" v-if="!auditOperate && 'look' !== type" @click="saveOrder('increase')"
-                :loading="loading">
+        <Button v-if="!approved && !looked" color="primary" @click="saveOrder('increase')" :loading="loading">
           保存并新增
         </Button>
-        <Button color="primary" v-if="!auditOperate" :disabled="form.generatedDisabled" @click="openGeneratedModal"
-                :loading="loading">
+        <Button color="primary" :disabled="form.generatedDisabled" @click="openGeneratedModal" :loading="loading">
           生成盘点单据
         </Button>
-        <Button @click="saveOrder" v-if="form.orderStatus !== '已审核' && !auditOperate && 'look' !== type"
-                :loading="loading">
-          保存
-        </Button>
+        <Button v-if="!approved && !looked" @click="saveOrder" :loading="loading">保存</Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button v-if="type === 'audits'" @click="auditForm" :loading="loading"> 审核</Button>
+        <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
         <!-- 仅当状态为审核时显示 -->
-        <Button v-if="type === 'antiAudits'" @click="auditForm" :loading="loading"> 反审核</Button>
+        <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
       </div>
     </div>
     <Modal v-model="opened" hasCloseIcon>
@@ -124,15 +120,16 @@
 <script>
 import {confirm, loading, message} from "heyui.ext";
 import manba from "manba";
-import {CopyObj} from "@common/utils";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import Inventory from "@js/api/inventory/Inventory";
 import {mapMutations, mapState} from "vuex";
 import StockTake from "@js/api/inventory/StockTake";
+import Stamp from "../common/Stamp.vue";
 
 export default {
   name: "StockTakeForm",
+  components: {Stamp},
   props: {
     stockTakeId: [String, Number],
     type: String,
@@ -141,8 +138,11 @@ export default {
   },
   computed: {
     ...mapState(["user", "accountBook"]),
-    auditOperate() {
-      return ['audits', 'antiAudits'].includes(this.type);
+    approved() {
+      return ['已审核'].includes(this.form.orderStatus);
+    },
+    looked() {
+      return ['look'].includes(this.type);
     }
   },
   data() {
@@ -237,18 +237,31 @@ export default {
       // 操作对象
       const params = this.getSaveOrderParams(filterStockTakeData, type);
       StockTake.save(params)
-          .then((success) => {
+          .then(({success, data}) => {
             if (success) {
               message("保存成功~");
               this.clearForm();
               setTimeout(() => {
-                this.closeWindow();
                 if (type === "increase") {
+                  this.clearForm();
+                  this.closeWindow();
                   this.pushTab({
                     key: 'StockTakeForm',
                     title: '新增盘点单',
                     params: {type: 'add', stockTakeId: null, status: null}
                   });
+                } else {
+                  // 刷新列表为编辑
+                  this.closeWindow();
+                  this.pushTab({
+                    key: 'StockTakeForm',
+                    title: '编辑盘点单',
+                    params: {type: 'edit', stockTakeId: data.id, status: data.orderStatus},
+                  });
+                  this.$emit("update:stockTakeId", data.id);
+                  this.$emit("update:status", data.orderStatus);
+                  this.$emit("update:type", "edit");
+                  this.loadEditForm(data.id);
                 }
               }, 300);
             }
@@ -354,7 +367,7 @@ export default {
     },
     //行是否选中
     rowIsSelect(rowIndex) {
-      return (this.increase || rowIndex === this.selectRowIndex) && !this.auditOperate;
+      return !this.looked;
     },
     //行选中事件
     currentChangeEvent({rowIndex}) {
@@ -377,11 +390,11 @@ export default {
       this.doSearch();
     },
     //加载编辑表单
-    loadEditForm() {
+    loadEditForm(id) {
       this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
       this.stockTakeData = [];
-      StockTake.load(this.stockTakeId).then(
+      StockTake.load(this.stockTakeId || id).then(
           ({data}) => {
             if (data && data.length > 0) {
               this.form.id = data[0].id;
@@ -451,13 +464,21 @@ export default {
       this.editConfig = {};
     },
     //审核表单
-    auditForm() {
+    async auditForm(operateType) {
       const type = this.type;
-      let operateType = "AUDITS";
-      if (type !== "audits") {
-        operateType = "ANTI_AUDIT";
+      let {id} = this.form;
+      if (!id) {
+        const filterStockTakeData = this.stockTakeData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
+        // 校验
+        this.validatorsForm(filterStockTakeData);
+        // 操作对象
+        const params = this.getSaveOrderParams(filterStockTakeData, type);
+        const res = await StockTake.save(params);
+        if (!res.success) {
+          return;
+        }
+        id = res.data.id;
       }
-      const {id} = this.form;
       const params = {id, type: operateType};
       loading("审核中....");
       StockTake.approve(params)
@@ -465,7 +486,8 @@ export default {
             if (success) {
               message("审核成功~");
               setTimeout(() => {
-                this.closeWindow();
+                this.loadEditForm(id);
+                this.getInventoryList();
               }, 300);
             }
           })
@@ -517,15 +539,17 @@ export default {
         StockTake.export(this.stockTakeId).then(res => {
           console.info(res.data)
           const data = res.data;
-          const {outbounds, inbounds} = data;
-          if (outbounds && outbounds.length > 0) {
-            this.outbounds = outbounds;
-          }
-          if (inbounds && inbounds.length > 0) {
-            this.inbounds = inbounds;
-          }
-          if (this.inbounds.length > 0 || this.outbounds.length > 0) {
-            this.form.generatedDisabled = false;
+          if (data) {
+            const {outbounds, inbounds} = data;
+            if (outbounds && outbounds.length > 0) {
+              this.outbounds = outbounds;
+            }
+            if (inbounds && inbounds.length > 0) {
+              this.inbounds = inbounds;
+            }
+            this.form.generatedDisabled = !(this.inbounds.length > 0 || this.outbounds.length > 0);
+          } else {
+            this.form.generatedDisabled = true;
           }
         });
       }

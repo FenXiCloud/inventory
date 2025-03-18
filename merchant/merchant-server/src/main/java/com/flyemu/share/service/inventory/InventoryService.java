@@ -292,7 +292,7 @@ public class InventoryService extends AbsService {
     public PageResults<InventoryReportDto> report(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventory)
                 .select(
-                        qInventory.productId.count(),
+                        qProduct.id.count().as("count"),
                         qProduct.id.as("productId"),
                         qProduct.code.as("productCode"),
                         qProduct.name.as("productName"),
@@ -304,7 +304,7 @@ public class InventoryService extends AbsService {
                 .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventory.warehouseId))
-                .where(query.builders())
+                .where(query.builders()).where(qProduct.id.isNotNull())
                 .groupBy(qProduct.id)
                 .orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryReportDto> dtos = new ArrayList<>();
@@ -321,7 +321,7 @@ public class InventoryService extends AbsService {
             dtos.add(dto);
         }
         if (!fetchPage.isEmpty()) {
-            totalCount = fetchPage.get(0).get(qInventory.productId.count());
+            totalCount = fetchPage.get(0).get(qProduct.id.count().as("count"));
         }
         if (totalCount == null) {
             totalCount = 0L;

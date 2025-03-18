@@ -7,7 +7,7 @@
         <Button @click="auditsForm('antiAudits')">反审核</Button>
       </template>
       <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
+        <Select v-model="params.state" class="w-120px" :datas="{未审核:'未审核',已审核:'已审核'}"
                 placeholder="审核状态："/>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">盘点日期：</span>
@@ -15,7 +15,8 @@
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">仓库：</span>
-          <Select v-model="params.warehouseIds" :multiple="true" class="w-120px" :datas="warehouseList" keyName="id" titleName="name"/>
+          <Select v-model="params.warehouseIds" :multiple="true" class="w-120px" :datas="warehouseList" keyName="id"
+                  titleName="name"/>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
@@ -87,7 +88,7 @@ import manba from "manba";
 import StockTake from "@js/api/inventory/StockTake";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapMutations} from "vuex";
-import {confirm, message} from "heyui.ext";
+import {confirm, loading, message} from "heyui.ext";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -186,22 +187,28 @@ export default {
         return;
       }
       if (type === "audits") {
-        const filterRecords = selectRecords.filter(item => item.orderStatus === "已保存");
+        const filterRecords = selectRecords.filter(item => item.orderStatus === "未审核");
         if (!filterRecords || filterRecords.length === 0) {
-          message.warn("请选择状态为已保存的数据，进行审核~");
+          message.warn("请选择状态为未审核的数据，进行审核~");
           return;
         }
-        if (filterRecords.length > 1) {
-          message.warn("请选择单条数据，进行审核~");
-          return;
-        }
-        filterRecords.forEach(item => {
-          this.pushTab({
-            key: 'StockTakeForm',
-            title: '审核盘点单',
-            params: {type: type, stockTakeId: item.id}
-          });
+        const ids = filterRecords.map(item => {
+          return item.id
         });
+        const params = {
+          ids: ids.join(','),
+          type: "AUDITS",
+        };
+        console.info(filterRecords, ids);
+        loading("审核中....");
+        StockTake.approves(params)
+            .then((success) => {
+              if (success) {
+                message("审核成功~");
+                this.loadList();
+              }
+            })
+            .finally(() => loading.close());
         return;
       }
       if (type === "antiAudits") {
@@ -211,17 +218,23 @@ export default {
           message.warn("请选择状态为已审核的数据，进行审核~");
           return;
         }
-        if (filterRecords.length > 1) {
-          message.warn("请选择单条数据，进行审核~");
-          return;
-        }
-        filterRecords.forEach(item => {
-          this.pushTab({
-            key: 'StockTakeForm',
-            title: '反审核盘点单',
-            params: {type: type, stockTakeId: item.id}
-          });
+        const ids = filterRecords.map(item => {
+          return item.id
         });
+        const params = {
+          ids: ids.join(','),
+          type: "ANTI_AUDIT",
+        };
+        console.info(filterRecords, ids);
+        loading("审核中....");
+        StockTake.approves(params)
+            .then((success) => {
+              if (success) {
+                message("审核成功~");
+                this.loadList();
+              }
+            })
+            .finally(() => loading.close());
       }
     },
     doRemove({id}) {
@@ -238,7 +251,7 @@ export default {
       });
     },
     editable(row) {
-      return ['已保存'].includes(row.orderStatus);
+      return ['未审核'].includes(row.orderStatus);
     }
   },
   created() {

@@ -196,6 +196,7 @@ public class StockTakeService extends AbsService {
                         qStockTake.id.as("id"),
                         dateExpressions.as("checkDate"),
                         qStockTake.remarks.as("remarks"),
+                        qStockTake.orderStatus.as("orderStatus"),
                         qStockTake.warehouseId.as("mainWarehouseId"),
                         qStockTake.warehouseIds.as("mainWarehouseIds"),
                         qStockTakeItem.id.as("itemId"),
@@ -231,6 +232,7 @@ public class StockTakeService extends AbsService {
             item.put("id", tuple.get(qStockTake.id.as("id")));
             item.put("checkDate", tuple.get(dateExpressions.as("checkDate")));
             item.put("remarks", tuple.get(qStockTake.remarks.as("remarks")));
+            item.put("orderStatus", tuple.get(qStockTake.orderStatus.as("orderStatus")));
             item.put("mainWarehouseId", tuple.get(qStockTake.warehouseId.as("mainWarehouseId")));
             item.put("mainWarehouseIds", tuple.get(qStockTake.warehouseIds.as("mainWarehouseIds")));
             item.put("itemId", tuple.get(qStockTakeItem.id.as("itemId")));
@@ -270,8 +272,11 @@ public class StockTakeService extends AbsService {
                 stockTakeRepository.save(stockTake);
             }
             case ANTI_AUDIT -> {
-                jqf.delete(qStockTake).where(qStockTake.id.eq(id)).execute();
-                stockTakeItemService.deleteByStockTakeId(id);
+                stockTake.setOrderStatus(OrderStatus.未审核);
+                stockTake.setApprovedBy(adminId);
+                stockTake.setApprovedAt(LocalDateTime.now());
+                // 调整对应库存
+                stockTakeRepository.save(stockTake);
             }
             default -> {
 
@@ -281,6 +286,10 @@ public class StockTakeService extends AbsService {
 
     public Map<String, Object> export(Long id) {
         Map<String, Object> result = new HashMap<>(2);
+        StockTake stockTake = jqf.selectFrom(qStockTake).where(qStockTake.id.eq(id).and(qStockTake.orderStatus.eq(OrderStatus.已审核))).fetchOne();
+        if (stockTake == null) {
+            return result;
+        }
         List<StockTakeItem> stockTakeItems = stockTakeItemService.findByStockTakeId(id);
         // 是否已有关联盘盈数据
         List<OtherInbound> otherInbounds = otherInboundService.findByStockTakeId(id);
@@ -426,8 +435,7 @@ public class StockTakeService extends AbsService {
                         .or(qStockTake.warehouseId.isNull());
             }
             if (StrUtil.isNotBlank(warehouseIds)) {
-                builder.and(qStockTakeWarehouse.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()))
-                        .or(qStockTakeWarehouse.id.isNull());
+                builder.and(qStockTakeWarehouse.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()).or(qStockTakeWarehouse.id.isNull()));
             }
             return builder;
         }

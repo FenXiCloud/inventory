@@ -191,6 +191,7 @@ export default {
             .then((success) => {
               if (success) {
                 message("审核成功~");
+                this.$refs.table.clearCheckboxRow();
                 this.loadList();
               }
             })
@@ -217,6 +218,7 @@ export default {
             .then((success) => {
               if (success) {
                 message("审核成功~");
+                this.$refs.table.clearCheckboxRow();
                 this.loadList();
               }
             })

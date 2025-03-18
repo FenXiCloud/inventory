@@ -206,8 +206,10 @@ public class CostAdjustmentService extends AbsService {
             case ANTI_AUDIT -> {
                 //处理成本
                 this.processingCosts(costAdjustment, costAdjustmentItems, true);
-                jqf.delete(qCostAdjustment).where(qCostAdjustment.id.eq(id)).execute();
-                costAdjustmentItemService.deleteByCostAdjustmentId(id);
+                costAdjustment.setOrderStatus(OrderStatus.未审核);
+                costAdjustment.setApprovedBy(adminId);
+                costAdjustment.setApprovedAt(LocalDateTime.now());
+                costAdjustmentRepository.save(costAdjustment);
             }
             default -> {
 

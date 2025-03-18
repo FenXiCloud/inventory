@@ -30,34 +30,27 @@
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">客户：</span>
-        <Select :multiple="true" class="w-150px" filterable :datas="customerList" keyName="id" titleName="name"
+        <Select :multiple="true"  :datas="customerList" keyName="id" titleName="name"
                 v-model="params.customerIds" placeholder="请选择客户"/>
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">仓库：</span>
-        <Select :multiple="true" v-model="params.warehouseIds" class="w-150px" keyName="id" titleName="name"
+        <Select :multiple="true" v-model="params.warehouseIds"  keyName="id" titleName="name"
                 :datas="warehouseList" placeholder="请选择仓库"/>
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">商品：</span>
-        <Select :multiple="true" v-model="params.productIds" class="w-150px" keyName="id" titleName="name"
+        <Select :multiple="true" v-model="params.productIds"  keyName="id" titleName="name"
                 :datas="productList" placeholder="请选择商品"/>
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">商品类别：</span>
-        <Select :multiple="true" class="w-150px" filterable :datas="productCategoryList" keyName="id" titleName="name"
+        <Select :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
                 v-model="params.productCategoryIds" placeholder="请选择类别"/>
       </div>
-      <div class="h-input-group">
-        <span class="h-input-addon">订单号：</span>
-        <Search v-model.trim="params.filter"
-                search-button-theme="h-btn-default"
-                show-search-button
-                class="w-180px"
-                placeholder="请输入订单号"
-                @search="doSearch">
-          <i class="h-icon-search"/>
-        </Search>
+
+      <div class="h-input-group" style="margin-left: 10px">
+        <Button @click="doSearch" color="primary">查 询</Button>
       </div>
     </div>
     <div class="flex1">

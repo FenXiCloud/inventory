@@ -203,6 +203,7 @@ public class SalesReportService extends AbsService {
             productOptional.ifPresent(product -> {
                 salesReportItemDTO.setProductName(product.getName());
                 salesReportItemDTO.setProductCode(product.getCode());
+                salesReportItemDTO.setSpecification(product.getSpecification());
             });
             //单位信息
             Long baseUnitId = item.getBaseUnitId();
@@ -242,6 +243,7 @@ public class SalesReportService extends AbsService {
             productOptional.ifPresent(product -> {
                 salesReportItemDTO.setProductName(product.getName());
                 salesReportItemDTO.setProductCode(product.getCode());
+                salesReportItemDTO.setSpecification(product.getSpecification());
             });
             //单位信息
             Long baseUnitId = item.getBaseUnitId();

@@ -72,6 +72,8 @@ public class SalesReportItemDTO {
     private String productCode;
     @Comment("产品name")
     private String productName;
+    @Comment("规格")
+    private String specification;
     @Comment("单位")
     private String unitName;
 

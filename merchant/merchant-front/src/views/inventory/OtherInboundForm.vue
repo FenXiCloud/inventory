@@ -349,7 +349,7 @@ export default {
                   this.closeWindow();
                   this.pushTab({
                     key: 'OtherInboundForm',
-                    title: '新增其他入库单',
+                    title: '编辑其他入库单',
                     params: {type: 'edit', otherInboundId: data.id}
                   });
                   this.$emit("update:otherInboundId", data.id);

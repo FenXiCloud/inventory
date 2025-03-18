@@ -97,7 +97,7 @@
     <div class="modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button v-if="!looked" color="primary" @click="saveOrder('increase')" :loading="loading">
+        <Button v-if="!approved && !looked" color="primary" @click="saveOrder('increase')" :loading="loading">
           保存并新增
         </Button>
         <Button v-if="!approved && !looked" @click="saveOrder" :loading="loading"> 保存</Button>
@@ -285,6 +285,13 @@ export default {
               setTimeout(() => {
                 if (type === "increase") {
                   this.clearForm();
+                  // 刷新列表为编辑
+                  this.closeWindow();
+                  this.pushTab({
+                    key: 'InventoryTransferForm',
+                    title: '编辑调拨单',
+                    params: {type: "edit", inventoryTransferId: data.id}
+                  });
                 } else {
                   // 刷新列表为编辑
                   this.closeWindow();

@@ -153,8 +153,10 @@ public class InventoryTransferService extends AbsService {
             case ANTI_AUDIT -> {
                 //处理库存（调入库存减少、调出库存增加）
                 this.getComputedInventory(inventoryTransfer, inventoryTransferItems, true);
-                jqf.delete(qInventoryTransfer).where(qInventoryTransfer.id.eq(id)).execute();
-                inventoryTransferItemService.deleteByInventoryTransferId(id);
+                inventoryTransfer.setOrderStatus(OrderStatus.未审核);
+                inventoryTransfer.setApprovedBy(adminId);
+                inventoryTransfer.setApprovedAt(LocalDateTime.now());
+                inventoryTransferRepository.save(inventoryTransfer);
             }
             default -> {
 
@@ -181,6 +183,16 @@ public class InventoryTransferService extends AbsService {
             // 调出仓库不会为空，前端已控制
             Inventory fromInventory = inventoryService.findByWarehouseIdAndProductId(fromWarehouseId, productId);
             Inventory toInventory = inventoryService.findByWarehouseIdAndProductId(toWarehouseId, productId);
+            if (toInventory == null) {
+                toInventory = new Inventory();
+                toInventory.setProductId(productId);
+                toInventory.setWarehouseId(toWarehouseId);
+                toInventory.setAccountBookId(fromInventory.getAccountBookId());
+                toInventory.setMerchantId(fromInventory.getMerchantId());
+                toInventory.setAverageCost(BigDecimal.ZERO);
+                toInventory.setTotalCost(BigDecimal.ZERO);
+                toInventory.setCurrentQuantity(0);
+            }
             Double transferQuantity = inventoryTransferItem.getQuantity();
             BigDecimal subtotal = fromInventory.getAverageCost().multiply(new BigDecimal(transferQuantity)).setScale(2, RoundingMode.HALF_EVEN);
             // 调出仓库处理

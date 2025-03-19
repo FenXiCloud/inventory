@@ -6,15 +6,15 @@ import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.inventory.OtherInbound;
-import com.flyemu.share.entity.inventory.OtherOutbound;
 import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.OtherInboundForm;
-import com.flyemu.share.form.OtherOutboundForm;
 import com.flyemu.share.service.inventory.OtherInboundService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Arrays;
 
 /**
  * @功能描述: 其他入库单
@@ -43,15 +43,23 @@ public class OtherInboundController {
         OtherInbound otherInbound = otherInboundForm.getOtherInbound();
         otherInbound.setMerchantId(merchantId);
         otherInbound.setAccountBookId(accountBookId);
-        otherInbound.setOrderStatus(OrderStatus.已保存);
+        otherInbound.setOrderStatus(OrderStatus.未审核);
         otherInbound.setCreatedBy(adminId);
-        otherInboundService.save(otherInboundForm);
-        return JsonResult.successful();
+        OtherInbound inbound = otherInboundService.save(otherInboundForm);
+        return JsonResult.successful(inbound);
     }
 
     @GetMapping("approve")
     public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
         otherInboundService.approve(id, type, adminId);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("approves")
+    public JsonResult approves(@RequestParam("ids") String ids, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        Arrays.stream(ids.split(",")).map(Long::parseLong).forEach(id -> {
+            otherInboundService.approve(id, type, adminId);
+        });
         return JsonResult.successful();
     }
 

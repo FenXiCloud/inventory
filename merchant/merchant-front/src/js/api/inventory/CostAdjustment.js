@@ -25,5 +25,8 @@ export default {
     },
     approve(param) {
         return Ajax.get("/costAdjustment/approve", param);
+    },
+    approves(param) {
+        return Ajax.get("/costAdjustment/approves", param);
     }
 }

@@ -34,6 +34,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -240,11 +241,12 @@ public class InventoryService extends AbsService {
                 .where(qInventory.productId.eq(productId)).fetchOne();
     }
 
-    public List<Map<String, Object>> products(Long warehouseId, Long productId, String filter, Long accountBookId, Long merchantId) {
+    public List<Map<String, Object>> products(Long warehouseId, String warehouseIds, Long productId, String filter, Long accountBookId, Long merchantId) {
         String productSql = InventoryRepository.PRODUCT_SQL;
         int index = 3;
         int productIndex = 3;
         int warehouseIndex = 3;
+        int warehousesIndex = 3;
         int filterIndex = 3;
         if (productId != null) {
             productSql += " AND ji.product_id= ?" + index;
@@ -253,6 +255,11 @@ public class InventoryService extends AbsService {
         if (warehouseId != null) {
             productSql += " AND ji.warehouse_id= ?" + index;
             warehouseIndex = index;
+            index++;
+        }
+        if (StrUtil.isNotBlank(warehouseIds)) {
+            productSql += " AND ji.warehouse_id IN (?" + index + ") ";
+            warehousesIndex = index;
             index++;
         }
         if (StringUtils.hasText(filter)) {
@@ -268,6 +275,9 @@ public class InventoryService extends AbsService {
         if (warehouseId != null) {
             nativeQuery.setParameter(warehouseIndex, warehouseId);
         }
+        if (StrUtil.isNotBlank(warehouseIds)) {
+            nativeQuery.setParameter(warehousesIndex, Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList());
+        }
         if (StringUtils.hasText(filter)) {
             nativeQuery.setParameter(filterIndex, filter);
         }
@@ -282,7 +292,7 @@ public class InventoryService extends AbsService {
     public PageResults<InventoryReportDto> report(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventory)
                 .select(
-                        qInventory.productId.count(),
+                        qProduct.id.count().as("count"),
                         qProduct.id.as("productId"),
                         qProduct.code.as("productCode"),
                         qProduct.name.as("productName"),
@@ -294,7 +304,7 @@ public class InventoryService extends AbsService {
                 .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventory.warehouseId))
-                .where(query.builders())
+                .where(query.builders()).where(qProduct.id.isNotNull())
                 .groupBy(qProduct.id)
                 .orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryReportDto> dtos = new ArrayList<>();
@@ -311,7 +321,7 @@ public class InventoryService extends AbsService {
             dtos.add(dto);
         }
         if (!fetchPage.isEmpty()) {
-            totalCount = fetchPage.get(0).get(qInventory.productId.count());
+            totalCount = fetchPage.get(0).get(qProduct.id.count().as("count"));
         }
         if (totalCount == null) {
             totalCount = 0L;

@@ -162,8 +162,10 @@ public class OtherInboundService extends AbsService {
                     // 减库存
                     inventoryService.computedInventory(item, false, id, OperationType.入库, null);
                 });
-                jqf.delete(qOtherInbound).where(qOtherInbound.id.eq(id)).execute();
-                otherInboundItemService.deleteByOtherInboundId(id);
+                otherInbound.setOrderStatus(OrderStatus.未审核);
+                otherInbound.setApprovedBy(adminId);
+                otherInbound.setApprovedAt(LocalDateTime.now());
+                otherInboundRepository.save(otherInbound);
             }
             default -> {
 

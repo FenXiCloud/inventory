@@ -6,7 +6,6 @@ import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.inventory.CostAdjustment;
-import com.flyemu.share.entity.inventory.OtherOutbound;
 import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.CostAdjustmentForm;
@@ -14,6 +13,8 @@ import com.flyemu.share.service.inventory.CostAdjustmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Arrays;
 
 /**
  * @功能描述: 成本调整单
@@ -42,10 +43,10 @@ public class CostAdjustmentController {
         CostAdjustment costAdjustment = costAdjustmentForm.getCostAdjustment();
         costAdjustment.setMerchantId(merchantId);
         costAdjustment.setAccountBookId(accountBookId);
-        costAdjustment.setOrderStatus(OrderStatus.已保存);
+        costAdjustment.setOrderStatus(OrderStatus.未审核);
         costAdjustment.setCreatedBy(adminId);
-        costAdjustmentService.save(costAdjustmentForm);
-        return JsonResult.successful();
+        CostAdjustment adjustment = costAdjustmentService.save(costAdjustmentForm);
+        return JsonResult.successful(adjustment);
     }
 
     @DeleteMapping("/{costAdjustmentId}")
@@ -62,6 +63,14 @@ public class CostAdjustmentController {
     @GetMapping("approve")
     public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
         costAdjustmentService.approve(id, type, adminId);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("approves")
+    public JsonResult approves(@RequestParam("ids") String ids, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        Arrays.stream(ids.split(",")).map(Long::parseLong).forEach(id -> {
+            costAdjustmentService.approve(id, type, adminId);
+        });
         return JsonResult.successful();
     }
 

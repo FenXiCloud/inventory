@@ -234,48 +234,40 @@ export default {
       let outTotal = 0;
       let currentQuantity = 0;
       let totalCost = 0;
-      columns.forEach((column) => {
-        if (column.property && ['quantity'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              if (row.operationType === '入库') {
-                inQuantity += Number(rd || 0);
-              } else {
-                outQuantity += Number(rd || 0);
-              }
-            }
-          });
+      data.forEach((row) => {
+        let rd = row['quantity'];
+        if (rd) {
+          if (row.operationType === '入库' || row['operationType'] === '成本调整' || (row['operationType'] === '调拨' && row.quantity > 0)) {
+            inQuantity += Number(rd || 0);
+          }
+          if (row.operationType === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)) {
+            outQuantity += Number(this.getAbsoluteValue(rd) || 0);
+          }
         }
-        if (column.property && ['subtotal'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              if (row.operationType === '入库') {
-                inTotal += Number(rd || 0);
-              } else {
-                outTotal += Number(rd || 0);
-              }
-            }
-          });
+      });
+      data.forEach((row) => {
+        let rd = row['subtotal'];
+        if (rd) {
+          if (row.operationType === '入库' || row['operationType'] === '成本调整' || (row['operationType'] === '调拨' && row.quantity > 0)) {
+            inTotal += Number(rd || 0);
+          }
+          if (row.operationType === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)) {
+            outTotal += Number(this.getAbsoluteValue(rd) || 0);
+          }
         }
-        if (column.property && ['currentQuantity'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              currentQuantity += Number(rd || 0);
-            }
-          });
+      });
+      data.forEach((row) => {
+        let rd = row['currentQuantity'];
+        if (rd) {
+          currentQuantity += Number(rd || 0);
         }
-        if (column.property && ['totalCost'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              totalCost += Number(rd || 0);
-            }
-          });
+      });
+      data.forEach((row) => {
+        let rd = row['totalCost'];
+        if (rd) {
+          totalCost += Number(rd || 0);
         }
-      })
+      });
       return [['合计', '', '', '', '', '', '', '', '', '', '', inQuantity, inQuantity, '', inTotal.toFixed(2), outQuantity, outQuantity, '', outTotal.toFixed(2), currentQuantity, '', totalCost.toFixed(2)]];
     },
     doSearch() {

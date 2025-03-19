@@ -218,13 +218,27 @@ public class InventoryTransferService extends AbsService {
             });
             return;
         }
+        // 明细数据排序（出库前，入库后）
+        List<InventoryItem> sortedInventoryItems = new ArrayList<>();
+        inventoryItems.forEach(item -> {
+            Long warehouseId = item.getWarehouseId();
+            if (warehouseId.equals(inventoryTransfer.getFromWarehouseId())) {
+                sortedInventoryItems.add(item);
+            }
+        });
+        inventoryItems.forEach(item -> {
+            Long warehouseId = item.getWarehouseId();
+            if (warehouseId.equals(inventoryTransfer.getToWarehouseId())) {
+                sortedInventoryItems.add(item);
+            }
+        });
         reduceInventory.forEach(item -> {
             // 减库存
-            inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨, inventoryItems);
+            inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨, sortedInventoryItems);
         });
         increaseInventory.forEach(item -> {
             // 加库存
-            inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨, inventoryItems);
+            inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨, sortedInventoryItems);
         });
     }
 

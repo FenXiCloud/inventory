@@ -211,11 +211,11 @@ export default {
           type: "ANTI_AUDIT",
         };
         console.info(filterRecords, ids);
-        loading("审核中....");
+        loading("反审核中....");
         OtherOutbound.approves(params)
             .then((success) => {
               if (success) {
-                message("审核成功~");
+                message("反审核成功~");
                 this.$refs.table.clearCheckboxRow();
                 this.loadList();
               }

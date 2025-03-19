@@ -51,6 +51,11 @@ public class StockTakeController {
 
     @DeleteMapping("/{stockTakeId}")
     public JsonResult delete(@PathVariable Long stockTakeId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        // 判断是否有关联的订单
+        Boolean existOrder = stockTakeService.existOrder(stockTakeId);
+        if (existOrder) {
+            return JsonResult.failure("已生成对应盘点单据～");
+        }
         stockTakeService.delete(stockTakeId, merchantId, accountBookId);
         return JsonResult.successful();
     }
@@ -62,12 +67,24 @@ public class StockTakeController {
 
     @GetMapping("approve")
     public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        if (type.equals(ApproveType.ANTI_AUDIT)) {
+            Boolean existOrder = stockTakeService.existOrder(id);
+            if (existOrder) {
+                return JsonResult.failure("已生成对应盘点单据～");
+            }
+        }
         stockTakeService.approve(id, type, adminId);
         return JsonResult.successful();
     }
 
     @GetMapping("approves")
     public JsonResult approves(@RequestParam("ids") String ids, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        if (type.equals(ApproveType.ANTI_AUDIT)) {
+            Boolean existOrder = stockTakeService.existOrders(ids);
+            if (existOrder) {
+                return JsonResult.failure("审核数据中有已生成盘点单据的数据～");
+            }
+        }
         Arrays.stream(ids.split(",")).map(Long::parseLong).forEach(id -> {
             stockTakeService.approve(id, type, adminId);
         });

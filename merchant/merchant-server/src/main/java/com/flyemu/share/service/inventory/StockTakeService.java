@@ -381,6 +381,31 @@ public class StockTakeService extends AbsService {
         return inbounds;
     }
 
+    /**
+     * 判断是否有对应盘点单据
+     *
+     * @param stockTakeId 盘点单id
+     * @return true/false
+     */
+    public Boolean existOrder(Long stockTakeId) {
+        List<OtherInbound> otherInbounds = otherInboundService.findByStockTakeId(stockTakeId);
+        List<OtherOutbound> otherOutbounds = otherOutboundService.findByStockTakeId(stockTakeId);
+        return (otherOutbounds != null && !otherOutbounds.isEmpty()) ||
+                (otherInbounds != null && !otherInbounds.isEmpty());
+    }
+
+    public Boolean existOrders(String ids) {
+        List<Long> idList = Arrays.stream(ids.split(",")).map(Long::parseLong).toList();
+        Boolean result = false;
+        for (Long id : idList) {
+            result = this.existOrder(id);
+            if (result) {
+                break;
+            }
+        }
+        return result;
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

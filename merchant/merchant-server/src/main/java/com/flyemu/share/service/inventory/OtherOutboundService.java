@@ -10,6 +10,7 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.OtherOutboundDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
+import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OperationType;
@@ -72,9 +73,7 @@ public class OtherOutboundService extends AbsService {
 
     public PageResults<OtherOutboundDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qOtherOutbound)
-                .select(qOtherOutbound, qCustomer.name, qCustomer.code, qAdmin.name, qOtherOutboundItem.quantity.sum().as("item_quantity"))
-                .leftJoin(qCustomer).on(qCustomer.id.eq(qOtherOutbound.customerId))
-                .leftJoin(qAdmin).on(qAdmin.id.eq(qOtherOutbound.createdBy))
+                .select(qOtherOutbound, qOtherOutboundItem.quantity.sum().as("item_quantity"))
                 .leftJoin(qOtherOutboundItem).on(qOtherOutboundItem.otherOutboundId.eq(qOtherOutbound.id))
                 .where(query.builder)
                 .where(query.builders())
@@ -86,9 +85,19 @@ public class OtherOutboundService extends AbsService {
         fetchPage.forEach(tuple -> {
             OtherOutboundDto dto = BeanUtil.toBean(tuple.get(qOtherOutbound), OtherOutboundDto.class);
             dto.setQuantity(Objects.requireNonNull(tuple.get(qOtherOutboundItem.quantity.sum().as("item_quantity"))).intValue());
-            dto.setCustomerCode(tuple.get(qCustomer.code));
-            dto.setCustomerName(tuple.get(qCustomer.name));
-            dto.setCreatedByName(tuple.get(qAdmin.name));
+            Long customerId = dto.getCustomerId();
+            if (customerId != null) {
+                Customer customer = jqf.selectFrom(qCustomer).where(qCustomer.id.eq(customerId)).fetchOne();
+                if (customer != null) {
+                    dto.setCustomerName(customer.getName());
+                    dto.setCustomerCode(customer.getCode());
+                }
+            }
+            Long createdBy = dto.getCreatedBy();
+            Admin admin = jqf.selectFrom(qAdmin).where(qAdmin.id.eq(createdBy)).fetchOne();
+            if (admin != null) {
+                dto.setCreatedByName(admin.getName());
+            }
             dtos.add(dto);
         });
 
@@ -355,6 +364,12 @@ public class OtherOutboundService extends AbsService {
 
         private String filter;
 
+        private String productIds;
+
+        private String warehouseIds;
+
+        private String customerIds;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qOtherOutbound.merchantId.eq(merchantId));
@@ -382,6 +397,15 @@ public class OtherOutboundService extends AbsService {
                 builder.and(qOtherOutbound.orderNo.contains(filter))
                         .or(qCustomer.name.contains(filter))
                         .or(qAdmin.name.contains(filter));
+            }
+            if (StrUtil.isNotBlank(productIds)) {
+                builder.and(qOtherOutboundItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(warehouseIds)) {
+                builder.and(qOtherOutboundItem.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(customerIds)) {
+                builder.and(qOtherOutbound.customerId.in(Arrays.stream(customerIds.split(",")).map(Long::parseLong).toList()));
             }
             return builder;
         }

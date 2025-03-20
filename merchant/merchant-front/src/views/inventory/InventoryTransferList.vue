@@ -7,17 +7,42 @@
         <Button @click="auditsForm('antiAudits')">反审核</Button>
       </template>
       <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{未审核:'未审核',已审核:'已审核'}"
-                placeholder="审核状态："/>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">日期：</span>
-          <DateRangePicker v-model="dateRange"></DateRangePicker>
-        </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
                 placeholder="请输入单据编号/仓库名称/制单人" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
+      </template>
+    </vxe-toolbar>
+    <vxe-toolbar>
+      <template #buttons>
+        <div class="h-input-group h-table-checkbox-wrap">
+          <span class="h-input-addon">商品：</span>
+          <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
+                  titleName="name" :datas="productList"/>
+        </div>
+        <div class="h-input-group h-table-checkbox-wrap">
+          <span class="h-input-addon ml-8px">调出仓库：</span>
+          <Select v-model="params.fromWarehouseIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
+                  titleName="name"
+                  :datas="warehouseList"/>
+        </div>
+        <div class="h-input-group h-table-checkbox-wrap">
+          <span class="h-input-addon ml-8px">调入仓库：</span>
+          <Select v-model="params.toWarehouseIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
+                  titleName="name" :datas="warehouseList"/>
+        </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">审核状态：</span>
+          <Select v-model="params.state" class="w-120px" :datas="{未审核:'未审核',已审核:'已审核'}"/>
+        </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">日期：</span>
+          <DateRangePicker v-model="dateRange"></DateRangePicker>
+        </div>
+      </template>
+      <template #tools>
+        <Button @click="doSearch" color="primary">查询</Button>
       </template>
     </vxe-toolbar>
     <div class="flex1">
@@ -75,7 +100,8 @@ import manba from "manba";
 import InventoryTransfer from "@js/api/inventory/InventoryTransfer";
 import {mapMutations} from "vuex";
 import {confirm, loading, message} from "heyui.ext";
-import OtherInbound from "@js/api/inventory/OtherInbound";
+import Product from "@js/api/basic/Product";
+import Warehouse from "@js/api/basic/Warehouse";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -94,6 +120,9 @@ export default {
         total: 0
       },
       params: {
+        productIds: [],
+        toWarehouseIds: [],
+        fromWarehouseIds: [],
         filter: null,
         state: null,
         sortCol: null,
@@ -103,6 +132,8 @@ export default {
         start: manba(startTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
       },
+      warehouseList: [],
+      productList: []
     }
   },
   computed: {
@@ -147,7 +178,11 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      InventoryTransfer.list(this.queryParams).then(({data: {results, total}}) => {
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.productIds = params.productIds.join(",");
+      params.fromWarehouseIds = params.fromWarehouseIds.join(",");
+      params.toWarehouseIds = params.toWarehouseIds.join(",");
+      InventoryTransfer.list(params).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
@@ -226,9 +261,20 @@ export default {
     },
     editable(row) {
       return ['未审核'].includes(row.orderStatus);
-    }
+    },
+    loadDict(callback) {
+      loading("加载中....");
+      Promise.all([Product.select(), Warehouse.select()])
+          .then((results) => {
+            this.productList = results[0].data || [];
+            this.warehouseList = results[1].data || [];
+            callback();
+          })
+          .finally(() => loading.close());
+    },
   },
   created() {
+    this.loadDict();
     this.loadList();
   }
 }

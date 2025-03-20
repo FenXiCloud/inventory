@@ -83,7 +83,9 @@ public class InventoryTransferService extends AbsService {
                 .leftJoin(qAdmin).on(qAdmin.id.eq(qInventoryTransfer.createdBy))
                 .leftJoin(toQWarehouse).on(toQWarehouse.id.eq(qInventoryTransfer.ToWarehouseId))
                 .leftJoin(formQWarehouse).on(formQWarehouse.id.eq(qInventoryTransfer.FromWarehouseId))
+                .leftJoin(qInventoryTransferItem).on(qInventoryTransferItem.inventoryTransferId.eq(qInventoryTransfer.id))
                 .where(query.builder).where(query.builders())
+                .groupBy(qInventoryTransfer.id)
                 .orderBy(qInventoryTransfer.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryTransferDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
@@ -387,6 +389,12 @@ public class InventoryTransferService extends AbsService {
 
         private String filter;
 
+        private String productIds;
+
+        private String fromWarehouseIds;
+
+        private String toWarehouseIds;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qInventoryTransfer.merchantId.eq(merchantId));
@@ -412,6 +420,18 @@ public class InventoryTransferService extends AbsService {
                         .or(qAdmin.name.contains(filter))
                         .or(formQWarehouse.name.contains(filter))
                         .or(toQWarehouse.name.contains(filter));
+            }
+            if (StrUtil.isNotBlank(productIds)) {
+                builder.and(formQWarehouse.id.isNotNull()).
+                        and(toQWarehouse.id.isNotNull()).
+                        and(qAdmin.id.isNotNull()).
+                        and(qInventoryTransferItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(fromWarehouseIds)) {
+                builder.and(qInventoryTransfer.FromWarehouseId.in(Arrays.stream(fromWarehouseIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(toWarehouseIds)) {
+                builder.and(qInventoryTransfer.ToWarehouseId.in(Arrays.stream(toWarehouseIds.split(",")).map(Long::parseLong).toList()));
             }
             return builder;
         }

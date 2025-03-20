@@ -210,11 +210,11 @@ public class InventoryTransferService extends AbsService {
         if (isRevoke) {
             increaseInventory.forEach(item -> {
                 // 减库存
-                inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨, null, false);
+                inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨入库, null, false);
             });
             reduceInventory.forEach(item -> {
                 // 加库存
-                inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨, null);
+                inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨出库, null);
             });
             return;
         }
@@ -234,11 +234,11 @@ public class InventoryTransferService extends AbsService {
         });
         reduceInventory.forEach(item -> {
             // 减库存
-            inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨, sortedInventoryItems);
+            inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨出库, sortedInventoryItems);
         });
         increaseInventory.forEach(item -> {
             // 加库存
-            inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨, sortedInventoryItems);
+            inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨入库, sortedInventoryItems);
         });
     }
 
@@ -254,7 +254,7 @@ public class InventoryTransferService extends AbsService {
         inventoryItem.setProductId(inventoryTransferItem.getProductId());
         inventoryItem.setWarehouseId(warehouseId);
         inventoryItem.setQuantity(isOut ? -inventoryTransferItem.getQuantity().intValue() : inventoryTransferItem.getQuantity().intValue());
-        inventoryItem.setOperationType(OperationType.调拨);
+        inventoryItem.setOperationType(isOut ? OperationType.调拨出库 : OperationType.调拨入库);
         inventoryItem.setBaseUnitId(inventory.getBaseUnitId());
         inventoryItem.setOrderId(inventoryTransfer.getId());
         inventoryItem.setBatchNumber(inventoryTransfer.getOrderNo());

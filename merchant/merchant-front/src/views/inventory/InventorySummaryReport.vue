@@ -48,13 +48,57 @@
         <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
         <vxe-column title="单位" field="unitName" width="120"/>
         <vxe-column title="仓库" field="warehouseName" width="120"/>
-        <vxe-colgroup title="入库" align="center">
-          <vxe-column title="数量" field="inQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="inSubtotal" align="center" width="100"/>
+        <vxe-colgroup title="期初" align="center">
+          <vxe-column title="数量" field="initialQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="initialSubtotal" align="center" width="100"/>
         </vxe-colgroup>
-        <vxe-colgroup title="出库" align="center">
-          <vxe-column title="数量" field="outQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="outSubtotal" align="center" width="100"/>
+        <vxe-colgroup title="采购入库" align="center">
+          <vxe-column title="数量" field="purchaseStockQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="purchaseStockSubtotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="销售退货" align="center">
+          <vxe-column title="数量" field="salesReturnsQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="salesReturnsSubtotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="调拨入库" align="center">
+          <vxe-column title="数量" field="channelInQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="channelInSubtotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="其他入库" align="center">
+          <vxe-column title="数量" field="otherInQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="otherInSubtotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="盘盈单" align="center">
+          <vxe-column title="数量" field="takeProfitQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="takeProfitSubtotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="入库合计" align="center">
+          <vxe-column title="数量" field="inQuantityTotal" align="center" width="100"/>
+          <vxe-column title="成本" field="inSubtotalTotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="采购退货" align="center">
+          <vxe-column title="数量" field="purchaseReturnsQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="purchaseReturnsSubtotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="销售出库" align="center">
+          <vxe-column title="数量" field="sellOutQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="sellOutSubtotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="调拨出库" align="center">
+          <vxe-column title="数量" field="channelOutQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="channelOutSubtotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="其他出库" align="center">
+          <vxe-column title="数量" field="otherOutQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="otherOutSubtotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="盘亏单" align="center">
+          <vxe-column title="数量" field="taskDeficitQuantity" align="center" width="100"/>
+          <vxe-column title="成本" field="taskDeficitSubtotal" align="center" width="100"/>
+        </vxe-colgroup>
+        <vxe-colgroup title="出库合计" align="center">
+          <vxe-column title="数量" field="outQuantityTotal" align="center" width="100"/>
+          <vxe-column title="成本" field="outSubtotalTotal" align="center" width="100"/>
         </vxe-colgroup>
         <vxe-colgroup title="成本调整" align="center">
           <vxe-column title="数量" field="costQuantity" align="center" width="100"/>
@@ -139,72 +183,63 @@ export default {
   methods: {
     ...mapMutations(['pushTab']),
     footerMethod({columns, data}) {
-      let inQuantity = 0;
-      let outQuantity = 0;
-      let inTotal = 0;
-      let outTotal = 0;
-      let currentQuantity = 0;
-      let totalCost = 0;
-      let costSubtotal = 0;
-      columns.forEach((column) => {
-        if (column.property && ['inQuantity'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              inQuantity += Number(rd || 0);
-            }
-          });
-        }
-        if (column.property && ['outQuantity'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              outQuantity += Number(rd || 0);
-            }
-          });
-        }
-        if (column.property && ['inSubtotal'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              inTotal += Number(rd || 0);
-            }
-          });
-        }
-        if (column.property && ['outSubtotal'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              outTotal += Number(rd || 0);
-            }
-          });
-        }
-        if (column.property && ['currentQuantity'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              currentQuantity += Number(rd || 0);
-            }
-          });
-        }
-        if (column.property && ['costSubtotal'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              costSubtotal += Number(rd || 0);
-            }
-          });
-        }
-        if (column.property && ['totalCost'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              totalCost += Number(rd || 0);
-            }
-          });
-        }
-      })
-      return [['合计', '', '', '', '', '', inQuantity, inTotal.toFixed(2), outQuantity, outTotal.toFixed(2), '', costSubtotal.toFixed(2), currentQuantity, totalCost.toFixed(2)]];
+      const map = {
+        "initialQuantity": 0,
+        "initialSubtotal": 0,
+        "purchaseStockQuantity": 0,
+        "purchaseStockSubtotal": 0,
+        "salesReturnsQuantity": 0,
+        "salesReturnsSubtotal": 0,
+        "channelInQuantity": 0,
+        "channelInSubtotal": 0,
+        "otherInQuantity": 0,
+        "otherInSubtotal": 0,
+        "takeProfitQuantity": 0,
+        "takeProfitSubtotal": 0,
+        "inQuantityTotal": 0,
+        "inSubtotalTotal": 0,
+        "purchaseReturnsQuantity": 0,
+        "purchaseReturnsSubtotal": 0,
+        "sellOutQuantity": 0,
+        "sellOutSubtotal": 0,
+        "channelOutQuantity": 0,
+        "channelOutSubtotal": 0,
+        "otherOutQuantity": 0,
+        "otherOutSubtotal": 0,
+        "taskDeficitQuantity": 0,
+        "taskDeficitSubtotal": 0,
+        "outQuantityTotal": 0,
+        "outSubtotalTotal": 0,
+        "costSubtotal": 0,
+        "currentQuantity": 0,
+        "totalCost": 0
+      };
+      for (let mapKey in map) {
+        let value = 0;
+        data.forEach((row) => {
+          let rd = row[mapKey];
+          if (rd) {
+            value += Number(rd || 0);
+          }
+        });
+        map[mapKey] = value;
+      }
+      return [['合计', '', '', '', '', '',
+        map.initialQuantity, map.initialSubtotal.toFixed(2),
+        map.purchaseStockQuantity, map.purchaseStockSubtotal.toFixed(2),
+        map.salesReturnsQuantity, map.salesReturnsSubtotal.toFixed(2),
+        map.channelInQuantity, map.channelInSubtotal.toFixed(2),
+        map.otherInQuantity, map.otherInSubtotal.toFixed(2),
+        map.takeProfitQuantity, map.takeProfitQuantity.toFixed(2),
+        map.inQuantityTotal, map.inSubtotalTotal.toFixed(2),
+        map.purchaseReturnsQuantity, map.purchaseReturnsSubtotal.toFixed(2),
+        map.sellOutQuantity, map.sellOutSubtotal.toFixed(2),
+        map.channelOutQuantity, map.channelOutSubtotal.toFixed(2),
+        map.otherOutQuantity, map.otherOutSubtotal.toFixed(2),
+        map.taskDeficitQuantity, map.taskDeficitSubtotal.toFixed(2),
+        map.outQuantityTotal, map.outSubtotalTotal.toFixed(2),
+        '', map.costSubtotal.toFixed(2),
+        map.currentQuantity, map.totalCost.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -220,22 +255,105 @@ export default {
             const productId = row.productId;
             const warehouseId = row.warehouseId;
             data.forEach((data_row) => {
+              //todo 待优化，可处理成后台统计
               if (data_row.warehouseId === warehouseId && data_row.productId === productId) {
                 const operationType = data_row.operationType;
-                let inQuantity = row.inQuantity;
-                let inSubtotal = row.inSubtotal;
-                let outQuantity = row.outQuantity;
-                let outSubtotal = row.outSubtotal;
+                let purchaseStockQuantity = row.purchaseStockQuantity;
+                let purchaseStockSubtotal = row.purchaseStockSubtotal;
+                let initialQuantity = row.initialQuantity;
+                let initialSubtotal = row.initialSubtotal;
+                let salesReturnsQuantity = row.salesReturnsQuantity;
+                let salesReturnsSubtotal = row.salesReturnsSubtotal;
+                let channelInQuantity = row.channelInQuantity;
+                let channelInSubtotal = row.channelInSubtotal;
+                let otherInQuantity = row.otherInQuantity;
+                let otherInSubtotal = row.otherInSubtotal;
+                let takeProfitQuantity = row.takeProfitQuantity;
+                let takeProfitSubtotal = row.takeProfitSubtotal;
+                let taskDeficitQuantity = row.taskDeficitQuantity;
+                let taskDeficitSubtotal = row.taskDeficitSubtotal;
+                let purchaseReturnsQuantity = row.purchaseReturnsQuantity;
+                let purchaseReturnsSubtotal = row.purchaseReturnsSubtotal;
+                let sellOutQuantity = row.sellOutQuantity;
+                let sellOutSubtotal = row.sellOutSubtotal;
+                let channelOutQuantity = row.channelOutQuantity;
+                let channelOutSubtotal = row.channelOutSubtotal;
+                let otherOutQuantity = row.otherOutQuantity;
+                let otherOutSubtotal = row.otherOutSubtotal;
                 let costSubtotal = row.costSubtotal;
+                let inQuantityTotal = row.inQuantityTotal;
+                let inSubtotalTotal = row.inSubtotalTotal;
+                let outQuantityTotal = row.outQuantityTotal;
+                let outSubtotalTotal = row.outSubtotalTotal;
                 switch (operationType) {
-                  case "入库":
-                    row.inQuantity = data_row.quantity + (inQuantity || 0);
-                    row.inSubtotal = data_row.subtotal + (inSubtotal || 0);
+                  case "期初":
+                    row.initialQuantity = data_row.quantity + (initialQuantity || 0);
+                    row.initialSubtotal = data_row.subtotal + (initialSubtotal || 0);
                     break;
-                  case "出库":
-                    row.outQuantity = data_row.quantity + (outQuantity || 0);
-                    row.outSubtotal = data_row.subtotal + (outSubtotal || 0);
+                  case "采购入库":
+                  case "销售退货":
+                  case "调拨入库":
+                  case "其他入库":
+                  case "盘盈入库": {
+                    switch (operationType) {
+                      case "采购入库":
+                        row.purchaseStockQuantity = data_row.quantity + (purchaseStockQuantity || 0);
+                        row.purchaseStockSubtotal = data_row.subtotal + (purchaseStockSubtotal || 0);
+                        break;
+                      case "销售退货":
+                        row.salesReturnsQuantity = data_row.quantity + (salesReturnsQuantity || 0);
+                        row.salesReturnsSubtotal = data_row.subtotal + (salesReturnsSubtotal || 0);
+                        break;
+                      case "调拨入库":
+                        row.channelInQuantity = data_row.quantity + (channelInQuantity || 0);
+                        row.channelInSubtotal = data_row.subtotal + (channelInSubtotal || 0);
+                        break;
+                      case "其他入库":
+                        row.otherInQuantity = data_row.quantity + (otherInQuantity || 0);
+                        row.otherInSubtotal = data_row.subtotal + (otherInSubtotal || 0);
+                        break;
+                      case "盘盈入库":
+                        row.takeProfitQuantity = data_row.quantity + (takeProfitQuantity || 0);
+                        row.takeProfitSubtotal = data_row.subtotal + (takeProfitSubtotal || 0);
+                        break;
+                      default:
+                        break;
+                    }
+                    row.inQuantityTotal = data_row.quantity + (inQuantityTotal || 0);
+                    row.inSubtotalTotal = data_row.subtotal + (inSubtotalTotal || 0);
                     break;
+                  }
+                  case "采购退货":
+                  case "销售出库":
+                  case "调拨出库":
+                  case "盘亏出库":
+                  case "其他出库": {
+                    switch (operationType) {
+                      case "采购退货":
+                        row.purchaseReturnsQuantity = data_row.quantity + (purchaseReturnsQuantity || 0);
+                        row.purchaseReturnsSubtotal = data_row.subtotal + (purchaseReturnsSubtotal || 0);
+                        break;
+                      case "销售出库":
+                        row.sellOutQuantity = data_row.quantity + (sellOutQuantity || 0);
+                        row.sellOutSubtotal = data_row.subtotal + (sellOutSubtotal || 0);
+                        break;
+                      case "调拨出库":
+                        row.channelOutQuantity = data_row.quantity + (channelOutQuantity || 0);
+                        row.channelOutSubtotal = data_row.subtotal + (channelOutSubtotal || 0);
+                        break;
+                      case "盘亏出库":
+                        row.taskDeficitQuantity = data_row.quantity + (taskDeficitQuantity || 0);
+                        row.taskDeficitSubtotal = data_row.subtotal + (taskDeficitSubtotal || 0);
+                        break;
+                      case "其他出库":
+                        row.otherOutQuantity = data_row.quantity + (otherOutQuantity || 0);
+                        row.otherOutSubtotal = data_row.subtotal + (otherOutSubtotal || 0);
+                        break;
+                    }
+                    row.outQuantityTotal = data_row.quantity + (outQuantityTotal || 0);
+                    row.outSubtotalTotal = data_row.subtotal + (outSubtotalTotal || 0);
+                    break;
+                  }
                   case "成本调整":
                     row.costSubtotal = data_row.subtotal + (costSubtotal || 0);
                     break;

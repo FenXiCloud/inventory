@@ -15,6 +15,7 @@ import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.OutboundType;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.OtherOutboundForm;
 import com.flyemu.share.repository.OtherOutboundRepository;
 import com.flyemu.share.service.AbsService;
@@ -136,16 +137,26 @@ public class OtherOutboundService extends AbsService {
     @Transactional
     public void approve(Long id, ApproveType type, Long adminId) {
         OtherOutbound otherOutbound = jqf.selectFrom(qOtherOutbound).where(qOtherOutbound.id.eq(id)).fetchOne();
+        if (otherOutbound == null) {
+            throw new ServiceException("审核数据不存在～");
+        }
+        OutboundType outboundType = otherOutbound.getOutboundType();
+        OperationType operationType;
+        if (outboundType.equals(OutboundType.其他出库)) {
+            operationType = OperationType.其他出库;
+        } else {
+            operationType = OperationType.盘亏出库;
+        }
         List<OtherOutboundItem> otherOutboundItems = otherOutboundItemService.findByOtherOutboundId(id);
         List<Inventory> inventories = new ArrayList<>();
         List<InventoryItem> inventoryItems = new ArrayList<>();
         switch (type) {
             case AUDITS -> {
                 //处理库存
-                this.getComputedInventory(otherOutboundItems, inventories, inventoryItems, otherOutbound.getCustomerId());
+                this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound.getCustomerId());
                 inventories.forEach(item -> {
                     // 减库存
-                    inventoryService.computedInventory(item, false, id, OperationType.出库, inventoryItems);
+                    inventoryService.computedInventory(item, false, id, operationType, inventoryItems);
                 });
                 otherOutbound.setOrderStatus(OrderStatus.已审核);
                 otherOutbound.setApprovedBy(adminId);
@@ -154,10 +165,10 @@ public class OtherOutboundService extends AbsService {
             }
             case ANTI_AUDIT -> {
                 //处理库存
-                this.getComputedInventory(otherOutboundItems, inventories, inventoryItems, otherOutbound.getCustomerId());
+                this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound.getCustomerId());
                 inventories.forEach(item -> {
                     // 加库存
-                    inventoryService.computedInventory(item, true, id, OperationType.出库, null);
+                    inventoryService.computedInventory(item, true, id, operationType, null);
                 });
                 otherOutbound.setOrderStatus(OrderStatus.未审核);
                 otherOutbound.setApprovedBy(adminId);
@@ -179,6 +190,7 @@ public class OtherOutboundService extends AbsService {
      */
     private void getComputedInventory(List<OtherOutboundItem> otherOutboundItems,
                                       List<Inventory> inventories,
+                                      OperationType operationType,
                                       List<InventoryItem> inventoryItems,
                                       Long customerId) {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
@@ -213,7 +225,7 @@ public class OtherOutboundService extends AbsService {
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, customerId);
+            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, customerId, operationType);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
@@ -225,14 +237,15 @@ public class OtherOutboundService extends AbsService {
      * @param otherOutboundItem 出库明细
      * @return inventoryItem
      */
-    private InventoryItem getInventoryItem(OtherOutboundItem otherOutboundItem, Long customerId) {
+    private InventoryItem getInventoryItem(OtherOutboundItem otherOutboundItem, Long customerId,
+                                           OperationType operationType) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(otherOutboundItem.getProductId());
         inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
         double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
         inventoryItem.setQuantity((int) parsed);
         inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
-        inventoryItem.setOperationType(OperationType.出库);
+        inventoryItem.setOperationType(operationType);
         inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
         inventoryItem.setOrderId(otherOutboundItem.getOtherOutboundId());
         inventoryItem.setMerchantId(otherOutboundItem.getMerchantId());

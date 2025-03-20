@@ -212,7 +212,7 @@ public class InventoryTransferService extends AbsService {
         if (isRevoke) {
             increaseInventory.forEach(item -> {
                 // 减库存
-                inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨入库, null, false);
+                inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨入库, null);
             });
             reduceInventory.forEach(item -> {
                 // 加库存

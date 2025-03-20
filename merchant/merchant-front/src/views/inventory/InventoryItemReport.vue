@@ -22,8 +22,8 @@
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">业务类型：</span>
-          <Select autosize :multiple="true" v-model="params.operationTypes" class="w-120px"
-                  :datas="{入库:'入库',出库:'出库',成本调整:'成本调整',调拨:'调拨'}"/>
+          <Select autosize :filterable="true" :multiple="true" v-model="params.operationTypes" class="w-120px"
+                  :datas="operationTypeList"/>
         </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">单据日期：</span>
@@ -215,6 +215,18 @@ export default {
       supplierList: [],
       outboundItems: ["采购退货", "销售出库", "调拨出库", "盘亏出库", "其他出库"],
       inboundItems: ["采购入库", "销售退货", "调拨入库", "其他入库", "盘盈入库"],
+      operationTypeList: {
+        "采购入库": "采购入库",
+        "销售退货": "销售退货",
+        "调拨入库": "调拨入库",
+        "其他入库": "其他入库",
+        "盘盈入库": "盘盈入库",
+        "采购退货": "采购退货",
+        "销售出库": "销售出库",
+        "调拨出库": "调拨出库",
+        "盘亏出库": "盘亏出库",
+        "其他出库": "其他出库",
+      }
     }
   },
   computed: {

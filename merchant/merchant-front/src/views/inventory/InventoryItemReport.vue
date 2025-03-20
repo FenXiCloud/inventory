@@ -58,10 +58,10 @@
         <vxe-column title="单据编号" field="batchNumber" width="200"/>
         <vxe-column title="往来单位" field="supplierName" width="120">
           <template #default="{ row }">
-            <div v-if="row['operationType'] === '入库'">
+            <div v-if="inboundItems.includes(row['operationType'])">
               {{ row.supplierName }}
             </div>
-            <div v-else-if="row['operationType'] === '出库'">
+            <div v-else-if="outboundItems.includes(row['operationType'])">
               {{ row.customerName }}
             </div>
             <div v-else>
@@ -73,7 +73,7 @@
         <vxe-column title="商品名称备注" field="productRemarks" width="80"/>
         <vxe-column title="入库数量" field="quantity" width="80">
           <template #default="{ row }">
-            <div v-if="row['operationType'] === '入库' || (row['operationType'] === '调拨' && row.quantity > 0)">
+            <div v-if="inboundItems.includes(row['operationType'])">
               {{ row.quantity }}
             </div>
             <div v-else>
@@ -83,7 +83,7 @@
         <vxe-colgroup title="入库" align="center">
           <vxe-column title="基本单位数量" field="quantity" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '入库' || (row['operationType'] === '调拨' && row.quantity > 0)">
+              <div v-if="inboundItems.includes(row['operationType'])">
                 {{ row.quantity }}
               </div>
               <div v-else>
@@ -92,7 +92,7 @@
           </vxe-column>
           <vxe-column title="单位成本" field="unitPrice" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '入库' || (row['operationType'] === '调拨' && row.quantity > 0)">
+              <div v-if="inboundItems.includes(row['operationType'])">
                 {{ row.unitPrice }}
               </div>
               <div v-else>
@@ -102,7 +102,7 @@
           <vxe-column title="成本" field="subtotal" align="center" width="100">
             <template #default="{ row }">
               <div
-                  v-if="row['operationType'] === '入库' || row['operationType'] === '成本调整' || (row['operationType'] === '调拨' && row.quantity > 0)">
+                  v-if="inboundItems.includes(row['operationType'])">
                 {{ row.subtotal }}
               </div>
               <div v-else>
@@ -112,7 +112,7 @@
         </vxe-colgroup>
         <vxe-column title="出库数量" field="quantity" width="80">
           <template #default="{ row }">
-            <div v-if="row['operationType'] === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)">
+            <div v-if="outboundItems.includes(row['operationType'])">
               {{ getAbsoluteValue(row.quantity) }}
             </div>
             <div v-else>
@@ -122,7 +122,7 @@
         <vxe-colgroup title="出库" align="center">
           <vxe-column title="基本单位数量" field="quantity" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)">
+              <div v-if="outboundItems.includes(row['operationType'])">
                 {{ getAbsoluteValue(row.quantity) }}
               </div>
               <div v-else>
@@ -131,7 +131,7 @@
           </vxe-column>
           <vxe-column title="单位成本" field="unitPrice" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)">
+              <div v-if="outboundItems.includes(row['operationType'])">
                 {{ row.unitPrice }}
               </div>
               <div v-else>
@@ -140,7 +140,7 @@
           </vxe-column>
           <vxe-column title="成本" field="subtotal" align="center" width="100">
             <template #default="{ row }">
-              <div v-if="row['operationType'] === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)">
+              <div v-if="outboundItems.includes(row['operationType'])">
                 {{ row.subtotal }}
               </div>
               <div v-else>
@@ -213,6 +213,8 @@ export default {
       warehouseList: [],
       productList: [],
       supplierList: [],
+      outboundItems: ["采购退货", "销售出库", "调拨出库", "盘亏出库", "其他出库"],
+      inboundItems: ["采购入库", "销售退货", "调拨入库", "其他入库", "盘盈入库"],
     }
   },
   computed: {
@@ -237,10 +239,10 @@ export default {
       data.forEach((row) => {
         let rd = row['quantity'];
         if (rd) {
-          if (row.operationType === '入库' || row['operationType'] === '成本调整' || (row['operationType'] === '调拨' && row.quantity > 0)) {
+          if (this.inboundItems.includes(row['operationType'])) {
             inQuantity += Number(rd || 0);
           }
-          if (row.operationType === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)) {
+          if (this.outboundItems.includes(row['operationType'])) {
             outQuantity += Number(this.getAbsoluteValue(rd) || 0);
           }
         }
@@ -248,10 +250,10 @@ export default {
       data.forEach((row) => {
         let rd = row['subtotal'];
         if (rd) {
-          if (row.operationType === '入库' || row['operationType'] === '成本调整' || (row['operationType'] === '调拨' && row.quantity > 0)) {
+          if (this.inboundItems.includes(row['operationType'])) {
             inTotal += Number(rd || 0);
           }
-          if (row.operationType === '出库' || (row['operationType'] === '调拨' && row.quantity < 0)) {
+          if (this.outboundItems.includes(row['operationType'])) {
             outTotal += Number(this.getAbsoluteValue(rd) || 0);
           }
         }
@@ -374,28 +376,25 @@ export default {
         const operationType = item.operationType;
         const quantity = item.quantity;
         switch (operationType) {
-          case "入库":
+          case "采购入库":
+          case "销售退货":
+          case "调拨入库":
+          case "其他入库":
+          case "盘盈入库":
             element.correspondent = item.supplierName;
             element.inQuantity = quantity;
             element.inUnitPrice = item.unitPrice;
             element.inSubtotal = item.subtotal;
             break;
-          case "出库":
+          case "采购退货":
+          case "销售出库":
+          case "调拨出库":
+          case "盘亏出库":
+          case "其他出库":
             element.correspondent = item.customerName;
-            element.outQuantity = quantity;
+            element.outQuantity = this.getAbsoluteValue(quantity);
             element.outUnitPrice = item.unitPrice;
             element.outSubtotal = item.subtotal;
-            break;
-          case "调拨":
-            if (quantity > 0) {
-              element.inQuantity = quantity;
-              element.inUnitPrice = item.unitPrice;
-              element.inSubtotal = item.subtotal;
-            } else {
-              element.outQuantity = this.getAbsoluteValue(quantity);
-              element.outUnitPrice = item.unitPrice;
-              element.outSubtotal = item.subtotal;
-            }
             break;
           case "成本调整":
             element.inSubtotal = item.subtotal;

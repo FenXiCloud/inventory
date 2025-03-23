@@ -96,7 +96,7 @@ export default {
       },
       params: {
         filter: null,
-        state: null,
+        state: '已审核',
         sortCol: null,
         sort: null,
         customerId:null

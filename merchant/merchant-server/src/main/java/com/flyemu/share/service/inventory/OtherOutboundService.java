@@ -10,11 +10,13 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.OtherOutboundDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
+import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.OutboundType;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.OtherOutboundForm;
 import com.flyemu.share.repository.OtherOutboundRepository;
 import com.flyemu.share.service.AbsService;
@@ -71,9 +73,7 @@ public class OtherOutboundService extends AbsService {
 
     public PageResults<OtherOutboundDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qOtherOutbound)
-                .select(qOtherOutbound, qCustomer.name, qCustomer.code, qAdmin.name, qOtherOutboundItem.quantity.sum().as("item_quantity"))
-                .leftJoin(qCustomer).on(qCustomer.id.eq(qOtherOutbound.customerId))
-                .leftJoin(qAdmin).on(qAdmin.id.eq(qOtherOutbound.createdBy))
+                .select(qOtherOutbound, qOtherOutboundItem.quantity.sum().as("item_quantity"))
                 .leftJoin(qOtherOutboundItem).on(qOtherOutboundItem.otherOutboundId.eq(qOtherOutbound.id))
                 .where(query.builder)
                 .where(query.builders())
@@ -85,9 +85,19 @@ public class OtherOutboundService extends AbsService {
         fetchPage.forEach(tuple -> {
             OtherOutboundDto dto = BeanUtil.toBean(tuple.get(qOtherOutbound), OtherOutboundDto.class);
             dto.setQuantity(Objects.requireNonNull(tuple.get(qOtherOutboundItem.quantity.sum().as("item_quantity"))).intValue());
-            dto.setCustomerCode(tuple.get(qCustomer.code));
-            dto.setCustomerName(tuple.get(qCustomer.name));
-            dto.setCreatedByName(tuple.get(qAdmin.name));
+            Long customerId = dto.getCustomerId();
+            if (customerId != null) {
+                Customer customer = jqf.selectFrom(qCustomer).where(qCustomer.id.eq(customerId)).fetchOne();
+                if (customer != null) {
+                    dto.setCustomerName(customer.getName());
+                    dto.setCustomerCode(customer.getCode());
+                }
+            }
+            Long createdBy = dto.getCreatedBy();
+            Admin admin = jqf.selectFrom(qAdmin).where(qAdmin.id.eq(createdBy)).fetchOne();
+            if (admin != null) {
+                dto.setCreatedByName(admin.getName());
+            }
             dtos.add(dto);
         });
 
@@ -136,16 +146,26 @@ public class OtherOutboundService extends AbsService {
     @Transactional
     public void approve(Long id, ApproveType type, Long adminId) {
         OtherOutbound otherOutbound = jqf.selectFrom(qOtherOutbound).where(qOtherOutbound.id.eq(id)).fetchOne();
+        if (otherOutbound == null) {
+            throw new ServiceException("审核数据不存在～");
+        }
+        OutboundType outboundType = otherOutbound.getOutboundType();
+        OperationType operationType;
+        if (outboundType.equals(OutboundType.其他出库)) {
+            operationType = OperationType.其他出库;
+        } else {
+            operationType = OperationType.盘亏出库;
+        }
         List<OtherOutboundItem> otherOutboundItems = otherOutboundItemService.findByOtherOutboundId(id);
         List<Inventory> inventories = new ArrayList<>();
         List<InventoryItem> inventoryItems = new ArrayList<>();
         switch (type) {
             case AUDITS -> {
                 //处理库存
-                this.getComputedInventory(otherOutboundItems, inventories, inventoryItems, otherOutbound.getCustomerId());
+                this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound.getCustomerId());
                 inventories.forEach(item -> {
                     // 减库存
-                    inventoryService.computedInventory(item, false, id, OperationType.出库, inventoryItems);
+                    inventoryService.computedInventory(item, false, id, operationType, inventoryItems);
                 });
                 otherOutbound.setOrderStatus(OrderStatus.已审核);
                 otherOutbound.setApprovedBy(adminId);
@@ -154,10 +174,10 @@ public class OtherOutboundService extends AbsService {
             }
             case ANTI_AUDIT -> {
                 //处理库存
-                this.getComputedInventory(otherOutboundItems, inventories, inventoryItems, otherOutbound.getCustomerId());
+                this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound.getCustomerId());
                 inventories.forEach(item -> {
                     // 加库存
-                    inventoryService.computedInventory(item, true, id, OperationType.出库, null);
+                    inventoryService.computedInventory(item, true, id, operationType, null);
                 });
                 otherOutbound.setOrderStatus(OrderStatus.未审核);
                 otherOutbound.setApprovedBy(adminId);
@@ -179,6 +199,7 @@ public class OtherOutboundService extends AbsService {
      */
     private void getComputedInventory(List<OtherOutboundItem> otherOutboundItems,
                                       List<Inventory> inventories,
+                                      OperationType operationType,
                                       List<InventoryItem> inventoryItems,
                                       Long customerId) {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
@@ -213,7 +234,7 @@ public class OtherOutboundService extends AbsService {
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, customerId);
+            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, customerId, operationType);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
@@ -225,14 +246,15 @@ public class OtherOutboundService extends AbsService {
      * @param otherOutboundItem 出库明细
      * @return inventoryItem
      */
-    private InventoryItem getInventoryItem(OtherOutboundItem otherOutboundItem, Long customerId) {
+    private InventoryItem getInventoryItem(OtherOutboundItem otherOutboundItem, Long customerId,
+                                           OperationType operationType) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(otherOutboundItem.getProductId());
         inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
         double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
         inventoryItem.setQuantity((int) parsed);
         inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
-        inventoryItem.setOperationType(OperationType.出库);
+        inventoryItem.setOperationType(operationType);
         inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
         inventoryItem.setOrderId(otherOutboundItem.getOtherOutboundId());
         inventoryItem.setMerchantId(otherOutboundItem.getMerchantId());
@@ -342,6 +364,12 @@ public class OtherOutboundService extends AbsService {
 
         private String filter;
 
+        private String productIds;
+
+        private String warehouseIds;
+
+        private String customerIds;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qOtherOutbound.merchantId.eq(merchantId));
@@ -369,6 +397,15 @@ public class OtherOutboundService extends AbsService {
                 builder.and(qOtherOutbound.orderNo.contains(filter))
                         .or(qCustomer.name.contains(filter))
                         .or(qAdmin.name.contains(filter));
+            }
+            if (StrUtil.isNotBlank(productIds)) {
+                builder.and(qOtherOutboundItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(warehouseIds)) {
+                builder.and(qOtherOutboundItem.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(customerIds)) {
+                builder.and(qOtherOutbound.customerId.in(Arrays.stream(customerIds.split(",")).map(Long::parseLong).toList()));
             }
             return builder;
         }

@@ -198,8 +198,9 @@ export default {
       let totalAmount = 0;
       let discountAmount = 0;
       let finalAmount = 0;
+      let totalQuantity = 0;
       columns.forEach((column) => {
-        if (column.property && ['totalAmount', 'discountAmount', 'finalAmount'].includes(column.property)) {
+        if (column.property && ['totalAmount', 'discountAmount', 'finalAmount','totalQuantity'].includes(column.property)) {
 
           data.forEach((row) => {
             let rd = row[column.property];
@@ -215,12 +216,18 @@ export default {
               if (rd) {
                 finalAmount += Number(rd || 0);
               }
+            } else if (column.property === 'totalQuantity') {
+              if (rd) {
+                totalQuantity += Number(rd || 0);
+              }
             }
           });
         }
       })
-      this.amountTotal = totalAmount;
-      return [["", "", "", "", "", "", totalAmount.toFixed(2), discountAmount.toFixed(2), finalAmount.toFixed(2)]];
+      this.amountTotal = totalAmount.toFixed(2);
+      return [["", "", "", "", "", "",
+        totalAmount.toFixed(2), discountAmount.toFixed(2),
+        finalAmount.toFixed(2),totalQuantity.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;

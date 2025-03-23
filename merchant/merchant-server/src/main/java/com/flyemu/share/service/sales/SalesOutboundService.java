@@ -292,7 +292,18 @@ public class SalesOutboundService extends AbsService {
         }
         SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
         salesOutboundList.forEach(order -> {
-            order.setOrderStatus(salesOutboundForm.getOrderStatus());
+            OrderStatus orderStatus = salesOutboundForm.getOrderStatus();
+            if (orderStatus.equals(OrderStatus.已保存)) {
+                //已关联销售退货单不能审核
+                Long returnOrderId = order.getReturnOrderId();
+                if (returnOrderId != null){
+                    Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
+                    salesReturnOptional.ifPresent(salesReturn -> {
+                        throw new InvalidContextException("已关联销售退货单不能审核");
+                    });
+                }
+            }
+            order.setOrderStatus(orderStatus);
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(salesOutbound.getApprovedBy());
         });
@@ -307,6 +318,18 @@ public class SalesOutboundService extends AbsService {
         SalesOutbound original = salesOutboundRepository.getById(id);
         if (original.getId() == null) {
             throw new IllegalArgumentException("单据不存在");
+        }
+        //反审核
+        OrderStatus orderStatus = salesOutbound.getOrderStatus();
+        if (orderStatus.equals(OrderStatus.已保存)) {
+            //已关联销售退货单不能反审核
+            Long returnOrderId = original.getReturnOrderId();
+            if (returnOrderId != null){
+                Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
+                salesReturnOptional.ifPresent(salesReturn -> {
+                    throw new InvalidContextException("已关联销售退货单不能反审核");
+                });
+            }
         }
         original.setApprovedAt(LocalDateTime.now());
         original.setApprovedBy(salesOutbound.getApprovedBy());

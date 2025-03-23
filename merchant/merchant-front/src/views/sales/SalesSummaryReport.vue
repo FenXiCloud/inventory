@@ -15,7 +15,9 @@
 
       <div class="h-input-group">
         <span class="h-input-addon">汇总条件：</span>
-        <Select v-model="params.salesGroup" class="w-120px"
+        <Select v-model="params.salesGroup"
+                class="w-120px"
+                @change="handleSalesGroupChange"
                 :datas="{
                    PRODUCT:'商品',
                    CUSTOMER:'客户',
@@ -28,7 +30,8 @@
         <span class="h-input-addon">日期：</span>
         <DateRangePicker v-model="dateRange"></DateRangePicker>
       </div>
-      <div class="h-input-group">
+      <div class="h-input-group" v-if="this.params.salesGroupSearch === 'CUSTOMER_PRODUCT' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'
+                  || this.params.salesGroupSearch === 'CUSTOMER'">
         <span class="h-input-addon">客户：</span>
         <Select :multiple="true"  :datas="customerList" keyName="id" titleName="name"
                 v-model="params.customerIds" placeholder="请选择客户"/>
@@ -48,7 +51,8 @@
         <Select :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
                 v-model="params.productCategoryIds" placeholder="请选择类别"/>
       </div>
-      <div class="h-input-group">
+      <div class="h-input-group" v-if="this.params.salesGroupSearch === 'CUSTOMER_PRODUCT' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'
+                  || this.params.salesGroupSearch === 'CUSTOMER'">
         <span class="h-input-addon">客户类别：</span>
         <Select :multiple="true" :datas="customerCategoryList" keyName="id" titleName="name"
                 v-model="params.customerCategoryIds" placeholder="请选择类别"/>
@@ -303,6 +307,16 @@ export default {
         this.productCategoryList = results[3].data || [];
         this.customerCategoryList = results[4].data || [];
       }).finally(() => loading.close());
+    },
+    handleSalesGroupChange(value) {
+      console.log('汇总条件已更改:', value);
+      this.params.customerIds = [];
+      this.params.warehouseIds = [];
+      this.params.productIds = [];
+      this.params.productCategoryIds = [];
+      this.params.customerCategoryIds = [];
+      //强制更新视图
+      this.$forceUpdate();
     },
   },
   created() {

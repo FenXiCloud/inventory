@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 销售出库单
@@ -85,4 +86,7 @@ public class SalesOutboundDTO {
     private List<SalesOutboundItemDTO> salesOutboundItemList;
 
     private String salesOrderNos;
+
+    @Comment("商品数量")
+    private AtomicReference<Double> totalQuantity;
 }

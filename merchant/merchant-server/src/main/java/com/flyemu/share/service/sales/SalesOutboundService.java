@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static com.flyemu.share.entity.sales.QSalesOrder.salesOrder;
@@ -107,11 +108,15 @@ public class SalesOutboundService extends AbsService {
                     .where(qSalesOutboundItem.salesOutboundId.eq(salesOutboundDTO.getId()))
                     .fetch();
             List<SalesOutboundItemDTO> itemDTOs = new ArrayList<>();
+            AtomicReference<Double> totalQuantity = new AtomicReference<>((double) 0L);
             salesOutboundItemList.forEach(item -> {
                 SalesOutboundItemDTO itemDTO = BeanUtil.toBean(item, SalesOutboundItemDTO.class);
                 itemDTOs.add(itemDTO);
+                Double quantity = itemDTO.getQuantity();
+                totalQuantity.updateAndGet(v -> v + quantity);
             });
             salesOutboundDTO.setSalesOutboundItemList(itemDTOs);
+            salesOutboundDTO.setTotalQuantity(totalQuantity);
 
             //查询关联的销售订单
             List<String> salesOrderList = bqf.selectFrom(qSalesOrder)

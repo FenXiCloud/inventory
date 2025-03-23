@@ -3,7 +3,6 @@ package com.flyemu.share.service.sales;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
-import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesOrderDTO;
@@ -21,11 +20,9 @@ import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
-import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -35,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @功能描述: 销售订单
@@ -94,12 +92,15 @@ public class SalesOrderService extends AbsService {
                     .where(qSalesOrderItem.salesOrderId.eq(salesOrderDTO.getId()))
                     .fetch();
             List<SalesOrderItemDTO> itemDTOs = new ArrayList<>();
+            AtomicReference<Double> totalQuantity = new AtomicReference<>((double) 0L);
             salesOrderItemList.forEach(item -> {
                 SalesOrderItemDTO itemDTO = BeanUtil.toBean(item, SalesOrderItemDTO.class);
                 itemDTOs.add(itemDTO);
+                Double quantity = itemDTO.getQuantity();
+                totalQuantity.updateAndGet(v -> v + quantity);
             });
             salesOrderDTO.setSalesOrderItemList(itemDTOs);
-
+            salesOrderDTO.setTotalQuantity(totalQuantity);
             dtos.add(salesOrderDTO);
         });
         return new PageResults<>(dtos, page, totalSize);

@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
     销售退货单DTO
@@ -93,4 +94,7 @@ public class SalesReturnDTO {
     private List<SalesReturnItemDTO> salesReturnItemList;
 
     private String salesOutboundNos;
+
+    @Comment("商品数量")
+    private AtomicReference<Double> totalQuantity;
 }

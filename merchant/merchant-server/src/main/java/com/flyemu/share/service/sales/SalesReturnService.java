@@ -297,6 +297,8 @@ public class SalesReturnService extends AbsService {
             order.setApprovedBy(salesReturn.getApprovedBy());
         });
         salesReturnRepository.saveAll(salesReturnList);
+        // 设置明细
+        salesReturnList.forEach(this::salesReturnToInventory);
     }
 
     @Transactional

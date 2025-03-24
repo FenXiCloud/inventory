@@ -198,9 +198,9 @@ public class PurchaseReturnService extends AbsService {
             purchaseReturnRepository.findById(id).ifPresent(purchaseReturn -> {
                 List<Inventory> inventories = new ArrayList<>();
                 List<InventoryItem> inventoryItems = new ArrayList<>();
-                List<PurchaseReturnItem> inboundItems = jqf.select(qPurchaseReturnItem).where(qPurchaseReturnItem.purchaseReturnId.eq(id)).fetch();
+                List<PurchaseReturnItem> returnItems = purchaseReturnItemRepository.findByPurchaseReturnId(id);
                 //处理库存
-                this.getComputedInventory(inboundItems, inventories, inventoryItems, purchaseReturn.getSupplierId());
+                this.getComputedInventory(returnItems, inventories, inventoryItems, purchaseReturn.getSupplierId(), purchaseReturn.getOrderNo());
                 inventories.forEach(item -> {
                     if (OrderStatus.已审核.equals(state)) {
                         // 减库存
@@ -214,15 +214,16 @@ public class PurchaseReturnService extends AbsService {
         });
     }
 
-    private void getComputedInventory(List<PurchaseReturnItem> inboundItems, List<Inventory> inventories, List<InventoryItem> inventoryItems, Long supplierId) {
+    private void getComputedInventory(List<PurchaseReturnItem> returnItems, List<Inventory> inventories,
+                                      List<InventoryItem> inventoryItems, Long supplierId, String orderNo) {
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
-        inboundItems.forEach(purchaseInboundItem -> {
-            BigDecimal subtotal = purchaseInboundItem.getSubtotal();
-            Double quantity = purchaseInboundItem.getQuantity();
+        returnItems.forEach(purchaseReturnItem -> {
+            BigDecimal subtotal = purchaseReturnItem.getSubtotal();
+            Double quantity = purchaseReturnItem.getQuantity();
             inventories.stream()
-                    .filter(item -> item.getProductId().equals(purchaseInboundItem.getProductId())
-                            && item.getWarehouseId().equals(purchaseInboundItem.getWarehouseId()))
+                    .filter(item -> item.getProductId().equals(purchaseReturnItem.getProductId())
+                            && item.getWarehouseId().equals(purchaseReturnItem.getWarehouseId()))
                     .findFirst()
                     .ifPresentOrElse(
                             item -> {
@@ -236,18 +237,18 @@ public class PurchaseReturnService extends AbsService {
                                 item.setTotalCost(added);
                             }, () -> {
                                 Inventory inventory = new Inventory();
-                                inventory.setWarehouseId(purchaseInboundItem.getWarehouseId());
-                                inventory.setProductId(purchaseInboundItem.getProductId());
-                                double parsed = Double.parseDouble(purchaseInboundItem.getQuantity().toString());
+                                inventory.setWarehouseId(purchaseReturnItem.getWarehouseId());
+                                inventory.setProductId(purchaseReturnItem.getProductId());
+                                double parsed = Double.parseDouble(purchaseReturnItem.getQuantity().toString());
                                 inventory.setCurrentQuantity((int) parsed);
-                                inventory.setTotalCost(purchaseInboundItem.getSubtotal());
-                                inventory.setMerchantId(purchaseInboundItem.getMerchantId());
-                                inventory.setAccountBookId(purchaseInboundItem.getAccountBookId());
-                                inventory.setBaseUnitId(purchaseInboundItem.getBaseUnitId());
+                                inventory.setTotalCost(purchaseReturnItem.getSubtotal());
+                                inventory.setMerchantId(purchaseReturnItem.getMerchantId());
+                                inventory.setAccountBookId(purchaseReturnItem.getAccountBookId());
+                                inventory.setBaseUnitId(purchaseReturnItem.getBaseUnitId());
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(purchaseInboundItem, supplierId);
+            InventoryItem inventoryItem = getInventoryItem(purchaseReturnItem, supplierId, orderNo);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
@@ -260,7 +261,7 @@ public class PurchaseReturnService extends AbsService {
      * @param supplierId         供应商id
      * @return inventoryItem
      */
-    private InventoryItem getInventoryItem(PurchaseReturnItem purchaseReturnItem, Long supplierId) {
+    private InventoryItem getInventoryItem(PurchaseReturnItem purchaseReturnItem, Long supplierId, String orderNo) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setWarehouseId(purchaseReturnItem.getWarehouseId());
         inventoryItem.setProductId(purchaseReturnItem.getProductId());
@@ -271,7 +272,7 @@ public class PurchaseReturnService extends AbsService {
         inventoryItem.setOperationType(OperationType.采购退货);
         inventoryItem.setBaseUnitId(purchaseReturnItem.getBaseUnitId());
         inventoryItem.setOrderId(purchaseReturnItem.getPurchaseReturnId());
-        inventoryItem.setBatchNumber(purchaseReturnItem.getBatchNumber());
+        inventoryItem.setBatchNumber(orderNo);
         inventoryItem.setMerchantId(purchaseReturnItem.getMerchantId());
         inventoryItem.setAccountBookId(purchaseReturnItem.getAccountBookId());
         inventoryItem.setCreatedAt(LocalDateTime.now());

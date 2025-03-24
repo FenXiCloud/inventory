@@ -197,9 +197,9 @@ public class PurchaseInboundService extends AbsService {
             purchaseInboundRepository.findById(id).ifPresent(purchaseInbound -> {
                 List<Inventory> inventories = new ArrayList<>();
                 List<InventoryItem> inventoryItems = new ArrayList<>();
-                List<PurchaseInboundItem> inboundItems = jqf.select(qPurchaseInboundItem).where(qPurchaseInboundItem.purchaseInboundId.eq(id)).fetch();
+                List<PurchaseInboundItem> inboundItems = inboundItemRepository.findByPurchaseInboundId(purchaseInbound.getId());
                 //处理库存
-                this.getComputedInventory(inboundItems, inventories, inventoryItems, purchaseInbound.getSupplierId());
+                this.getComputedInventory(inboundItems, inventories, inventoryItems, purchaseInbound.getSupplierId(), purchaseInbound.getOrderNo());
                 inventories.forEach(item -> {
                     if (OrderStatus.已审核.equals(state)) {
                         // 加库存
@@ -213,7 +213,8 @@ public class PurchaseInboundService extends AbsService {
         });
     }
 
-    private void getComputedInventory(List<PurchaseInboundItem> inboundItems, List<Inventory> inventories, List<InventoryItem> inventoryItems, Long supplierId) {
+    private void getComputedInventory(List<PurchaseInboundItem> inboundItems, List<Inventory> inventories,
+                                      List<InventoryItem> inventoryItems, Long supplierId, String orderNo) {
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         inboundItems.forEach(purchaseInboundItem -> {
@@ -246,7 +247,7 @@ public class PurchaseInboundService extends AbsService {
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(purchaseInboundItem, supplierId);
+            InventoryItem inventoryItem = getInventoryItem(purchaseInboundItem, supplierId, orderNo);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
@@ -259,7 +260,7 @@ public class PurchaseInboundService extends AbsService {
      * @param supplierId          供应商id
      * @return inventoryItem
      */
-    private InventoryItem getInventoryItem(PurchaseInboundItem purchaseInboundItem, Long supplierId) {
+    private InventoryItem getInventoryItem(PurchaseInboundItem purchaseInboundItem, Long supplierId, String orderNo) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setWarehouseId(purchaseInboundItem.getWarehouseId());
         inventoryItem.setProductId(purchaseInboundItem.getProductId());
@@ -270,7 +271,7 @@ public class PurchaseInboundService extends AbsService {
         inventoryItem.setOperationType(OperationType.采购入库);
         inventoryItem.setBaseUnitId(purchaseInboundItem.getBaseUnitId());
         inventoryItem.setOrderId(purchaseInboundItem.getPurchaseInboundId());
-        inventoryItem.setBatchNumber(purchaseInboundItem.getBatchNumber());
+        inventoryItem.setBatchNumber(orderNo);
         inventoryItem.setMerchantId(purchaseInboundItem.getMerchantId());
         inventoryItem.setAccountBookId(purchaseInboundItem.getAccountBookId());
         inventoryItem.setCreatedAt(LocalDateTime.now());

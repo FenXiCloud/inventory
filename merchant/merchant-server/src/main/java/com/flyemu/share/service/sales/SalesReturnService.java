@@ -142,6 +142,7 @@ public class SalesReturnService extends AbsService {
             SalesReturn update = salesReturnRepository.save(original);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    checkQuantity(item);
                     savePrice(item, update);
                     item.setSalesReturnId(update.getId());
                     item.setAccountBookId(salesReturn.getAccountBookId());
@@ -159,6 +160,7 @@ public class SalesReturnService extends AbsService {
             SalesReturn save = salesReturnRepository.save(salesReturn);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    checkQuantity(item);
                     //保存价格记录
                     savePrice(item, save);
                     item.setSalesReturnId(save.getId());
@@ -184,6 +186,20 @@ public class SalesReturnService extends AbsService {
             return save;
         }
 
+    }
+
+    private void checkQuantity(SalesReturnItem item) {
+        Long outItemId = item.getOutItemId();
+        if (outItemId != null) {
+            SalesOutboundItem salesOutboundItem = salesOutboundItemRepository.getById(outItemId);
+            //出库单数量
+            Double quantity = salesOutboundItem.getQuantity();
+            //退货单数量
+            Double quantity1 = item.getQuantity();
+            if (quantity1 > quantity) {
+                throw new InvalidContextException("退货数量不能大于出库数量");
+            }
+        }
     }
 
     private void savePrice(SalesReturnItem item, SalesReturn save) {

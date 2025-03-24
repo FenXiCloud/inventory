@@ -253,6 +253,8 @@ export default {
         if (unit) {
           row.unitName = unit.name;
         }
+        // 将 id 赋值给 outItemId
+        row.outItemId = row.id;
         //将id置为空，因为是新增的商品
         row.id = null;
       });

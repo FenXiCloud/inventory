@@ -11,6 +11,9 @@
                       :clearable="false"></DatePicker>
           <Button v-if="type==='add'" @click="addOrEditForm()" color="primary" style="margin-left: 20px">选择源单</Button>
         </template>
+        <template #tools>
+          <Stamp v-if="form.orderStatus === '已审核' " />
+        </template>
       </vxe-toolbar>
       <vxe-table
           size="mini"
@@ -128,14 +131,14 @@
         取消
       </Button>
       <div>
-        <Button color="primary" @click="saveOrder('new')" :loading="loading">
+        <Button color="primary" @click="saveOrder('new')" v-if="form.orderStatus !== '已审核' " :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder('save')" :loading="loading">
+        <Button @click="saveOrder('save')" v-if="form.orderStatus !== '已审核' " :loading="loading">
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="auditOrder('已审核')" v-if="form.orderStatus === '已保存' " :loading="loading">
+        <Button @click="auditOrder('已审核')"  v-if="form.orderStatus !== '已审核' " :loading="loading">
           审核
         </Button>
         <!-- 仅当状态为审核时显示 -->
@@ -160,9 +163,11 @@ import {h} from "vue";
 import Unit from "@js/api/basic/Unit";
 import SalesOutboundSelect from "@views/sales/SalesOutboundSelect.vue";
 import SalesReturn from "@js/api/sales/SalesReturn";
+import Stamp from "@views/common/Stamp.vue";
 
 export default {
   name: "SalesReturnForm",
+  components: {Stamp},
   computed: {
     ...mapState(['accountBook']),
     isDeleting() {
@@ -429,7 +434,11 @@ export default {
               this.closeWindow()
             }
           }).finally(() =>
-              loading.close()
+              {
+                setTimeout(() => {
+                  this.closeWindow()
+                }, 1000);
+              }
           );
         }
       })

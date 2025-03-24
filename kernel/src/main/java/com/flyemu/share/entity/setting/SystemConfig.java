@@ -37,6 +37,9 @@ public class SystemConfig implements Serializable {
     @Enumerated(EnumType.STRING)
     private ConfigType configType;
 
+    @Comment("说明")
+    private String description;
+
     @Comment("状态")
     @Column(nullable = false)
     @ColumnDefault("b'1'")

@@ -424,8 +424,10 @@ export default {
         content: `确定审核订单？`,
         onConfirm: () => {
           loading("保存中....");
-          let salesReturn = Object.assign(this.form);
-          salesReturn.orderStatus = orderStatus
+          let salesReturn ={
+            id: this.form.id,
+            orderStatus: orderStatus
+          }
           SalesReturn.audit({
             salesReturn: salesReturn,
           }).then((success) => {
@@ -433,13 +435,10 @@ export default {
               message("审核成功~");
               this.closeWindow()
             }
-          }).finally(() =>
-              {
-                setTimeout(() => {
-                  this.closeWindow()
-                }, 1000);
-              }
-          );
+          }).catch(() => {
+          }).finally(() => {
+            loading.close()
+          });
         }
       })
     },

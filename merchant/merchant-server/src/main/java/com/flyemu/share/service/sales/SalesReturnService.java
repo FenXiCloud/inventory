@@ -219,6 +219,12 @@ public class SalesReturnService extends AbsService {
         jqf.delete(qsalesReturnItem)
                 .where(qsalesReturnItem.salesReturnId.eq(salesReturnId).and(qsalesReturnItem.merchantId.eq(merchantId)).and(qsalesReturnItem.accountBookId.eq(accountBookId)))
                 .execute();
+
+        //修改销售出库单 关联退货单
+        jqf.update(qSalesOutbound)
+                .setNull(qSalesOutbound.returnOrderId)
+                .where(qSalesOutbound.id.eq(original.getSalesOutboundId()).and(qSalesOutbound.merchantId.eq(merchantId)).and(qSalesOutbound.accountBookId.eq(accountBookId)))
+                .execute();
     }
 
     public List<SalesReturn> select(Long merchantId, Long accountBookId) {

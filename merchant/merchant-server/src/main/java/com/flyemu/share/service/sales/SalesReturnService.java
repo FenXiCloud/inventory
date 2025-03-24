@@ -223,7 +223,7 @@ public class SalesReturnService extends AbsService {
         //修改销售出库单 关联退货单
         jqf.update(qSalesOutbound)
                 .setNull(qSalesOutbound.returnOrderId)
-                .where(qSalesOutbound.id.eq(original.getSalesOutboundId()).and(qSalesOutbound.merchantId.eq(merchantId)).and(qSalesOutbound.accountBookId.eq(accountBookId)))
+                .where(qSalesOutbound.returnOrderId.eq(original.getId()).and(qSalesOutbound.merchantId.eq(merchantId)).and(qSalesOutbound.accountBookId.eq(accountBookId)))
                 .execute();
     }
 

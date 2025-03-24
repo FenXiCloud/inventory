@@ -11,6 +11,9 @@
                       :clearable="false"></DatePicker>
           <Button v-if="type==='add'" @click="addOrEditForm()" color="primary" style="margin-left: 20px">选择源单</Button>
         </template>
+        <template #tools>
+          <Stamp v-if="form.orderStatus === '已审核' " />
+        </template>
       </vxe-toolbar>
       <vxe-table
           size="mini"
@@ -32,7 +35,7 @@
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,rowIndex)" :datas="productList" v-model="row.productId"
-                      keyName="id" titleName="name" filterable placeholder="输入编码/名称">
+                      keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false">
                 <template v-slot:item="{ item }">
                   <div>{{ item.code }} {{ item.name }}</div>
                 </template>
@@ -128,14 +131,14 @@
         取消
       </Button>
       <div>
-        <Button color="primary" @click="saveOrder('new')" :loading="loading">
+        <Button color="primary" @click="saveOrder('new')" v-if="form.orderStatus !== '已审核' " :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder('save')" :loading="loading">
+        <Button @click="saveOrder('save')" v-if="form.orderStatus !== '已审核' " :loading="loading">
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="auditOrder('已审核')" v-if="form.orderStatus === '已保存' " :loading="loading">
+        <Button @click="auditOrder('已审核')"  v-if="form.orderStatus !== '已审核' " :loading="loading">
           审核
         </Button>
         <!-- 仅当状态为审核时显示 -->
@@ -160,9 +163,11 @@ import {h} from "vue";
 import Unit from "@js/api/basic/Unit";
 import SalesOutboundSelect from "@views/sales/SalesOutboundSelect.vue";
 import SalesReturn from "@js/api/sales/SalesReturn";
+import Stamp from "@views/common/Stamp.vue";
 
 export default {
   name: "SalesReturnForm",
+  components: {Stamp},
   computed: {
     ...mapState(['accountBook']),
     isDeleting() {
@@ -248,6 +253,8 @@ export default {
         if (unit) {
           row.unitName = unit.name;
         }
+        // 将 id 赋值给 outItemId
+        row.outItemId = row.id;
         //将id置为空，因为是新增的商品
         row.id = null;
       });
@@ -419,8 +426,10 @@ export default {
         content: `确定审核订单？`,
         onConfirm: () => {
           loading("保存中....");
-          let salesReturn = Object.assign(this.form);
-          salesReturn.orderStatus = orderStatus
+          let salesReturn ={
+            id: this.form.id,
+            orderStatus: orderStatus
+          }
           SalesReturn.audit({
             salesReturn: salesReturn,
           }).then((success) => {
@@ -428,9 +437,10 @@ export default {
               message("审核成功~");
               this.closeWindow()
             }
-          }).finally(() =>
-              loading.close()
-          );
+          }).catch(() => {
+          }).finally(() => {
+            loading.close()
+          });
         }
       })
     },

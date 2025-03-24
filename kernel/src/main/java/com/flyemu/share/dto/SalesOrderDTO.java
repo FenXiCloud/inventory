@@ -1,16 +1,15 @@
 package com.flyemu.share.dto;
 
-import com.flyemu.share.entity.sales.SalesOrderItem;
 import com.flyemu.share.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.Comment;
-import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
     销售订单DTO
@@ -78,4 +77,7 @@ public class SalesOrderDTO {
     private Long outOrderId;
     @Comment("销售出库单编号")
     private String outOrderNo;
+
+    @Comment("商品数量")
+    private AtomicReference<Double> totalQuantity;
 }

@@ -28,10 +28,11 @@
               <Tag color="red" v-else @click="trigger(row)" class="cursor-pointer">禁用</Tag>
             </template>
           </vxe-column>
-          <vxe-column title="操作" align="center" width="120" fixed="right">
+          <vxe-column title="操作" align="center" width="300" fixed="right">
             <template #default="{row}">
               <div class="flex items-center justify-center">
                 <span class=" primary-color text-hover ml-10px" @click="showForm(row)" size="s">编辑</span>
+                <span class=" primary-color text-hover ml-10px" @click="showConfigForm(row)" size="s">参数设置</span>
               </div>
             </template>
           </vxe-column>
@@ -57,6 +58,7 @@
 import AccountBook from "@js/api/setting/AccountBook";
 import {confirm, message} from "heyui.ext";
 import AccountBookForm from "./AccountBookForm.vue";
+import SystemConfigForm from "./SystemConfigForm.vue";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 
@@ -107,6 +109,23 @@ export default {
         shadeClose: false,
         area: ['50vw', 'auto'],
         content: h(AccountBookForm, {
+          accountBook,
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: () => {
+            this.doSearch();
+            layer.close(layerId);
+          }
+        })
+      });
+    },
+    showConfigForm(accountBook) {
+      let layerId = layer.open({
+        title: "参数设置",
+        shadeClose: false,
+        area: ['800px', '600px'],
+        content: h(SystemConfigForm, {
           accountBook,
           onClose: () => {
             layer.close(layerId);

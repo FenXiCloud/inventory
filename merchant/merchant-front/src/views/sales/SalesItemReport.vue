@@ -1,36 +1,42 @@
 <template>
   <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
+
+
+    <div class="filter-row flex flex-wrap gap-8px p-10px bg-white-color border-b">
+      <div class="h-input-group">
         <Button @click="exportData" color="primary">导 出</Button>
         <Button @click="printEvent">打 印</Button>
-      </template>
-      <template #tools>
+      </div>
+
+      <div class="h-input-group">
         <Select v-model="params.salesType" class="w-80px" :datas="{all:'全部',out:'销货',return:'退货'}" placeholder="业务类别："/>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期：</span>
-          <DateRangePicker v-model="dateRange" ></DateRangePicker>
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">客户：</span>
-          <Select :multiple="true" class="w-120px" filterable :datas="customerList" keyName="id" titleName="name"
-                  v-model="params.customerIds" placeholder="请选择客户"  />
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">仓库：</span>
-          <Select :multiple="true" v-model="params.warehouseIds" class="w-100px" keyName="id" titleName="name" :datas="warehouseList" placeholder="请选择仓库"/>
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">商品：</span>
-          <Select :multiple="true" v-model="params.productIds" class="w-100px" keyName="id" titleName="name" :datas="productList" placeholder="请选择商品"/>
-        </div>
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon ml-8px">订单日期：</span>
+        <DateRangePicker v-model="dateRange" ></DateRangePicker>
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon ml-8px">客户：</span>
+        <Select :multiple="true" :datas="customerList" keyName="id" titleName="name"
+                v-model="params.customerIds" placeholder="请选择客户"  />
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon">仓库：</span>
+        <Select :multiple="true" v-model="params.warehouseIds"  keyName="id" titleName="name"
+                :datas="warehouseList" placeholder="请选择仓库"/>
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon ml-8px">商品：</span>
+        <Select :multiple="true" v-model="params.productIds"  keyName="id" titleName="name" :datas="productList" placeholder="请选择商品"/>
+      </div>
+      <div class="h-input-group">
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-180px ml-8px"
+                show-search-button
                 placeholder="请输入订单号" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
-      </template>
-    </vxe-toolbar>
+      </div>
+    </div>
     <div class="flex1">
       <vxe-table row-id="id"
                  ref="tableRef"
@@ -265,3 +271,21 @@ export default {
   }
 }
 </script>
+<style scoped>
+.filter-row {
+  border-top: 1px solid #eee;
+  background-color: #fff;
+}
+
+.h-input-group {
+  display: flex;
+  align-items: center;
+  margin: 4px 0;
+}
+
+.h-input-addon {
+  white-space: nowrap;
+  padding: 0 8px;
+  color: #666;
+}
+</style>

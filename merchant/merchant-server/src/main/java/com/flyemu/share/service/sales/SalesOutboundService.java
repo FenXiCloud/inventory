@@ -40,6 +40,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+
+import static com.flyemu.share.entity.sales.QSalesOrder.salesOrder;
 
 /**
  * @功能描述: 销售出库单
@@ -105,11 +108,15 @@ public class SalesOutboundService extends AbsService {
                     .where(qSalesOutboundItem.salesOutboundId.eq(salesOutboundDTO.getId()))
                     .fetch();
             List<SalesOutboundItemDTO> itemDTOs = new ArrayList<>();
+            AtomicReference<Double> totalQuantity = new AtomicReference<>((double) 0L);
             salesOutboundItemList.forEach(item -> {
                 SalesOutboundItemDTO itemDTO = BeanUtil.toBean(item, SalesOutboundItemDTO.class);
                 itemDTOs.add(itemDTO);
+                Double quantity = itemDTO.getQuantity();
+                totalQuantity.updateAndGet(v -> v + quantity);
             });
             salesOutboundDTO.setSalesOutboundItemList(itemDTOs);
+            salesOutboundDTO.setTotalQuantity(totalQuantity);
 
             //查询关联的销售订单
             List<String> salesOrderList = bqf.selectFrom(qSalesOrder)
@@ -290,7 +297,18 @@ public class SalesOutboundService extends AbsService {
         }
         SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
         salesOutboundList.forEach(order -> {
-            order.setOrderStatus(salesOutboundForm.getOrderStatus());
+            OrderStatus orderStatus = salesOutboundForm.getOrderStatus();
+            if (orderStatus.equals(OrderStatus.已保存)) {
+                //已关联销售退货单不能审核
+                Long returnOrderId = order.getReturnOrderId();
+                if (returnOrderId != null){
+                    Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
+                    salesReturnOptional.ifPresent(salesReturn -> {
+                        throw new InvalidContextException("已关联销售退货单不能审核");
+                    });
+                }
+            }
+            order.setOrderStatus(orderStatus);
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(salesOutbound.getApprovedBy());
         });
@@ -307,6 +325,18 @@ public class SalesOutboundService extends AbsService {
         SalesOutbound original = salesOutboundRepository.getById(id);
         if (original.getId() == null) {
             throw new IllegalArgumentException("单据不存在");
+        }
+        //反审核
+        OrderStatus orderStatus = salesOutbound.getOrderStatus();
+        if (orderStatus.equals(OrderStatus.已保存)) {
+            //已关联销售退货单不能反审核
+            Long returnOrderId = original.getReturnOrderId();
+            if (returnOrderId != null){
+                Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
+                salesReturnOptional.ifPresent(salesReturn -> {
+                    throw new InvalidContextException("已关联销售退货单不能反审核");
+                });
+            }
         }
         original.setApprovedAt(LocalDateTime.now());
         original.setApprovedBy(salesOutbound.getApprovedBy());

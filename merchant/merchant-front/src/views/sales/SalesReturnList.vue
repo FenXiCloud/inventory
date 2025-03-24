@@ -52,6 +52,7 @@
         <vxe-column title="销售金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="退款金额" field="refundAmount" width="120"/>
+        <vxe-column title="数量" field="totalQuantity" width="120"/>
         <vxe-column title="制单人" field="createdName" align="center" width="100"/>
         <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
         <vxe-column title="状态" field="orderStatus" width="80"/>
@@ -193,8 +194,9 @@ export default {
       let totalAmount = 0;
       let discountAmount = 0;
       let refundAmount = 0;
+      let totalQuantity = 0;
       columns.forEach((column) => {
-        if (column.property && ['totalAmount', 'discountAmount', 'refundAmount'].includes(column.property)) {
+        if (column.property && ['totalAmount', 'discountAmount', 'refundAmount','totalQuantity'].includes(column.property)) {
 
           data.forEach((row) => {
             let rd = row[column.property];
@@ -210,12 +212,18 @@ export default {
               if (rd) {
                 refundAmount += Number(rd || 0);
               }
+            } else if (column.property === 'totalQuantity') {
+              if (rd) {
+                totalQuantity += Number(rd || 0);
+              }
             }
           });
         }
       })
-      this.amountTotal = totalAmount;
-      return [["", "", "", "", "", "", totalAmount.toFixed(2), discountAmount.toFixed(2), refundAmount.toFixed(2)]];
+      this.amountTotal = totalAmount.toFixed(2);
+      return [["", "", "", "", "", "",
+        totalAmount.toFixed(2), discountAmount.toFixed(2),
+        refundAmount.toFixed(2),totalQuantity.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;

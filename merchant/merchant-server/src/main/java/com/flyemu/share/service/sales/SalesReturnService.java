@@ -106,11 +106,15 @@ public class SalesReturnService extends AbsService {
                     .where(qsalesReturnItem.salesReturnId.eq(salesReturnDTO.getId()))
                     .fetch();
             List<SalesReturnItemDTO> itemDTOs = new ArrayList<>();
+            AtomicReference<Double> totalQuantity = new AtomicReference<>((double) 0L);
             salesReturnItemList.forEach(item -> {
                 SalesReturnItemDTO itemDTO = BeanUtil.toBean(item, SalesReturnItemDTO.class);
                 itemDTOs.add(itemDTO);
+                Double quantity = itemDTO.getQuantity();
+                totalQuantity.updateAndGet(v -> v + quantity);
             });
             salesReturnDTO.setSalesReturnItemList(itemDTOs);
+            salesReturnDTO.setTotalQuantity(totalQuantity);
 
             //查询关联的出库单
             List<String> salesOutboundList = bqf.selectFrom(qSalesOutbound)
@@ -146,6 +150,7 @@ public class SalesReturnService extends AbsService {
             SalesReturn update = salesReturnRepository.save(original);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    checkQuantity(item);
                     savePrice(item, update);
                     item.setSalesReturnId(update.getId());
                     item.setAccountBookId(salesReturn.getAccountBookId());
@@ -163,6 +168,7 @@ public class SalesReturnService extends AbsService {
             SalesReturn save = salesReturnRepository.save(salesReturn);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    checkQuantity(item);
                     //保存价格记录
                     savePrice(item, save);
                     item.setSalesReturnId(save.getId());
@@ -188,6 +194,20 @@ public class SalesReturnService extends AbsService {
             return save;
         }
 
+    }
+
+    private void checkQuantity(SalesReturnItem item) {
+        Long outItemId = item.getOutItemId();
+        if (outItemId != null) {
+            SalesOutboundItem salesOutboundItem = salesOutboundItemRepository.getById(outItemId);
+            //出库单数量
+            Double quantity = salesOutboundItem.getQuantity();
+            //退货单数量
+            Double quantity1 = item.getQuantity();
+            if (quantity1 > quantity) {
+                throw new InvalidContextException("退货数量不能大于出库数量");
+            }
+        }
     }
 
     private void savePrice(SalesReturnItem item, SalesReturn save) {
@@ -222,6 +242,12 @@ public class SalesReturnService extends AbsService {
         //删除退货单商品
         jqf.delete(qsalesReturnItem)
                 .where(qsalesReturnItem.salesReturnId.eq(salesReturnId).and(qsalesReturnItem.merchantId.eq(merchantId)).and(qsalesReturnItem.accountBookId.eq(accountBookId)))
+                .execute();
+
+        //修改销售出库单 关联退货单
+        jqf.update(qSalesOutbound)
+                .setNull(qSalesOutbound.returnOrderId)
+                .where(qSalesOutbound.returnOrderId.eq(original.getId()).and(qSalesOutbound.merchantId.eq(merchantId)).and(qSalesOutbound.accountBookId.eq(accountBookId)))
                 .execute();
     }
 

@@ -72,6 +72,8 @@ public class SalesReportItemDTO {
     private String productCode;
     @Comment("产品name")
     private String productName;
+    @Comment("规格")
+    private String specification;
     @Comment("单位")
     private String unitName;
 
@@ -81,6 +83,8 @@ public class SalesReportItemDTO {
     @Comment("单据编号")
     private String orderNo;
 
+    @Comment("客户分类id")
+    private Long customerCategoryId;
     @Comment("客户name")
     private String customerName;
     @Comment("客户name")

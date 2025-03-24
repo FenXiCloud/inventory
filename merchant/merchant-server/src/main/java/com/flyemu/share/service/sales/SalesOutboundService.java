@@ -3,20 +3,19 @@ package com.flyemu.share.service.sales;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
-import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.dto.SalesOrderDTO;
-import com.flyemu.share.dto.SalesOrderItemDTO;
 import com.flyemu.share.dto.SalesOutboundDTO;
 import com.flyemu.share.dto.SalesOutboundItemDTO;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.inventory.Inventory;
+import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
+import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
-import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.form.SalesOutboundForm;
 import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
@@ -33,15 +32,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
-import static com.flyemu.share.entity.sales.QSalesOrder.salesOrder;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @功能描述: 销售出库单
@@ -118,7 +116,7 @@ public class SalesOutboundService extends AbsService {
                     .select(qSalesOrder.orderNo)
                     .where(qSalesOrder.outOrderId.eq(salesOutboundDTO.getId()))
                     .fetch();
-            if(!CollectionUtils.isEmpty(salesOrderList)){
+            if (!CollectionUtils.isEmpty(salesOrderList)) {
                 salesOutboundDTO.setSalesOrderNos(String.join(",", salesOrderList));
             }
 
@@ -172,7 +170,7 @@ public class SalesOutboundService extends AbsService {
                 salesOutboundItemRepository.saveAll(salesOutboundItemList);
             }
             return update;
-        }else{
+        } else {
             //状态初始化
             salesOutbound.setOrderStatus(OrderStatus.已保存);
             //订单编号
@@ -194,7 +192,7 @@ public class SalesOutboundService extends AbsService {
             }
             //选择的源单不为空
             List<Long> selectSalesOrderIdList = salesOutboundForm.getSelectSalesOrderIdList();
-            if(!CollectionUtils.isEmpty(selectSalesOrderIdList)){
+            if (!CollectionUtils.isEmpty(selectSalesOrderIdList)) {
                 List<Long> collect = selectSalesOrderIdList.stream().distinct().toList();
                 List<SalesOrder> salesOrderList = salesOrderRepository.findAllById(collect);
                 salesOrderList.forEach(order -> {
@@ -234,7 +232,7 @@ public class SalesOutboundService extends AbsService {
 
         //已关联销售退货单不能删除
         Long returnOrderId = original.getReturnOrderId();
-        if (returnOrderId != null){
+        if (returnOrderId != null) {
             Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
             salesReturnOptional.ifPresent(salesReturn -> {
                 throw new InvalidContextException("已关联销售退货单不能删除");
@@ -298,6 +296,8 @@ public class SalesOutboundService extends AbsService {
         });
 
         salesOutboundRepository.saveAll(salesOutboundList);
+        // 设置明细
+        salesOutboundList.forEach(this::salesOutboundToInventory);
     }
 
     @Transactional
@@ -313,6 +313,86 @@ public class SalesOutboundService extends AbsService {
         original.setOrderStatus(salesOutbound.getOrderStatus());
         //审核单据
         salesOutboundRepository.save(original);
+        // 设置明细
+        this.salesOutboundToInventory(original);
+    }
+
+    private void salesOutboundToInventory(SalesOutbound original) {
+        List<Inventory> inventories = new ArrayList<>();
+        List<InventoryItem> inventoryItems = new ArrayList<>();
+        List<SalesOutboundItem> outboundItems = jqf.selectFrom(qSalesOutboundItem).where(qSalesOutboundItem.salesOutboundId.eq(original.getId())).fetch();
+        //处理库存
+        this.getComputedInventory(outboundItems, inventories, inventoryItems, original.getCustomerId(), original.getOrderNo());
+        inventories.forEach(item -> {
+            if (OrderStatus.已审核.equals(original.getOrderStatus())) {
+                // 减库存
+                inventoryService.computedInventory(item, false, original.getId(), OperationType.销售出库, inventoryItems);
+            } else {
+                // 加库存
+                inventoryService.computedInventory(item, true, original.getId(), OperationType.销售出库, null);
+            }
+        });
+    }
+
+    private void getComputedInventory(List<SalesOutboundItem> outboundItems, List<Inventory> inventories,
+                                      List<InventoryItem> inventoryItems, Long customerId, String orderNo) {
+        AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
+        AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
+        outboundItems.forEach(otherOutboundItem -> {
+            Double quantity = otherOutboundItem.getQuantity();
+            BigDecimal subtotal = otherOutboundItem.getSubtotal();
+            inventories.stream()
+                    .filter(item -> item.getProductId().equals(otherOutboundItem.getProductId())
+                            && item.getWarehouseId().equals(otherOutboundItem.getWarehouseId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            item -> {
+                                Integer currentQuantity = item.getCurrentQuantity();
+                                BigDecimal totalCost = item.getTotalCost();
+                                BigDecimal added = totalCost.add(subtotal)
+                                        .setScale(2, RoundingMode.HALF_EVEN);
+                                double parsed = Double.parseDouble(quantity.toString());
+                                currentQuantity += (int) parsed;
+                                item.setCurrentQuantity(currentQuantity);
+                                item.setTotalCost(added);
+                            }, () -> {
+                                Inventory inventory = new Inventory();
+                                inventory.setProductId(otherOutboundItem.getProductId());
+                                inventory.setWarehouseId(otherOutboundItem.getWarehouseId());
+                                double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
+                                inventory.setCurrentQuantity((int) parsed);
+                                inventory.setTotalCost(otherOutboundItem.getSubtotal());
+                                inventory.setMerchantId(otherOutboundItem.getMerchantId());
+                                inventory.setBaseUnitId(otherOutboundItem.getBaseUnitId());
+                                inventory.setAccountBookId(otherOutboundItem.getAccountBookId());
+                                inventoryAtomicReference.set(inventory);
+                                inventories.add(inventoryAtomicReference.get());
+                            });
+            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, customerId, orderNo);
+            inventoryItemAtomicReference.set(inventoryItem);
+            inventoryItems.add(inventoryItemAtomicReference.get());
+        });
+    }
+
+    private InventoryItem getInventoryItem(SalesOutboundItem otherOutboundItem, Long customerId, String orderNo) {
+        InventoryItem inventoryItem = new InventoryItem();
+        inventoryItem.setProductId(otherOutboundItem.getProductId());
+        inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
+        double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
+        inventoryItem.setQuantity((int) parsed);
+        inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
+        inventoryItem.setOperationType(OperationType.销售出库);
+        inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
+        inventoryItem.setOrderId(otherOutboundItem.getSalesOutboundId());
+        inventoryItem.setMerchantId(otherOutboundItem.getMerchantId());
+        inventoryItem.setBatchNumber(orderNo);
+        inventoryItem.setAccountBookId(otherOutboundItem.getAccountBookId());
+        inventoryItem.setCustomerId(customerId);
+        inventoryItem.setCreatedAt(LocalDateTime.now());
+        inventoryItem.setCreatedBy(otherOutboundItem.getCreatedBy());
+        inventoryItem.setUnitPrice(otherOutboundItem.getUnitPrice());
+        inventoryItem.setSubtotal(otherOutboundItem.getSubtotal());
+        return inventoryItem;
     }
 
     public static class Query {
@@ -329,6 +409,7 @@ public class SalesOutboundService extends AbsService {
                 builder.and(qSalesOutbound.accountBookId.eq(accountBookId));
             }
         }
+
         public void setFilter(String filter) {
             if (StringUtils.isNotBlank(filter)) {
                 builder.and(qSalesOutbound.orderNo.like("%" + filter + "%"));

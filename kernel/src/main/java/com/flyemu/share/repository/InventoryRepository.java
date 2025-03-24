@@ -38,7 +38,8 @@ public interface InventoryRepository extends JpaRepositoryImplementation<Invento
                 LEFT JOIN jxc_product_category jpc ON (jp.product_category_id = jpc.id)
                 LEFT JOIN jxc_unit ju ON (ju.id = ji.base_unit_id)\s
              WHERE
-                ji.account_book_id = ?1\s
+                jp.id IS NOT NULL
+                AND ji.account_book_id = ?1\s
                 AND ji.merchant_id = ?2\s
             """;
 }

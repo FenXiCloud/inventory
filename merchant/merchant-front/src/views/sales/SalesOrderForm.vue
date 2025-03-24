@@ -31,7 +31,7 @@
           <template #default="scope">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
-                      keyName="id" titleName="name" filterable placeholder="输入编码/名称">
+                      keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false">
                 <template v-slot:item="{ item }">
                   <div>{{ item.name }}</div>
                 </template>

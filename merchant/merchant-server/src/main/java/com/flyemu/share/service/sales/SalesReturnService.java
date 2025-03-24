@@ -37,6 +37,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 /**
@@ -97,11 +98,15 @@ public class SalesReturnService extends AbsService {
                     .where(qsalesReturnItem.salesReturnId.eq(salesReturnDTO.getId()))
                     .fetch();
             List<SalesReturnItemDTO> itemDTOs = new ArrayList<>();
+            AtomicReference<Double> totalQuantity = new AtomicReference<>((double) 0L);
             salesReturnItemList.forEach(item -> {
                 SalesReturnItemDTO itemDTO = BeanUtil.toBean(item, SalesReturnItemDTO.class);
                 itemDTOs.add(itemDTO);
+                Double quantity = itemDTO.getQuantity();
+                totalQuantity.updateAndGet(v -> v + quantity);
             });
             salesReturnDTO.setSalesReturnItemList(itemDTOs);
+            salesReturnDTO.setTotalQuantity(totalQuantity);
 
             //查询关联的出库单
             List<String> salesOutboundList = bqf.selectFrom(qSalesOutbound)

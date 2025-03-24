@@ -45,3 +45,4 @@ node_modules
 application-dev.yml
 admin/admin-front/pnpm-lock.yaml
 merchant/merchant-front/yarn.lock
+merchant/merchant-front/pnpm-lock.yaml

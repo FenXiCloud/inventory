@@ -15,7 +15,9 @@
 
       <div class="h-input-group">
         <span class="h-input-addon">汇总条件：</span>
-        <Select v-model="params.salesGroup" class="w-120px"
+        <Select v-model="params.salesGroup"
+                class="w-120px"
+                @change="handleSalesGroupChange"
                 :datas="{
                    PRODUCT:'商品',
                    CUSTOMER:'客户',
@@ -28,36 +30,36 @@
         <span class="h-input-addon">日期：</span>
         <DateRangePicker v-model="dateRange"></DateRangePicker>
       </div>
-      <div class="h-input-group">
+      <div class="h-input-group" v-if="this.params.salesGroupSearch === 'CUSTOMER_PRODUCT' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'
+                  || this.params.salesGroupSearch === 'CUSTOMER'">
         <span class="h-input-addon">客户：</span>
-        <Select :multiple="true" class="w-150px" filterable :datas="customerList" keyName="id" titleName="name"
+        <Select :multiple="true"  :datas="customerList" keyName="id" titleName="name"
                 v-model="params.customerIds" placeholder="请选择客户"/>
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">仓库：</span>
-        <Select :multiple="true" v-model="params.warehouseIds" class="w-150px" keyName="id" titleName="name"
+        <Select :multiple="true" v-model="params.warehouseIds"  keyName="id" titleName="name"
                 :datas="warehouseList" placeholder="请选择仓库"/>
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">商品：</span>
-        <Select :multiple="true" v-model="params.productIds" class="w-150px" keyName="id" titleName="name"
+        <Select :multiple="true" v-model="params.productIds"  keyName="id" titleName="name"
                 :datas="productList" placeholder="请选择商品"/>
       </div>
       <div class="h-input-group">
         <span class="h-input-addon">商品类别：</span>
-        <Select :multiple="true" class="w-150px" filterable :datas="productCategoryList" keyName="id" titleName="name"
+        <Select :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
                 v-model="params.productCategoryIds" placeholder="请选择类别"/>
       </div>
-      <div class="h-input-group">
-        <span class="h-input-addon">订单号：</span>
-        <Search v-model.trim="params.filter"
-                search-button-theme="h-btn-default"
-                show-search-button
-                class="w-180px"
-                placeholder="请输入订单号"
-                @search="doSearch">
-          <i class="h-icon-search"/>
-        </Search>
+      <div class="h-input-group" v-if="this.params.salesGroupSearch === 'CUSTOMER_PRODUCT' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'
+                  || this.params.salesGroupSearch === 'CUSTOMER'">
+        <span class="h-input-addon">客户类别：</span>
+        <Select :multiple="true" :datas="customerCategoryList" keyName="id" titleName="name"
+                v-model="params.customerCategoryIds" placeholder="请选择类别"/>
+      </div>
+
+      <div class="h-input-group" style="margin-left: 10px">
+        <Button @click="doSearch" color="primary">查 询</Button>
       </div>
     </div>
     <div class="flex1">
@@ -80,11 +82,17 @@
                   || this.params.salesGroupSearch === 'CUSTOMER'">
           <vxe-column title="客户编码" field="customerCode"/>
           <vxe-column title="客户名称" field="customerName"/>
+          <vxe-column title="客户类别" field="customerCategoryId">
+            <template #default="{row}">
+              {{ customerCategoryList.find(item => item.id === row.customerCategoryId)?.name || '-' }}
+            </template>
+          </vxe-column>
         </template>
         <template v-if="this.params.salesGroupSearch !== 'CUSTOMER'" >
           <vxe-column title="商品编码" field="productCode" />
           <vxe-column title="商品名称" field="productName" />
           <vxe-column title="销售单位" field="unitName" />
+          <vxe-column title="规格型号" field="specification" />
         </template>
         <template
             v-if="this.params.salesGroupSearch === 'PRODUCT_WAREHOUSE' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'">
@@ -123,6 +131,7 @@ import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import * as XLSX from "xlsx";
 import ProductCategory from "@js/api/basic/ProductCategory";
+import CustomerCategory from "@js/api/basic/CustomerCategory";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -156,6 +165,7 @@ export default {
       warehouseList: [],
       productList: [],
       productCategoryList:[],
+      customerCategoryList:[],
     }
   },
   computed: {
@@ -289,12 +299,24 @@ export default {
         Warehouse.select(),
         Product.select(),
         ProductCategory.select(),
+        CustomerCategory.select(),
       ]).then((results) => {
         this.customerList = results[0].data || [];
         this.warehouseList = results[1].data || [];
         this.productList = results[2].data || [];
         this.productCategoryList = results[3].data || [];
+        this.customerCategoryList = results[4].data || [];
       }).finally(() => loading.close());
+    },
+    handleSalesGroupChange(value) {
+      console.log('汇总条件已更改:', value);
+      this.params.customerIds = [];
+      this.params.warehouseIds = [];
+      this.params.productIds = [];
+      this.params.productCategoryIds = [];
+      this.params.customerCategoryIds = [];
+      //强制更新视图
+      this.$forceUpdate();
     },
   },
   created() {

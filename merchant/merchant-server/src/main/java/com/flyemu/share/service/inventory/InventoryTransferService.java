@@ -83,7 +83,9 @@ public class InventoryTransferService extends AbsService {
                 .leftJoin(qAdmin).on(qAdmin.id.eq(qInventoryTransfer.createdBy))
                 .leftJoin(toQWarehouse).on(toQWarehouse.id.eq(qInventoryTransfer.ToWarehouseId))
                 .leftJoin(formQWarehouse).on(formQWarehouse.id.eq(qInventoryTransfer.FromWarehouseId))
+                .leftJoin(qInventoryTransferItem).on(qInventoryTransferItem.inventoryTransferId.eq(qInventoryTransfer.id))
                 .where(query.builder).where(query.builders())
+                .groupBy(qInventoryTransfer.id)
                 .orderBy(qInventoryTransfer.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryTransferDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
@@ -153,8 +155,10 @@ public class InventoryTransferService extends AbsService {
             case ANTI_AUDIT -> {
                 //处理库存（调入库存减少、调出库存增加）
                 this.getComputedInventory(inventoryTransfer, inventoryTransferItems, true);
-                jqf.delete(qInventoryTransfer).where(qInventoryTransfer.id.eq(id)).execute();
-                inventoryTransferItemService.deleteByInventoryTransferId(id);
+                inventoryTransfer.setOrderStatus(OrderStatus.未审核);
+                inventoryTransfer.setApprovedBy(adminId);
+                inventoryTransfer.setApprovedAt(LocalDateTime.now());
+                inventoryTransferRepository.save(inventoryTransfer);
             }
             default -> {
 
@@ -181,6 +185,16 @@ public class InventoryTransferService extends AbsService {
             // 调出仓库不会为空，前端已控制
             Inventory fromInventory = inventoryService.findByWarehouseIdAndProductId(fromWarehouseId, productId);
             Inventory toInventory = inventoryService.findByWarehouseIdAndProductId(toWarehouseId, productId);
+            if (toInventory == null) {
+                toInventory = new Inventory();
+                toInventory.setProductId(productId);
+                toInventory.setWarehouseId(toWarehouseId);
+                toInventory.setAccountBookId(fromInventory.getAccountBookId());
+                toInventory.setMerchantId(fromInventory.getMerchantId());
+                toInventory.setAverageCost(BigDecimal.ZERO);
+                toInventory.setTotalCost(BigDecimal.ZERO);
+                toInventory.setCurrentQuantity(0);
+            }
             Double transferQuantity = inventoryTransferItem.getQuantity();
             BigDecimal subtotal = fromInventory.getAverageCost().multiply(new BigDecimal(transferQuantity)).setScale(2, RoundingMode.HALF_EVEN);
             // 调出仓库处理
@@ -198,21 +212,35 @@ public class InventoryTransferService extends AbsService {
         if (isRevoke) {
             increaseInventory.forEach(item -> {
                 // 减库存
-                inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨, null, false);
+                inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨入库, null);
             });
             reduceInventory.forEach(item -> {
                 // 加库存
-                inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨, null);
+                inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨出库, null);
             });
             return;
         }
+        // 明细数据排序（出库前，入库后）
+        List<InventoryItem> sortedInventoryItems = new ArrayList<>();
+        inventoryItems.forEach(item -> {
+            Long warehouseId = item.getWarehouseId();
+            if (warehouseId.equals(inventoryTransfer.getFromWarehouseId())) {
+                sortedInventoryItems.add(item);
+            }
+        });
+        inventoryItems.forEach(item -> {
+            Long warehouseId = item.getWarehouseId();
+            if (warehouseId.equals(inventoryTransfer.getToWarehouseId())) {
+                sortedInventoryItems.add(item);
+            }
+        });
         reduceInventory.forEach(item -> {
             // 减库存
-            inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨, inventoryItems);
+            inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨出库, sortedInventoryItems);
         });
         increaseInventory.forEach(item -> {
             // 加库存
-            inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨, inventoryItems);
+            inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨入库, sortedInventoryItems);
         });
     }
 
@@ -228,7 +256,7 @@ public class InventoryTransferService extends AbsService {
         inventoryItem.setProductId(inventoryTransferItem.getProductId());
         inventoryItem.setWarehouseId(warehouseId);
         inventoryItem.setQuantity(isOut ? -inventoryTransferItem.getQuantity().intValue() : inventoryTransferItem.getQuantity().intValue());
-        inventoryItem.setOperationType(OperationType.调拨);
+        inventoryItem.setOperationType(isOut ? OperationType.调拨出库 : OperationType.调拨入库);
         inventoryItem.setBaseUnitId(inventory.getBaseUnitId());
         inventoryItem.setOrderId(inventoryTransfer.getId());
         inventoryItem.setBatchNumber(inventoryTransfer.getOrderNo());
@@ -361,6 +389,12 @@ public class InventoryTransferService extends AbsService {
 
         private String filter;
 
+        private String productIds;
+
+        private String fromWarehouseIds;
+
+        private String toWarehouseIds;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qInventoryTransfer.merchantId.eq(merchantId));
@@ -386,6 +420,18 @@ public class InventoryTransferService extends AbsService {
                         .or(qAdmin.name.contains(filter))
                         .or(formQWarehouse.name.contains(filter))
                         .or(toQWarehouse.name.contains(filter));
+            }
+            if (StrUtil.isNotBlank(productIds)) {
+                builder.and(formQWarehouse.id.isNotNull()).
+                        and(toQWarehouse.id.isNotNull()).
+                        and(qAdmin.id.isNotNull()).
+                        and(qInventoryTransferItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(fromWarehouseIds)) {
+                builder.and(qInventoryTransfer.FromWarehouseId.in(Arrays.stream(fromWarehouseIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(toWarehouseIds)) {
+                builder.and(qInventoryTransfer.ToWarehouseId.in(Arrays.stream(toWarehouseIds.split(",")).map(Long::parseLong).toList()));
             }
             return builder;
         }

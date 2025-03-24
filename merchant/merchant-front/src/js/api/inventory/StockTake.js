@@ -26,6 +26,9 @@ export default {
     approve(param) {
         return Ajax.get("/stockTake/approve", param);
     },
+    approves(param) {
+        return Ajax.get("/stockTake/approves", param);
+    },
     delete(id) {
         return Ajax.delete("/stockTake/" + id);
     },

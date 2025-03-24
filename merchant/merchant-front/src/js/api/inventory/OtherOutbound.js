@@ -26,6 +26,9 @@ export default {
     approve(param) {
         return Ajax.get("/otherOutbound/approve", param);
     },
+    approves(param) {
+        return Ajax.get("/otherOutbound/approves", param);
+    },
     delete(id) {
         return Ajax.delete("/otherOutbound/delete/" + id);
     },

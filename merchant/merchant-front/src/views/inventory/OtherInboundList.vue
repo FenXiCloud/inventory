@@ -7,8 +7,41 @@
         <Button @click="auditsForm('antiAudits')">反审核</Button>
       </template>
       <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
-                placeholder="审核状态："/>
+        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+                show-search-button class="w-360px ml-8px"
+                placeholder="请输入单据编号/客户名称/制单人" @search="doSearch">
+          <i class="h-icon-search"/>
+        </Search>
+      </template>
+    </vxe-toolbar>
+    <vxe-toolbar>
+      <template #buttons>
+        <div class="h-input-group">
+          <span class="h-input-addon">供应商：</span>
+          <Select :multiple="true" v-model="params.supplierIds" class="w-120px" keyName="id" titleName="name"
+                  :datas="supplierList"/>
+        </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">客户：</span>
+          <Select v-model="params.customerIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
+                  titleName="name"
+                  :datas="customerList"/>
+        </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">仓库：</span>
+          <Select v-model="params.warehouseIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
+                  titleName="name"
+                  :datas="warehouseList"/>
+        </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">商品：</span>
+          <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
+                  titleName="name" :datas="productList"/>
+        </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">审核状态：</span>
+          <Select v-model="params.state" class="w-120px" :datas="{未审核:'未审核',已审核:'已审核'}"/>
+        </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
@@ -17,11 +50,9 @@
           <span class="h-input-addon ml-8px">业务类型：</span>
           <Select v-model="params.inboundType" class="w-120px" :datas="{盘盈入库:'盘盈入库',其他入库:'其他入库'}"/>
         </div>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-360px ml-8px"
-                placeholder="请输入单据编号/客户名称/制单人" @search="doSearch">
-          <i class="h-icon-search"/>
-        </Search>
+      </template>
+      <template #tools>
+        <Button @click="doSearch" color="primary">查询</Button>
       </template>
     </vxe-toolbar>
     <div class="flex1">
@@ -83,8 +114,11 @@
 import manba from "manba";
 import OtherInbound from "@js/api/inventory/OtherInbound";
 import {mapMutations} from "vuex";
-import {confirm, message} from "heyui.ext";
-import OtherOutbound from "@js/api/inventory/OtherOutbound";
+import {confirm, loading, message} from "heyui.ext";
+import Product from "@js/api/basic/Product";
+import Warehouse from "@js/api/basic/Warehouse";
+import Supplier from "@js/api/basic/Supplier";
+import Customer from "@js/api/basic/Customer";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -103,6 +137,10 @@ export default {
         total: 0
       },
       params: {
+        productIds: [],
+        warehouseIds: [],
+        customerIds: [],
+        supplierIds: [],
         filter: null,
         state: null,
         sortCol: null,
@@ -113,6 +151,10 @@ export default {
         start: manba(startTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
       },
+      supplierList: [],
+      warehouseList: [],
+      customerList: [],
+      productList: []
     }
   },
   computed: {
@@ -157,7 +199,12 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      OtherInbound.list(this.queryParams).then(({data: {results, total}}) => {
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.productIds = params.productIds.join(",");
+      params.warehouseIds = params.warehouseIds.join(",");
+      params.supplierIds = params.supplierIds.join(",");
+      params.customerIds = params.customerIds.join(",");
+      OtherInbound.list(params).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
         let amountTotal = 0;
@@ -174,22 +221,29 @@ export default {
         return;
       }
       if (type === "audits") {
-        const filterRecords = selectRecords.filter(item => item.orderStatus === "已保存");
+        const filterRecords = selectRecords.filter(item => item.orderStatus === "未审核");
         if (!filterRecords || filterRecords.length === 0) {
-          message.warn("请选择状态为已保存的数据，进行审核~");
+          message.warn("请选择状态为未审核的数据，进行审核~");
           return;
         }
-        if (filterRecords.length > 1) {
-          message.warn("请选择单条数据，进行审核~");
-          return;
-        }
-        filterRecords.forEach(item => {
-          this.pushTab({
-            key: 'OtherInboundForm',
-            title: '审核其他入库单',
-            params: {type: type, otherInboundId: item.id}
-          });
+        const ids = filterRecords.map(item => {
+          return item.id
         });
+        const params = {
+          ids: ids.join(','),
+          type: "AUDITS",
+        };
+        console.info(filterRecords, ids);
+        loading("审核中....");
+        OtherInbound.approves(params)
+            .then((success) => {
+              if (success) {
+                message("审核成功~");
+                this.$refs.table.clearCheckboxRow();
+                this.loadList();
+              }
+            })
+            .finally(() => loading.close());
         return;
       }
       if (type === "antiAudits") {
@@ -199,17 +253,24 @@ export default {
           message.warn("请选择状态为已审核的数据，进行审核~");
           return;
         }
-        if (filterRecords.length > 1) {
-          message.warn("请选择单条数据，进行审核~");
-          return;
-        }
-        filterRecords.forEach(item => {
-          this.pushTab({
-            key: 'OtherInboundForm',
-            title: '反审核其他入库单',
-            params: {type: type, otherInboundId: item.id}
-          });
+        const ids = filterRecords.map(item => {
+          return item.id
         });
+        const params = {
+          ids: ids.join(','),
+          type: "ANTI_AUDIT",
+        };
+        console.info(filterRecords, ids);
+        loading("反审核中....");
+        OtherInbound.approves(params)
+            .then((success) => {
+              if (success) {
+                message("反审核成功~");
+                this.$refs.table.clearCheckboxRow();
+                this.loadList();
+              }
+            })
+            .finally(() => loading.close());
       }
     },
     doRemove({id}) {
@@ -226,10 +287,23 @@ export default {
       });
     },
     editable(row) {
-      return ['已保存'].includes(row.orderStatus);
-    }
+      return ['未审核'].includes(row.orderStatus);
+    },
+    loadDict(callback) {
+      loading("加载中....");
+      Promise.all([Product.select(), Warehouse.select(), Supplier.select(), Customer.select()])
+          .then((results) => {
+            this.productList = results[0].data || [];
+            this.warehouseList = results[1].data || [];
+            this.supplierList = results[2].data || [];
+            this.customerList = results[3].data || [];
+            callback();
+          })
+          .finally(() => loading.close());
+    },
   },
   created() {
+    this.loadDict();
     this.loadList();
   }
 }

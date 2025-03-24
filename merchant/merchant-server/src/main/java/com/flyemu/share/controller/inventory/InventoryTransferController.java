@@ -14,7 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import static com.flyemu.share.entity.inventory.QInventoryTransfer.inventoryTransfer;
+import java.util.Arrays;
 
 /**
  * @功能描述: 调拨单
@@ -44,15 +44,23 @@ public class InventoryTransferController {
         InventoryTransfer inventoryTransfer = inventoryTransferForm.getInventoryTransfer();
         inventoryTransfer.setMerchantId(merchantId);
         inventoryTransfer.setAccountBookId(accountBookId);
-        inventoryTransfer.setOrderStatus(OrderStatus.已保存);
+        inventoryTransfer.setOrderStatus(OrderStatus.未审核);
         inventoryTransfer.setCreatedBy(adminId);
-        inventoryTransferService.save(inventoryTransferForm);
-        return JsonResult.successful();
+        InventoryTransfer transfer = inventoryTransferService.save(inventoryTransferForm);
+        return JsonResult.successful(transfer);
     }
 
     @GetMapping("approve")
     public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
         inventoryTransferService.approve(id, type, adminId);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("approves")
+    public JsonResult approves(@RequestParam("ids") String ids, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        Arrays.stream(ids.split(",")).map(Long::parseLong).forEach(id -> {
+            inventoryTransferService.approve(id, type, adminId);
+        });
         return JsonResult.successful();
     }
 

@@ -10,11 +10,13 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.OtherInboundDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
+import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.InboundType;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.OtherInboundForm;
 import com.flyemu.share.repository.OtherInboundRepository;
 import com.flyemu.share.service.AbsService;
@@ -25,6 +27,7 @@ import com.querydsl.core.types.dsl.StringTemplate;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.sagacity.sqltoy.dao.SqlToyLazyDao;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,16 +73,13 @@ public class OtherInboundService extends AbsService {
     private final static QUnit qUnit = QUnit.unit;
 
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
+    private final SqlToyLazyDao sqlToyLazyDao;
 
 
     public PageResults<OtherInboundDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qOtherInbound)
-                .select(qOtherInbound, qAdmin.name, qCustomer.name, qCustomer.code, qSupplier.name, qSupplier.code,
-                        qOtherInboundItem.quantity.sum().as("item_quantity"))
+                .select(qOtherInbound, qOtherInboundItem.quantity.sum().as("item_quantity"))
                 .leftJoin(qOtherInboundItem).on(qOtherInboundItem.otherInboundId.eq(qOtherInbound.id))
-                .leftJoin(qSupplier).on(qSupplier.id.eq(qOtherInbound.supplierId))
-                .leftJoin(qCustomer).on(qCustomer.id.eq(qOtherInbound.customerId))
-                .leftJoin(qAdmin).on(qAdmin.id.eq(qOtherInbound.createdBy))
                 .where(query.builder)
                 .where(query.builders()).orderBy(qOtherInbound.id.desc())
                 .groupBy(qOtherInbound.id)
@@ -89,11 +89,27 @@ public class OtherInboundService extends AbsService {
         fetchPage.forEach(tuple -> {
             OtherInboundDto dto = BeanUtil.toBean(tuple.get(qOtherInbound), OtherInboundDto.class);
             dto.setQuantity(Objects.requireNonNull(tuple.get(qOtherInboundItem.quantity.sum().as("item_quantity"))).intValue());
-            dto.setCreatedByName(tuple.get(qAdmin.name));
-            dto.setCustomerCode(tuple.get(qCustomer.code));
-            dto.setCustomerName(tuple.get(qCustomer.name));
-            dto.setSupplierName(tuple.get(qSupplier.name));
-            dto.setSupplierCode(tuple.get(qSupplier.code));
+            Long createdBy = dto.getCreatedBy();
+            Admin admin = jqf.selectFrom(qAdmin).where(qAdmin.id.eq(createdBy)).fetchOne();
+            if (admin != null) {
+                dto.setCreatedByName(admin.getName());
+            }
+            Long customerId = dto.getCustomerId();
+            if (customerId != null) {
+                Customer customer = jqf.selectFrom(qCustomer).where(qCustomer.id.eq(customerId)).fetchOne();
+                if (customer != null) {
+                    dto.setCustomerCode(customer.getCode());
+                    dto.setCustomerName(customer.getName());
+                }
+            }
+            Long supplierId = dto.getSupplierId();
+            if (supplierId != null) {
+                Supplier supplier = jqf.selectFrom(qSupplier).where(qSupplier.id.eq(supplierId)).fetchOne();
+                if (supplier != null) {
+                    dto.setSupplierCode(supplier.getCode());
+                    dto.setSupplierName(supplier.getName());
+                }
+            }
             dtos.add(dto);
         });
 
@@ -139,16 +155,26 @@ public class OtherInboundService extends AbsService {
     @Transactional
     public void approve(Long id, ApproveType type, Long adminId) {
         OtherInbound otherInbound = jqf.selectFrom(qOtherInbound).where(qOtherInbound.id.eq(id)).fetchOne();
+        if (otherInbound == null) {
+            throw new ServiceException("审核数据不存在～");
+        }
+        InboundType inboundType = otherInbound.getInboundType();
+        OperationType operationType;
+        if (inboundType.equals(InboundType.其他入库)) {
+            operationType = OperationType.其他入库;
+        } else {
+            operationType = OperationType.盘盈入库;
+        }
         List<OtherInboundItem> otherInboundItems = otherInboundItemService.findByOtherInboundId(id);
         List<Inventory> inventories = new ArrayList<>();
         List<InventoryItem> inventoryItems = new ArrayList<>();
         switch (type) {
             case AUDITS -> {
                 //处理库存
-                this.getComputedInventory(otherInboundItems, inventories, inventoryItems, otherInbound.getSupplierId());
+                this.getComputedInventory(otherInboundItems, inventories, inventoryItems, operationType, otherInbound.getSupplierId());
                 inventories.forEach(item -> {
                     // 加库存
-                    inventoryService.computedInventory(item, true, id, OperationType.入库, inventoryItems);
+                    inventoryService.computedInventory(item, true, id, operationType, inventoryItems);
                 });
                 otherInbound.setOrderStatus(OrderStatus.已审核);
                 otherInbound.setApprovedBy(adminId);
@@ -157,13 +183,15 @@ public class OtherInboundService extends AbsService {
             }
             case ANTI_AUDIT -> {
                 //处理库存
-                this.getComputedInventory(otherInboundItems, inventories, inventoryItems, otherInbound.getSupplierId());
+                this.getComputedInventory(otherInboundItems, inventories, inventoryItems, operationType, otherInbound.getSupplierId());
                 inventories.forEach(item -> {
                     // 减库存
-                    inventoryService.computedInventory(item, false, id, OperationType.入库, null);
+                    inventoryService.computedInventory(item, false, id, operationType, null);
                 });
-                jqf.delete(qOtherInbound).where(qOtherInbound.id.eq(id)).execute();
-                otherInboundItemService.deleteByOtherInboundId(id);
+                otherInbound.setOrderStatus(OrderStatus.未审核);
+                otherInbound.setApprovedBy(adminId);
+                otherInbound.setApprovedAt(LocalDateTime.now());
+                otherInboundRepository.save(otherInbound);
             }
             default -> {
 
@@ -180,7 +208,7 @@ public class OtherInboundService extends AbsService {
      * @param supplierId        供应商id
      */
     private void getComputedInventory(List<OtherInboundItem> otherInboundItems, List<Inventory> inventories,
-                                      List<InventoryItem> inventoryItems, Long supplierId) {
+                                      List<InventoryItem> inventoryItems, OperationType operationType, Long supplierId) {
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         otherInboundItems.forEach(otherInboundItem -> {
@@ -213,7 +241,7 @@ public class OtherInboundService extends AbsService {
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherInboundItem, supplierId);
+            InventoryItem inventoryItem = getInventoryItem(otherInboundItem, supplierId, operationType);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
@@ -226,7 +254,7 @@ public class OtherInboundService extends AbsService {
      * @param supplierId       供应商id
      * @return inventoryItem
      */
-    private InventoryItem getInventoryItem(OtherInboundItem otherInboundItem, Long supplierId) {
+    private InventoryItem getInventoryItem(OtherInboundItem otherInboundItem, Long supplierId, OperationType operationType) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setWarehouseId(otherInboundItem.getWarehouseId());
         inventoryItem.setProductId(otherInboundItem.getProductId());
@@ -234,7 +262,7 @@ public class OtherInboundService extends AbsService {
         inventoryItem.setQuantity((int) parsed);
         inventoryItem.setBaseUnitId(otherInboundItem.getBaseUnitId());
         inventoryItem.setSupplierId(supplierId);
-        inventoryItem.setOperationType(OperationType.入库);
+        inventoryItem.setOperationType(operationType);
         inventoryItem.setBaseUnitId(otherInboundItem.getBaseUnitId());
         inventoryItem.setOrderId(otherInboundItem.getOtherInboundId());
         inventoryItem.setBatchNumber(otherInboundItem.getBatchNumber());
@@ -335,6 +363,14 @@ public class OtherInboundService extends AbsService {
 
         private String filter;
 
+        private String productIds;
+
+        private String warehouseIds;
+
+        private String customerIds;
+
+        private String supplierIds;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qOtherInbound.merchantId.eq(merchantId));
@@ -371,6 +407,18 @@ public class OtherInboundService extends AbsService {
                 builder.and(qOtherInbound.orderNo.contains(filter))
                         .or(qAdmin.name.contains(filter))
                         .or(qCustomer.name.contains(filter));
+            }
+            if (StrUtil.isNotBlank(productIds)) {
+                builder.and(qOtherInboundItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(warehouseIds)) {
+                builder.and(qOtherInboundItem.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(customerIds)) {
+                builder.and(qOtherInbound.customerId.in(Arrays.stream(customerIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(supplierIds)) {
+                builder.and(qOtherInbound.supplierId.in(Arrays.stream(supplierIds.split(",")).map(Long::parseLong).toList()));
             }
             return builder;
         }

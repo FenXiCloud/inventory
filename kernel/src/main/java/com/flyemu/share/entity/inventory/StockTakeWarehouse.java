@@ -1,17 +1,16 @@
-package com.flyemu.share.entity.setting;
+package com.flyemu.share.entity.inventory;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
-import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
- * @功能描述: 系统参数配置
+ * @功能描述: 库存盘点仓库
  * @创建时间: 2024年04月28日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -23,27 +22,20 @@ import java.io.Serializable;
 @NoArgsConstructor
 @Table
 @DynamicUpdate
-public class SystemConfig implements Serializable {
+public class StockTakeWarehouse {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 32, nullable = false)
-    private String name;
+    @Comment("盘点主表ID")
+    private Long stockTakeId;
 
-    @Comment("参数类型")
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private ConfigType configType;
+    @Comment("创建人")
+    private Long createdBy;
 
-    @Comment("说明")
-    private String description;
-
-    @Comment("状态")
-    @Column(nullable = false)
-    @ColumnDefault("b'1'")
-    private Boolean enabled;
+    @Comment("创建时间")
+    private LocalDateTime createdAt;
 
     @Column(nullable = false)
     private Long accountBookId;
@@ -51,9 +43,6 @@ public class SystemConfig implements Serializable {
     @Column(nullable = false)
     private Long merchantId;
 
-    public enum ConfigType {
-        系统参数,商品参数, 订单参数
-    }
-
+    @Comment("仓库ID")
+    private Long warehouseId;
 }
-

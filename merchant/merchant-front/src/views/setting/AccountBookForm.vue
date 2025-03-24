@@ -2,8 +2,8 @@
   <div class="modal-column">
     <div class="modal-column-full-body">
       <Form ref="form" :model="model" :rules="validationRules" :labelWidth="120" >
-        <FormItem label="门店名称" required prop="name">
-          <Input placeholder="请输入门店名称" v-model="model.name"/>
+        <FormItem label="账套名称" required prop="name">
+          <Input placeholder="请输入账套名称" v-model="model.name"/>
         </FormItem>
         <FormItem label="启用日期" required prop="startDate">
           <DatePicker v-model="model.startDate" format="YYYY-MM" type="month" :clearable="false"/>

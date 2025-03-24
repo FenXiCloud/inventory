@@ -4,10 +4,13 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker v-model="form.orderDate" :disabled="auditOperate || 'look' === type"
+          <DatePicker v-model="form.orderDate" :disabled="looked"
                       :option="{ start: accountBook.checkoutDate }"
                       :clearable="false">
           </DatePicker>
+        </template>
+        <template #tools>
+          <Stamp v-if="approved"/>
         </template>
       </vxe-toolbar>
       <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border="border" show-overflow keep-source
@@ -31,7 +34,7 @@
         <vxe-column field="productCode" title="商品编码" width="100"></vxe-column>
         <vxe-column field="productName" title="商品名称" min-width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!auditOperate && 'look' !== type">
+            <div class="h-input-group goodsSelect" v-if="!looked">
               <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable
                       placeholder="输入编码/名称" keyName="id" titleName="name" @change="changeRow(scope, 'product')">
                 <template v-slot:item="{ item }">
@@ -53,7 +56,7 @@
         <vxe-column title="单位" field="productUnitName" width="90"/>
         <vxe-column title="仓库" field="warehouseName" width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!auditOperate && 'look' !== type">
+            <div class="h-input-group goodsSelect" v-if="!looked">
               <Select :deletable="false" ref="ms" v-model="scope.row.warehouseId" :datas="warehouseList" filterable
                       placeholder="请选择仓库" keyName="id" titleName="name" @change="changeRow(scope, 'warehouse')">
                 <template v-slot:item="{ item }">
@@ -70,8 +73,8 @@
         </vxe-column>
         <vxe-column title="调整金额" field="adjustmentAmount" width="100">
           <template #default="scope">
-            <vxe-tooltip v-if="!auditOperate && 'look' !== type" theme="light" :content="scope.row.quantityTips">
-              <vxe-input v-if="!auditOperate &&'look' !== type" @focus="getTotalCost(scope)"
+            <vxe-tooltip v-if="!looked" theme="light" :content="scope.row.quantityTips">
+              <vxe-input @focus="getTotalCost(scope)"
                          v-model.number="scope.row.adjustmentAmount" type="int" min="0" :controls="false">
               </vxe-input>
             </vxe-tooltip>
@@ -84,7 +87,7 @@
         </vxe-column>
         <vxe-column title="备注" field="remarks" width="100">
           <template #default="scope">
-            <vxe-input v-if="!auditOperate && 'look' !== type" v-model.number="scope.row.remarks" :controls="false">
+            <vxe-input v-if="!looked" v-model.number="scope.row.remarks" :controls="false">
             </vxe-input>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
@@ -98,7 +101,7 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="auditOperate || 'look' === type" placeholder="请输入备注" type="text" maxlength="150"
+          <Input :disabled="looked" placeholder="请输入备注" type="text" maxlength="150"
                  style="width: 80%"
                  v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
@@ -108,17 +111,14 @@
     <div class="modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button color="primary" v-if="!auditOperate  && 'look' !== type" @click="saveOrder('increase')"
-                :loading="loading">
+        <Button v-if="!approved && !looked" color="primary" @click="saveOrder('increase')" :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder" v-if="form.orderStatus !== '已审核' && !auditOperate && 'look' !== type"
-                :loading="loading"> 保存
-        </Button>
+        <Button v-if="!approved && !looked" @click="saveOrder" :loading="loading"> 保存</Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button v-if="type === 'audits'" @click="auditForm" :loading="loading"> 审核</Button>
+        <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
         <!-- 仅当状态为审核时显示 -->
-        <Button v-if="type === 'antiAudits'" @click="auditForm" :loading="loading"> 反审核</Button>
+        <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
       </div>
     </div>
   </div>
@@ -133,9 +133,11 @@ import Supplier from "@js/api/basic/Supplier";
 import Inventory from "@js/api/inventory/Inventory";
 import {mapMutations, mapState} from "vuex";
 import CostAdjustment from "@js/api/inventory/CostAdjustment";
+import Stamp from "../common/Stamp.vue";
 
 export default {
   name: "CostAdjustmentForm",
+  components: {Stamp},
   props: {
     costAdjustmentId: [String, Number],
     type: String,
@@ -143,8 +145,11 @@ export default {
   },
   computed: {
     ...mapState(["user", "accountBook"]),
-    auditOperate() {
-      return ['audits', 'antiAudits'].includes(this.type);
+    approved() {
+      return ['已审核'].includes(this.form.orderStatus);
+    },
+    looked() {
+      return ['look'].includes(this.type);
     }
   },
   data() {
@@ -192,7 +197,7 @@ export default {
   // 待优化使用hook方式调用
   methods: {
     // 关闭tab
-    ...mapMutations(['closeSelfTab', 'updateTab', 'pushTab']),
+    ...mapMutations(['closeSelfTab', 'pushTab']),
     //footer合计
     footerMethod({columns, data}) {
       let totalQuantity = 0;
@@ -293,18 +298,30 @@ export default {
       // 操作对象
       const params = this.getSaveOrderParams(filterCostAdjustmentData, type);
       CostAdjustment.save(params)
-          .then((success) => {
+          .then(({success, data}) => {
             if (success) {
               message("保存成功~");
-              this.clearForm();
               setTimeout(() => {
-                this.closeWindow();
                 if (type === "increase") {
+                  this.clearForm();
+                  // 刷新列表为编辑
+                  this.closeWindow();
                   this.pushTab({
                     key: 'CostAdjustmentForm',
                     title: '新增成本调整单',
                     params: {type: type, costAdjustmentId: null}
                   });
+                } else {
+                  // 刷新列表为编辑
+                  this.closeWindow();
+                  this.pushTab({
+                    key: 'CostAdjustmentForm',
+                    title: '编辑成本调整单',
+                    params: {type: 'edit', costAdjustmentId: data.id}
+                  });
+                  this.$emit("update:costAdjustmentId", data.id);
+                  this.$emit("update:type", "edit");
+                  this.loadEditForm(data.id);
                 }
               }, 300);
             }
@@ -393,7 +410,7 @@ export default {
     },
     //行是否选中
     rowIsSelect(rowIndex) {
-      return (this.increase || rowIndex === this.selectRowIndex) && !this.auditOperate;
+      return !this.looked;
     },
     //行选中事件
     currentChangeEvent({rowIndex}) {
@@ -404,11 +421,11 @@ export default {
       console.info(rowIndex);
     },
     //加载编辑表单
-    loadEditForm() {
+    loadEditForm(id) {
       this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
       this.costAdjustmentData = [];
-      CostAdjustment.load(this.costAdjustmentId).then(
+      CostAdjustment.load(this.costAdjustmentId || id).then(
           ({data}) => {
             if (data && data.length > 0) {
               this.form.id = data[0].id;
@@ -479,13 +496,21 @@ export default {
       this.editConfig = {};
     },
     //审核表单
-    auditForm() {
+    async auditForm(operateType) {
       const type = this.type;
-      let operateType = "AUDITS";
-      if (type !== "audits") {
-        operateType = "ANTI_AUDIT";
+      let {id} = this.form;
+      if (!id) {
+        const filterCostAdjustmentData = this.costAdjustmentData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
+        // 校验
+        this.validatorsForm(filterCostAdjustmentData);
+        // 操作对象
+        const params = this.getSaveOrderParams(filterCostAdjustmentData, type);
+        const res = await CostAdjustment.save(params);
+        if (!res.success) {
+          return;
+        }
+        id = res.data.id;
       }
-      const {id} = this.form;
       const params = {id, type: operateType};
       loading("审核中....");
       CostAdjustment.approve(params)
@@ -493,7 +518,7 @@ export default {
             if (success) {
               message("审核成功~");
               setTimeout(() => {
-                this.closeWindow();
+                this.loadEditForm(id);
               }, 300);
             }
           })
@@ -501,7 +526,11 @@ export default {
     },
     closeWindow() {
       this.closeSelfTab(this.index);
-      this.updateTab("CostAdjustmentList");
+      this.pushTab({
+        keepAlive: false,
+        key: "CostAdjustmentList",
+        title: "成本调整单"
+      });
     },
   },
   beforeDestroy() {

@@ -32,7 +32,7 @@
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,rowIndex)" :datas="productList" v-model="row.productId"
-                      keyName="id" titleName="name" filterable placeholder="输入编码/名称">
+                      keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false">
                 <template v-slot:item="{ item }">
                   <div>{{ item.code }} {{ item.name }}</div>
                 </template>

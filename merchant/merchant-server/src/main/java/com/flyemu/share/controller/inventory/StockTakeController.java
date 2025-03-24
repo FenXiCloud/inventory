@@ -14,7 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import static com.flyemu.share.entity.inventory.QStockTake.stockTake;
+import java.util.Arrays;
 
 /**
  * @功能描述: 盘点单
@@ -43,14 +43,19 @@ public class StockTakeController {
         StockTake stockTake = stockTakeForm.getStockTake();
         stockTake.setMerchantId(merchantId);
         stockTake.setAccountBookId(accountBookId);
-        stockTake.setOrderStatus(OrderStatus.已保存);
+        stockTake.setOrderStatus(OrderStatus.未审核);
         stockTake.setCreatedBy(adminId);
-        stockTakeService.save(stockTakeForm);
-        return JsonResult.successful();
+        StockTake take = stockTakeService.save(stockTakeForm);
+        return JsonResult.successful(take);
     }
 
     @DeleteMapping("/{stockTakeId}")
     public JsonResult delete(@PathVariable Long stockTakeId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        // 判断是否有关联的订单
+        Boolean existOrder = stockTakeService.existOrder(stockTakeId);
+        if (existOrder) {
+            return JsonResult.failure("已生成对应盘点单据～");
+        }
         stockTakeService.delete(stockTakeId, merchantId, accountBookId);
         return JsonResult.successful();
     }
@@ -62,7 +67,27 @@ public class StockTakeController {
 
     @GetMapping("approve")
     public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        if (type.equals(ApproveType.ANTI_AUDIT)) {
+            Boolean existOrder = stockTakeService.existOrder(id);
+            if (existOrder) {
+                return JsonResult.failure("已生成对应盘点单据～");
+            }
+        }
         stockTakeService.approve(id, type, adminId);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("approves")
+    public JsonResult approves(@RequestParam("ids") String ids, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        if (type.equals(ApproveType.ANTI_AUDIT)) {
+            Boolean existOrder = stockTakeService.existOrders(ids);
+            if (existOrder) {
+                return JsonResult.failure("审核数据中有已生成盘点单据的数据～");
+            }
+        }
+        Arrays.stream(ids.split(",")).map(Long::parseLong).forEach(id -> {
+            stockTakeService.approve(id, type, adminId);
+        });
         return JsonResult.successful();
     }
 

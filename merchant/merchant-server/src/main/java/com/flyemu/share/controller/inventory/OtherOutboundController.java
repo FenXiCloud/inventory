@@ -14,6 +14,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
+
 /**
  * @功能描述: 其他出库单
  * @创建时间: 2023年08月08日
@@ -41,15 +43,23 @@ public class OtherOutboundController {
         OtherOutbound otherOutbound = otherOutboundForm.getOtherOutbound();
         otherOutbound.setMerchantId(merchantId);
         otherOutbound.setAccountBookId(accountBookId);
-        otherOutbound.setOrderStatus(OrderStatus.已保存);
+        otherOutbound.setOrderStatus(OrderStatus.未审核);
         otherOutbound.setCreatedBy(adminId);
-        otherOutboundService.save(otherOutboundForm);
-        return JsonResult.successful();
+        OtherOutbound outbound = otherOutboundService.save(otherOutboundForm);
+        return JsonResult.successful(outbound);
     }
 
     @GetMapping("approve")
     public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
         otherOutboundService.approve(id, type, adminId);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("approves")
+    public JsonResult approves(@RequestParam("ids") String ids, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
+        Arrays.stream(ids.split(",")).map(Long::parseLong).forEach(id -> {
+            otherOutboundService.approve(id, type, adminId);
+        });
         return JsonResult.successful();
     }
 

@@ -26,6 +26,9 @@ export default {
     approve(param) {
         return Ajax.get("/inventoryTransfer/approve", param);
     },
+    approves(param) {
+        return Ajax.get("/inventoryTransfer/approves", param);
+    },
     delete(id) {
         return Ajax.delete("/inventoryTransfer/" + id);
     },

@@ -27,6 +27,7 @@ public class SalesReportForm {
     private List<Long> warehouseIds;
     private List<Long> productIds;
     private List<Long> productCategoryIds;
+    private List<Long> customerCategoryIds;
 
     //销售类型 all out return
     private String salesType;

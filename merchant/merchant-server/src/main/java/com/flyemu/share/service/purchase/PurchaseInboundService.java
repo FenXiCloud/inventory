@@ -12,8 +12,14 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.PurchaseInboundDto;
 import com.flyemu.share.entity.basic.PriceRecord;
 import com.flyemu.share.entity.basic.QSupplier;
-import com.flyemu.share.entity.purchase.*;
+import com.flyemu.share.entity.inventory.Inventory;
+import com.flyemu.share.entity.inventory.InventoryItem;
+import com.flyemu.share.entity.purchase.PurchaseInbound;
+import com.flyemu.share.entity.purchase.PurchaseInboundItem;
+import com.flyemu.share.entity.purchase.QPurchaseInbound;
+import com.flyemu.share.entity.purchase.QPurchaseInboundItem;
 import com.flyemu.share.entity.setting.QMerchantUser;
+import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
@@ -22,6 +28,7 @@ import com.flyemu.share.repository.PurchaseInboundItemRepository;
 import com.flyemu.share.repository.PurchaseInboundRepository;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -31,12 +38,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @功能描述: 采购入库表
@@ -55,11 +64,15 @@ public class PurchaseInboundService extends AbsService {
     private final static QSupplier qSupplier = QSupplier.supplier;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
 
+    private final static QPurchaseInboundItem qPurchaseInboundItem = QPurchaseInboundItem.purchaseInboundItem;
+
     private final PurchaseInboundRepository purchaseInboundRepository;
     private final PurchaseInboundItemRepository inboundItemRepository;
 
     private final PriceRecordService priceRecordService;
     private final CodeSeedService codeSeedService;
+
+    private final InventoryService inventoryService;
 
     public PageResults<PurchaseInboundDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInbound)
@@ -98,7 +111,7 @@ public class PurchaseInboundService extends AbsService {
                 d.setPurchaseInboundId(purchaseInbound.getId());
                 d.setMerchantId(merchantId);
                 //保存更新购货商品价格
-                savePrice(d,purchaseInbound);
+                savePrice(d, purchaseInbound);
             }
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
             return purchaseInboundRepository.save(original);
@@ -113,7 +126,7 @@ public class PurchaseInboundService extends AbsService {
                 d.setPurchaseInboundId(purchaseInbound.getId());
                 d.setMerchantId(merchantId);
                 //保存更新购货商品价格
-                savePrice(d,purchaseInbound);
+                savePrice(d, purchaseInbound);
             }
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
             return purchaseInbound;
@@ -174,7 +187,98 @@ public class PurchaseInboundService extends AbsService {
                     set(qPurchaseInbound.approvedBy, adminId)
                     .where(qPurchaseInbound.id.in(setIds))
                     .execute();
+            // 设置入库明细数据
+            this.purchaseInboundToInventory(state, setIds);
         }
+    }
+
+    private void purchaseInboundToInventory(OrderStatus state, List<Long> setIds) {
+        setIds.forEach(id -> {
+            purchaseInboundRepository.findById(id).ifPresent(purchaseInbound -> {
+                List<Inventory> inventories = new ArrayList<>();
+                List<InventoryItem> inventoryItems = new ArrayList<>();
+                List<PurchaseInboundItem> inboundItems = inboundItemRepository.findByPurchaseInboundId(purchaseInbound.getId());
+                //处理库存
+                this.getComputedInventory(inboundItems, inventories, inventoryItems, purchaseInbound.getSupplierId(), purchaseInbound.getOrderNo());
+                inventories.forEach(item -> {
+                    if (OrderStatus.已审核.equals(state)) {
+                        // 加库存
+                        inventoryService.computedInventory(item, true, id, OperationType.采购入库, inventoryItems);
+                    } else {
+                        // 减库存
+                        inventoryService.computedInventory(item, false, id, OperationType.采购入库, null);
+                    }
+                });
+            });
+        });
+    }
+
+    private void getComputedInventory(List<PurchaseInboundItem> inboundItems, List<Inventory> inventories,
+                                      List<InventoryItem> inventoryItems, Long supplierId, String orderNo) {
+        AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
+        AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
+        inboundItems.forEach(purchaseInboundItem -> {
+            BigDecimal subtotal = purchaseInboundItem.getSubtotal();
+            Double quantity = purchaseInboundItem.getQuantity();
+            inventories.stream()
+                    .filter(item -> item.getProductId().equals(purchaseInboundItem.getProductId())
+                            && item.getWarehouseId().equals(purchaseInboundItem.getWarehouseId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            item -> {
+                                BigDecimal totalCost = item.getTotalCost();
+                                Integer currentQuantity = item.getCurrentQuantity();
+                                BigDecimal added = totalCost.add(subtotal)
+                                        .setScale(2, RoundingMode.HALF_EVEN);
+                                double parsed = Double.parseDouble(quantity.toString());
+                                currentQuantity += (int) parsed;
+                                item.setCurrentQuantity(currentQuantity);
+                                item.setTotalCost(added);
+                            }, () -> {
+                                Inventory inventory = new Inventory();
+                                inventory.setWarehouseId(purchaseInboundItem.getWarehouseId());
+                                inventory.setProductId(purchaseInboundItem.getProductId());
+                                double parsed = Double.parseDouble(purchaseInboundItem.getQuantity().toString());
+                                inventory.setCurrentQuantity((int) parsed);
+                                inventory.setTotalCost(purchaseInboundItem.getSubtotal());
+                                inventory.setMerchantId(purchaseInboundItem.getMerchantId());
+                                inventory.setAccountBookId(purchaseInboundItem.getAccountBookId());
+                                inventory.setBaseUnitId(purchaseInboundItem.getBaseUnitId());
+                                inventoryAtomicReference.set(inventory);
+                                inventories.add(inventoryAtomicReference.get());
+                            });
+            InventoryItem inventoryItem = getInventoryItem(purchaseInboundItem, supplierId, orderNo);
+            inventoryItemAtomicReference.set(inventoryItem);
+            inventoryItems.add(inventoryItemAtomicReference.get());
+        });
+    }
+
+    /**
+     * 获取库存明细列表
+     *
+     * @param purchaseInboundItem 入库明细
+     * @param supplierId          供应商id
+     * @return inventoryItem
+     */
+    private InventoryItem getInventoryItem(PurchaseInboundItem purchaseInboundItem, Long supplierId, String orderNo) {
+        InventoryItem inventoryItem = new InventoryItem();
+        inventoryItem.setWarehouseId(purchaseInboundItem.getWarehouseId());
+        inventoryItem.setProductId(purchaseInboundItem.getProductId());
+        double parsed = Double.parseDouble(purchaseInboundItem.getQuantity().toString());
+        inventoryItem.setQuantity((int) parsed);
+        inventoryItem.setBaseUnitId(purchaseInboundItem.getBaseUnitId());
+        inventoryItem.setSupplierId(supplierId);
+        inventoryItem.setOperationType(OperationType.采购入库);
+        inventoryItem.setBaseUnitId(purchaseInboundItem.getBaseUnitId());
+        inventoryItem.setOrderId(purchaseInboundItem.getPurchaseInboundId());
+        inventoryItem.setBatchNumber(orderNo);
+        inventoryItem.setMerchantId(purchaseInboundItem.getMerchantId());
+        inventoryItem.setAccountBookId(purchaseInboundItem.getAccountBookId());
+        inventoryItem.setCreatedAt(LocalDateTime.now());
+        inventoryItem.setCreatedBy(purchaseInboundItem.getCreatedBy());
+        inventoryItem.setUnitPrice(purchaseInboundItem.getUnitPrice());
+        inventoryItem.setSubtotal(purchaseInboundItem.getSubtotal());
+        return inventoryItem;
     }
 
     public static class Query {

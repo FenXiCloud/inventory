@@ -58,10 +58,10 @@
         <vxe-column title="单据编号" field="batchNumber" width="200"/>
         <vxe-column title="往来单位" field="supplierName" width="120">
           <template #default="{ row }">
-            <div v-if="['其他入库','盘盈入库'].includes(row['operationType'])">
+            <div v-if="row.supplierName && row.supplierName !== ''">
               {{ row.supplierName }}
             </div>
-            <div v-else-if="['其他出库','盘亏出库'].includes(row['operationType'])">
+            <div v-else-if="row.customerName && row.customerName !== ''">
               {{ row.customerName }}
             </div>
             <div v-else>

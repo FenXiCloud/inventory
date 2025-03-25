@@ -5,17 +5,17 @@
         <Button @click="excel" color="primary">导出</Button>
       </template>
       <template #tools>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">仓库：</span>
-          <Select v-model="params.warehouseId" class="w-120px" keyName="id" titleName="name" :datas="warehouseList"/>
+          <Select v-model="params.warehouseIds" :filterable="true" :multiple="true" class="w-120px" keyName="id" titleName="name" :datas="warehouseList"/>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">商品：</span>
-          <Select v-model="params.productId" class="w-120px" keyName="id" titleName="name" :datas="productList"/>
+          <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id" titleName="name" :datas="productList"/>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">商品类别：</span>
-          <Select v-model="params.productCategoryId" keyName="id" titleName="name" class="w-120px"
+          <Select v-model="params.productCategoryIds" :filterable="true" :multiple="true" keyName="id" titleName="name" class="w-120px"
                   :datas="productCategoryList"/>
         </div>
         <div class="h-input-group">
@@ -153,6 +153,9 @@ export default {
         total: 0
       },
       params: {
+        productCategoryIds: [],
+        productIds: [],
+        warehouseIds: [],
         productId: null,
         warehouseId: null,
         productCategoryId: null,
@@ -247,10 +250,14 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      InventoryItem.summary(this.queryParams).then(({data: {results, total}}) => {
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.productCategoryIds = params.productCategoryIds.join(",");
+      params.productIds = params.productIds.join(",");
+      params.warehouseIds = params.warehouseIds.join(",");
+      InventoryItem.summary(params).then(({data: {results, total}}) => {
         const dataList = results || [];
         this.pagination.total = total;
-        InventoryItem.summaryOperationType(this.queryParams).then(({data}) => {
+        InventoryItem.summaryOperationType(params).then(({data}) => {
           dataList.forEach((row) => {
             const productId = row.productId;
             const warehouseId = row.warehouseId;
@@ -390,6 +397,9 @@ export default {
       const params = JSON.parse(JSON.stringify(this.queryParams));
       params.page = 1;
       params.pageSize = 1199999;
+      params.productCategoryIds = params.productCategoryIds.join(",");
+      params.productIds = params.productIds.join(",");
+      params.warehouseIds = params.warehouseIds.join(",");
       InventoryItem.summary(params).then(({data: {results, total}}) => {
         const dataList = results || [];
         InventoryItem.summaryOperationType(params).then(({data}) => {

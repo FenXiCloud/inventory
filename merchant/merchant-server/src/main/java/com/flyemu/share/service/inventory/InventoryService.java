@@ -377,6 +377,12 @@ public class InventoryService extends AbsService {
 
         private String filter;
 
+        private String productIds;
+
+        private String productCategoryIds;
+
+        private String warehouseIds;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qInventory.merchantId.eq(merchantId));
@@ -404,6 +410,15 @@ public class InventoryService extends AbsService {
                         .or(qProduct.code.contains(filter))
                         .or(qProductCategory.name.contains(filter))
                         .or(qProduct.specification.contains(filter));
+            }
+            if (StrUtil.isNotBlank(productCategoryIds)) {
+                builder.and(qProduct.productCategoryId.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(productIds)) {
+                builder.and(qProduct.id.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(warehouseIds)) {
+                builder.and(qWarehouse.id.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
             }
             return builder;
         }

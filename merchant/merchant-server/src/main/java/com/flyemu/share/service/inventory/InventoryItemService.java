@@ -303,6 +303,8 @@ public class InventoryItemService extends AbsService {
 
         private String productIds;
 
+        private String productCategoryIds;
+
         @Enumerated(EnumType.STRING)
         private OperationType operationType;
 
@@ -344,6 +346,9 @@ public class InventoryItemService extends AbsService {
             }
             if (StrUtil.isNotBlank(supplierIds)) {
                 builder.and(qInventoryItem.supplierId.in(Arrays.stream(supplierIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(productCategoryIds)) {
+                builder.and(qProduct.productCategoryId.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).toList()));
             }
             if (productId != null) {
                 builder.and(qInventoryItem.productId.eq(productId));

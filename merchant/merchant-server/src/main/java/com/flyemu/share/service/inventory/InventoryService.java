@@ -7,10 +7,7 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.InventoryReportDto;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QProductCategory;
-import com.flyemu.share.entity.basic.QUnit;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
@@ -26,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.transform.Transformers;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -196,6 +194,7 @@ public class InventoryService extends AbsService {
         } else {
             List<InventoryItem> insertList = new ArrayList<>();
             for (InventoryItem item : inventoryItems) {
+                item.setFirstSort(false);
                 if (item.getProductId().equals(inventory.getProductId()) && item.getWarehouseId().equals(inventory.getWarehouseId())) {
                     item.setCurrentQuantity(currentQuantity);
                     item.setTotalCost(totalCost);
@@ -361,6 +360,50 @@ public class InventoryService extends AbsService {
         }
         if (inventoryItems != null && !inventoryItems.isEmpty()) {
             inventoryItemService.batchInsertList(inventoryItems);
+        }
+    }
+
+    @Scheduled(cron = "0 0 1 1 * ?") // 每月第一天第一分钟执行
+    public void initialInventory() {
+        // 1、获取商品前一个月的库存数据
+        List<Product> fetch = jqf.selectFrom(qProduct).fetch();
+        List<InventoryItem> insertInventoryItems = new ArrayList<>();
+        for (Product product : fetch) {
+            List<Inventory> inventories = inventoryRepository.findByProductId(product.getId());
+            if (inventories != null && !inventories.isEmpty()) {
+                Integer quantity = 0;
+                BigDecimal totalCost = BigDecimal.ZERO;
+                for (Inventory inventory : inventories) {
+                    quantity += inventory.getCurrentQuantity();
+                    totalCost = totalCost.add(inventory.getTotalCost());
+                }
+                BigDecimal averageCost = totalCost.divide(new BigDecimal(quantity), 2, RoundingMode.HALF_UP);
+                InventoryItem inventoryItem = new InventoryItem();
+                inventoryItem.setProductId(product.getId());
+                inventoryItem.setCurrentQuantity(quantity);
+                inventoryItem.setTotalCost(totalCost);
+                inventoryItem.setAverageCost(averageCost);
+                inventoryItem.setOperationType(OperationType.期初余额);
+                inventoryItem.setMerchantId(product.getMerchantId());
+                inventoryItem.setAccountBookId(product.getAccountBookId());
+                inventoryItem.setCreatedAt(LocalDateTime.now());
+                inventoryItem.setCreatedBy(-1L);
+                inventoryItem.setFirstSort(true);
+                insertInventoryItems.add(inventoryItem);
+            } else {
+                InventoryItem inventoryItem = new InventoryItem();
+                inventoryItem.setProductId(product.getId());
+                inventoryItem.setOperationType(OperationType.期初余额);
+                inventoryItem.setAccountBookId(product.getAccountBookId());
+                inventoryItem.setMerchantId(product.getMerchantId());
+                inventoryItem.setCreatedAt(LocalDateTime.now());
+                inventoryItem.setCreatedBy(-1L);
+                inventoryItem.setFirstSort(true);
+                insertInventoryItems.add(inventoryItem);
+            }
+        }
+        if (!insertInventoryItems.isEmpty()) {
+            inventoryItemService.batchInsertList(insertInventoryItems);
         }
     }
 

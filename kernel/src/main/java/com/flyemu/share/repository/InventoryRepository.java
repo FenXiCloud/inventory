@@ -42,4 +42,6 @@ public interface InventoryRepository extends JpaRepositoryImplementation<Invento
                 AND ji.account_book_id = ?1\s
                 AND ji.merchant_id = ?2\s
             """;
+
+    List<Inventory> findByProductId(Long productId);
 }

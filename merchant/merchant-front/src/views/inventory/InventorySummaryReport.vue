@@ -293,7 +293,7 @@ export default {
                 let outQuantityTotal = row.outQuantityTotal;
                 let outSubtotalTotal = row.outSubtotalTotal;
                 switch (operationType) {
-                  case "期初":
+                  case "期初余额":
                     row.initialQuantity = data_row.quantity + (initialQuantity || 0);
                     row.initialSubtotal = data_row.subtotal + (initialSubtotal || 0);
                     break;
@@ -437,7 +437,7 @@ export default {
                 let outQuantityTotal = row.outQuantityTotal;
                 let outSubtotalTotal = row.outSubtotalTotal;
                 switch (operationType) {
-                  case "期初":
+                  case "期初余额":
                     row.initialQuantity = data_row.quantity + (initialQuantity || 0);
                     row.initialSubtotal = data_row.subtotal + (initialSubtotal || 0);
                     break;

@@ -26,8 +26,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
 /**
@@ -124,9 +128,21 @@ public class InventoryItemService extends AbsService {
     }
 
     public PageResults<InventoryItemReportDto> report(Page page, Query query) {
+        Date start = query.getStart();
+        if (start == null) {
+            start = new Date();
+        }
+        // 获取上个月期初余额明细数据
+        LocalDate firstDayDate = start.toInstant().atZone(ZoneId.systemDefault()).toLocalDate().with(TemporalAdjusters.firstDayOfMonth());
+        // 创建一个DateTimeFormatter对象
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM");
+        // 使用formatter格式化LocalDate对象
+        String formattedDate = firstDayDate.format(formatter);
+        List<Long> ids = inventoryItemRepository.findInventoryItemQcByTime(formattedDate);
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryItem)
                 .select(
                         qInventoryItem.id,
+                        qInventoryItem.firstSort,
                         qInventoryItem.warehouseId,
                         qInventoryItem.batchNumber,
                         qProduct.id.as("productId"),
@@ -157,6 +173,9 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qSupplier).on(qInventoryItem.supplierId.eq(qSupplier.id))
                 .leftJoin(qCustomer).on(qInventoryItem.customerId.eq(qCustomer.id))
                 .where(query.builders())
+                .where(qInventoryItem.operationType.ne(OperationType.期初余额).or(qInventoryItem.id.in(ids)))
+                .orderBy(qInventoryItem.productId.asc())
+                .orderBy(qInventoryItem.firstSort.desc())
                 .orderBy(qInventoryItem.id.asc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryItemReportDto> dtos = new ArrayList<>();
@@ -216,7 +235,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
                 .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
-                .where(query.builders())
+                .where(query.builders()).where(qInventoryItem.operationType.ne(OperationType.期初余额))
                 .groupBy(qProduct.id)
                 .orderBy(qProduct.id.asc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());

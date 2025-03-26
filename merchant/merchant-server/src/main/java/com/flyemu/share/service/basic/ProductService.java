@@ -13,15 +13,19 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.ProductDto;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOrderItem;
+import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.repository.CustomerLevelPriceRepository;
 import com.flyemu.share.repository.CustomerLevelRepository;
+import com.flyemu.share.repository.InventoryItemRepository;
 import com.flyemu.share.repository.ProductRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.inventory.InventoryItemService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.Data;
@@ -32,6 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -66,6 +71,8 @@ public class ProductService extends AbsService {
     private final PriceRecordService priceRecordService;
 
     private final CustomerLevelRepository customerLevelRepository;
+
+    private final InventoryItemRepository inventoryItemRepository;
 
     public PageResults<ProductDto> query(Page page, Query query) {
         PagedList<Tuple> pagedList = bqf.selectFrom(qProduct)
@@ -205,10 +212,21 @@ public class ProductService extends AbsService {
                 customerLevelPriceRepository.saveAll(priceList);
             }
         }
+        // 初始化期初余额
+        InventoryItem inventoryItem = new InventoryItem();
+        inventoryItem.setProductId(product.getId());
+        inventoryItem.setMerchantId(merchantId);
+        inventoryItem.setAccountBookId(accountBookId);
+        inventoryItem.setOperationType(OperationType.期初余额);
+        inventoryItem.setCreatedAt(LocalDateTime.now());
+        inventoryItem.setCreatedBy(-1L);
+        inventoryItem.setFirstSort(true);
+        inventoryItemRepository.save(inventoryItem);
     }
 
     /**
      * 保存预计采购价格
+     *
      * @param product
      */
     private void savePrice(Product product) {
@@ -226,6 +244,7 @@ public class ProductService extends AbsService {
 
     /**
      * 保存客户等级价格
+     *
      * @param customerLevelPrice
      */
     private void savePrice(CustomerLevelPrice customerLevelPrice) {
@@ -242,12 +261,12 @@ public class ProductService extends AbsService {
         String name = customerLevel.getName();
 
         PriceType priceType = null;
-        if(StringUtils.equals(name,"会员价")){
+        if (StringUtils.equals(name, "会员价")) {
             priceType = PriceType.VIP客户价格;
-        }else if(StringUtils.equals(name,"零售价")){
+        } else if (StringUtils.equals(name, "零售价")) {
             priceType = PriceType.零售客户价格;
-        }else {
-            log.info("客户等级价格保存失败：{}",name);
+        } else {
+            log.info("客户等级价格保存失败：{}", name);
             return;
         }
         priceRecord.setPriceType(priceType);
@@ -269,7 +288,7 @@ public class ProductService extends AbsService {
         List<Tuple> fetch = bqf.selectFrom(qProduct)
                 .select(qProduct, qUnit.name)
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).where(qProduct.merchantId.eq(merchantId)
-                .and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue())).fetch();
+                        .and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue())).fetch();
         //封装产品单位返回;
         ArrayList<ProductDto> result = fetch.stream().collect(ArrayList::new, (list, tuple) -> {
             ProductDto dto = BeanUtil.toBean(tuple.get(qProduct), ProductDto.class);

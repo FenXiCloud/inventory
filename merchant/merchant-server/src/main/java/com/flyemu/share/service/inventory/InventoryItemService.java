@@ -26,8 +26,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
 /**
@@ -124,9 +127,11 @@ public class InventoryItemService extends AbsService {
     }
 
     public PageResults<InventoryItemReportDto> report(Page page, Query query) {
+        List<Long> ids = this.findPreviousMonthIds(query);
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryItem)
                 .select(
                         qInventoryItem.id,
+                        qInventoryItem.firstSort,
                         qInventoryItem.warehouseId,
                         qInventoryItem.batchNumber,
                         qProduct.id.as("productId"),
@@ -157,6 +162,9 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qSupplier).on(qInventoryItem.supplierId.eq(qSupplier.id))
                 .leftJoin(qCustomer).on(qInventoryItem.customerId.eq(qCustomer.id))
                 .where(query.builders())
+                .where(qInventoryItem.operationType.ne(OperationType.期初余额).or(qInventoryItem.id.in(ids)))
+                .orderBy(qInventoryItem.productId.asc())
+                .orderBy(qInventoryItem.firstSort.desc())
                 .orderBy(qInventoryItem.id.asc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryItemReportDto> dtos = new ArrayList<>();
@@ -189,6 +197,20 @@ public class InventoryItemService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
+    private List<Long> findPreviousMonthIds(Query query) {
+        Date start = query.getStart();
+        if (start == null) {
+            start = new Date();
+        }
+        // 获取上个月期初余额明细数据
+        LocalDate firstDayDate = start.toInstant().atZone(ZoneId.systemDefault()).toLocalDate().with(TemporalAdjusters.firstDayOfMonth());
+        // 创建一个DateTimeFormatter对象
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM");
+        // 使用formatter格式化LocalDate对象
+        String formattedDate = firstDayDate.minusMonths(1).format(formatter);
+        return inventoryItemRepository.findInventoryItemQcByTime(formattedDate);
+    }
+
     private static Date addTimeOfFinalMoment(Date date) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
@@ -217,8 +239,10 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
                 .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
                 .where(query.builders())
+                .where(qInventoryItem.operationType.ne(OperationType.期初余额))
                 .groupBy(qProduct.id)
                 .orderBy(qProduct.id.asc())
+                .orderBy(qWarehouse.id.desc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryItemReportDto> dtos = new ArrayList<>();
         InventoryItemReportDto dto;
@@ -262,6 +286,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
                 .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
                 .where(query.builders())
+                .where(qInventoryItem.operationType.ne(OperationType.期初余额))
                 .groupBy(qInventoryItem.operationType, qProduct.id, qWarehouse.id)
                 .orderBy(qProduct.id.asc())
                 .fetch();
@@ -274,6 +299,35 @@ public class InventoryItemService extends AbsService {
             dto.setOperationType(tuple.get(qInventoryItem.operationType.as("operationType")));
             dto.setQuantity(tuple.get(qInventoryItem.quantity.sum().as("quantity")));
             dto.setSubtotal(tuple.get(qInventoryItem.subtotal.sum().as("subtotal")));
+            dtos.add(dto);
+        }
+        return dtos;
+    }
+
+    public List<InventoryItemReportDto> summaryInitial(Query query) {
+        List<Long> ids = this.findPreviousMonthIds(query);
+        List<Tuple> fetchPage = bqf.selectFrom(qInventoryItem)
+                .select(
+                        qProduct.id.as("productId"),
+                        qInventoryItem.operationType.as("operationType"),
+                        qInventoryItem.currentQuantity.as("quantity"),
+                        qInventoryItem.totalCost.as("subtotal")
+                )
+                .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
+                .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
+                .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
+                .where(qInventoryItem.operationType.eq(OperationType.期初余额).and(qInventoryItem.id.in(ids)))
+                .groupBy(qInventoryItem.operationType, qProduct.id)
+                .orderBy(qProduct.id.asc())
+                .fetch();
+        List<InventoryItemReportDto> dtos = new ArrayList<>();
+        InventoryItemReportDto dto;
+        for (Tuple tuple : fetchPage) {
+            dto = new InventoryItemReportDto();
+            dto.setProductId(tuple.get(qProduct.id.as("productId")));
+            dto.setOperationType(tuple.get(qInventoryItem.operationType.as("operationType")));
+            dto.setQuantity(tuple.get(qInventoryItem.currentQuantity.as("quantity")));
+            dto.setSubtotal(tuple.get(qInventoryItem.totalCost.as("subtotal")));
             dtos.add(dto);
         }
         return dtos;
@@ -302,6 +356,8 @@ public class InventoryItemService extends AbsService {
         private Long productId;
 
         private String productIds;
+
+        private String productCategoryIds;
 
         @Enumerated(EnumType.STRING)
         private OperationType operationType;
@@ -344,6 +400,9 @@ public class InventoryItemService extends AbsService {
             }
             if (StrUtil.isNotBlank(supplierIds)) {
                 builder.and(qInventoryItem.supplierId.in(Arrays.stream(supplierIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(productCategoryIds)) {
+                builder.and(qProduct.productCategoryId.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).toList()));
             }
             if (productId != null) {
                 builder.and(qInventoryItem.productId.eq(productId));

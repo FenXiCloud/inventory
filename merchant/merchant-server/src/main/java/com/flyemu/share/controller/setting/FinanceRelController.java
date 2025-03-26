@@ -41,5 +41,46 @@ public class FinanceRelController {
         return JsonResult.successful();
     }
 
+    /**
+     * 加载对应的帐套信息
+     * @return
+     */
+//    @GetMapping("/loadSubject")
+//    public JsonResult loadSubject(Long accountSetsId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+//        return JsonResult.successful(financeRelService.loadSubject(accountSetsId,merchantId,accountBookId));
+//    }
+
+    /**
+     * 加载对应的帐套信息
+     * @return
+     */
+//    @PostMapping("/loadAccountingCategory")
+//    public JsonResult loadAccountingCategory(@RequestBody Set<Long> categoryIdSet, Long accountSetsId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+//        return JsonResult.successful(financeRelService.loadAccountingCategory(accountSetsId,categoryIdSet,merchantId,accountBookId));
+//    }
+
+    /**
+     * 加载组织关联财务系统信息
+     * @param merchantId
+     * @param accountBookId
+     * @return
+     */
+//    @GetMapping("load/{cwRelationId}")
+//    public JsonResult list(@PathVariable Long cwRelationId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId){
+//        return JsonResult.successful(financeRelService.query(cwRelationId,merchantId,accountBookId));
+//    }
+
+    /**
+     * 保存或更新关联信息
+     *
+     * @param subjects
+     * @return
+     */
+//    @PostMapping
+//    public JsonResult save(@RequestBody @Valid List<FinanceSubject> subjects, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+//        financeRelService.save(subjects,merchantId,accountBookId);
+//        return JsonResult.successful();
+//    }
+
 
 }

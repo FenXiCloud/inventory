@@ -29,4 +29,7 @@ export default {
     summaryOperationType(param) {
         return Ajax.get('/inventoryItem/summaryOperationType', param)
     },
+    summaryInitial(param) {
+        return Ajax.get('/inventoryItem/summaryInitial', param)
+    },
 }

@@ -52,11 +52,12 @@
         </vxe-column>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
-        <vxe-column title="关联入库单" field="purchaseInboundId" width="200"/>
+<!--        <vxe-column title="关联入库单" field="purchaseInboundId" width="200"/>-->
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
-        <vxe-column title="销售金额" field="finalAmount" width="120"/>
+        <vxe-column title="采购金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
+        <vxe-column title="数量" field="secondarySum" width="120"/>
         <vxe-column title="制单人" field="createdName" align="center" width="100"/>
         <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
         <vxe-column title="审核状态" field="orderStatus" width="80"/>
@@ -192,7 +193,7 @@ export default {
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
+        if (column.property && ['totalAmount','discountAmount','finalAmount','secondarySum'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             let rd = row[column.property];
@@ -203,11 +204,12 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", "", ""].concat(sums)];
+      return [["", "", "", "", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
+      this.loadTotal();
     },
     loadList() {
       this.loading = true;
@@ -215,6 +217,11 @@ export default {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
+    },
+    loadTotal(){
+      PurchaseOrder.total(this.queryParams).then(({data}) => {
+        this.amountTotal = data || 0;
+      })
     },
     loadSupplier() {
       Supplier.select().then(({data}) => {
@@ -236,6 +243,7 @@ export default {
   },
   created() {
     this.loadSupplier();
+    this.loadTotal();
     this.loadList();
   }
 }

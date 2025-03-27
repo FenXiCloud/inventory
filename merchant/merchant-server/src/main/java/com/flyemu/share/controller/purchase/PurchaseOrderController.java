@@ -37,6 +37,20 @@ public class PurchaseOrderController {
         return JsonResult.successful(purchaseOrderService.query(page, query));
     }
 
+    /**
+     * 条件内总金额
+     *
+     * @param merchantId
+     * @param query
+     * @return
+     */
+    @GetMapping("/total")
+    public JsonResult queryTotal(PurchaseOrderService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(purchaseOrderService.queryTotal(query));
+    }
+
     @GetMapping("/toReturn")
     public JsonResult listToReturn(Page page, PurchaseOrderService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);

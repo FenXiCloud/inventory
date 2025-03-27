@@ -89,10 +89,10 @@ public class SupplierService extends AbsService {
 
     public List<SelectProductDto> selectProducts(Long supplierId, Long merchantId, Long organizationId) {
         List<SelectProductDto> dtoList = bqf.selectFrom(qProduct)
-                .select(qProduct.name, qProduct.code, qPriceRecord.unitPrice, qPriceRecord.unitPrice, qProduct.specification, qProduct.id, qProductCategory.path, qProduct.imgPath, qProduct.enableMultiUnit, qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name)
+                .select(qProduct.name, qProduct.code,  qProduct.specification, qProduct.id, qProductCategory.path, qProduct.imgPath, qProduct.enableMultiUnit,
+                        qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name,qProductCategory.name,qProduct.specification)
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
                 .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
-                .leftJoin(qPriceRecord).on(qPriceRecord.productId.eq(qProduct.id).and(qPriceRecord.supplierId.eq(supplierId)).and(qPriceRecord.merchantId.eq(merchantId)).and(qPriceRecord.accountBookId.eq(organizationId)))
                 .where(qProduct.merchantId.eq(merchantId).and(qProduct.enabled.isTrue()).and(qProduct.accountBookId.eq(organizationId)))
                 .orderBy(qProduct.sort.desc(), qProduct.id.desc())
                 .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
@@ -102,6 +102,7 @@ public class SupplierService extends AbsService {
                     dto.setProductCode(tuple.get(qProduct.code));
                     dto.setProductName(tuple.get(qProduct.name));
                     dto.setPath(tuple.get(qProductCategory.path));
+                    dto.setCategoryName(tuple.get(qProductCategory.name));
                     dto.setSpec(tuple.get(qProduct.specification));
                     dto.setUnitName(tuple.get(qUnit.name));
                     dto.setUnitId(tuple.get(qProduct.unitId));
@@ -110,23 +111,52 @@ public class SupplierService extends AbsService {
 
                     if (CollUtil.isNotEmpty(units) && tuple.get(qProduct.enableMultiUnit)) {
                         units.add(0, new AuxiliaryUnitPrice(dto.getUnitId(), dto.getUnitName(), 1d, dto.getPrice()));
-                        List<AuxiliaryUnitPrice> finalUnits = units;
-                        if (tuple.get(qPriceRecord.auxiliaryUnitPrices) != null && CollUtil.isNotEmpty(tuple.get(qPriceRecord.auxiliaryUnitPrices))) {
-                            tuple.get(qPriceRecord.auxiliaryUnitPrices).forEach(item -> {
-                                finalUnits.forEach(unitPrice -> {
-                                    if (item.getUnitId().equals(unitPrice.getUnitId())) {
-                                        unitPrice.setUnitPrice(item.getUnitPrice());
-                                    }
-                                });
-                            });
-                        }
-                        dto.setAuxiliaryUnitPrices(finalUnits);
+                        dto.setAuxiliaryUnitPrices(units);
                     }
                     dto.setTitle();
                     list.add(dto);
                 }, List::addAll);
 
         return dtoList;
+//        List<SelectProductDto> dtoList = bqf.selectFrom(qProduct)
+//                .select(qProduct.name, qProduct.code, qPriceRecord.unitPrice, qPriceRecord.unitPrice, qProduct.specification, qProduct.id, qProductCategory.path, qProduct.imgPath, qProduct.enableMultiUnit, qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name)
+//                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+//                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+//                .leftJoin(qPriceRecord).on(qPriceRecord.productId.eq(qProduct.id).and(qPriceRecord.supplierId.eq(supplierId)).and(qPriceRecord.merchantId.eq(merchantId)).and(qPriceRecord.accountBookId.eq(organizationId)))
+//                .where(qProduct.merchantId.eq(merchantId).and(qProduct.enabled.isTrue()).and(qProduct.accountBookId.eq(organizationId)))
+//                .orderBy(qProduct.sort.desc(), qProduct.id.desc())
+//                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
+//                    SelectProductDto dto = new SelectProductDto();
+//                    dto.setProductId(tuple.get(qProduct.id));
+//                    dto.setImgPath(tuple.get(qProduct.imgPath));
+//                    dto.setProductCode(tuple.get(qProduct.code));
+//                    dto.setProductName(tuple.get(qProduct.name));
+//                    dto.setPath(tuple.get(qProductCategory.path));
+//                    dto.setSpec(tuple.get(qProduct.specification));
+//                    dto.setUnitName(tuple.get(qUnit.name));
+//                    dto.setUnitId(tuple.get(qProduct.unitId));
+//                    dto.setPrice(tuple.get(qPriceRecord.unitPrice));
+//                    List<AuxiliaryUnitPrice> units = tuple.get(qProduct.auxiliaryUnitPrices);
+//
+//                    if (CollUtil.isNotEmpty(units) && tuple.get(qProduct.enableMultiUnit)) {
+//                        units.add(0, new AuxiliaryUnitPrice(dto.getUnitId(), dto.getUnitName(), 1d, dto.getPrice()));
+//                        List<AuxiliaryUnitPrice> finalUnits = units;
+//                        if (tuple.get(qPriceRecord.auxiliaryUnitPrices) != null && CollUtil.isNotEmpty(tuple.get(qPriceRecord.auxiliaryUnitPrices))) {
+//                            tuple.get(qPriceRecord.auxiliaryUnitPrices).forEach(item -> {
+//                                finalUnits.forEach(unitPrice -> {
+//                                    if (item.getUnitId().equals(unitPrice.getUnitId())) {
+//                                        unitPrice.setUnitPrice(item.getUnitPrice());
+//                                    }
+//                                });
+//                            });
+//                        }
+//                        dto.setAuxiliaryUnitPrices(finalUnits);
+//                    }
+//                    dto.setTitle();
+//                    list.add(dto);
+//                }, List::addAll);
+//
+//        return dtoList;
     }
 
     /**

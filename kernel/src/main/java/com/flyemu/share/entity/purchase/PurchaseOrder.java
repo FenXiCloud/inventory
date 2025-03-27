@@ -75,6 +75,9 @@ public class PurchaseOrder {
     @Comment("审核人")
     private Long approvedBy;
 
+    @Comment("基本数量和")
+    private Double secondarySum;
+
     @Comment("审核时间")
     private LocalDateTime approvedAt;
 

@@ -169,6 +169,7 @@ FROM
 	po.orderDate,
 	po.orderType,
 	jp.`name` as productName,
+	jp.`specification` as spec,
 	ju.`name` as secondaryUnitName,
 	jp.`code` as productCode,
 	jp.`name` as supplierName,

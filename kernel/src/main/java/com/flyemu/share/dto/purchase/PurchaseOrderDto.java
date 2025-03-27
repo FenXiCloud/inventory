@@ -33,6 +33,15 @@ public class PurchaseOrderDto {
      * 下单日期
      */
     private LocalDate orderDate;
+    /**
+     * 采购数量合计
+     */
+    private Double secondarySum;
+
+    /**
+     * 入库日期
+     */
+    private LocalDate inboundDate;
 
     /**
      * 订单金额

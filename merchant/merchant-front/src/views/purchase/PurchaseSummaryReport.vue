@@ -55,7 +55,7 @@
         <vxe-column title="总计" field="subtotalSum" min-width="120"/>
       </vxe-table>
     </div>
-    <div class="flex justify-between items-center pt-5px">
+    <div class=" justify-between items-center pt-5px">
       <vxe-pager perfect @page-change="loadList(false)"
                  v-model:current-page="pagination.page"
                  v-model:page-size="pagination.pageSize"

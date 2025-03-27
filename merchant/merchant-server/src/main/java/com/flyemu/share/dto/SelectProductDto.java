@@ -15,6 +15,7 @@ public class SelectProductDto {
     private String title;
     private String spec;
     private String unitName;
+    private String categoryName;
     private Long unitId;
     private BigDecimal price;
     private String path;

@@ -11,6 +11,7 @@ import com.flyemu.share.entity.purchase.PurchaseInbound;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.PurchaseInboundForm;
 import com.flyemu.share.service.purchase.PurchaseInboundService;
+import com.flyemu.share.service.purchase.PurchaseOrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +37,20 @@ public class PurchaseInboundController {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(purchaseInboundService.query(page, query));
+    }
+
+    /**
+     * 条件内总金额
+     *
+     * @param merchantId
+     * @param query
+     * @return
+     */
+    @GetMapping("/total")
+    public JsonResult queryTotal(PurchaseInboundService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(purchaseInboundService.queryTotal(query));
     }
 
     @PostMapping

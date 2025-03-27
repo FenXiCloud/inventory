@@ -50,6 +50,9 @@ public class PurchaseInbound {
     @Comment("订单金额")
     private BigDecimal totalAmount;
 
+    @Comment("折扣率")
+    private BigDecimal discountRate;
+
     @Comment("折扣金额")
     private BigDecimal discountAmount;
 
@@ -79,6 +82,9 @@ public class PurchaseInbound {
     @Comment("创建时间")
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @Comment("基本数量和")
+    private Double secondarySum;
 
     @Comment("审核人")
     private Long approvedBy;

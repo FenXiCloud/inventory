@@ -120,6 +120,14 @@ public class PurchaseInboundItemDto {
      * 创建时间
      */
     private LocalDateTime createdAt;
+    /**
+     * 规格
+     */
+    private String spec;
+    /**
+     * 分类
+     */
+    private String categoryName;
 
     /**
      * 更新时间

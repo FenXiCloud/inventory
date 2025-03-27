@@ -15,10 +15,7 @@ import com.flyemu.share.dto.purchase.PurchaseReturnItemDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
-import com.flyemu.share.entity.purchase.PurchaseReturn;
-import com.flyemu.share.entity.purchase.PurchaseReturnItem;
-import com.flyemu.share.entity.purchase.QPurchaseReturn;
-import com.flyemu.share.entity.purchase.QPurchaseReturnItem;
+import com.flyemu.share.entity.purchase.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
@@ -66,6 +63,7 @@ public class PurchaseReturnService extends AbsService {
     private final static QSupplier qSupplier = QSupplier.supplier;
     private final static QProduct qProduct = QProduct.product;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
+    private final static QProductCategory qProductCategory = QProductCategory.productCategory;
     private final static QUnit qUnit = QUnit.unit;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
 
@@ -93,6 +91,15 @@ public class PurchaseReturnService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
+
+    public BigDecimal queryTotal(Query query) {
+        return bqf.selectFrom(qPurchaseReturn)
+                .select(qPurchaseReturn.refundAmount.sum())
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseReturn.supplierId))
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseReturn.createdBy))
+                .where(query.builder).fetchFirst();
+    }
+
     @Transactional
     public PurchaseReturn save(PurchaseReturnForm purchaseReturnForm, Long merchantId) {
         PurchaseReturn order = purchaseReturnForm.getPurchaseReturn();
@@ -102,6 +109,7 @@ public class PurchaseReturnService extends AbsService {
             BeanUtil.copyProperties(order, original, CopyOptions.create().ignoreNullValue());
 
             Set<Long> ids = new HashSet<>();
+            Double secondarySum = 0.0;
             for (PurchaseReturnItem d : purchaseReturnForm.getPurchaseReturnItemList()) {
                 //计算基本单价
                 d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
@@ -112,9 +120,10 @@ public class PurchaseReturnService extends AbsService {
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseReturnId(order.getId());
                 d.setMerchantId(merchantId);
+                secondarySum += d.getSecondaryQuantity();
                 //保存更新购货商品价格
                 savePrice(d, order);
-            }
+            }original.setSecondarySum(secondarySum);
             purchaseReturnItemRepository.saveAll(purchaseReturnForm.getPurchaseReturnItemList());
             return purchaseReturnRepository.save(original);
         } else {
@@ -122,6 +131,12 @@ public class PurchaseReturnService extends AbsService {
             Assert.notNull(code, "生成单号失败~");
             order.setOrderNo(code);
             order.setOrderStatus(OrderStatus.已保存);
+            Double secondarySum = purchaseReturnForm.getPurchaseReturnItemList()
+                    .stream()
+                    .map(PurchaseReturnItem::getSecondaryQuantity)
+                    .reduce(0.0, Double::sum);
+            order.setSecondarySum(secondarySum);
+
             purchaseReturnRepository.save(order);
             for (PurchaseReturnItem d : purchaseReturnForm.getPurchaseReturnItemList()) {
                 //计算基本单价
@@ -298,12 +313,13 @@ public class PurchaseReturnService extends AbsService {
         PurchaseReturnDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseReturn), PurchaseReturnDto.class);
         orderDto.setSupplierName(fetchFirst.get(qSupplier.name));
         ArrayList<PurchaseReturnItemDto> collect = jqf.selectFrom(qPurchaseReturnItem)
-                .select(qPurchaseReturnItem, qProduct.code, qProduct.name, qWarehouse.name,
+                .select(qPurchaseReturnItem, qProduct.code, qProduct.name, qWarehouse.name,qProductCategory.name,qProduct.specification,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseReturnItem.productId).and(qProduct.merchantId.eq(merchantId)))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseReturnItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
                 .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseReturnItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseReturnItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(qPurchaseReturnItem.purchaseReturnId.eq(orderId).and(qPurchaseReturnItem.merchantId.eq(merchantId)))
                 .orderBy(qPurchaseReturnItem.id.asc())
                 .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
@@ -311,6 +327,8 @@ public class PurchaseReturnService extends AbsService {
                     dto.setProductCode(tuple.get(qProduct.code));
                     dto.setProductName(tuple.get(qProduct.name));
                     dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setSpec(tuple.get(qProduct.specification));
+                    dto.setCategoryName(tuple.get(qProductCategory.name));
                     dto.setWarehouseName(tuple.get(qWarehouse.name));
                     dto.setSecondaryUnitName(tuple.get(qUnit1.name));
                     list.add(dto);

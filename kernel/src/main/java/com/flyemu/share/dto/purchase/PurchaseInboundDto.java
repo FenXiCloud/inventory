@@ -35,6 +35,11 @@ public class PurchaseInboundDto {
     private LocalDate inboundDate;
 
     /**
+     * 采购数量合计
+     */
+    private Double secondarySum;
+
+    /**
      * 订单金额
      */
     private BigDecimal totalAmount;

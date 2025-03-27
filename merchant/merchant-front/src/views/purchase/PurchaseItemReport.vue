@@ -48,6 +48,7 @@
             </div>
           </template>
         </vxe-column>
+        <vxe-column title="规格" field="spec" align="center" width="130"/>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
@@ -59,7 +60,7 @@
         <vxe-column title="采购金额" field="subtotal" width="120"/>
       </vxe-table>
     </div>
-    <div class="flex justify-between items-center pt-5px">
+    <div class=" justify-between items-center pt-5px">
       <vxe-pager perfect @page-change="loadList(false)"
                  v-model:current-page="pagination.page"
                  v-model:page-size="pagination.pageSize"

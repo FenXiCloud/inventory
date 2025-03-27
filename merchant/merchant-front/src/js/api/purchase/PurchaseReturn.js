@@ -7,6 +7,9 @@ export default {
     list(param) {
         return Ajax.get('/purchaseReturn', param)
     },
+    total(param) {
+        return Ajax.get('/purchaseReturn/total', param)
+    },
     remove(id) {
         return Ajax.delete('/purchaseReturn/' + id);
     },

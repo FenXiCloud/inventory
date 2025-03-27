@@ -7,6 +7,9 @@ export default {
   list(param) {
     return Ajax.get('/purchaseInbound', param)
   },
+  total(param) {
+    return Ajax.get('/purchaseInbound/total', param)
+  },
   remove(id) {
     return Ajax.delete('/purchaseInbound/' + id);
   },

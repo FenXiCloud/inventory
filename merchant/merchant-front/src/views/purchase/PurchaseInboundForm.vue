@@ -12,7 +12,6 @@
           <Button v-if="type==='add'" @click="selectPurchaseOrder()" color="primary" style="margin-left: 20px">
             选择源单
           </Button>
-
         </template>
       </vxe-toolbar>
       <vxe-table
@@ -33,8 +32,8 @@
         </vxe-column>
         <vxe-column title="商品信息" width="300">
           <template #default="{row,rowIndex}">
-            <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,rowIndex)" v-model="product" :datas="productList"
+            <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
+              <Select ref="ms" @change="selectProduct($event,rowIndex)" v-model="row.productId" :datas="productList"
                       filterable
                       placeholder="输入编码/名称" keyName="productId">
                 <template v-slot:item="{ item }">
@@ -42,13 +41,10 @@
                 </template>
               </Select>
             </div>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ row.productCode }}--{{ row.productName }}</div>
-              </div>
-            </div>
           </template>
         </vxe-column>
+        <vxe-column title="类别" field="categoryName" align="center" width="80"/>
+        <vxe-column title="规格" field="spec" align="center" width="80"/>
         <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
@@ -333,8 +329,11 @@ export default {
           subtotal: d.price || 0,
           conversionRate: 1,
           secondaryUnitId: d.unitId,
+          secondaryUnitName: d.unitName,
           baseUnitId: d.unitId,
           baseUnitName: d.unitName,
+          categoryName: d.categoryName,
+          spec: d.spec,
           remark: ""
         };
         this.productData[index] = Object.assign(Object.assign(g, d), d);
@@ -376,7 +375,7 @@ export default {
         return
       }
       PurchaseInbound.save({
-        purchaseInbound: Object.assign(this.form, {finalAmount: this.finalAmount}),
+        purchaseInbound: Object.assign(this.form, {totalAmount: this.allFinalAmount}),
         type: this.type,
         purchaseInboundItemList: productData
       }).then((success) => {

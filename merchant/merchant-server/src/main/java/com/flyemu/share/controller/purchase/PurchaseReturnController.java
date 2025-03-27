@@ -9,6 +9,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.PurchaseReturnForm;
+import com.flyemu.share.service.purchase.PurchaseInboundService;
 import com.flyemu.share.service.purchase.PurchaseReturnService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,20 @@ public class PurchaseReturnController {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(purchaseReturnService.query(page, query));
+    }
+
+    /**
+     * 条件内总金额
+     *
+     * @param merchantId
+     * @param query
+     * @return
+     */
+    @GetMapping("/total")
+    public JsonResult queryTotal(PurchaseReturnService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(purchaseReturnService.queryTotal(query));
     }
 
     @PostMapping

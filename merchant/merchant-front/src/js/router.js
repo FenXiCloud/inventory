@@ -23,6 +23,10 @@ const groupRoutes = [
 
     {name: 'FinanceRel', component: defineAsyncComponent(() => import('@views/setting/FinanceRel.vue'))},
 
+    {name: 'OrderVoucher', component: defineAsyncComponent(() => import('@views/setting/OrderVoucher.vue'))},
+
+    {name: 'ItemMapping', component: defineAsyncComponent(() => import('@views/setting/ItemMapping.vue'))},
+
     {name: 'ProductCategoryList', component: defineAsyncComponent(() => import('@views/basic/ProductCategoryList'))},
 
     {name: 'ProductPriceList', component: defineAsyncComponent(() => import('@views/basic/ProductPriceList'))},

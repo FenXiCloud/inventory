@@ -2,6 +2,7 @@ package com.flyemu.share.service.setting;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import com.flyemu.share.api.FenxiLogin;
 import com.flyemu.share.entity.setting.FinanceRel;
 import com.flyemu.share.entity.setting.QFinanceRel;
 import com.flyemu.share.repository.FinanceRelRepository;
@@ -32,6 +33,8 @@ public class FinanceRelService extends AbsService {
 
     private final FinanceRelRepository financeRelRepository;
 
+    private final FenxiLogin fenxiLogin;
+
     public List<FinanceRel> query(Query query) {
         List<FinanceRel> financeRels = bqf.selectFrom(qFinanceRel)
                 .where(query.builder)
@@ -51,6 +54,18 @@ public class FinanceRelService extends AbsService {
         }
 
         return financeRelRepository.save(financeRel);
+    }
+
+    @Transactional
+    public FinanceRel upCookie(Long merchantId, Long accountBookId) {
+        FinanceRel relationAccount = bqf.selectFrom(qFinanceRel)
+                .where(qFinanceRel.merchantId.eq(merchantId).and(qFinanceRel.accountBookId.eq(accountBookId))).fetchFirst();
+        String cookie = fenxiLogin.getCookie(relationAccount);
+        jqf.update(qFinanceRel)
+                .set(qFinanceRel.cookie, cookie)
+                .where(qFinanceRel.id.eq(relationAccount.getId())).execute();
+        relationAccount.setCookie(cookie);
+        return relationAccount;
     }
 
     public static class Query {

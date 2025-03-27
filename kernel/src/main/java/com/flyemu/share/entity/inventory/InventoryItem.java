@@ -40,7 +40,7 @@ public class InventoryItem {
     private Long warehouseId;
 
     @Comment("操作类型：期初、入库、出库、调拨")
-    @Column(nullable = false,length = 32, columnDefinition = "varchar(20)")
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(20)")
     @Enumerated(EnumType.STRING)
     private OperationType operationType;
 
@@ -88,4 +88,7 @@ public class InventoryItem {
 
     @Comment("客户ID")
     private Long customerId;
+
+    @Comment("排序首条")
+    private Boolean firstSort;
 }

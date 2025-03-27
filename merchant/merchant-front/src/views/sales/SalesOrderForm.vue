@@ -10,6 +10,9 @@
           <DatePicker v-model="form.orderDate" :option="{start:accountBook.checkoutDate}"
                       :clearable="false"></DatePicker>
         </template>
+        <template #tools>
+          <Stamp v-if="form.orderStatus === '已审核' " />
+        </template>
       </vxe-toolbar>
       <vxe-table
           size="mini"
@@ -133,14 +136,14 @@
         取消
       </Button>
       <div>
-        <Button color="primary" @click="saveOrder('new')" :loading="loading">
+        <Button color="primary" @click="saveOrder('new')" v-if="form.orderStatus !== '已审核' " :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder('save')" :loading="loading">
+        <Button @click="saveOrder('save')" v-if="form.orderStatus !== '已审核' " :loading="loading">
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="auditOrder('已审核')" v-if="form.orderStatus === '已保存' " :loading="loading">
+        <Button @click="auditOrder('已审核')" v-if="form.orderStatus !== '已审核' " :loading="loading">
           审核
         </Button>
         <!-- 仅当状态为审核时显示 -->
@@ -162,9 +165,11 @@ import {mapMutations, mapState} from "vuex";
 import SalesOrder from "@js/api/sales/SalesOrder";
 import Product from "@js/api/basic/Product";
 import Inventory from "@js/api/inventory/Inventory";
+import Stamp from "@views/common/Stamp.vue";
 
 export default {
   name: "SalesOrderForm",
+  components: {Stamp},
   computed: {
     ...mapState(['accountBook']),
     isDeleting() {
@@ -345,8 +350,10 @@ export default {
         content: `确定审核订单？`,
         onConfirm: () => {
           loading("保存中....");
-          let salesOrder = Object.assign(this.form);
-          salesOrder.orderStatus = orderStatus
+          let salesOrder ={
+            id: this.form.id,
+            orderStatus: orderStatus
+          }
           SalesOrder.audit({
             salesOrder: salesOrder,
           }).then((success) => {
@@ -354,9 +361,10 @@ export default {
               message("审核成功~");
               this.closeWindow()
             }
-          }).finally(() =>
-              loading.close()
-          );
+          }).catch(() => {
+          }).finally(() => {
+            loading.close()
+          });
         }
       })
     },

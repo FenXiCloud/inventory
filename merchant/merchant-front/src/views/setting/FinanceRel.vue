@@ -46,22 +46,22 @@
           <div class="m-10px icon-center">
             <Icon type="h-icon-right" :size="50" color="gainsboro"/>
           </div>
-          <div class="w-150px p-10px bg-gray4-color br" @click="toSubject">
+          <div class="w-150px p-10px bg-gray4-color br" @click="templateConfig">
             <div class="pt-20px">
               <Icon type="h-icon-setting" :size="40"/>
             </div>
-            <div class="p-10px" style="font-weight: bold">设置进销存参数</div>
+            <div class="p-10px" style="font-weight: bold">进销存凭证模板</div>
             <div class="pb-20px" style="text-align: left;color: gray;font-size: small">检查确定进销存核算参数的设置
             </div>
           </div>
           <div class="m-10px icon-center ">
             <Icon type="h-icon-right" :size="50" color="gainsboro"/>
           </div>
-          <div class="w-150px p-10px bg-gray4-color br">
+          <div class="w-150px p-10px bg-gray4-color br" @click="itemMapping">
             <div class="pt-20px">
               <Icon type="h-icon-setting" :size="40"/>
             </div>
-            <div class="p-10px" style="font-weight: bold">完善进销存资料</div>
+            <div class="p-10px" style="font-weight: bold">进销存辅助资料</div>
             <div class="pb-20px" style="text-align: left;color: gray;font-size: small">
               设置进销存基础资料与财务软件账套的会计科目之间的对应关系
             </div>
@@ -87,9 +87,8 @@ import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 import FinanceRelForm from "./FinanceRelForm.vue";
 import FinanceRel from "@js/api/setting/FinanceRel";
-// import RelationSubjectFrom from "@components/group/setting/RelationSubjectFrom.vue";
-// import RelationAccountForm from "@components/group/setting/RelationAccountForm.vue";
 import {mapMutations} from "vuex";
+import VoucherTemplate from "@views/setting/VoucherTemplate.vue";
 
 
 export default {
@@ -107,6 +106,25 @@ export default {
     ...mapMutations(['pushTab']),
     toVoucher() {
       this.pushTab({key: 'OrderVoucher', title: '订单凭证'});
+    },
+    itemMapping() {
+      this.pushTab({key: 'ItemMapping', title: '辅助项映射'});
+    },
+    templateConfig() {
+      let layerId = layer.open({
+        title: "凭证模板设置",
+        shadeClose: false,
+        area: ['600px', '600px'],
+        content: h(VoucherTemplate, {
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: () => {
+            this.loadList();
+            layer.close(layerId);
+          }
+        })
+      });
     },
     showForm() {
       let financeRel = this.dataList[0]

@@ -5,17 +5,20 @@
         <Button @click="excel" color="primary">导出</Button>
       </template>
       <template #tools>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">仓库：</span>
-          <Select v-model="params.warehouseId" class="w-120px" keyName="id" titleName="name" :datas="warehouseList"/>
+          <Select v-model="params.warehouseIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
+                  titleName="name" :datas="warehouseList"/>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">商品：</span>
-          <Select v-model="params.productId" class="w-120px" keyName="id" titleName="name" :datas="productList"/>
+          <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
+                  titleName="name" :datas="productList"/>
         </div>
-        <div class="h-input-group">
+        <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">商品类别：</span>
-          <Select v-model="params.productCategoryId" keyName="id" titleName="name" class="w-120px"
+          <Select v-model="params.productCategoryIds" :filterable="true" :multiple="true" keyName="id" titleName="name"
+                  class="w-120px"
                   :datas="productCategoryList"/>
         </div>
         <div class="h-input-group">
@@ -153,6 +156,9 @@ export default {
         total: 0
       },
       params: {
+        productCategoryIds: [],
+        productIds: [],
+        warehouseIds: [],
         productId: null,
         warehouseId: null,
         productCategoryId: null,
@@ -247,10 +253,14 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      InventoryItem.summary(this.queryParams).then(({data: {results, total}}) => {
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.productCategoryIds = params.productCategoryIds.join(",");
+      params.productIds = params.productIds.join(",");
+      params.warehouseIds = params.warehouseIds.join(",");
+      InventoryItem.summary(params).then(({data: {results, total}}) => {
         const dataList = results || [];
         this.pagination.total = total;
-        InventoryItem.summaryOperationType(this.queryParams).then(({data}) => {
+        InventoryItem.summaryOperationType(params).then(({data}) => {
           dataList.forEach((row) => {
             const productId = row.productId;
             const warehouseId = row.warehouseId;
@@ -260,8 +270,6 @@ export default {
                 const operationType = data_row.operationType;
                 let purchaseStockQuantity = row.purchaseStockQuantity;
                 let purchaseStockSubtotal = row.purchaseStockSubtotal;
-                let initialQuantity = row.initialQuantity;
-                let initialSubtotal = row.initialSubtotal;
                 let salesReturnsQuantity = row.salesReturnsQuantity;
                 let salesReturnsSubtotal = row.salesReturnsSubtotal;
                 let channelInQuantity = row.channelInQuantity;
@@ -286,10 +294,6 @@ export default {
                 let outQuantityTotal = row.outQuantityTotal;
                 let outSubtotalTotal = row.outSubtotalTotal;
                 switch (operationType) {
-                  case "期初":
-                    row.initialQuantity = data_row.quantity + (initialQuantity || 0);
-                    row.initialSubtotal = data_row.subtotal + (initialSubtotal || 0);
-                    break;
                   case "采购入库":
                   case "销售退货":
                   case "调拨入库":
@@ -363,7 +367,20 @@ export default {
               }
             });
           });
-          this.dataList = dataList;
+          InventoryItem.summaryInitial(params).then(({data: initialData}) => {
+            const setProducts = [];
+            dataList.forEach((row) => {
+              initialData.forEach((data_row) => {
+                const productId = row.productId;
+                if (data_row.productId === productId && !setProducts.includes(productId)) {
+                  setProducts.push(productId);
+                  row.initialQuantity = data_row.quantity;
+                  row.initialSubtotal = data_row.subtotal;
+                }
+              })
+            });
+            this.dataList = dataList;
+          });
         }).finally(() => this.loading = false);
       });
     },
@@ -390,6 +407,9 @@ export default {
       const params = JSON.parse(JSON.stringify(this.queryParams));
       params.page = 1;
       params.pageSize = 1199999;
+      params.productCategoryIds = params.productCategoryIds.join(",");
+      params.productIds = params.productIds.join(",");
+      params.warehouseIds = params.warehouseIds.join(",");
       InventoryItem.summary(params).then(({data: {results, total}}) => {
         const dataList = results || [];
         InventoryItem.summaryOperationType(params).then(({data}) => {
@@ -427,7 +447,7 @@ export default {
                 let outQuantityTotal = row.outQuantityTotal;
                 let outSubtotalTotal = row.outSubtotalTotal;
                 switch (operationType) {
-                  case "期初":
+                  case "期初余额":
                     row.initialQuantity = data_row.quantity + (initialQuantity || 0);
                     row.initialSubtotal = data_row.subtotal + (initialSubtotal || 0);
                     break;
@@ -504,7 +524,20 @@ export default {
               }
             });
           });
-          this.callExcel(dataList);
+          InventoryItem.summaryInitial(params).then(({data: initialData}) => {
+            const setProducts = [];
+            dataList.forEach((row) => {
+              initialData.forEach((data_row) => {
+                const productId = row.productId;
+                if (data_row.productId === productId && !setProducts.includes(productId)) {
+                  setProducts.push(productId);
+                  row.initialQuantity = data_row.quantity;
+                  row.initialSubtotal = data_row.subtotal;
+                }
+              })
+            });
+            this.callExcel(dataList);
+          });
         }).finally(() => this.loading = false);
       });
     },

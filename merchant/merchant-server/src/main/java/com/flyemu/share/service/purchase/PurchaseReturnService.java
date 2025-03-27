@@ -10,10 +10,17 @@ import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.dto.purchase.*;
+import com.flyemu.share.dto.purchase.PurchaseReturnDto;
+import com.flyemu.share.dto.purchase.PurchaseReturnItemDto;
 import com.flyemu.share.entity.basic.*;
-import com.flyemu.share.entity.purchase.*;
+import com.flyemu.share.entity.inventory.Inventory;
+import com.flyemu.share.entity.inventory.InventoryItem;
+import com.flyemu.share.entity.purchase.PurchaseReturn;
+import com.flyemu.share.entity.purchase.PurchaseReturnItem;
+import com.flyemu.share.entity.purchase.QPurchaseReturn;
+import com.flyemu.share.entity.purchase.QPurchaseReturnItem;
 import com.flyemu.share.entity.setting.QMerchantUser;
+import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
@@ -22,6 +29,7 @@ import com.flyemu.share.repository.PurchaseReturnItemRepository;
 import com.flyemu.share.repository.PurchaseReturnRepository;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -32,11 +40,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @功能描述: 采购退货单
@@ -63,6 +73,7 @@ public class PurchaseReturnService extends AbsService {
     private final PurchaseReturnItemRepository purchaseReturnItemRepository;
     private final CodeSeedService codeSeedService;
     private final PriceRecordService priceRecordService;
+    private final InventoryService inventoryService;
 
     public PageResults<PurchaseReturnDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseReturn)
@@ -181,7 +192,98 @@ public class PurchaseReturnService extends AbsService {
                     set(qPurchaseReturn.approvedBy, adminId)
                     .where(qPurchaseReturn.id.in(setIds))
                     .execute();
+            // 设置入库明细数据
+            this.purchaseReturnToInventory(state, setIds);
         }
+    }
+
+    private void purchaseReturnToInventory(OrderStatus state, List<Long> setIds) {
+        setIds.forEach(id -> {
+            purchaseReturnRepository.findById(id).ifPresent(purchaseReturn -> {
+                List<Inventory> inventories = new ArrayList<>();
+                List<InventoryItem> inventoryItems = new ArrayList<>();
+                List<PurchaseReturnItem> returnItems = purchaseReturnItemRepository.findByPurchaseReturnId(id);
+                //处理库存
+                this.getComputedInventory(returnItems, inventories, inventoryItems, purchaseReturn.getSupplierId(), purchaseReturn.getOrderNo());
+                inventories.forEach(item -> {
+                    if (OrderStatus.已审核.equals(state)) {
+                        // 减库存
+                        inventoryService.computedInventory(item, false, id, OperationType.采购退货, inventoryItems);
+                    } else {
+                        // 加库存
+                        inventoryService.computedInventory(item, true, id, OperationType.采购退货, null);
+                    }
+                });
+            });
+        });
+    }
+
+    private void getComputedInventory(List<PurchaseReturnItem> returnItems, List<Inventory> inventories,
+                                      List<InventoryItem> inventoryItems, Long supplierId, String orderNo) {
+        AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
+        AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
+        returnItems.forEach(purchaseReturnItem -> {
+            BigDecimal subtotal = purchaseReturnItem.getSubtotal();
+            Double quantity = purchaseReturnItem.getQuantity();
+            inventories.stream()
+                    .filter(item -> item.getProductId().equals(purchaseReturnItem.getProductId())
+                            && item.getWarehouseId().equals(purchaseReturnItem.getWarehouseId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            item -> {
+                                BigDecimal totalCost = item.getTotalCost();
+                                Integer currentQuantity = item.getCurrentQuantity();
+                                BigDecimal added = totalCost.add(subtotal)
+                                        .setScale(2, RoundingMode.HALF_EVEN);
+                                double parsed = Double.parseDouble(quantity.toString());
+                                currentQuantity += (int) parsed;
+                                item.setCurrentQuantity(currentQuantity);
+                                item.setTotalCost(added);
+                            }, () -> {
+                                Inventory inventory = new Inventory();
+                                inventory.setWarehouseId(purchaseReturnItem.getWarehouseId());
+                                inventory.setProductId(purchaseReturnItem.getProductId());
+                                double parsed = Double.parseDouble(purchaseReturnItem.getQuantity().toString());
+                                inventory.setCurrentQuantity((int) parsed);
+                                inventory.setTotalCost(purchaseReturnItem.getSubtotal());
+                                inventory.setMerchantId(purchaseReturnItem.getMerchantId());
+                                inventory.setAccountBookId(purchaseReturnItem.getAccountBookId());
+                                inventory.setBaseUnitId(purchaseReturnItem.getBaseUnitId());
+                                inventoryAtomicReference.set(inventory);
+                                inventories.add(inventoryAtomicReference.get());
+                            });
+            InventoryItem inventoryItem = getInventoryItem(purchaseReturnItem, supplierId, orderNo);
+            inventoryItemAtomicReference.set(inventoryItem);
+            inventoryItems.add(inventoryItemAtomicReference.get());
+        });
+    }
+
+    /**
+     * 获取库存明细列表
+     *
+     * @param purchaseReturnItem 入库明细
+     * @param supplierId         供应商id
+     * @return inventoryItem
+     */
+    private InventoryItem getInventoryItem(PurchaseReturnItem purchaseReturnItem, Long supplierId, String orderNo) {
+        InventoryItem inventoryItem = new InventoryItem();
+        inventoryItem.setWarehouseId(purchaseReturnItem.getWarehouseId());
+        inventoryItem.setProductId(purchaseReturnItem.getProductId());
+        double parsed = Double.parseDouble(purchaseReturnItem.getQuantity().toString());
+        inventoryItem.setQuantity((int) parsed);
+        inventoryItem.setBaseUnitId(purchaseReturnItem.getBaseUnitId());
+        inventoryItem.setSupplierId(supplierId);
+        inventoryItem.setOperationType(OperationType.采购退货);
+        inventoryItem.setBaseUnitId(purchaseReturnItem.getBaseUnitId());
+        inventoryItem.setOrderId(purchaseReturnItem.getPurchaseReturnId());
+        inventoryItem.setBatchNumber(orderNo);
+        inventoryItem.setMerchantId(purchaseReturnItem.getMerchantId());
+        inventoryItem.setAccountBookId(purchaseReturnItem.getAccountBookId());
+        inventoryItem.setCreatedAt(LocalDateTime.now());
+        inventoryItem.setCreatedBy(purchaseReturnItem.getCreatedBy());
+        inventoryItem.setUnitPrice(purchaseReturnItem.getUnitPrice());
+        inventoryItem.setSubtotal(purchaseReturnItem.getSubtotal());
+        return inventoryItem;
     }
 
 

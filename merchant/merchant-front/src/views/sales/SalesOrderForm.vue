@@ -297,7 +297,7 @@ export default {
       }
       console.log("subtotal",subtotal)
 
-      return [["", "", "", "", quantity.toFixed(2), "", "", "",discountValue,subtotal,""]];
+      return [["","","","", "", "", "","", quantity.toFixed(2), "", "", "",discountValue,subtotal,""]];
     },
 
     //选择商品

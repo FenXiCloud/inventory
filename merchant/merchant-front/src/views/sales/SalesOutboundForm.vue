@@ -110,7 +110,7 @@
                       <tr v-for="(item, index) in recentSales || []" :key="index">
                         <td>{{item.orderDate || '-'}}</td>
                         <td>{{item.unitPrice || '-'}}</td>
-                        <td>{{item.customerId || '-'}}</td>
+                        <td>{{item.customer || '-'}}</td>
                       </tr>
                       </tbody>
                     </table>

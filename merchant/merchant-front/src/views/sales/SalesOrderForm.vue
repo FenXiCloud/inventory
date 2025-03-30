@@ -32,7 +32,11 @@
         </vxe-column>
         <vxe-column field="imgPath" title="商品图片" width="100">
           <template #default="{row}">
-            <img :src="productList.find(item => item.id === row.productId)?.imgPath || '-'" alt="" class="product-img">
+            <img
+                :src="productList.find(item => item.id === row.productId)?.imgPath || '-'"
+                alt=""
+                class="product-img cursor-pointer"
+                @click="previewImage(productList.find(item => item.id === row.productId)?.imgPath)">
           </template>
         </vxe-column>
         <vxe-column field="productCode" title="商品编码" width="240"></vxe-column>
@@ -168,6 +172,12 @@
       </Button>
       </div>
     </div>
+    <!-- 预览图片的容器 -->
+    <div v-if="previewVisible" class="image-preview-modal" @click="previewVisible = false">
+      <div class="image-preview-container">
+        <img :src="previewImageUrl" class="preview-image" alt="商品图片预览">
+      </div>
+    </div>
   </div>
 </template>
 <script>
@@ -213,6 +223,8 @@ export default {
       productData: [],
       orderId:null,
       type:null,
+      previewVisible: false,
+      previewImageUrl: ''
     }
   },
   methods: {
@@ -559,6 +571,11 @@ export default {
         // 通过 eventBus 或 vuex 触发刷新
         this.$store.commit('SET_TAB_DATA', { refresh: true });
       });
+    },
+    previewImage(row) {
+      console.log("row", row)
+      this.previewImageUrl = row;
+      this.previewVisible = true;
     }
   },
   beforeDestroy() {
@@ -607,3 +624,31 @@ export default {
   },
 }
 </script>
+<style scoped>
+.image-preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-preview-container {
+  max-width: 90%;
+  max-height: 90%;
+  background: #fff;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+</style>

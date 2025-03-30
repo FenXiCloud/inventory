@@ -1,171 +1,182 @@
 <template>
-  <div class="modal-column">
-    <div class="modal-column-full-body">
-      <vxe-toolbar class-name="!size--mini">
-        <template #buttons>
-          <label class="mr-20px" style="font-size: 16px !important;">客户:</label>
-          <Select class="w-300px" filterable required :datas="customerList" keyName="id" titleName="name"
-                  :deletable="false" @change="changeCustomer($event)" v-model="customerId" placeholder="请选择客户"/>
-          <label class="mr-20px ml-16px" style="font-size: 16px !important;">出库日期:</label>
-          <DatePicker v-model="form.outboundDate" :option="{start:accountBook.checkoutDate}"
-                      :clearable="false"></DatePicker>
-          <Button v-if="type==='add'" @click="addOrEditForm()" color="primary" style="margin-left: 20px">选择源单</Button>
-        </template>
-        <template #tools>
-          <Stamp v-if="form.orderStatus === '已审核' " />
-        </template>
-      </vxe-toolbar>
-      <vxe-table
-          size="mini"
-          ref="xTable"
-          border="border"
-          :row-config="{height: 40}"
-          show-footer
-          :footer-method="footerMethod"
-          stripe
-          :data="productData">
-        <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
-          <template #default="{row,rowIndex}">
-            <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert',rowIndex)"></div>
-            <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
+  <div class="sales-outbound-wrapper">
+    <div class="modal-column">
+      <div class="modal-column-full-body">
+        <vxe-toolbar class-name="!size--mini">
+          <template #buttons>
+            <label class="mr-20px" style="font-size: 16px !important;">客户:</label>
+            <Select class="w-300px" filterable required :datas="customerList" keyName="id" titleName="name"
+                    :deletable="false" @change="changeCustomer($event)" v-model="customerId" placeholder="请选择客户"/>
+            <label class="mr-20px ml-16px" style="font-size: 16px !important;">出库日期:</label>
+            <DatePicker v-model="form.outboundDate" :option="{start:accountBook.checkoutDate}"
+                        :clearable="false"></DatePicker>
+            <Button v-if="type==='add'" @click="addOrEditForm()" color="primary" style="margin-left: 20px">选择源单</Button>
           </template>
-        </vxe-column>
-        <vxe-column field="imgPath" title="商品图片" width="100">
-          <template #default="{row}">
-            <img :src="productList.find(item => item.id === row.productId)?.imgPath || '-'" alt="" class="product-img">
+          <template #tools>
+            <Stamp v-if="form.orderStatus === '已审核' " />
           </template>
-        </vxe-column>
-        <vxe-column field="productCode" title="商品编码" width="240"></vxe-column>
-        <vxe-column title="商品信息" width="180" align="center">
-          <template #default="scope">
-            <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
-                      keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false">
-                <template v-slot:item="{ item }">
-                  <div>{{ item.name }}</div>
-                </template>
-              </Select>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="规格型号" field="specification" align="center" width="100">
-          <template #default="{row}">
-            {{ productList.find(item => item.id === row.productId)?.specification || '-' }}
-          </template>
-        </vxe-column>
-        <vxe-column title="商品类别" field="productCategoryName" align="center" width="100">
-          <template #default="{row}">
-            {{ productList.find(item => item.id === row.productId)?.productCategoryName || '-' }}
-          </template>
-        </vxe-column>
-        <vxe-column title="仓库" field="warehouse" align="center" width="180">
-          <template #default="{row,rowIndex}">
-            <template v-if="!row.isNew">
-              <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
-                      titleName="name" @change="handleWarehouseChange(row, $event)"/>
+        </vxe-toolbar>
+        <vxe-table
+            size="mini"
+            ref="xTable"
+            border="border"
+            :row-config="{height: 40}"
+            show-footer
+            :footer-method="footerMethod"
+            stripe
+            :data="productData">
+          <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
+          <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
+            <template #default="{row,rowIndex}">
+              <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert',rowIndex)"></div>
+              <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
             </template>
-          </template>
-        </vxe-column>
-        <vxe-column title="数量" field="quantity" width="90">
-          <template #default="{row,rowIndex,columnIndex}">
-            <vxe-tooltip theme="light">
-              <template #content>
-                <div>当前库存: {{row.currentStockQuantity || 0}}</div>
-                <div>总库存: {{row.totalStockQuantity || 0}}</div>
+          </vxe-column>
+          <vxe-column field="imgPath" title="商品图片" width="100">
+            <template #default="{row}">
+              <img
+                  :src="productList.find(item => item.id === row.productId)?.imgPath || '-'"
+                  alt=""
+                  class="product-img cursor-pointer"
+                  @click="previewImage(productList.find(item => item.id === row.productId)?.imgPath)">
+            </template>
+          </vxe-column>
+          <vxe-column field="productCode" title="商品编码" width="240"></vxe-column>
+          <vxe-column title="商品信息" width="180" align="center">
+            <template #default="scope">
+              <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
+                <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
+                        keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false">
+                  <template v-slot:item="{ item }">
+                    <div>{{ item.name }}</div>
+                  </template>
+                </Select>
+              </div>
+            </template>
+          </vxe-column>
+          <vxe-column title="规格型号" field="specification" align="center" width="100">
+            <template #default="{row}">
+              {{ productList.find(item => item.id === row.productId)?.specification || '-' }}
+            </template>
+          </vxe-column>
+          <vxe-column title="商品类别" field="productCategoryName" align="center" width="100">
+            <template #default="{row}">
+              {{ productList.find(item => item.id === row.productId)?.productCategoryName || '-' }}
+            </template>
+          </vxe-column>
+          <vxe-column title="仓库" field="warehouse" align="center" width="180">
+            <template #default="{row,rowIndex}">
+              <template v-if="!row.isNew">
+                <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
+                        titleName="name" @change="handleWarehouseChange(row, $event)"/>
               </template>
-              <vxe-input
-                  :id="'r'+rowIndex+''+3"
-                  @blur="updateQuantity(row)"
-                  @focus="showStockQuantity(row)"
-                  ref="inputQuantity"
-                  v-model.number="row.quantity"
-                  type="float"
-                  min="0"
-                  :controls="false">
-              </vxe-input>
-            </vxe-tooltip>
-          </template>
-        </vxe-column>
-        <vxe-column title="单位" field="unitName" align="center" width="80"/>
-        <vxe-column title="单价" field="unitPrice" width="100">
-          <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4"
-                       @blur="updatePrice(row)" v-model.number="row.unitPrice" type="float" min="0"
-                       :controls="false"></vxe-input>
-          </template>
-        </vxe-column>
-        <vxe-column title="折扣率(%)" field="discountRate" width="100">
-          <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5"
-                       @blur="updateDiscount(row)" v-model.number="row.discountRate" type="float" min="0"
-                       :controls="false"></vxe-input>
-          </template>
-        </vxe-column>
-        <vxe-column title="折扣额" field="discountValue" width="100">
-          <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+6"
-                       @blur="updateDiscountAmount(row)" v-model.number="row.discountValue" type="float" min="0"
-                       :controls="false"></vxe-input>
-          </template>
-        </vxe-column>
-        <vxe-column title="金额" field="subtotal" width="100">
-          <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+7"
-                       @blur="updateFinalAmount(row)" v-model.number="row.subtotal" type="float" min="0"
-                       :controls="false" readonly disabled></vxe-input>
-          </template>
-        </vxe-column>
-        <vxe-column title="备注" field="remark">
-          <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8"
-                       v-model="row.remark" placeholder="输入备注" :controls="false"></vxe-input>
-          </template>
-        </vxe-column>
-      </vxe-table>
-      <div class="mt-10px"></div>
-      <div class="filler-panel" v-if="type==='edit'">
-        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
-          <label class="mr-16px  w-100px">单据编号：</label>
-          <Input v-model="form.orderNo" readonly/>
+            </template>
+          </vxe-column>
+          <vxe-column title="数量" field="quantity" width="90">
+            <template #default="{row,rowIndex,columnIndex}">
+              <vxe-tooltip theme="light">
+                <template #content>
+                  <div>当前库存: {{row.currentStockQuantity || 0}}</div>
+                  <div>总库存: {{row.totalStockQuantity || 0}}</div>
+                </template>
+                <vxe-input
+                    :id="'r'+rowIndex+''+3"
+                    @blur="updateQuantity(row)"
+                    @focus="showStockQuantity(row)"
+                    ref="inputQuantity"
+                    v-model.number="row.quantity"
+                    type="float"
+                    min="0"
+                    :controls="false">
+                </vxe-input>
+              </vxe-tooltip>
+            </template>
+          </vxe-column>
+          <vxe-column title="单位" field="unitName" align="center" width="80"/>
+          <vxe-column title="单价" field="unitPrice" width="100">
+            <template #default="{row,rowIndex}">
+              <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4"
+                         @blur="updatePrice(row)" v-model.number="row.unitPrice" type="float" min="0"
+                         :controls="false"></vxe-input>
+            </template>
+          </vxe-column>
+          <vxe-column title="折扣率(%)" field="discountRate" width="100">
+            <template #default="{row,rowIndex}">
+              <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5"
+                         @blur="updateDiscount(row)" v-model.number="row.discountRate" type="float" min="0"
+                         :controls="false"></vxe-input>
+            </template>
+          </vxe-column>
+          <vxe-column title="折扣额" field="discountValue" width="100">
+            <template #default="{row,rowIndex}">
+              <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+6"
+                         @blur="updateDiscountAmount(row)" v-model.number="row.discountValue" type="float" min="0"
+                         :controls="false"></vxe-input>
+            </template>
+          </vxe-column>
+          <vxe-column title="金额" field="subtotal" width="100">
+            <template #default="{row,rowIndex}">
+              <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+7"
+                         @blur="updateFinalAmount(row)" v-model.number="row.subtotal" type="float" min="0"
+                         :controls="false" readonly disabled></vxe-input>
+            </template>
+          </vxe-column>
+          <vxe-column title="备注" field="remark">
+            <template #default="{row,rowIndex}">
+              <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8"
+                         v-model="row.remark" placeholder="输入备注" :controls="false"></vxe-input>
+            </template>
+          </vxe-column>
+        </vxe-table>
+        <div class="mt-10px"></div>
+        <div class="filler-panel" v-if="type==='edit'">
+          <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+            <label class="mr-16px  w-100px">单据编号：</label>
+            <Input v-model="form.orderNo" readonly/>
+          </div>
+        </div>
+        <div class="filler-panel">
+          <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+            <label class="mr-16px  w-100px">优惠率(%)：</label>
+            <Input v-model="form.discountRate" readonly type="number"/>
+            <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
+            <Input v-model="form.discountAmount" type="number" readonly/>
+            <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
+            <Input v-model="form.finalAmount" type="number" readonly/>
+          </div>
+        </div>
+        <div class="filler-panel">
+          <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+            <label class="mr-16px  w-100px">备注说明：</label>
+            <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
+          </div>
         </div>
       </div>
-      <div class="filler-panel">
-        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
-          <label class="mr-16px  w-100px">优惠率(%)：</label>
-          <Input v-model="form.discountRate" readonly type="number"/>
-          <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
-          <Input v-model="form.discountAmount" type="number" readonly/>
-          <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
-          <Input v-model="form.finalAmount" type="number" readonly/>
-        </div>
-      </div>
-      <div class="filler-panel">
-        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
-          <label class="mr-16px  w-100px">备注说明：</label>
-          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
+      <div class="modal-column-between bg-white-color  border">
+        <Button @click="closeWindow" :loading="loading">
+          取消
+        </Button>
+        <div>
+          <Button color="primary" @click="saveOrder('new')" v-if="form.orderStatus !== '已审核' " :loading="loading">
+            保存并新增
+          </Button>
+          <Button @click="saveOrder('save')" v-if="form.orderStatus !== '已审核' " :loading="loading">
+            保存
+          </Button>
+          <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
+          <Button @click="auditOrder('已审核')" v-if="form.orderStatus !== '已审核' " :loading="loading">
+            审核
+          </Button>
+          <!-- 仅当状态为审核时显示 -->
+          <Button @click="auditOrder('已保存')" v-if="form.orderStatus === '已审核' " :loading="loading">
+            反审核
+        </Button>
         </div>
       </div>
     </div>
-    <div class="modal-column-between bg-white-color  border">
-      <Button @click="closeWindow" :loading="loading">
-        取消
-      </Button>
-      <div>
-        <Button color="primary" @click="saveOrder('new')" v-if="form.orderStatus !== '已审核' " :loading="loading">
-          保存并新增
-        </Button>
-        <Button @click="saveOrder('save')" v-if="form.orderStatus !== '已审核' " :loading="loading">
-          保存
-        </Button>
-        <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="auditOrder('已审核')" v-if="form.orderStatus !== '已审核' " :loading="loading">
-          审核
-        </Button>
-        <!-- 仅当状态为审核时显示 -->
-        <Button @click="auditOrder('已保存')" v-if="form.orderStatus === '已审核' " :loading="loading">
-          反审核
-      </Button>
+    <div v-if="previewVisible" class="image-preview-modal" @click="previewVisible = false">
+      <div class="image-preview-container">
+        <img :src="previewImageUrl" class="preview-image" alt="商品图片预览">
       </div>
     </div>
   </div>
@@ -222,6 +233,8 @@ export default {
       selectSalesOrderIdList: [],
       orderId:null,
       type:null,
+      previewVisible: false,
+      previewImageUrl: ''
     }
   },
   methods: {
@@ -626,6 +639,11 @@ export default {
         // 通过 eventBus 或 vuex 触发刷新
         this.$store.commit('SET_TAB_DATA_OUTBOUND', { refresh: true });
       });
+    },
+    previewImage(row) {
+      console.log("row", row)
+      this.previewImageUrl = row;
+      this.previewVisible = true;
     }
   },
   beforeDestroy() {
@@ -676,3 +694,31 @@ export default {
   },
 }
 </script>
+<style scoped>
+.image-preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-preview-container {
+  max-width: 90%;
+  max-height: 90%;
+  background: #fff;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+</style>

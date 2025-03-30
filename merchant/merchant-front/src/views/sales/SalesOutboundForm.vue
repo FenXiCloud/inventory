@@ -167,11 +167,17 @@
         <div class="filler-panel">
           <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
             <label class="mr-16px  w-100px">优惠率(%)：</label>
-            <Input v-model="form.discountRate" readonly type="number"/>
+            <vxe-input v-model.number="form.discountRate" @blur="discountRateComputeFinalAmount" type="float" min="0"
+                       :controls="false">
+            </vxe-input>
             <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
-            <Input v-model="form.discountAmount" type="number" readonly/>
+            <vxe-input v-model.number="form.discountAmount" @blur="discountAmountComputeFinalAmount" type="float" min="0"
+                       :controls="false">
+            </vxe-input>
             <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
-            <Input v-model="form.finalAmount" type="number" readonly/>
+            <vxe-input v-model.number="form.finalAmount" type="float" min="0"
+                       :controls="false" readonly disabled>
+            </vxe-input>
           </div>
         </div>
         <div class="filler-panel">
@@ -355,11 +361,16 @@ export default {
         }
       })
       this.form.orderQuantity = quantity.toFixed(2);
-      this.form.discountAmount = discountValue.toFixed(2);
-      this.form.finalAmount = subtotal.toFixed(2);
-      this.form.totalAmount = (discountValue+subtotal).toFixed(2);
-      if(!!this.form.discountAmount && !!this.form.totalAmount){
-        this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
+      this.form.totalAmount = subtotal.toFixed(2);
+      //计算优惠后金额
+      if(this.form.totalAmount > 0){
+        if(this.form.discountRate > 0){
+          this.discountRateComputeFinalAmount()
+        }else if(this.form.discountAmount > 0){
+          this.discountAmountComputeFinalAmount()
+        }else{
+          this.form.finalAmount = this.form.totalAmount
+        }
       }
       console.log("subtotal",subtotal)
 
@@ -691,6 +702,19 @@ export default {
         this.$store.commit('SET_TAB_DATA_OUTBOUND', { refresh: true });
       });
     },
+
+    discountRateComputeFinalAmount(){
+      //计算优惠率
+      this.form.finalAmount = (this.form.totalAmount * (100 - this.form.discountRate) / 100).toFixed(2);
+      //计算优惠率
+      this.form.discountAmount = (this.form.totalAmount - this.form.finalAmount).toFixed(2);
+    },
+    discountAmountComputeFinalAmount(){
+      //计算优惠金额
+      this.form.finalAmount = (this.form.totalAmount - this.form.discountAmount).toFixed(2);
+      //计算优惠率
+      this.form.discountRate = ((this.form.totalAmount - this.form.finalAmount) / this.form.totalAmount * 100).toFixed(2);
+    },
     previewImage(row) {
       console.log("row", row)
       this.previewImageUrl = row;
@@ -735,7 +759,7 @@ export default {
           console.log("response.data", salesOutbound)
           this.form = salesOutbound;
           this.customerId = salesOutbound.customerId;
-          this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
+          //this.form.discountRate = ((this.form.discountAmount/this.form.totalAmount)*100).toFixed(2);
           console.log("this.form", this.form)
           this.productData = salesOutbound.salesOutboundItemList || [];
           this.productData.push({isNew: true});

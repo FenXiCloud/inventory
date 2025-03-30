@@ -49,6 +49,9 @@ public class SalesOrder {
     @Comment("折后金额")
     private BigDecimal finalAmount;
 
+    @Comment("优惠率")
+    private BigDecimal discountRate;
+
     @Comment("备注")
     private String remarks;
 

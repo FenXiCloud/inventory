@@ -19,4 +19,7 @@ export default {
     productSave(param) {
         return Ajax[ 'post']('/priceRecord/product/save', param)
     },
+    showPrice(param) {
+        return Ajax.get('/priceRecord/showPrice', param)
+    },
 }

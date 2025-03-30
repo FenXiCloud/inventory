@@ -75,4 +75,11 @@ public class PirceRecordController {
         return JsonResult.successful();
     }
 
+    @GetMapping("/showPrice")
+    public JsonResult showPrice(Page page, PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(priceRecordService.showPrice(page,query));
+    }
+
 }

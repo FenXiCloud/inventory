@@ -95,9 +95,38 @@
           <vxe-column title="单位" field="unitName" align="center" width="80"/>
           <vxe-column title="单价" field="unitPrice" width="100">
             <template #default="{row,rowIndex}">
-              <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4"
-                         @blur="updatePrice(row)" v-model.number="row.unitPrice" type="float" min="0"
-                         :controls="false"></vxe-input>
+              <vxe-tooltip theme="light">
+                <template #content>
+                  <div class="recent-sales-table">
+                    <table>
+                      <thead>
+                      <tr>
+                        <th>最近销售时间</th>
+                        <th>最近销售价</th>
+                        <th>零售客户</th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                      <tr v-for="(item, index) in recentSales || []" :key="index">
+                        <td>{{item.orderDate || '-'}}</td>
+                        <td>{{item.unitPrice || '-'}}</td>
+                        <td>{{item.customerId || '-'}}</td>
+                      </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
+                <vxe-input
+                    :id="'r'+rowIndex+''+4"
+                    @blur="updatePrice(row)"
+                    @focus="showPrice(row)"
+                    v-model.number="row.unitPrice"
+                    type="float"
+                    min="0"
+                    :controls="false">
+
+                </vxe-input>
+              </vxe-tooltip>
             </template>
           </vxe-column>
           <vxe-column title="折扣率(%)" field="discountRate" width="100">
@@ -199,6 +228,7 @@ import Unit from "@js/api/basic/Unit";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
 import Inventory from "@js/api/inventory/Inventory";
 import Stamp from "@views/common/Stamp.vue";
+import PriceRecord from "@js/api/basic/PriceRecord";
 
 export default {
   name: "SalesOutboundForm",
@@ -234,7 +264,8 @@ export default {
       orderId:null,
       type:null,
       previewVisible: false,
-      previewImageUrl: ''
+      previewImageUrl: '',
+      recentSales: []
     }
   },
   methods: {
@@ -368,6 +399,7 @@ export default {
           })
         });
         this.showStockQuantity(g);
+        this.showPrice(g);
       }
     },
 
@@ -603,6 +635,25 @@ export default {
       item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
+    showPrice(row){
+      let productId = row.productId;
+      if (!productId) {
+        console.log("请选择产品")
+        return;
+      }
+      // 获取商品库存进行提示
+      let param = {
+        productId: productId,
+        priceSource:'最近销售价格',
+        priceType:'最近销售价格',
+        page:1,
+        pageSize:5
+      }
+      PriceRecord.showPrice(param).then(({data: {results}}) => {
+        this.recentSales = results || [];
+        console.log("results",results)
+      }).finally(() => this.loading = false);
+    },
 
     //更新折扣
     updateDiscount(item) {
@@ -695,6 +746,34 @@ export default {
 }
 </script>
 <style scoped>
+.recent-sales-table {
+  min-width: 300px;
+}
+
+.recent-sales-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  border: 1px solid #dfe6ec;
+}
+
+.recent-sales-table th,
+.recent-sales-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid #dfe6ec;
+}
+
+.recent-sales-table th {
+  background-color: #f5f7fa;
+  font-weight: bold;
+  color: #606266;
+}
+
+.recent-sales-table tbody tr:hover {
+  background-color: #f5f7fa;
+}
+
 .image-preview-modal {
   position: fixed;
   top: 0;

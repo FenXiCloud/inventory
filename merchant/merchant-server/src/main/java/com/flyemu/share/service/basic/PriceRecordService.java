@@ -327,6 +327,24 @@ public class PriceRecordService extends AbsService {
         productRepository.save(dbProduct);
     }
 
+    public PageResults<PriceRecordDTO> showPrice(Page page, Query query) {
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
+                .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification)
+                .leftJoin(qProduct).on(qProduct.id.eq(qPriceRecord.productId))
+                .where(query.builder)
+                .orderBy(qPriceRecord.id.desc())
+                .fetchPage(page.getOffset(), page.getOffsetEnd());
+        List<PriceRecordDTO> dtos = new ArrayList<>();
+        fetchPage.forEach(tuple -> {
+            PriceRecordDTO priceRecordDTO = BeanUtil.toBean(tuple.get(qPriceRecord), PriceRecordDTO.class);
+            priceRecordDTO.setProductName(tuple.get(qProduct.name));
+            priceRecordDTO.setProductCode(tuple.get(qProduct.code));
+            priceRecordDTO.setSpecification(tuple.get(qProduct.specification));
+            dtos.add(priceRecordDTO);
+        });
+        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 

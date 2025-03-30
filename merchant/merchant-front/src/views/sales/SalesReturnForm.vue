@@ -31,6 +31,12 @@
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
           </template>
         </vxe-column>
+        <vxe-column field="imgPath" title="商品图片" width="100">
+          <template #default="{row}">
+            <img :src="productList.find(item => item.id === row.productId)?.imgPath || '-'" alt="" class="product-img">
+          </template>
+        </vxe-column>
+        <vxe-column field="productCode" title="商品编码" width="240"></vxe-column>
         <vxe-column title="商品信息" width="180" align="center">
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
@@ -46,6 +52,16 @@
                 <div>{{ row.productCode }}--{{ row.productName }}</div>
               </div>
             </div>
+          </template>
+        </vxe-column>
+        <vxe-column title="规格型号" field="specification" align="center" width="100">
+          <template #default="{row}">
+            {{ productList.find(item => item.id === row.productId)?.specification || '-' }}
+          </template>
+        </vxe-column>
+        <vxe-column title="商品类别" field="productCategoryName" align="center" width="100">
+          <template #default="{row}">
+            {{ productList.find(item => item.id === row.productId)?.productCategoryName || '-' }}
           </template>
         </vxe-column>
         <vxe-column title="仓库" field="warehouse" align="center" width="180">

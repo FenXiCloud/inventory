@@ -286,13 +286,15 @@ public class ProductService extends AbsService {
     public List<ProductDto> select(Long merchantId, Long accountBookId) {
         //left join 查询商品单位
         List<Tuple> fetch = bqf.selectFrom(qProduct)
-                .select(qProduct, qUnit.name)
-                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).where(qProduct.merchantId.eq(merchantId)
-                        .and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue())).fetch();
+                .select(qProduct, qUnit.name,qProductCategory.name)
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+                .where(qProduct.merchantId.eq(merchantId).and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue())).fetch();
         //封装产品单位返回;
         ArrayList<ProductDto> result = fetch.stream().collect(ArrayList::new, (list, tuple) -> {
             ProductDto dto = BeanUtil.toBean(tuple.get(qProduct), ProductDto.class);
             dto.setUnitName(tuple.get(qUnit.name));
+            dto.setProductCategoryName(tuple.get(qProductCategory.name));
             list.add(dto);
         }, List::addAll);
         return result;

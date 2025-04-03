@@ -50,10 +50,14 @@ public class PurchaseReturn {
     @Comment("折扣率")
     private BigDecimal discountRate;
 
+    //实际退款金额 = 退货金额 - 折扣金额 - 供货商承担金额
     @Comment("折扣金额")
     private BigDecimal discountAmount;
 
-    @Comment("退款金额")
+    @Comment("退货金额")
+    private BigDecimal refundTotalAmount;
+
+    @Comment("实际退款金额")
     private BigDecimal refundAmount;
 
     @Comment("已核销金额")
@@ -82,6 +86,9 @@ public class PurchaseReturn {
     @Comment("创建时间")
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @Comment("基本数量和")
+    private Double secondarySum;
 
     @Comment("审核人")
     private Long approvedBy;

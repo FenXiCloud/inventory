@@ -61,6 +61,7 @@ public class PurchaseOrderService extends AbsService {
     private final static QPurchaseOrderItem qPurchaseOrderItem = QPurchaseOrderItem.purchaseOrderItem;
     private final static QSupplier qSupplier = QSupplier.supplier;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
+    private final static QProductCategory qProductCategory = QProductCategory.productCategory;
     private final CodeSeedService codeSeedService;
     private final PriceRecordService priceRecordService;
     private final PurchaseOrderRepository purchaseOrderRepository;
@@ -82,6 +83,14 @@ public class PurchaseOrderService extends AbsService {
         });
 
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+    }
+
+    public BigDecimal queryTotal(Query query) {
+        return bqf.selectFrom(qPurchaseOrder)
+                .select(qPurchaseOrder.finalAmount.sum())
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseOrder.createdBy))
+                .where(query.builder).fetchFirst();
     }
 
     public PageResults<PurchaseOrderDto> listToReturn(Page page, Query query) {
@@ -163,6 +172,7 @@ public class PurchaseOrderService extends AbsService {
             BeanUtil.copyProperties(order, original, CopyOptions.create().ignoreNullValue());
 
             Set<Long> ids = new HashSet<>();
+            Double secondarySum = 0.0;
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
                 d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
@@ -173,12 +183,21 @@ public class PurchaseOrderService extends AbsService {
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);
                 //保存更新购货商品价格
+                secondarySum += d.getSecondaryQuantity();
                 savePrice(d, order);
             }
+            original.setSecondarySum(secondarySum);
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
             return purchaseOrderRepository.save(original);
         } else {
             order.setOrderNo(codeSeedService.generateCode(purchaseOrderForm.getPurchaseOrder().getMerchantId(), "采购订单"));
+
+            Double secondarySum = purchaseOrderForm.getPurchaseOrderItemList()
+                    .stream()
+                    .map(PurchaseOrderItem::getSecondaryQuantity)
+                    .reduce(0.0, Double::sum);
+            order.setSecondarySum(secondarySum);
+
             purchaseOrderRepository.save(order);
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
@@ -266,12 +285,13 @@ public class PurchaseOrderService extends AbsService {
         PurchaseOrderDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseOrder), PurchaseOrderDto.class);
         orderDto.setSupplierName(fetchFirst.get(qSupplier.name));
         ArrayList<PurchaseOrderItemDto> collect = jqf.selectFrom(qPurchaseOrderItem)
-                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,
+                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,qProductCategory.name,qProduct.specification,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseOrderItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
                 .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseOrderItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseOrderItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(qPurchaseOrderItem.purchaseOrderId.eq(orderId).and(qPurchaseOrderItem.merchantId.eq(merchantId)))
                 .orderBy(qPurchaseOrderItem.id.asc())
                 .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
@@ -279,6 +299,8 @@ public class PurchaseOrderService extends AbsService {
                     dto.setProductCode(tuple.get(qProduct.code));
                     dto.setProductName(tuple.get(qProduct.name));
                     dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setCategoryName(tuple.get(qProductCategory.name));
+                    dto.setSpec(tuple.get(qProduct.specification));
                     dto.setWarehouseName(tuple.get(qWarehouse.name));
                     dto.setSecondaryUnitName(tuple.get(qUnit1.name));
                     list.add(dto);

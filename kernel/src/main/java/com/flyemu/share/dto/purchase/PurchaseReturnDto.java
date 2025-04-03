@@ -44,6 +44,15 @@ public class PurchaseReturnDto {
      * 折扣率
      */
     private BigDecimal discountRate;
+    /**
+     * 采购数量合计
+     */
+    private Double secondarySum;
+
+    /**
+     * 退货金额
+     */
+    private BigDecimal refundTotalAmount;
 
     /**
      * 折扣金额
@@ -55,10 +64,10 @@ public class PurchaseReturnDto {
      */
     private BigDecimal refundAmount;
 
-    /**
-     * 商户承担金额
-     */
-    private BigDecimal supplierAmount;
+//    /**
+//     * 商户承担金额
+//     */
+//    private BigDecimal supplierAmount;
 
     /**
      * 备注

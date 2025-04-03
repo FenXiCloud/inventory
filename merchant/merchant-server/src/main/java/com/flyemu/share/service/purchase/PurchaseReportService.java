@@ -108,13 +108,13 @@ public class PurchaseReportService extends AbsService {
             groupBy += ",po.warehouse_id";
         }
 
-        params.put("groupBy", groupBy);
         org.sagacity.sqltoy.model.Page sqlPage = new org.sagacity.sqltoy.model.Page(page.getSize(), page.getPage());
 
         if ("in".equals(query.orderType)) {
             if (groupValues.contains("supplier")) {
                 groupBy += ",p2_0.supplier_id";
             }
+            params.put("groupBy", groupBy);
             org.sagacity.sqltoy.model.Page<PurchaseReportSummaryDto> summaryPage = lazyDao.findPageBySql(sqlPage, "purchaseOrderReportSummaryList", params, PurchaseReportSummaryDto.class);
 
             return new PageResults<>(summaryPage.getRows(), page, summaryPage.getRecordCount());
@@ -122,6 +122,7 @@ public class PurchaseReportService extends AbsService {
             if (groupValues.contains("supplier")) {
                 groupBy += ",p2_0.supplier_id";
             }
+            params.put("groupBy", groupBy);
             org.sagacity.sqltoy.model.Page<PurchaseReportSummaryDto> summaryPage = lazyDao.findPageBySql(sqlPage, "purchaseReturnReportSummaryList", params, PurchaseReportSummaryDto.class);
 
             return new PageResults<>(summaryPage.getRows(), page, summaryPage.getRecordCount());
@@ -130,6 +131,7 @@ public class PurchaseReportService extends AbsService {
             if (groupValues.contains("supplier")) {
                 groupBy += ",po.supplier_id";
             }
+            params.put("groupBy", groupBy);
             org.sagacity.sqltoy.model.Page<PurchaseReportSummaryDto> summaryPage = lazyDao.findPageBySql(sqlPage, "purchaseReportSummaryList", params, PurchaseReportSummaryDto.class);
 
             return new PageResults<>(summaryPage.getRows(), page, summaryPage.getRecordCount());

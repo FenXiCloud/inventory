@@ -38,6 +38,8 @@
             </div>
           </template>
         </vxe-column>
+        <vxe-column title="类别" field="categoryName" align="center" width="80"/>
+        <vxe-column title="规格" field="spec" align="center" width="80"/>
         <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
@@ -121,8 +123,8 @@
           <Input v-model="form.discountRate" @blur="changeDiscountRate"/>
           <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
           <Input v-model="form.discountAmount" @blur="changeDiscountAmount"/>
-          <label class="ml-10px mr-16px  w-100px">供货商承担：</label>
-          <Input v-model="form.supplierAmount" @blur="changeSupplierAmount"/>
+<!--          <label class="ml-10px mr-16px  w-100px">供货商承担：</label>-->
+<!--          <Input v-model="form.supplierAmount" @blur="changeSupplierAmount"/>-->
           <label class="ml-16px mr-16px  w-100px">本次退款：</label>
           <Input v-model="form.refundAmount" @blur="changeRefundAmount"/>
         </div>
@@ -202,7 +204,6 @@ export default {
         returnDate: manba().format("YYYY-MM-dd"),
         supplierId: null,
         discountAmount: 0.00,
-        supplierAmount: 0.00,
         discountRate: 0.00,
         refundAmount: 0.00,
         remarks: null,
@@ -346,7 +347,7 @@ export default {
         return
       }
       PurchaseReturn.save({
-        purchaseReturn: Object.assign(this.form, {refundAmount: this.refundAmount}),
+        purchaseReturn: Object.assign(this.form, {refundTotalAmount: this.allRefundAmount}),
         type: this.type,
         purchaseReturnItemList: productData
       }).then((success) => {
@@ -367,7 +368,6 @@ export default {
         remark: null,
         discountAmount: 0.00,
         discountRate: 0.00,
-        supplierAmount: 0.00,
         refundAmount: 0.00,
       }
       this.allRefundAmount = 0
@@ -401,24 +401,19 @@ export default {
     changeDiscountRate() {
       this.form.discountRate = parseFloat(this.form.discountRate) || 0;
       this.form.discountAmount = (this.allRefundAmount * this.form.discountRate * 0.01).toFixed(2)
-      this.form.refundAmount = (this.allRefundAmount - this.form.discountAmount - this.form.supplierAmount).toFixed(2)
+      this.form.refundAmount = (this.allRefundAmount - this.form.discountAmount ).toFixed(2)
     },
     //修改优惠金额
     changeDiscountAmount() {
       this.form.discountAmount = parseFloat(this.form.discountAmount) || 0;
-      this.form.refundAmount = (this.allRefundAmount - this.form.discountAmount - this.form.supplierAmount).toFixed(2)
+      this.form.refundAmount = (this.allRefundAmount - this.form.discountAmount ).toFixed(2)
       this.form.discountRate = this.form.discountAmount === 0 ? 0 : ((this.form.discountAmount / this.allRefundAmount) * 100).toFixed(2)
     },
     //修改优惠后金额
     changeRefundAmount() {
       this.form.refundAmount = parseFloat(this.form.refundAmount) || 0;
-      this.form.discountAmount = (this.allRefundAmount - this.form.refundAmount - this.form.supplierAmount).toFixed(2)
+      this.form.discountAmount = (this.allRefundAmount - this.form.refundAmount ).toFixed(2)
       this.form.discountRate = this.form.discountAmount === 0 ? 0 : ((this.form.discountAmount / this.allRefundAmount) * 100).toFixed(2)
-    },
-    //修改供货商承担金额
-    changeSupplierAmount() {
-      this.form.supplierAmount = parseFloat(this.form.supplierAmount) || 0;
-      this.form.refundAmount = (this.allRefundAmount - this.form.supplierAmount - this.form.discountAmount).toFixed(2);
     },
     //修改商品多单位
     changeProductUnit(item, row) {

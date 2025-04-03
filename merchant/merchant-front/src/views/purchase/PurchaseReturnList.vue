@@ -13,6 +13,11 @@
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">供货商：</span>
+          <Select class="w-160px" filterable required :datas="supplierList" keyName="id" titleName="name"
+                  :deletable="false"  v-model="params.supplierId" placeholder="请选择供货商"/>
+        </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
                 placeholder="请输入订单号/供货商名称" @search="doSearch">
@@ -47,19 +52,19 @@
         </vxe-column>
         <vxe-column title="订单日期" field="returnDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
-        <vxe-column title="关联入库单" field="code" width="200"/>
+<!--        <vxe-column title="关联入库单" field="code" width="200"/>-->
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
-        <vxe-column title="退货金额" field="refundAmount" width="120"/>
-        <vxe-column title="商户承担" field="supplierAmount" width="120"/>
+        <vxe-column title="退货金额" field="refundTotalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-        <vxe-column title="折后金额" field="finalAmount" width="120"/>
+        <vxe-column title="本次退款" field="refundAmount" width="120"/>
+        <vxe-column title="数量" field="secondarySum" width="120"/>
         <vxe-column title="制单人" field="createdName" align="center" width="100"/>
         <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
         <vxe-column title="审核状态" field="orderStatus" width="80"/>
 
       </vxe-table>
     </div>
-    <div class="flex justify-between items-center pt-5px">
+    <div class=" justify-between items-center pt-5px">
       <vxe-pager perfect @page-change="loadList(false)"
                  v-model:current-page="pagination.page"
                  v-model:page-size="pagination.pageSize"
@@ -79,6 +84,7 @@ import manba from "manba";
 import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 import {mapMutations} from "vuex";
 import {confirm, message} from "heyui.ext";
+import Supplier from "@js/api/basic/Supplier";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
@@ -89,6 +95,7 @@ export default {
   data() {
     return {
       dataList: [],
+      supplierList: [],
       loading: false,
       amountTotal: 0,
       totalParams: {},
@@ -102,6 +109,7 @@ export default {
         state: null,
         sortCol: null,
         sort: null,
+        supplierId: null,
       },
       dateRange: {
         start: manba(startTime).format("YYYY-MM-dd"),
@@ -131,7 +139,7 @@ export default {
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
+        if (column.property && ['refundTotalAmount','discountAmount','refundAmount','secondarySum'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             let rd = row[column.property];
@@ -142,11 +150,12 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", "", ""].concat(sums)];
+      return [["", "", "", "", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
+      this.loadTotal();
     },
     loadList(type = true) {
       this.loading = true;
@@ -154,6 +163,16 @@ export default {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
+    },
+    loadTotal(){
+      PurchaseReturn.total(this.queryParams).then(({data}) => {
+        this.amountTotal = data || 0;
+      })
+    },
+    loadSupplier() {
+      Supplier.select().then(({data}) => {
+        this.supplierList = data || [];
+      })
     },
     approved() {
       let checkList = this.$refs.table.getCheckboxRecords();
@@ -217,7 +236,9 @@ export default {
   }
   ,
   created() {
+    this.loadSupplier();
     this.loadList();
+    this.loadTotal();
   }
 }
 </script>

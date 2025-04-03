@@ -63,7 +63,7 @@ public class PurchaseInboundItem {
     private BigDecimal discountRate;
 
     @Comment("折扣金额")
-    private BigDecimal discountValue;
+    private BigDecimal discountAmount;
 
     @Comment("小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)")
     private BigDecimal subtotal;

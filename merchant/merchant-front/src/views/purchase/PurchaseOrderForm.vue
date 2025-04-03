@@ -29,19 +29,14 @@
         </vxe-column>
         <vxe-column title="商品信息" width="300">
           <template #default="{row,rowIndex}">
-            <div class="h-input-group goodsSelect" v-if="row.isNew" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,rowIndex)" v-model="product" :datas="productList"
+            <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
+              <Select ref="ms" @change="selectProduct($event,rowIndex)" v-model="row.productId" :datas="productList"
                       filterable
                       placeholder="输入编码/名称" keyName="productId">
                 <template v-slot:item="{ item }">
                   <div>{{ item.productCode }} {{ item.productName }}</div>
                 </template>
               </Select>
-            </div>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ row.productCode }}--{{ row.productName }}</div>
-              </div>
             </div>
           </template>
         </vxe-column>
@@ -56,6 +51,8 @@
             </template>
           </template>
         </vxe-column>
+        <vxe-column title="类别" field="categoryName" align="center" width="80"/>
+        <vxe-column title="规格" field="spec" align="center" width="80"/>
         <vxe-column title="仓库" field="warehouse" align="center" width="120">
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
@@ -137,7 +134,7 @@
           保存并新增
         </Button>
         <Button @click="saveOrder" :loading="loading">
-          保存
+          保存{{allFinalAmount}}
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
         <Button @click="saveOrder" :loading="loading">
@@ -169,7 +166,7 @@ export default {
   },
   computed: {
     ...mapState(['accountBook']),
-    finalAmount() {
+    totalAmount() {
       let total = 0;
       this.productData.forEach(val => {
         if (val.quantity > 0) {
@@ -199,6 +196,7 @@ export default {
         discountAmount: 0.00,
         discountRate: 0.00,
         finalAmount: 0.00,
+        totalAmount: 0.00,
         remarks: null,
       },
       productData: [],
@@ -297,8 +295,11 @@ export default {
           subtotal: d.price || 0,
           conversionRate: 1,
           secondaryUnitId: d.unitId,
+          secondaryUnitName: d.unitName,
           baseUnitId: d.unitId,
           baseUnitName: d.unitName,
+          categoryName: d.categoryName,
+          spec: d.spec,
           remark: ""
         };
         this.productData[index] = Object.assign(Object.assign(g, d), d);
@@ -340,7 +341,7 @@ export default {
         return
       }
       PurchaseOrder.save({
-        purchaseOrder: Object.assign(this.form, {finalAmount: this.finalAmount}),
+        purchaseOrder: Object.assign(this.form, {totalAmount : this.allFinalAmount}),
         type: this.type,
         purchaseOrderItemList: productData
       }).then((success) => {

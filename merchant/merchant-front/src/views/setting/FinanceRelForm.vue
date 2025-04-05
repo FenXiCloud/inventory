@@ -6,7 +6,7 @@
           <Radio v-model="model.linkStatus" :datas="linkRadios"/>
         </FormItem>
         <FormItem label="进销存账套">
-          <Select v-model="model.accountBookId" :datas="accountBooks" :deletable="false"></Select>
+          <Select v-model="model.accountBookId" :datas="accountBooks" :deletable="false" @change="changeAccountBook($event)"></Select>
         </FormItem>
         <FormItem label="财务软件URL" prop="url" v-if="model.linkStatus==='关联'">
           <Input v-model="model.url"/>
@@ -93,6 +93,18 @@ export default {
     changeSets(item) {
       this.model.financeAccountName = item.companyName
     },
+    changeAccountBook(item) {
+      const id = item.key;
+      // 根据accountBookId加载账套信息
+      FinanceAccountLink.loadByAccountBookId(id).then(({data}) => {
+        if (ObjectUtil.isEmpty(data)) {
+          this.model.accountBookName = item.title;
+          return;
+        }
+        this.model = data || {};
+        this.relatedClick();
+      });
+    },
     relatedClick() {
       const {url, financeAccount, financePassword} = this.model;
       console.info("relatedClick:", url, financeAccount, financePassword);
@@ -127,6 +139,7 @@ export default {
       const type = this.type;
       console.info("id:", id);
       console.info("type:", type);
+      console.info("accountBooks:", this.accountBooks);
       switch (type) {
         case "add": {
           if (this.accountBooks) {

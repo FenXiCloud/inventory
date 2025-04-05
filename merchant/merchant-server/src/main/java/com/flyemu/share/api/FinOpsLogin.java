@@ -6,7 +6,7 @@ import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.flyemu.share.entity.setting.FinanceRel;
+import com.flyemu.share.entity.setting.FinanceAccountLink;
 import com.flyemu.share.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,15 +19,15 @@ import java.util.Map;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public final class FenxiLogin {
+public final class FinOpsLogin {
 
-    private final String API_SITE = "http://localhost:8012";
+    private final String API_SITE = "https://v4.fenxi365.com/api";
 
-    public String getCookie(FinanceRel financeRel) {
-        HttpRequest post = HttpUtil.createPost(financeRel.getUrl() + "/login");
+    public String getCookie(FinanceAccountLink financeAccountLink) {
+        HttpRequest post = HttpUtil.createPost(financeAccountLink.getUrl() + "/login");
         Map<String, Object> map = new HashMap<>();
-        map.put("password", financeRel.getPassword());
-        map.put("mobile", financeRel.getAccount());
+        map.put("password", financeAccountLink.getFinancePassword());
+        map.put("mobile", financeAccountLink.getFinanceAccount());
         return toLogin(post, map);
     }
 

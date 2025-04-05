@@ -10,22 +10,22 @@
           :loading="loading">
         <vxe-column title="关联状态" width="100">
           <template #default="{row}">
-            <div>{{ row.state }}</div>
+            <div>{{ row.linkStatus }}</div>
           </template>
         </vxe-column>
         <vxe-column title="进销存软件账套" field="accountBookName" min-width="150"/>
-        <vxe-column title="财务软件帐套" field="accountSetsName" min-width="150"/>
+        <vxe-column title="财务软件帐套" field="financeAccountName" min-width="150"/>
         <vxe-column title="操作" align="center" width="300" fixed="right">
           <template #default="{row}">
-            <template v-if="row.state==='已关联'">
+            <template v-if="row.linkStatus==='关联'">
               <div class="flex items-center justify-center">
-                <span class=" primary-color text-hover ml-10px" @click="showForm()" size="s">编辑</span>
-                <span class=" primary-color text-hover ml-10px" @click="showForm()" size="s">进入云财务账套</span>
+                <span class=" primary-color text-hover ml-10px" @click="showForm(row.id)" size="s">编辑</span>
+                <!--                <span class=" primary-color text-hover ml-10px" @click="showForm(row.id)" size="s">进入云财务账套</span>-->
               </div>
             </template>
             <template v-else>
               <div class="flex items-center justify-center">
-                <span class=" primary-color text-hover ml-10px" @click="showForm()" size="s">关联云财务</span>
+                <span class=" primary-color text-hover ml-10px" @click="showForm(row.id)" size="s">关联云财务</span>
               </div>
             </template>
           </template>
@@ -34,7 +34,7 @@
       <div class="mt-10px">
         <div class="mb-10px" style="font-weight: bold">操作指引:</div>
         <div class="flex w-900px" style="text-align: center;margin: 0 auto">
-          <div class="w-150px p-10px bg-gray4-color br" @click="showForm">
+          <div class="w-150px p-10px bg-gray4-color br" @click="showForm()">
             <div class="pt-20px">
               <Icon type="h-icon-link" :size="40"/>
             </div>
@@ -86,9 +86,10 @@
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 import FinanceRelForm from "./FinanceRelForm.vue";
-import FinanceRel from "@js/api/setting/FinanceRel";
+import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
 import {mapMutations} from "vuex";
 import VoucherTemplate from "@views/setting/VoucherTemplate.vue";
+import {ObjectUtil} from "../../js/common/utils";
 
 
 export default {
@@ -126,31 +127,27 @@ export default {
         })
       });
     },
-    showForm() {
-      let financeRel = this.dataList[0]
-      if (financeRel.state === '未关联') {
-        let layerId = layer.open({
-          title: "关联财务软件",
-          shadeClose: false,
-          area: ['600px', '600px'],
-          content: h(FinanceRelForm, {
-            financeRel,
-            onClose: () => {
-              layer.close(layerId);
-            },
-            onSuccess: () => {
-              this.loadList();
-              layer.close(layerId);
-            }
-          })
-        });
-      } else {
-        this.showAccountForm(financeRel.id)
-      }
+    showForm(id) {
+      let layerId = layer.open({
+        title: "关联财务软件",
+        shadeClose: false,
+        area: ['600px', '600px'],
+        content: h(FinanceRelForm, {
+          id,
+          type: ObjectUtil.isEmpty(id) ? this.dataList.length > 0 ? 'load' : 'add' : 'edit',
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: () => {
+            this.loadList();
+            layer.close(layerId);
+          }
+        })
+      });
     },
     loadList() {
       this.loading = true;
-      FinanceRel.list().then(({data}) => {
+      FinanceAccountLink.list().then(({data}) => {
         console.log(data);
         this.dataList = data;
       }).finally(() => this.loading = false);

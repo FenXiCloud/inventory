@@ -2,10 +2,11 @@ package com.flyemu.share.controller.setting;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.dto.AccountDto;
-import com.flyemu.share.entity.setting.FinanceRel;
-import com.flyemu.share.service.setting.FinanceRelService;
+import com.flyemu.share.entity.setting.FinanceAccountLink;
+import com.flyemu.share.service.setting.FinanceAccountLinkService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -18,27 +19,42 @@ import org.springframework.web.bind.annotation.*;
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 @RestController
-@RequestMapping("/financeRel")
+@RequestMapping("/financeAccountLink")
 @RequiredArgsConstructor
 @SaCheckLogin
-public class FinanceRelController {
+public class FinanceAccountLinkController {
 
-    private final FinanceRelService financeRelService;
+    private final FinanceAccountLinkService financeAccountLinkService;
 
     @GetMapping
-    public JsonResult list(@SaAccountVal AccountDto accountDto, FinanceRelService.Query query) {
+    public JsonResult list(@SaAccountVal AccountDto accountDto, FinanceAccountLinkService.Query query) {
         query.setMerchantId(accountDto.getMerchantId());
         query.setAccountBookId(accountDto.getAccountBookId());
-        return JsonResult.successful(financeRelService.query(query));
+        return JsonResult.successful(financeAccountLinkService.query(query));
     }
 
 
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid FinanceRel financeRel, @SaAccountVal AccountDto accountDto) {
-        financeRel.setMerchantId(accountDto.getMerchantId());
-        financeRel.setAccountBookId(accountDto.getAccountBookId());
-        financeRelService.save(financeRel);
+    @PostMapping("save")
+    public JsonResult save(@RequestBody @Valid FinanceAccountLink financeAccountLink, @SaAccountVal AccountDto accountDto) {
+        financeAccountLink.setMerchantId(accountDto.getMerchantId());
+        financeAccountLink.setAccountBookId(accountDto.getAccountBookId());
+        financeAccountLinkService.save(financeAccountLink);
         return JsonResult.successful();
+    }
+
+    @PostMapping("/loadAccountSetsList")
+    public JsonResult loadAccountSetsList(@RequestBody FinanceAccountLink financeAccountLink, @SaMerchantId Long merchantId) {
+        return JsonResult.successful(financeAccountLinkService.loadAccountSetsList(financeAccountLink, merchantId));
+    }
+
+    @GetMapping("/loadByAccountBookId/{accountBookId}")
+    public JsonResult loadByAccountBookId(@PathVariable("accountBookId") Long accountBookId, @SaMerchantId Long merchantId) {
+        return JsonResult.successful(financeAccountLinkService.loadByAccountBookId(accountBookId, merchantId));
+    }
+
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable("id") Long id, @SaMerchantId Long merchantId) {
+        return JsonResult.successful(financeAccountLinkService.load(id, merchantId));
     }
 
     /**

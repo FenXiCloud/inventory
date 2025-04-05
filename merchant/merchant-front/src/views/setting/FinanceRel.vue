@@ -134,7 +134,7 @@ export default {
         area: ['600px', '600px'],
         content: h(FinanceRelForm, {
           id,
-          type: ObjectUtil.isEmpty(id) ? this.dataList.length > 0 ? 'load' : 'add' : 'edit',
+          type: ObjectUtil.isEmpty(id) ? this.dataList && this.dataList.length > 0 ? 'load' : 'add' : 'edit',
           onClose: () => {
             layer.close(layerId);
           },

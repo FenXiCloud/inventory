@@ -1,8 +1,8 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules" :labelWidth="160">
-        <FormItem label="是否关联云财务" prop="name">
+      <Form ref="form" :model="model" :rules="validationRules" :labelWidth="160" :showErrorTip="true">
+        <FormItem label="是否关联云财务" prop="linkStatus">
           <Radio v-model="model.linkStatus" :datas="linkRadios"/>
         </FormItem>
         <FormItem label="进销存账套">
@@ -11,10 +11,10 @@
         <FormItem label="财务软件URL" prop="url" v-if="model.linkStatus==='关联'">
           <Input v-model="model.url"/>
         </FormItem>
-        <FormItem label="财务软件账号" prop="mobile" v-if="model.linkStatus==='关联'">
+        <FormItem label="财务软件账号" prop="financeAccount" v-if="model.linkStatus==='关联'">
           <Input v-model="model.financeAccount"/>
         </FormItem>
-        <FormItem label="财务软件密码" prop="password" v-if="model.linkStatus==='关联'">
+        <FormItem label="财务软件密码" prop="financePassword" v-if="model.linkStatus==='关联'">
           <Input v-model="model.financePassword"/>
         </FormItem>
         <FormItem v-if="model.linkStatus==='关联'">
@@ -75,7 +75,7 @@ export default {
         accountBookId: null,
         accountBookName: '',
       },
-      validationRules: {},
+      validationRules: {required: ['financeAccount','financePassword', 'linkStatus', 'financeAccountId', 'accountBookId']},
       linkRadios: [{key: '不关联', title: '不关联'}, {key: '关联', title: '关联'}]
     }
   },
@@ -112,8 +112,10 @@ export default {
         url: url,
         financeAccount: financeAccount,
         financePassword: financePassword
-      }).then(({data}) => {
+      }).then(({data: resultData}) => {
+        const {data, cookie} = resultData;
         this.accountSetsList = data || [];
+        this.model.financeCookie = cookie;
         if (this.accountSetsList.length > 0) {
           this.model.financeAccountId = this.accountSetsList[0].id;
           this.model.financeAccountName = this.accountSetsList[0].companyName;

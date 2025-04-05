@@ -38,7 +38,7 @@ public class FinanceAccountLinkController {
     public JsonResult save(@RequestBody @Valid FinanceAccountLink financeAccountLink, @SaAccountVal AccountDto accountDto) {
         financeAccountLink.setMerchantId(accountDto.getMerchantId());
         financeAccountLink.setAccountBookId(accountDto.getAccountBookId());
-        financeAccountLinkService.save(financeAccountLink);
+        financeAccountLinkService.save(financeAccountLink, accountDto);
         return JsonResult.successful();
     }
 

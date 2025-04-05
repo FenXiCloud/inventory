@@ -3,8 +3,10 @@ package com.flyemu.share.service.setting;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.flyemu.share.api.FinOpsCloudApi;
 import com.flyemu.share.api.FinOpsRequest;
+import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.entity.setting.FinanceAccountLink;
 import com.flyemu.share.entity.setting.QFinanceAccountLink;
 import com.flyemu.share.exception.ServiceException;
@@ -16,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 
@@ -48,11 +51,12 @@ public class FinanceAccountLinkService extends AbsService {
 
 
     @Transactional
-    public FinanceAccountLink save(FinanceAccountLink financeAccountLink) {
+    public FinanceAccountLink save(FinanceAccountLink financeAccountLink, AccountDto accountDto) {
         if (financeAccountLink.getId() != null) {
             //更新
             FinanceAccountLink original = financeAccountLinkRepository.getById(financeAccountLink.getId());
             BeanUtil.copyProperties(financeAccountLink, original, CopyOptions.create().ignoreNullValue());
+            original.setUpdatedAt(LocalDateTime.now());
             return financeAccountLinkRepository.save(original);
         }
         Long accountBookId = financeAccountLink.getAccountBookId();
@@ -60,15 +64,23 @@ public class FinanceAccountLinkService extends AbsService {
         if (byAccountBookId != null && !byAccountBookId.isEmpty()) {
             throw new ServiceException("账套已关联其他云财务软件账套～");
         }
+        financeAccountLink.setCreatedAt(LocalDateTime.now());
+        financeAccountLink.setCreatedBy(accountDto.getAdminId());
         return financeAccountLinkRepository.save(financeAccountLink);
     }
 
-    public JSONArray loadAccountSetsList(FinanceAccountLink financeAccountLink, Long merchantId) {
+    public JSONObject loadAccountSetsList(FinanceAccountLink financeAccountLink, Long merchantId) {
+        JSONObject result = new JSONObject();
         FinOpsRequest finOpsRequest = new FinOpsRequest();
         finOpsRequest.setAccount(financeAccountLink.getFinanceAccount());
         finOpsRequest.setPassword(financeAccountLink.getFinancePassword());
         finOpsRequest.setBaseUrl(financeAccountLink.getUrl());
-        return finOpsCloudApi.loadAccountSets(finOpsRequest);
+        String cookie = finOpsCloudApi.getCookie(finOpsRequest);
+        finOpsRequest.setCookie(cookie);
+        JSONArray array = finOpsCloudApi.loadAccountSets(finOpsRequest);
+        result.put("data", array);
+        result.put("cookie", cookie);
+        return result;
     }
 
     public FinanceAccountLink loadByAccountBookId(Long accountBookId, Long merchantId) {

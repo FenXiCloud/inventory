@@ -8,7 +8,7 @@
         <vxe-toolbar>
           <template #buttons>
             <div class="text-14px">
-              模板名称：{{ items.title }} 模板类型：{{ getDocumentType(items.type) }} 凭证：{{ items.word }}
+              模板名称：{{ items.title }} 模板类型：{{ items.type }} 凭证：{{ items.word }}
             </div>
           </template>
           <template #tools>
@@ -43,20 +43,7 @@ export default {
   name: "VoucherTemplate",
   data() {
     return {
-      dataList: [],
-      documentTypeDataList: [
-        {id: 1, documentType: '采购订单', type: 1},
-        {id: 2, documentType: '采购入库单', type: 1},
-        {id: 3, documentType: '采购退货单', type: 1},
-        {id: 4, documentType: '销售订单', type: 1},
-        {id: 5, documentType: '销售出库单', type: 1},
-        {id: 6, documentType: '销售退货单', type: 1},
-        {id: 7, documentType: '调拨单', type: 1},
-        {id: 8, documentType: '盘点单', type: 1},
-        {id: 9, documentType: '其他入库单', type: 1},
-        {id: 10, documentType: '其他出库单', type: 1},
-        {id: 11, documentType: '成本调整单', type: 1}
-      ]
+      dataList: []
     }
   },
   methods: {

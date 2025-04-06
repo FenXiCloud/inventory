@@ -6,7 +6,7 @@
           <Input v-model="model.title"/>
         </FormItem>
         <FormItem label="模板类型" prop="type">
-          <Select :datas="documentTypeDataList" keyName="id" v-model="model.type" filterable
+          <Select :datas="documentTypeDataList" keyName="documentType" v-model="model.type" filterable
                   titleName="documentType" placeholder="选择模板类型"/>
         </FormItem>
         <FormItem label="凭证字" prop="wordId">
@@ -77,22 +77,18 @@ export default {
         title: null,
       },
       documentTypeDataList: [
-        {id: 1, documentType: '采购订单', type: 1},
-        {id: 2, documentType: '采购入库单', type: 1},
-        {id: 3, documentType: '采购退货单', type: 1},
-        {id: 4, documentType: '销售订单', type: 1},
-        {id: 5, documentType: '销售出库单', type: 1},
-        {id: 6, documentType: '销售退货单', type: 1},
-        {id: 7, documentType: '调拨单', type: 1},
-        {id: 8, documentType: '盘点单', type: 1},
-        {id: 9, documentType: '其他入库单', type: 1},
-        {id: 10, documentType: '其他出库单', type: 1},
-        {id: 11, documentType: '成本调整单', type: 1},
-        {id: 12, documentType: '收款单', type: 1},
-        {id: 13, documentType: '付款单', type: 1},
-        {id: 14, documentType: '核销单', type: 1},
-        {id: 15, documentType: '其他收款单', type: 1},
-        {id: 16, documentType: '转帐单', type: 1}
+        {id: 1, documentType: '期初余额', type: 1},
+        {id: 2, documentType: '采购入库', type: 1},
+        {id: 3, documentType: '销售退货', type: 1},
+        {id: 4, documentType: '其他入库', type: 1},
+        {id: 5, documentType: '盘盈入库', type: 1},
+        {id: 6, documentType: '调拨入库', type: 1},
+        {id: 7, documentType: '采购退货', type: 1},
+        {id: 8, documentType: '销售出库', type: 1},
+        {id: 9, documentType: '其他出库', type: 1},
+        {id: 10, documentType: '调拨出库', type: 1},
+        {id: 11, documentType: '盘亏出库', type: 1},
+        {id: 12, documentType: '成本调整', type: 1}
       ],
       validationRules: {
         required: ['title', 'type', 'wordId']
@@ -118,24 +114,6 @@ export default {
         });
         if (filter && filter.length === 0) {
           message("请添加会计科目～");
-          return;
-        }
-        const filter_j = this.templateData.filter(item => {
-          return item.balanceDirection === "借";
-        });
-        const filter_d = this.templateData.filter(item => {
-          return item.balanceDirection === "贷";
-        });
-        if (filter_j.length === 0) {
-          message("请添加借贷方向为借的会计科目～");
-          return;
-        }
-        if (filter_d.length === 0) {
-          message("请添加借贷方向为贷的会计科目～");
-          return;
-        }
-        if (filter_d.length !== filter_j.length) {
-          message("会计科目借贷不平衡～");
           return;
         }
         const details = [];

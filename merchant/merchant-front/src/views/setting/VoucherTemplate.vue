@@ -55,16 +55,7 @@ export default {
         {id: 8, documentType: '盘点单', type: 1},
         {id: 9, documentType: '其他入库单', type: 1},
         {id: 10, documentType: '其他出库单', type: 1},
-        {id: 11, documentType: '成本调整单', type: 1},
-        {id: 12, documentType: '收款单', type: 1},
-        {id: 13, documentType: '付款单', type: 1},
-        {id: 14, documentType: '核销单', type: 1},
-        {id: 15, documentType: '其他收款单', type: 1},
-        {id: 16, documentType: '转帐单', type: 1},
-        {id: 17, documentType: '商品', type: 2},
-        {id: 18, documentType: '仓库', type: 2},
-        {id: 19, documentType: '客户', type: 2},
-        {id: 20, documentType: '供货商', type: 2}
+        {id: 11, documentType: '成本调整单', type: 1}
       ]
     }
   },

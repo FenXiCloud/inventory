@@ -92,11 +92,7 @@ export default {
         {id: 13, documentType: '付款单', type: 1},
         {id: 14, documentType: '核销单', type: 1},
         {id: 15, documentType: '其他收款单', type: 1},
-        {id: 16, documentType: '转帐单', type: 1},
-        {id: 17, documentType: '商品', type: 2},
-        {id: 18, documentType: '仓库', type: 2},
-        {id: 19, documentType: '客户', type: 2},
-        {id: 20, documentType: '供货商', type: 2}
+        {id: 16, documentType: '转帐单', type: 1}
       ],
       validationRules: {
         required: ['title', 'type', 'wordId']
@@ -122,6 +118,24 @@ export default {
         });
         if (filter && filter.length === 0) {
           message("请添加会计科目～");
+          return;
+        }
+        const filter_j = this.templateData.filter(item => {
+          return item.balanceDirection === "借";
+        });
+        const filter_d = this.templateData.filter(item => {
+          return item.balanceDirection === "贷";
+        });
+        if (filter_j.length === 0) {
+          message("请添加借贷方向为借的会计科目～");
+          return;
+        }
+        if (filter_d.length === 0) {
+          message("请添加借贷方向为贷的会计科目～");
+          return;
+        }
+        if (filter_d.length !== filter_j.length) {
+          message("会计科目借贷不平衡～");
           return;
         }
         const details = [];
@@ -172,7 +186,6 @@ export default {
     load() {
       const id = this.id;
       FinanceVoucherTemplate.load(id).then(({data}) => {
-        console.info("subjects:", data)
         this.model = data;
         this.templateData = data.details;
       });

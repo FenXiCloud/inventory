@@ -6,7 +6,7 @@
           <Radio v-model="model.linkStatus" :datas="linkRadios"/>
         </FormItem>
         <FormItem label="进销存账套">
-          <Select v-model="model.accountBookId" :datas="accountBooks" :deletable="false" @change="changeAccountBook($event)"></Select>
+          <Select v-model="model.accountBookId" :disabled="true" :datas="accountBooks" :deletable="false" @change="changeAccountBook($event)"></Select>
         </FormItem>
         <FormItem label="财务软件URL" prop="url" v-if="model.linkStatus==='关联'">
           <Input v-model="model.url"/>

@@ -91,7 +91,29 @@ public class FinOpsCloudApi {
         }
     }
 
-    public JSONObject getAccountSetsId(FinOpsRequest finOpsRequest) {
-        return null;
+    /**
+     * 加载凭证字
+     *
+     * @param finOpsRequest
+     * @param accountSetsId
+     * @return
+     */
+    public JSONArray loadVoucherWord(FinOpsRequest finOpsRequest, Long accountSetsId) {
+        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/voucher-word", accountSetsId, finOpsRequest);
+        log.info("加载凭证字{}", res);
+        return res.getJSONArray("data");
+    }
+
+    /**
+     * 加载科目
+     *
+     * @param finOpsRequest
+     * @param accountSetsId
+     * @return
+     */
+    public JSONArray loadSubject(FinOpsRequest finOpsRequest, Long accountSetsId) {
+        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/subject/voucher/select", accountSetsId, finOpsRequest);
+        log.info("科目{}", res);
+        return res.getJSONArray("data");
     }
 }

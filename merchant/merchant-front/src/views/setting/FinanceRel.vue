@@ -115,7 +115,7 @@ export default {
       let layerId = layer.open({
         title: "凭证模板设置",
         shadeClose: false,
-        area: ['600px', '600px'],
+        area: ['1200px', '600px'],
         content: h(VoucherTemplate, {
           onClose: () => {
             layer.close(layerId);

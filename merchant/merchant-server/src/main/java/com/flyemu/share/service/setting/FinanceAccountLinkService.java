@@ -42,11 +42,10 @@ public class FinanceAccountLinkService extends AbsService {
     private final FinOpsCloudApi finOpsCloudApi;
 
     public List<FinanceAccountLink> query(Query query) {
-        List<FinanceAccountLink> financeAccountLinks = bqf.selectFrom(qFinanceAccountLink)
+        return bqf.selectFrom(qFinanceAccountLink)
                 .where(query.builder)
                 .orderBy(qFinanceAccountLink.id.desc())
                 .fetch();
-        return financeAccountLinks;
     }
 
 
@@ -95,6 +94,36 @@ public class FinanceAccountLinkService extends AbsService {
         return jqf.selectFrom(qFinanceAccountLink).where(qFinanceAccountLink.id.eq(id))
                 .where(qFinanceAccountLink.merchantId.eq(merchantId))
                 .fetchOne();
+    }
+
+    public JSONArray loadVoucherWord(AccountDto accountDto) {
+        Long accountBookId = accountDto.getAccountBookId();
+        List<FinanceAccountLink> byAccountBookId = financeAccountLinkRepository.findByAccountBookId(accountBookId);
+        if (byAccountBookId != null && !byAccountBookId.isEmpty()) {
+            FinanceAccountLink financeAccountLink = byAccountBookId.get(0);
+            FinOpsRequest finOpsRequest = new FinOpsRequest();
+            finOpsRequest.setAccount(financeAccountLink.getFinanceAccount());
+            finOpsRequest.setPassword(financeAccountLink.getFinancePassword());
+            finOpsRequest.setBaseUrl(financeAccountLink.getUrl());
+            finOpsRequest.setCookie(finOpsRequest.getCookie());
+            return finOpsCloudApi.loadVoucherWord(finOpsRequest, financeAccountLink.getFinanceAccountId());
+        }
+        return new JSONArray();
+    }
+
+    public JSONArray loadSubject(AccountDto accountDto) {
+        Long accountBookId = accountDto.getAccountBookId();
+        List<FinanceAccountLink> byAccountBookId = financeAccountLinkRepository.findByAccountBookId(accountBookId);
+        if (byAccountBookId != null && !byAccountBookId.isEmpty()) {
+            FinanceAccountLink financeAccountLink = byAccountBookId.get(0);
+            FinOpsRequest finOpsRequest = new FinOpsRequest();
+            finOpsRequest.setAccount(financeAccountLink.getFinanceAccount());
+            finOpsRequest.setPassword(financeAccountLink.getFinancePassword());
+            finOpsRequest.setBaseUrl(financeAccountLink.getUrl());
+            finOpsRequest.setCookie(finOpsRequest.getCookie());
+            return finOpsCloudApi.loadSubject(finOpsRequest, financeAccountLink.getFinanceAccountId());
+        }
+        return new JSONArray();
     }
 
     public static class Query {

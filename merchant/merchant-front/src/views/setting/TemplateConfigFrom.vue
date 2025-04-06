@@ -1,24 +1,52 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules" :labelWidth="120" mode="twocolumn">
-        <template v-for="(relation,index) in relationList">
-          <FormItem :label="relation.title">
-            <Select :datas="subjectList" v-model="relation.subjectId" keyName="id" titleName="name" :deletable="false"
-                    filterable :filter="filter" @change="changeSub($event,relation)">
-              <template v-slot:show="{value}">
-                {{ value.code }}{{ value.name }}
-              </template>
-              <template v-slot:item="{ item }">
-                {{ item.code }} {{ item.name }}
-              </template>
-            </Select>
-          </FormItem>
-        </template>
+      <Form ref="form" :model="model" mode="threecolumn" :rules="validationRules" :showErrorTip="true" :labelWidth="90">
+        <FormItem label="模板名称" prop="title">
+          <Input v-model="model.title"/>
+        </FormItem>
+        <FormItem label="模板类型" prop="type">
+          <Select :datas="documentTypeDataList" keyName="id" v-model="model.type" filterable
+                  titleName="documentType" placeholder="选择模板类型"/>
+        </FormItem>
+        <FormItem label="凭证字" prop="wordId">
+          <Select :datas="voucherWords" keyName="id" v-model="model.wordId" filterable :deletable="false"
+                  titleName="word" placeholder="选择凭证字"/>
+        </FormItem>
       </Form>
+      <vxe-table size="mini" ref="xTable" border="border" show-overflow keep-source
+                 :row-config="{ height: 40, isCurrent: true, isHover: true }"
+                 show-footer stripe
+                 :data="templateData">
+        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
+          <template #default="{ row, rowIndex }">
+            <div>
+              <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
+              <div v-if="templateData.length !== 1" class="fa fa-minus text-hover-danger"
+                   @click="adjustRows('delete', rowIndex)"></div>
+            </div>
+          </template>
+        </vxe-column>
+        <vxe-column title="会计科目" field="warehouseName">
+          <template #default="scope">
+            <div class="h-input-group goodsSelect">
+              <Select :deletable="false" ref="ms" v-model="scope.row.subjectId" :datas="subjects" filterable
+                      placeholder="请选择会计科目" keyName="id" titleName="subjectName" @change="changeSubject(scope)">
+                <template v-slot:item="{ item }">
+                  <div>{{ item.subjectName }}</div>
+                </template>
+              </Select>
+            </div>
+          </template>
+        </vxe-column>
+        <vxe-column field="balanceDirection" title="借贷方向" width="100"></vxe-column>
+      </vxe-table>
     </div>
     <div class="modal-column-right">
-      <Button icon="fa fa-save" style="justify-content: right" color="primary" @click="confirm" :loading="loading">
+      <Button icon="fa fa-close" @click="$emit('close')" :loading="loading">
+        取消
+      </Button>
+      <Button icon="fa fa-save" color="primary" @click="confirm" :loading="loading">
         保存
       </Button>
     </div>
@@ -26,66 +54,143 @@
 </template>
 
 <script>
-
+import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
+import FinanceVoucherTemplate from "@js/api/setting/FinanceVoucherTemplate";
 import {message} from "heyui.ext";
-import FinanceRel from "@js/api/setting/FinanceRel";
+import {ObjectUtil} from "../../js/common/utils";
 
 export default {
-  name: "TemplateConfigForm",
-  emits: {
-    close: null,
-    success: null
-  },
+  name: "TemplateConfigFrom",
   props: {
-    relationCwId: Number,
+    id: [Number, String],
   },
   data() {
     return {
       loading: false,
-      subjectList: [],
-      relationList: [],
+      canSave: false,
+      voucherWords: [],
+      subjects: [],
       model: {
         id: null,
-        isRelation: false,
-        accountSetsId: null,
-        companyName: null,
-        organizationName: '',
+        type: null,
+        wordId: null,
+        title: null,
       },
-      validationRules: {}
+      documentTypeDataList: [
+        {id: 1, documentType: '采购订单', type: 1},
+        {id: 2, documentType: '采购入库单', type: 1},
+        {id: 3, documentType: '采购退货单', type: 1},
+        {id: 4, documentType: '销售订单', type: 1},
+        {id: 5, documentType: '销售出库单', type: 1},
+        {id: 6, documentType: '销售退货单', type: 1},
+        {id: 7, documentType: '调拨单', type: 1},
+        {id: 8, documentType: '盘点单', type: 1},
+        {id: 9, documentType: '其他入库单', type: 1},
+        {id: 10, documentType: '其他出库单', type: 1},
+        {id: 11, documentType: '成本调整单', type: 1},
+        {id: 12, documentType: '收款单', type: 1},
+        {id: 13, documentType: '付款单', type: 1},
+        {id: 14, documentType: '核销单', type: 1},
+        {id: 15, documentType: '其他收款单', type: 1},
+        {id: 16, documentType: '转帐单', type: 1},
+        {id: 17, documentType: '商品', type: 2},
+        {id: 18, documentType: '仓库', type: 2},
+        {id: 19, documentType: '客户', type: 2},
+        {id: 20, documentType: '供货商', type: 2}
+      ],
+      validationRules: {
+        required: ['title', 'type', 'wordId']
+      },
+      templateData: []
     }
   },
+  watch: {},
   methods: {
-    filter(item, val) {
-      return item.code.indexOf(val) !== -1 || item.name.indexOf(val) !== -1 || item.mnemonicCode.indexOf(val) !== -1;
+    //添加行或减少行
+    adjustRows(type, index) {
+      if (type === "insert") {
+        this.templateData.splice(index + 1, 0, {isNew: true});
+      } else {
+        this.templateData.splice(index, 1);
+      }
     },
     confirm() {
-      this.loading = true;
-
-      let relations = this.relationList.filter(c => c.subjectId === null);
-      if (relations.length > 0) {
-        message.error("还有未选择的对应科目~");
-        this.loading = false
-        return
+      let validResult = this.$refs.form.valid();
+      if (validResult.result) {
+        const filter = this.templateData.filter(item => {
+          return !ObjectUtil.isEmpty(item.subjectId)
+        });
+        if (filter && filter.length === 0) {
+          message("请添加会计科目～");
+          return;
+        }
+        const details = [];
+        filter.forEach(item => {
+          details.push({
+            subjectId: item.subjectId,
+            subjectName: item.subjectName,
+            balanceDirection: item.balanceDirection,
+            auxiliaryAccounting: item.auxiliaryAccounting
+          });
+        });
+        this.model.details = details;
+        this.loading = true;
+        FinanceVoucherTemplate.save(this.model).then(() => {
+          message("保存成功~");
+          this.$emit('success');
+        }).finally(() => this.loading = false);
       }
-      RelationSubject.save(this.relationList).then(() => {
-        message("保存成功~");
-        this.$emit('success');
-      }).finally(() => this.loading = false);
     },
-    changeSub(event, row) {
-      row.subjectId = event.id.toString()
-      row.code = event.code
-      row.name = event.name
+    init() {
+      FinanceAccountLink.loadVoucherWord().then(({data}) => {
+        this.voucherWords = data;
+        this.voucherWords.forEach(word => {
+          if (word.isDefault) {
+            this.model.wordId = word.id;
+            this.model.word = word.word;
+          }
+        });
+      });
+      FinanceAccountLink.loadSubject().then(({data}) => {
+        console.info("subjects:", data)
+        this.subjects = data;
+        this.subjects.forEach(subject => {
+          subject.subjectName = `${subject.code}-${subject.name}`;
+        });
+      });
+    },
+    changeSubject({rowIndex}) {
+      const subjectId = this.templateData[rowIndex].subjectId;
+      const filter = this.subjects.filter((item) => {
+        return item.id === subjectId
+      });
+      console.log(filter[0])
+      this.templateData[rowIndex].balanceDirection = filter[0].balanceDirection;
+      this.templateData[rowIndex].subjectName = filter[0].subjectName;
+      this.templateData[rowIndex].auxiliaryAccounting = filter[0].auxiliaryAccounting;
+    },
+    load() {
+      const id = this.id;
+      FinanceVoucherTemplate.load(id).then(({data}) => {
+        console.info("subjects:", data)
+        this.model = data;
+        this.templateData = data.details;
+      });
     }
   },
   created() {
-    Promise.all([
-      FinanceRel.loadSubject(),
-      FinanceRel.load(this.relationCwId),
-    ]).then((results) => {
-      this.subjectList = results[0].data || [];
-      this.relationList = results[1].data || [];
-    })
+    this.init();
+    if (this.id) {
+      this.load();
+    } else {
+      for (let i = 0; i < 5; i++) {
+        this.templateData.push({subjectId: null});
+      }
+    }
   }
 }
 </script>
+
+<style scoped lang="less">
+
+</style>

@@ -55,7 +55,7 @@
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <!--        <vxe-column title="关联采购订单" field="purchaseInboundId" width="200"/>-->
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
-        <vxe-column title="销售金额" field="totalAmount" width="120"/>
+        <vxe-column title="采购金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
         <vxe-column title="数量" field="secondarySum" width="120"/>

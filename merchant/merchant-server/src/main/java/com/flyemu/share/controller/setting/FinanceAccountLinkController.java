@@ -68,4 +68,9 @@ public class FinanceAccountLinkController {
         return JsonResult.successful(financeAccountLinkService.loadSubject(accountDto));
     }
 
+    @GetMapping("/loadAccountingCategory")
+    public JsonResult loadAccountingCategory(@RequestParam("ids") String ids, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(financeAccountLinkService.loadAccountingCategory(ids, accountDto));
+    }
+
 }

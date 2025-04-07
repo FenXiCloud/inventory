@@ -90,6 +90,7 @@ import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
 import {mapMutations} from "vuex";
 import VoucherTemplate from "@views/setting/VoucherTemplate.vue";
 import {ObjectUtil} from "../../js/common/utils";
+import FinanceItemMap from "./FinanceItemMap.vue";
 
 
 export default {
@@ -109,7 +110,20 @@ export default {
       this.pushTab({key: 'OrderVoucher', title: '订单凭证'});
     },
     itemMapping() {
-      this.pushTab({key: 'ItemMapping', title: '辅助项映射'});
+      let layerId = layer.open({
+        title: "辅助项映射",
+        shadeClose: false,
+        area: ['1200px', '600px'],
+        content: h(FinanceItemMap, {
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: () => {
+            this.loadList();
+            layer.close(layerId);
+          }
+        })
+      });
     },
     templateConfig() {
       let layerId = layer.open({

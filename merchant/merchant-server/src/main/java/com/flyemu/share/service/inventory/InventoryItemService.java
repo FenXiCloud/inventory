@@ -165,6 +165,7 @@ public class InventoryItemService extends AbsService {
                 .where(qInventoryItem.operationType.ne(OperationType.期初余额).or(qInventoryItem.id.in(ids)))
                 .orderBy(qInventoryItem.productId.asc())
                 .orderBy(qInventoryItem.firstSort.desc())
+                .orderBy(qInventoryItem.createdAt.desc())
                 .orderBy(qInventoryItem.id.asc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryItemReportDto> dtos = new ArrayList<>();

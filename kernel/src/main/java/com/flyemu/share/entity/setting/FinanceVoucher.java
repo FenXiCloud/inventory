@@ -30,6 +30,9 @@ public class FinanceVoucher {
     @Comment("进销存订单id")
     private Long orderId;
 
+    @Comment("参数")
+    private String params;
+
     @Column(nullable = false)
     private Long accountBookId;
 

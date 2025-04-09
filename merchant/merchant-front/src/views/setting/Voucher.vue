@@ -8,24 +8,14 @@
         <vxe-toolbar>
           <template #buttons>
             <div class="text-14px">
-              模板名称：{{ items.title }} 模板类型：{{ items.type }} 凭证：{{ items.word }}
+              凭证类型：{{ items.type }} 凭证code：{{ items.code }}
             </div>
           </template>
           <template #tools>
-            <Button @click="showForm(items.id)" color="primary">编辑</Button>
-            <Button @click="doRemove(items.id)">删除</Button>
+<!--            <Button @click="showForm(items.id)" color="primary">编辑</Button>-->
+<!--            <Button @click="doRemove(items.id)">删除</Button>-->
           </template>
         </vxe-toolbar>
-        <div class="mt-16px">
-          <vxe-table size="mini" ref="xTable" border="border" show-overflow keep-source
-                     :row-config="{ height: 40, isCurrent: true, isHover: true }"
-                     stripe
-                     :data="items.details">
-            <vxe-column title="会计科目" field="subjectName">
-            </vxe-column>
-            <vxe-column field="balanceDirection" title="借贷方向" width="100"></vxe-column>
-          </vxe-table>
-        </div>
       </div>
     </div>
   </div>
@@ -56,6 +46,7 @@ export default {
         content: h(VoucherForm, {
           id,
           onClose: () => {
+            this.loadList();
             layer.close(layerId);
           },
           onSuccess: () => {

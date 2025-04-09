@@ -81,6 +81,7 @@ public class FinanceVoucherService extends AbsService {
         VoucherDetailsDto voucherDetailsDto;
         for (int i = 0; i < details.size(); i++) {
             voucherDetailsDto = new VoucherDetailsDto();
+            voucherDetailsDto.setSummary(financeVoucherForm.getOrderName());
             JSONObject jsonObject = details.getJSONObject(i);
             JSONArray auxiliaryAccounting = jsonObject.getJSONArray("auxiliaryAccounting");
             if (auxiliaryAccounting == null) {
@@ -134,6 +135,11 @@ public class FinanceVoucherService extends AbsService {
             String subjectName = jsonObject.getString("subjectName");
             voucherDetailsDto.setSubjectId(subjectId);
             voucherDetailsDto.setSubjectName(subjectName);
+            if ((i + 1) % 2 == 0) {
+                voucherDetailsDto.setCreditAmount(amount);
+            } else {
+                voucherDetailsDto.setDebitAmount(amount);
+            }
             voucherDetailsDto.setAuxiliary(auxiliaryAccountingList);
             detailsDtos.add(voucherDetailsDto);
         }

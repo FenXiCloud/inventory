@@ -19,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 /**
@@ -124,6 +126,27 @@ public class FinanceAccountLinkService extends AbsService {
             return finOpsCloudApi.loadSubject(finOpsRequest, financeAccountLink.getFinanceAccountId());
         }
         return new JSONArray();
+    }
+
+    @Transactional
+    public JSONObject loadAccountingCategory(String ids, AccountDto accountDto) {
+        Long accountBookId = accountDto.getAccountBookId();
+        List<FinanceAccountLink> byAccountBookId = financeAccountLinkRepository.findByAccountBookId(accountBookId);
+        if (byAccountBookId != null && !byAccountBookId.isEmpty()) {
+            FinanceAccountLink financeAccountLink = byAccountBookId.get(0);
+            FinOpsRequest finOpsRequest = new FinOpsRequest();
+            finOpsRequest.setCallback(cookie -> {
+                financeAccountLink.setFinanceCookie(cookie);
+                financeAccountLinkRepository.save(financeAccountLink);
+            });
+            finOpsRequest.setAccount(financeAccountLink.getFinanceAccount());
+            finOpsRequest.setPassword(financeAccountLink.getFinancePassword());
+            finOpsRequest.setBaseUrl(financeAccountLink.getUrl());
+            finOpsRequest.setCookie(finOpsRequest.getCookie());
+            return finOpsCloudApi.loadAccountingCategory(finOpsRequest, null,
+                    Arrays.stream(ids.split(",")).map(Long::parseLong).collect(Collectors.toList()));
+        }
+        return new JSONObject();
     }
 
     public static class Query {

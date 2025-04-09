@@ -16,7 +16,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -91,6 +93,35 @@ public class FinOpsCloudApi {
         }
     }
 
+
+    private JSONObject execute(HttpRequest post, int retry, Long accountSetsId, FinOpsRequest finOpsRequest) {
+        post.header("cookie", finOpsRequest.getCookie());
+        if (accountSetsId != null) {
+            post.header("accountSetId", accountSetsId.toString());
+        }
+        HttpResponse response = post.execute();
+        if (response.isOk()) {
+            JSONObject jsonObject = JSON.parseObject(response.body());
+            if (0 == jsonObject.getIntValue("error_code")) {
+                return jsonObject;
+            }
+            throw new HttpException(jsonObject.getString("errmsg"));
+        } else {
+            if (401 == response.getStatus() && retry < 3) {
+                String cookie = getCookie(finOpsRequest);
+                if (StringUtils.isNotBlank(cookie)) {
+                    FinOpsCallback callback = finOpsRequest.getCallback();
+                    if (callback != null) {
+                        callback.failCallback(cookie);
+                    }
+                    finOpsRequest.setCookie(cookie);
+                }
+                return execute(post, retry + 1, accountSetsId, finOpsRequest);
+            }
+        }
+        throw new ServiceException("财务系统提示：" + JSON.parseObject(response.body()).getString("msg"));
+    }
+
     /**
      * 加载凭证字
      *
@@ -115,5 +146,19 @@ public class FinOpsCloudApi {
         JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/subject/voucher/select", accountSetsId, finOpsRequest);
         log.info("科目{}", res);
         return res.getJSONArray("data");
+    }
+
+    /**
+     * 加载账号分类
+     *
+     * @param finOpsRequest
+     * @param accountSetsId
+     * @param categoryIdSet
+     * @return
+     */
+    public JSONObject loadAccountingCategory(FinOpsRequest finOpsRequest, Long accountSetsId, List<Long> categoryIdSet) {
+        HttpRequest post = HttpUtil.createPost(finOpsRequest.getBaseUrl() + "/accounting-category/byid");
+        post.body(JSON.toJSONString(categoryIdSet), "application/json");
+        return execute(post, 0, accountSetsId, finOpsRequest);
     }
 }

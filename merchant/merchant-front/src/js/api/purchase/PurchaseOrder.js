@@ -10,9 +10,6 @@ export default {
   total(param) {
     return Ajax.get('/purchaseOrder/total', param)
   },
-  listToReturn(param) {
-    return Ajax.get('/purchaseOrder/toReturn', param)
-  },
   remove(id) {
     return Ajax.delete('/purchaseOrder/' + id);
   },
@@ -27,8 +24,5 @@ export default {
   },
   toInbound(supplierId, ids) {
     return Ajax.post('/purchaseOrder/toInbound/' + supplierId, ids);
-  },
-  toReturn(supplierId, ids) {
-    return Ajax.post('/purchaseOrder/toReturn/' + supplierId, ids);
   },
 }

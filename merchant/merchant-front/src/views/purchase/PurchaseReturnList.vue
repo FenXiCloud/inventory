@@ -46,7 +46,7 @@
               <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
             </template>
             <template v-if="row.orderStatus === '已审核'">
-              <span class="primary-color  text-hover ml-10px" >详情</span>
+              <span class="primary-color  text-hover ml-10px" @click="detail(row.id)">详情</span>
             </template>
           </template>
         </vxe-column>
@@ -85,7 +85,6 @@ import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 import {mapMutations} from "vuex";
 import {confirm, message} from "heyui.ext";
 import Supplier from "@js/api/basic/Supplier";
-import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -197,6 +196,14 @@ export default {
       } else {
         message.error("未选择数据~");
       }
+    },
+
+    detail(orderId = null) {
+      this.pushTab({
+        key: 'PurchaseReturnDetail',
+        title: '采购退货单',
+        params: {orderId: orderId}
+      });
     },
     backApproved() {
       let checkList = this.$refs.table.getCheckboxRecords();

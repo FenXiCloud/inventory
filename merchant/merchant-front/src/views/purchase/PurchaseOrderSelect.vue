@@ -109,6 +109,7 @@ export default {
         pageSize: this.pagination.pageSize,
         start: this.dateRange.start,
         end: this.dateRange.end,
+        state:'已审核',
       })
     },
   },

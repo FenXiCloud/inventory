@@ -101,6 +101,10 @@ const groupRoutes = [
         component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnForm.vue'))
     },
     {
+        name: 'PurchaseReturnDetail',
+        component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnDetail.vue'))
+    },
+    {
         name: 'PurchaseItemReport',
         component: defineAsyncComponent(() => import('@views/purchase/PurchaseItemReport.vue'))
     },

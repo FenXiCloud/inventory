@@ -19,6 +19,12 @@ export default {
   load(id) {
     return Ajax.get('/purchaseInbound/load/' + id);
   },
+  listToReturn(param) {
+    return Ajax.get('/purchaseInbound/toReturn', param)
+  },
+  toReturn(supplierId, ids) {
+    return Ajax.post('/purchaseOrder/toReturn/' + supplierId, ids);
+  },
   approved(state, ids) {
     return Ajax.post('/purchaseInbound/approved/' + state, ids);
   },

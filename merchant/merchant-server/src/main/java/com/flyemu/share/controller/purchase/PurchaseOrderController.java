@@ -51,22 +51,12 @@ public class PurchaseOrderController {
         return JsonResult.successful(purchaseOrderService.queryTotal(query));
     }
 
-    @GetMapping("/toReturn")
-    public JsonResult listToReturn(Page page, PurchaseOrderService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
-        return JsonResult.successful(purchaseOrderService.listToReturn(page, query));
-    }
 
     @PostMapping("/toInbound/{supplierId}")
     public JsonResult toInbound(@RequestBody List<Long> orderIds, @PathVariable Long supplierId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(purchaseOrderService.loadToInbound(orderIds, merchantId, supplierId));
     }
 
-    @PostMapping("/toReturn/{supplierId}")
-    public JsonResult toReturn(@RequestBody List<Long> orderIds, @PathVariable Long supplierId, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(purchaseOrderService.loadToReturn(orderIds, merchantId, supplierId));
-    }
 
     @PostMapping
     public JsonResult save(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId, @SaAdminId Long adminId) {

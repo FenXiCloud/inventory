@@ -167,6 +167,7 @@ import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 import PurchaseReturnOrderSelect from "@views/purchase/PurchaseReturnOrderSelect.vue";
 import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
+import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
 
 export default {
   name: "PurchaseReturnForm",
@@ -252,7 +253,7 @@ export default {
     },
 
     loadToInbound(params) {
-      PurchaseOrder.toReturn(this.form.supplierId, params.orderIds).then(({data}) => {
+      PurchaseInbound.toReturn(this.form.supplierId, params.orderIds).then(({data}) => {
         this.productData = data || [];
       })
     },

@@ -1,15 +1,13 @@
 package com.flyemu.share.service.purchase;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.PurchaseReportItemDto;
 import com.flyemu.share.dto.purchase.PurchaseReportSummaryDto;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QSupplier;
-import com.flyemu.share.entity.basic.QUnit;
-import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.purchase.*;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.service.AbsService;
@@ -44,6 +42,7 @@ public class PurchaseReportService extends AbsService {
     private final static QPurchaseInboundItem qPurchaseInboundItem = QPurchaseInboundItem.purchaseInboundItem;
     private final static QSupplier qSupplier = QSupplier.supplier;
     private final static QProduct qProduct = QProduct.product;
+    private final static QProductCategory qProductCategory = QProductCategory.productCategory;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final static QUnit qUnit = QUnit.unit;
 
@@ -61,17 +60,17 @@ public class PurchaseReportService extends AbsService {
             if (StrUtil.isNotBlank(query.filter)) {
                 params.put("filter", query.filter);
             }
-            if (query.supplierId != null) {
-                params.put("supplierId", query.supplierId);
+            if (CollUtil.isNotEmpty(query.supplierIds)) {
+                params.put("supplierId", query.supplierIds);
             }
             if (query.accountBookId != null) {
                 params.put("accountBookId", query.accountBookId);
             }
-            if (query.warehouseId != null) {
-                params.put("warehouseId", query.warehouseId);
+            if (CollUtil.isNotEmpty(query.warehouseIds)) {
+                params.put("warehouseId", query.warehouseIds);
             }
-            if (query.productId != null) {
-                params.put("productId", query.productId);
+            if (CollUtil.isNotEmpty(query.productIds)) {
+                params.put("productId", query.productIds);
             }
 
             org.sagacity.sqltoy.model.Page sqlPage = new org.sagacity.sqltoy.model.Page(page.getSize(), page.getPage());
@@ -90,17 +89,17 @@ public class PurchaseReportService extends AbsService {
         if (StrUtil.isNotBlank(query.filter)) {
             params.put("filter", query.filter);
         }
-        if (query.supplierId != null) {
-            params.put("supplierId", query.supplierId);
+        if (query.supplierIds != null) {
+            params.put("supplierId", query.supplierIds);
         }
         if (query.accountBookId != null) {
             params.put("accountBookId", query.accountBookId);
         }
-        if (query.warehouseId != null) {
-            params.put("warehouseId", query.warehouseId);
+        if (query.warehouseIds != null) {
+            params.put("warehouseId", query.warehouseIds);
         }
-        if (query.productId != null) {
-            params.put("productId", query.productId);
+        if (query.productIds != null) {
+            params.put("productId", query.productIds);
         }
 
         String groupBy = "po.product_id";
@@ -141,12 +140,13 @@ public class PurchaseReportService extends AbsService {
     public PageResults<PurchaseReportItemDto> queryReturn(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseReturnItem)
                 .select(qPurchaseReturnItem.secondaryPrice, qPurchaseReturnItem.subtotal, qWarehouse.name, qPurchaseReturnItem.secondaryQuantity,
-                        qPurchaseReturn.orderNo, qPurchaseReturn.returnDate, qSupplier.name, qProduct.name, qProduct.code, qUnit.name)
+                        qPurchaseReturn.orderNo, qPurchaseReturn.returnDate, qSupplier.name, qProduct.name, qProduct.code, qUnit.name,qProductCategory.name)
                 .leftJoin(qPurchaseReturn).on(qPurchaseReturn.id.eq(qPurchaseReturnItem.purchaseReturnId))
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseReturn.supplierId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseReturnItem.warehouseId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseReturnItem.secondaryUnitId))
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseReturnItem.productId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(query.builder.and(qPurchaseReturn.orderStatus.eq(OrderStatus.已审核)))
                 .orderBy(qPurchaseReturnItem.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
@@ -161,6 +161,7 @@ public class PurchaseReportService extends AbsService {
             dto.setOrderDate(tuple.get(qPurchaseReturn.returnDate));
             dto.setWarehouseName(tuple.get(qWarehouse.name));
             dto.setOrderType("采购退货");
+            dto.setCategoryName(tuple.get(qProductCategory.name));
             dto.setSupplierName(tuple.get(qSupplier.name));
             dto.setProductCode(tuple.get(qProduct.code));
             dto.setProductName(tuple.get(qProduct.name));
@@ -173,12 +174,14 @@ public class PurchaseReportService extends AbsService {
     public PageResults<PurchaseReportItemDto> queryInbound(Page page, Query query) {
 
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInboundItem)
-                .select(qPurchaseInboundItem.secondaryPrice, qPurchaseInboundItem.subtotal, qWarehouse.name, qPurchaseInboundItem.secondaryQuantity, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qSupplier.name, qProduct.name, qProduct.code, qUnit.name)
+                .select(qPurchaseInboundItem.secondaryPrice, qPurchaseInboundItem.subtotal, qWarehouse.name, qPurchaseInboundItem.secondaryQuantity, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qSupplier.name,
+                        qProduct.name, qProduct.code, qUnit.name,qProductCategory.name)
                 .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseInboundItem.warehouseId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseInboundItem.secondaryUnitId))
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseInboundItem.productId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(query.inboundBuilder.and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核))).orderBy(qPurchaseInboundItem.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
         List<PurchaseReportItemDto> dtos = new ArrayList<>();
@@ -191,6 +194,7 @@ public class PurchaseReportService extends AbsService {
             dto.setOrderNo(tuple.get(qPurchaseInbound.orderNo));
             dto.setOrderDate(tuple.get(qPurchaseInbound.inboundDate));
             dto.setOrderType("采购入库");
+            dto.setCategoryName(tuple.get(qProductCategory.name));
             dto.setWarehouseName(tuple.get(qWarehouse.name));
             dto.setSupplierName(tuple.get(qSupplier.name));
             dto.setProductCode(tuple.get(qProduct.code));
@@ -304,9 +308,9 @@ public class PurchaseReportService extends AbsService {
         public String filter;
         public String orderType;
         public Long merchantId;
-        public Long warehouseId;
-        public Long supplierId;
-        public Long productId;
+        public List<Long> warehouseIds;
+        public List<Long> supplierIds;
+        public List<Long> productIds;
         public Long accountBookId;
         public LocalDate end;
         public LocalDate start;
@@ -356,27 +360,27 @@ public class PurchaseReportService extends AbsService {
             }
         }
 
-        public void setSupplierId(Long supplierId) {
-            if (supplierId != null) {
-                this.supplierId = supplierId;
-                builder.and(qPurchaseReturn.supplierId.eq(supplierId));
-                inboundBuilder.and(qPurchaseInbound.supplierId.eq(supplierId));
+        public void setSupplierIds(List<Long> supplierIds) {
+            if (CollUtil.isNotEmpty(supplierIds)) {
+                this.supplierIds = supplierIds;
+                builder.and(qPurchaseReturn.supplierId.in(supplierIds));
+                inboundBuilder.and(qPurchaseInbound.supplierId.in(supplierIds));
             }
         }
 
-        public void setWarehouseId(Long warehouseId) {
-            if (warehouseId != null) {
-                this.warehouseId = warehouseId;
-                builder.and(qPurchaseReturnItem.warehouseId.eq(warehouseId));
-                inboundBuilder.and(qPurchaseInboundItem.warehouseId.eq(warehouseId));
+        public void setWarehouseIds(List<Long> warehouseIds) {
+            if (CollUtil.isNotEmpty(warehouseIds)) {
+                this.warehouseIds = warehouseIds;
+                builder.and(qPurchaseReturnItem.warehouseId.in(warehouseIds));
+                inboundBuilder.and(qPurchaseInboundItem.warehouseId.in(warehouseIds));
             }
         }
 
-        public void setProductId(Long productId) {
-            if (productId != null) {
-                this.productId = productId;
-                builder.and(qPurchaseReturnItem.productId.eq(productId));
-                inboundBuilder.and(qPurchaseInboundItem.productId.eq(productId));
+        public void setProductIds(List<Long> productIds) {
+            if (CollUtil.isNotEmpty(productIds)) {
+                this.productIds = productIds;
+                builder.and(qPurchaseReturnItem.productId.in(productIds));
+                inboundBuilder.and(qPurchaseInboundItem.productId.in(productIds));
             }
         }
 

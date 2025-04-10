@@ -149,7 +149,7 @@ export default {
     },
     loadList() {
       this.loading = true;
-      PurchaseOrder.list(this.queryParams).then(({data: {results, total}}) => {
+      PurchaseOrder.listToInBound(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);

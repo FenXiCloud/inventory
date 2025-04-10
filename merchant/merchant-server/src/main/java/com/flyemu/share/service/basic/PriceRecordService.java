@@ -58,6 +58,7 @@ public class PriceRecordService extends AbsService {
     private final static QPriceRecord qPriceRecord = QPriceRecord.priceRecord;
 
     private final PriceRecordRepository priceRecordRepository;
+    private final static QSupplier qSupplier = QSupplier.supplier;
     private final static QProduct qProduct = QProduct.product;
     private static final QProductCategory qProductCategory = QProductCategory.productCategory;
 
@@ -68,7 +69,7 @@ public class PriceRecordService extends AbsService {
     public PageResults<PriceRecordDTO> query(Page page, Query query) {
 
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
-                .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification, qProductCategory.id,qProductCategory.name,
+                .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification, qProductCategory.id, qProductCategory.name,
                         qUnit.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPriceRecord.productId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPriceRecord.baseUnitId))
@@ -178,9 +179,9 @@ public class PriceRecordService extends AbsService {
         } else {
             //取最新的数据
             PriceRecord dbPriceRecord = priceRecordList.get(0);
-            if(dbPriceRecord.getUnitPrice().compareTo(priceRecord.getUnitPrice()) == 0){
+            if (dbPriceRecord.getUnitPrice().compareTo(priceRecord.getUnitPrice()) == 0) {
                 //不更新
-            }else{
+            } else {
                 //更新价格和单位
                 this.save(priceRecord);
             }
@@ -189,6 +190,7 @@ public class PriceRecordService extends AbsService {
 
     /**
      * 产品价格资料
+     *
      * @param page
      * @param query
      * @return
@@ -266,7 +268,7 @@ public class PriceRecordService extends AbsService {
                 .orElse(BigDecimal.ZERO);
     }
 
-    private BigDecimal getLastPrice(ProductPriceDTO dto,PriceSource priceSource,PriceType priceType) {
+    private BigDecimal getLastPrice(ProductPriceDTO dto, PriceSource priceSource, PriceType priceType) {
         Specification<PriceRecord> priceRecordSpecification = (root, rootQuery, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("merchantId"), dto.getMerchantId()));
@@ -293,10 +295,10 @@ public class PriceRecordService extends AbsService {
         Product product = productForm.getProduct();
         Long id = product.getId();
         Product dbProduct = productRepository.getById(id);
-        if(!Objects.equals(dbProduct.getAccountBookId(), accountBookId)){
+        if (!Objects.equals(dbProduct.getAccountBookId(), accountBookId)) {
             throw new RuntimeException("accountBookId错误");
         }
-        if(!Objects.equals(dbProduct.getMerchantId(), merchantId)){
+        if (!Objects.equals(dbProduct.getMerchantId(), merchantId)) {
             throw new RuntimeException("merchantId错误");
         }
         BigDecimal purchasePrice = product.getPurchasePrice();
@@ -308,19 +310,19 @@ public class PriceRecordService extends AbsService {
             dbProduct.setMaxPurchasePrice(maxPurchasePrice);
         }
         BigDecimal retailCustomerPrice = product.getRetailCustomerPrice();
-        if (retailCustomerPrice != null && retailCustomerPrice.compareTo(BigDecimal.ZERO) >= 0){
+        if (retailCustomerPrice != null && retailCustomerPrice.compareTo(BigDecimal.ZERO) >= 0) {
             dbProduct.setRetailCustomerPrice(retailCustomerPrice);
         }
         BigDecimal wholesaleCustomerPrice = product.getWholesaleCustomerPrice();
-        if (wholesaleCustomerPrice != null && wholesaleCustomerPrice.compareTo(BigDecimal.ZERO) >= 0){
+        if (wholesaleCustomerPrice != null && wholesaleCustomerPrice.compareTo(BigDecimal.ZERO) >= 0) {
             dbProduct.setWholesaleCustomerPrice(wholesaleCustomerPrice);
         }
         BigDecimal vipCustomerPrice = product.getVipCustomerPrice();
-        if (vipCustomerPrice != null && vipCustomerPrice.compareTo(BigDecimal.ZERO) >= 0){
+        if (vipCustomerPrice != null && vipCustomerPrice.compareTo(BigDecimal.ZERO) >= 0) {
             dbProduct.setVipCustomerPrice(vipCustomerPrice);
         }
         BigDecimal minSalesPrice = product.getMinSalesPrice();
-        if (minSalesPrice != null && minSalesPrice.compareTo(BigDecimal.ZERO) >= 0){
+        if (minSalesPrice != null && minSalesPrice.compareTo(BigDecimal.ZERO) >= 0) {
             dbProduct.setMinSalesPrice(minSalesPrice);
         }
         log.info("产品价格修改：{}", JSON.toJSONString(dbProduct));
@@ -343,6 +345,27 @@ public class PriceRecordService extends AbsService {
             dtos.add(priceRecordDTO);
         });
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+    }
+
+    public List<PriceRecordDTO> showPurchasePrice(Query query) {
+        List<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
+                .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification,qSupplier.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qPriceRecord.productId))
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qPriceRecord.supplierId))
+                .where(query.builder.and(qPriceRecord.priceType.eq(PriceType.最近采购价格))
+                        .and(qPriceRecord.priceSource.eq(PriceSource.最近采购价格)))
+                .orderBy(qPriceRecord.id.desc())
+                .limit(5).fetch();
+        List<PriceRecordDTO> dtos = new ArrayList<>();
+        fetchPage.forEach(tuple -> {
+            PriceRecordDTO priceRecordDTO = BeanUtil.toBean(tuple.get(qPriceRecord), PriceRecordDTO.class);
+            priceRecordDTO.setProductName(tuple.get(qProduct.name));
+            priceRecordDTO.setProductCode(tuple.get(qProduct.code));
+            priceRecordDTO.setSupplierName(tuple.get(qSupplier.name));
+            priceRecordDTO.setSpecification(tuple.get(qProduct.specification));
+            dtos.add(priceRecordDTO);
+        });
+        return dtos;
     }
 
     public static class Query {

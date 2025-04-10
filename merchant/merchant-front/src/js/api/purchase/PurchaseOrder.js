@@ -7,6 +7,9 @@ export default {
   list(param) {
     return Ajax.get('/purchaseOrder', param)
   },
+  listToInBound(param) {
+    return Ajax.get('/purchaseOrder/toInBound', param)
+  },
   total(param) {
     return Ajax.get('/purchaseOrder/total', param)
   },

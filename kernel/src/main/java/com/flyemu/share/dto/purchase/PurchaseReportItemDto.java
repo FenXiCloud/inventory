@@ -28,6 +28,11 @@ public class PurchaseReportItemDto {
     private String productName;
 
     /**
+     * 商品名称
+     */
+    private String categoryName;
+
+    /**
      * 规格
      */
     private String spec;

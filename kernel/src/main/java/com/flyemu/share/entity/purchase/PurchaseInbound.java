@@ -43,6 +43,9 @@ public class PurchaseInbound {
     @Comment("供货商ID")
     private Long supplierId;
 
+    @Comment("退货单ID")
+    private Long purchaseReturnId;
+
     @Comment("入库日期")
     @CreationTimestamp
     private LocalDate inboundDate;

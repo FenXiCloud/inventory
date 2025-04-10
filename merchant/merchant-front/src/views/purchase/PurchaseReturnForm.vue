@@ -29,6 +29,15 @@
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
           </template>
         </vxe-column>
+        <vxe-column field="imgPath" title="商品图片" width="100">
+          <template #default="{row}">
+            <img
+                :src="productList.find(item => item.id === row.productId)?.imgPath || '-'"
+                alt=""
+                class="product-img cursor-pointer"
+                @click="previewImage(productList.find(item => item.id === row.productId)?.imgPath)">
+          </template>
+        </vxe-column>
         <vxe-column title="商品信息" width="300">
           <template #default="{row,rowIndex}">
             <div class="flex">
@@ -38,8 +47,8 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="类别" field="categoryName" align="center" width="80"/>
-        <vxe-column title="规格" field="spec" align="center" width="80"/>
+        <vxe-column title="商品类别" field="categoryName" align="center" width="80"/>
+        <vxe-column title="规格型号" field="spec" align="center" width="80"/>
         <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
@@ -69,11 +78,35 @@
         </vxe-column>
         <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
         <vxe-column title="基本数量" field="quantity" width="90"/>
-        <vxe-column title="退货单价" field="secondaryPrice" width="100">
+        <vxe-column title="购货单价" field="secondaryPrice" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
-                       @blur="updatePrice(row)" v-model.number="row.secondaryPrice" type="float" min="0"
-                       :controls="false"></vxe-input>
+            <vxe-tooltip theme="light">
+              <template #content>
+                <div class="recent-sales-table">
+                  <table>
+                    <thead>
+                    <tr>
+                      <th>最近采购时间</th>
+                      <th>最近采购价</th>
+                      <th>供货商</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="(item, index) in recentSales || []" :key="index">
+                      <td>{{item.orderDate || '-'}}</td>
+                      <td>{{item.unitPrice || '-'}}</td>
+                      <td>{{item.supplierName || '-'}}</td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
+              <vxe-input :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
+                         @blur="updatePrice(row)"
+                         @focus="showPrice(row.productId)"
+                         v-model.number="row.secondaryPrice" type="float" min="0"
+                         :controls="false"></vxe-input>
+            </vxe-tooltip>
           </template>
         </vxe-column>
         <vxe-column title="折扣率(%)" field="discountRate" width="100">
@@ -123,8 +156,8 @@
           <Input v-model="form.discountRate" @blur="changeDiscountRate"/>
           <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
           <Input v-model="form.discountAmount" @blur="changeDiscountAmount"/>
-<!--          <label class="ml-10px mr-16px  w-100px">供货商承担：</label>-->
-<!--          <Input v-model="form.supplierAmount" @blur="changeSupplierAmount"/>-->
+          <!--          <label class="ml-10px mr-16px  w-100px">供货商承担：</label>-->
+          <!--          <Input v-model="form.supplierAmount" @blur="changeSupplierAmount"/>-->
           <label class="ml-16px mr-16px  w-100px">本次退款：</label>
           <Input v-model="form.refundAmount" @blur="changeRefundAmount"/>
         </div>
@@ -168,6 +201,7 @@ import {h} from "vue";
 import PurchaseReturnOrderSelect from "@views/purchase/PurchaseReturnOrderSelect.vue";
 import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
+import PriceRecord from "@js/api/basic/PriceRecord";
 
 export default {
   name: "PurchaseReturnForm",
@@ -198,6 +232,7 @@ export default {
       allRefundAmount: 0,
       warehouseList: [],
       supplierList: [],
+      inboundIds: [],
       supplierId: null,
       warehouseId: null,
       form: {
@@ -211,6 +246,7 @@ export default {
         returnReason: null,
       },
       productData: [],
+      recentSales: [],
     }
   },
   watch: {
@@ -252,7 +288,24 @@ export default {
       });
     },
 
+
+    showPrice(productId){
+      if (!productId) {
+        console.log("请选择产品")
+        return;
+      }
+      // 获取商品库存进行提示
+      let param = {
+        productId: productId,
+      }
+      PriceRecord.showPurchasePrice(param).then(({data}) => {
+        this.recentSales = data || [];
+        console.log(this.recentSales)
+      }).finally(() => this.loading = false);
+    },
+
     loadToInbound(params) {
+      this.inboundIds = params.orderIds
       PurchaseInbound.toReturn(this.form.supplierId, params.orderIds).then(({data}) => {
         this.productData = data || [];
       })
@@ -350,6 +403,7 @@ export default {
       PurchaseReturn.save({
         purchaseReturn: Object.assign(this.form, {refundTotalAmount: this.allRefundAmount}),
         type: this.type,
+        inboundIds: this.inboundIds,
         purchaseReturnItemList: productData
       }).then((success) => {
         if (success) {
@@ -402,18 +456,18 @@ export default {
     changeDiscountRate() {
       this.form.discountRate = parseFloat(this.form.discountRate) || 0;
       this.form.discountAmount = (this.allRefundAmount * this.form.discountRate * 0.01).toFixed(2)
-      this.form.refundAmount = (this.allRefundAmount - this.form.discountAmount ).toFixed(2)
+      this.form.refundAmount = (this.allRefundAmount - this.form.discountAmount).toFixed(2)
     },
     //修改优惠金额
     changeDiscountAmount() {
       this.form.discountAmount = parseFloat(this.form.discountAmount) || 0;
-      this.form.refundAmount = (this.allRefundAmount - this.form.discountAmount ).toFixed(2)
+      this.form.refundAmount = (this.allRefundAmount - this.form.discountAmount).toFixed(2)
       this.form.discountRate = this.form.discountAmount === 0 ? 0 : ((this.form.discountAmount / this.allRefundAmount) * 100).toFixed(2)
     },
     //修改优惠后金额
     changeRefundAmount() {
       this.form.refundAmount = parseFloat(this.form.refundAmount) || 0;
-      this.form.discountAmount = (this.allRefundAmount - this.form.refundAmount ).toFixed(2)
+      this.form.discountAmount = (this.allRefundAmount - this.form.refundAmount).toFixed(2)
       this.form.discountRate = this.form.discountAmount === 0 ? 0 : ((this.form.discountAmount / this.allRefundAmount) * 100).toFixed(2)
     },
     //修改商品多单位
@@ -521,3 +575,33 @@ export default {
   },
 }
 </script>
+<style scoped>
+
+.recent-sales-table {
+  min-width: 300px;
+}
+
+.recent-sales-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  border: 1px solid #dfe6ec;
+}
+
+.recent-sales-table th,
+.recent-sales-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid #dfe6ec;
+}
+
+.recent-sales-table th {
+  background-color: #f5f7fa;
+  font-weight: bold;
+  color: #606266;
+}
+
+.recent-sales-table tbody tr:hover {
+  background-color: #f5f7fa;
+}
+</style>

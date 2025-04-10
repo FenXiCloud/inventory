@@ -16,7 +16,7 @@
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">供货商：</span>
           <Select class="w-160px" filterable required :datas="supplierList" keyName="id" titleName="name"
-                  :deletable="false"  v-model="params.supplierId" placeholder="请选择供货商"/>
+                   v-model="params.supplierId" placeholder="请选择供货商"/>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
@@ -53,6 +53,7 @@
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
 <!--        <vxe-column title="关联入库单" field="purchaseInboundId" width="200"/>-->
+        <vxe-column title="关联入库单" field="purchaseInboundOrderNo" min-width="120"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
         <vxe-column title="采购金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>

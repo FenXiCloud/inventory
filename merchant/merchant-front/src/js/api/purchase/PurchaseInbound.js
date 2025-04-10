@@ -23,7 +23,7 @@ export default {
     return Ajax.get('/purchaseInbound/toReturn', param)
   },
   toReturn(supplierId, ids) {
-    return Ajax.post('/purchaseOrder/toReturn/' + supplierId, ids);
+    return Ajax.post('/purchaseInbound/toReturn/' + supplierId, ids);
   },
   approved(state, ids) {
     return Ajax.post('/purchaseInbound/approved/' + state, ids);

@@ -58,6 +58,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class PurchaseReturnService extends AbsService {
 
+    private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
     private final static QPurchaseReturn qPurchaseReturn = QPurchaseReturn.purchaseReturn;
     private final static QPurchaseReturnItem qPurchaseReturnItem = QPurchaseReturnItem.purchaseReturnItem;
     private final static QSupplier qSupplier = QSupplier.supplier;
@@ -85,6 +86,12 @@ public class PurchaseReturnService extends AbsService {
             PurchaseReturnDto dto = BeanUtil.toBean(tuple.get(qPurchaseReturn), PurchaseReturnDto.class);
             dto.setSupplierName(tuple.get(qSupplier.name));
             dto.setCreatedName(tuple.get(qMerchantUser.name));
+
+            List<String> orderNos = bqf.selectFrom(qPurchaseInbound).select(qPurchaseInbound.orderNo).where(qPurchaseInbound.purchaseReturnId.eq(dto.getId())).fetch();
+            if (CollUtil.isNotEmpty(orderNos)) {
+                dto.setPurchaseInboundNos(String.join(",", orderNos));
+            }
+
             dtos.add(dto);
         });
 
@@ -137,7 +144,14 @@ public class PurchaseReturnService extends AbsService {
                     .reduce(0.0, Double::sum);
             order.setSecondarySum(secondarySum);
 
-            purchaseReturnRepository.save(order);
+            order=purchaseReturnRepository.save(order);
+
+            if (CollUtil.isNotEmpty(purchaseReturnForm.getInboundIds())){
+                jqf.update(qPurchaseInbound)
+                        .set(qPurchaseInbound.purchaseReturnId,order.getId())
+                        .where(qPurchaseInbound.id.in(purchaseReturnForm.getInboundIds()))
+                        .execute();
+            }
             for (PurchaseReturnItem d : purchaseReturnForm.getPurchaseReturnItemList()) {
                 //计算基本单价
                 d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));

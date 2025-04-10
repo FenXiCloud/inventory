@@ -25,6 +25,11 @@ public class PurchaseOrderDto {
     private Long purchaseInboundId;
 
     /**
+     * 采购入库主表orderNo
+     */
+    private String purchaseInboundOrderNo;
+
+    /**
      * 供货商ID
      */
     private Long supplierId;

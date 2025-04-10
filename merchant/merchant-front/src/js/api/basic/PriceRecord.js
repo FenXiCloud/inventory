@@ -22,4 +22,7 @@ export default {
     showPrice(param) {
         return Ajax.get('/priceRecord/showPrice', param)
     },
+    showPurchasePrice(param) {
+        return Ajax.get('/priceRecord/show/purchase/price', param)
+    },
 }

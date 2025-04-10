@@ -12,12 +12,12 @@
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <Select class="w-120px ml-8px" filterable required :datas="supplierList" keyName="id" titleName="name"
-                v-model="params.supplierId" placeholder="供货商"/>
-        <Select class="w-120px ml-8px" filterable required :datas="warehouseList" keyName="id" titleName="name"
-                v-model="params.warehouseId" placeholder="仓库"/>
-        <Select class="w-120px ml-8px" filterable required :datas="productList" keyName="id" titleName="name"
-                :deletable="false" v-model="params.productId" placeholder="商品"/>
+        <Select class="w-160px ml-8px" filterable required :datas="supplierList" keyName="id" titleName="name"
+                v-model="supplierIds" placeholder="供货商" :multiple="true"/>
+        <Select class="w-160px ml-8px" filterable required :datas="warehouseList" keyName="id" titleName="name"
+                v-model="warehouseIds" placeholder="仓库" :multiple="true"/>
+        <Select class="w-160px ml-8px" filterable required :datas="productList" keyName="id" titleName="name"
+                 v-model="productIds" placeholder="商品" :multiple="true"/>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-260px ml-8px"
                 placeholder="请输入订单号/供货商名称" @search="doSearch">
@@ -48,7 +48,8 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="规格" field="spec" align="center" width="130"/>
+        <vxe-column title="规格型号" field="spec" align="center" width="130"/>
+        <vxe-column title="商品类别" field="categoryName" align="center" width="130"/>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
@@ -67,7 +68,6 @@
                  :total="pagination.total"
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
           <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
@@ -95,6 +95,9 @@ export default {
       productList: [],
       warehouseList: [],
       supplierList: [],
+      supplierIds: [],
+      productIds: [],
+      warehouseIds: [],
       loading: false,
       amountTotal: 0,
       totalParams: {},
@@ -105,9 +108,9 @@ export default {
       },
       params: {
         filter: null,
-        supplierId: null,
-        productId: null,
-        warehouseId: null,
+        supplierIds: null,
+        productIds: null,
+        warehouseIds: null,
         orderType: "in",
       },
       dateRange: {
@@ -119,6 +122,9 @@ export default {
   computed: {
     queryParams() {
       return Object.assign(this.params, {
+        supplierIds: this.supplierIds.map(item => item).toString(),
+        productIds: this.productIds.map(item => item).toString(),
+        warehouseIds: this.warehouseIds.map(item => item).toString(),
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
         start: this.dateRange.start,
@@ -131,7 +137,7 @@ export default {
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
+        if (column.property && ['secondaryQuantity','secondaryPrice','subtotal'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             let rd = row[column.property];
@@ -142,7 +148,7 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", "", ""].concat(sums)];
+      return [["", "", "", "", "","", "","","", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;

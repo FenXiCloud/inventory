@@ -9,7 +9,7 @@
         <Select v-model="params.orderType" class="w-120px" :datas="{in:'入库单',out:'退货单',all:'全部'}"
                 placeholder="订单类型：" :deletable="false"/>
         <Select v-model="groupValues" class="w-240px ml-8px"
-                :datas="{supplier:'供货商',warehouse:'仓库'}"
+                :datas="{product:'商品',supplier:'供货商',warehouse:'仓库'}"
                 placeholder="统计字段：" :multiple="true"/>
         <DateRangePicker v-model="dateRange" class="w-220px ml-8px"></DateRangePicker>
         <Select class="w-120px ml-8px" filterable required :datas="supplierList" keyName="id" titleName="name"
@@ -17,7 +17,7 @@
         <Select class="w-120px ml-8px" filterable required :datas="warehouseList" keyName="id" titleName="name"
                 v-model="params.warehouseId" placeholder="仓库"/>
         <Select class="w-120px ml-8px" filterable required :datas="productList" keyName="id" titleName="name"
-                :deletable="false" v-model="params.productId" placeholder="商品"/>
+                v-model="params.productId" placeholder="商品"/>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-260px ml-8px"
                 placeholder="请输入订单号/供货商名称" @search="doSearch">
@@ -77,7 +77,7 @@ import {mapMutations} from "vuex";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
-import {loading} from "heyui.ext";
+import {loading, message} from "heyui.ext";
 import PurchaseReport from "@js/api/purchase/PurchaseReport";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
@@ -96,7 +96,7 @@ export default {
       isSupplier: true,
       amountTotal: 0,
       totalParams: {},
-      groupValues: ['supplier', 'warehouse'],
+      groupValues: ['product', 'supplier', 'warehouse'],
       pagination: {
         page: 1,
         pageSize: 20,
@@ -117,6 +117,9 @@ export default {
   },
   computed: {
     queryParams() {
+      if (!this.groupValues || this.groupValues.length == 0) {
+        message.error("请统计字段~");
+      }
       if (this.groupValues) {
         this.isSupplier = this.groupValues.find(item => item === 'supplier');
         this.isWarehouse = this.groupValues.find(item => item === 'warehouse');

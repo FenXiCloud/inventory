@@ -30,14 +30,14 @@
                    :sort-config="{remote:true}"
                    :loading="loading">
           <vxe-column type="checkbox" width="40" align="center"/>
-          <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
+          <vxe-column title="入库日期" field="inboundDate" align="center" width="130"/>
           <vxe-column title="订单编号" field="orderNo" width="200"/>
           <vxe-column title="供货商" field="supplierName" min-width="120"/>
           <vxe-column title="采购金额" field="finalAmount" width="120"/>
           <vxe-column title="折扣金额" field="discountAmount" width="120"/>
           <vxe-column title="折后金额" field="finalAmount" width="120"/>
           <vxe-column title="制单人" field="createdName" align="center" width="100"/>
-          <vxe-column title="制单时间" field="orderDate" align="center" width="100"/>
+          <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
         </vxe-table>
       </div>
       <vxe-pager perfect @page-change="loadList(false)"
@@ -66,6 +66,7 @@
 import manba from "manba";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import {confirm, message} from "heyui.ext";
+import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -148,7 +149,7 @@ export default {
     },
     loadList() {
       this.loading = true;
-      PurchaseOrder.listToReturn(this.queryParams).then(({data: {results, total}}) => {
+      PurchaseInbound.listToReturn(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);

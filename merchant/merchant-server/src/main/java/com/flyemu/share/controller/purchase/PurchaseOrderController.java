@@ -37,6 +37,13 @@ public class PurchaseOrderController {
         return JsonResult.successful(purchaseOrderService.query(page, query));
     }
 
+    @GetMapping("/toInBound")
+    public JsonResult listToInBound(Page page, PurchaseOrderService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(purchaseOrderService.queryToInBound(page, query));
+    }
+
     /**
      * 条件内总金额
      *

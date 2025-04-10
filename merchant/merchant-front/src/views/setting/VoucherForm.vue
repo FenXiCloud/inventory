@@ -1,365 +1,333 @@
 <template>
-  <app-content style="position: relative;">
-    <Loading text="操作中~" :loading="loading"></Loading>
-    <div class="mask" v-if="isReadOnly"></div>
-    <div class="h-panel voucher-form-panel">
-      <img v-if="form.id && form.auditMemberId " class="auditpic" src="" alt="已审核">
-      <div class="mx-10px mb-10px w-980px">
-        <div class="border-bottom text-center font-bold text-20px pb-8px mb-16px">{{ wordTitle }}
-          <template v-if="insert || reverse">({{ insert ? '插入' : '红冲' }})</template>
-        </div>
-        <div class="flex justify-between mb-20px items-center">
-          <div>
-            <vxe-button :disabled="!canSave && !reverse" status="primary" @click="save(false,'assets')"
-                        :loading="loading" content="保存"/>
-            <vxe-button @click="$emit('close')">返回</vxe-button>
+  <div class="modal-column">
+    <div class="modal-column-full-body">
+      <vxe-toolbar>
+        <template #buttons>
+        </template>
+        <template #tools>
+          <div class="h-input-group h-table-checkbox-wrap">
+            <span class="h-input-addon ml-8px">仓库：</span>
+            <Select :multiple="true" v-model="params.warehouseIds" class="w-120px" keyName="id" titleName="name"
+                    :datas="warehouseList"/>
           </div>
-          <!--          <div class="flex" v-if="!isCheck && !carryover">-->
-          <!--            <vxe-button :loading="loading" @click="before" icon="h-icon-left"></vxe-button>-->
-          <!--            <vxe-button class="reverse" :loading="loading" @click="next" icon="h-icon-right"></vxe-button>-->
-          <!--          </div>-->
-        </div>
-        <div class="flex mt-16px items-center justify-between">
-          <div class="flex items-center">
-            <Select keyName="word" titleName="word" style="min-width: 80px" :disabled="insert" :deletable="false"
-                    :datas="voucherWords" v-model="form.word" placeholder="记"/>
-            <span class="split-vertical"></span>
-            <NumberInput :min="1" v-model.number="form.code" class="v-code" :disabled="insert"/>
-            <span class="split-vertical"></span>
-            号
-            <span class="split-vertical mr-16px"></span>
-            日期：
-            <DatePicker class="v-date" :disabled="!!carryForward" :option="dpOps" :clearable="false"
-                        v-model="form.voucherDate" format="YYYY-MM-DD"/>
-            <span class="yellow-color ml-10px">按回车键或Tab键能快速选择单元格</span>
+          <div class="h-input-group h-table-checkbox-wrap">
+            <span class="h-input-addon ml-8px">商品：</span>
+            <Select :multiple="true" v-model="params.productIds" class="w-120px" keyName="id" titleName="name"
+                    :datas="productList"/>
           </div>
-          <div class="flex items-center">
-            <DropdownCustom :toggle-icon="false" class-name="h-text-dropdown" placement="bottom-end">
-              <span class="text-hover blue-color font-bold">
-                备注
-              </span>
-              <template #content>
-                <Textarea placeholder="请输入备注内容" v-model="form.remark" v-autosize rows="5"
-                          style="width: 300px"></Textarea>
+          <div class="h-input-group h-table-checkbox-wrap">
+            <span class="h-input-addon ml-8px">往来单位：</span>
+            <Select :multiple="true" v-model="params.supplierIds" class="w-120px" keyName="id" titleName="name"
+                    :datas="supplierList"/>
+          </div>
+          <div class="h-input-group h-table-checkbox-wrap">
+            <span class="h-input-addon ml-8px">业务类型：</span>
+            <Select autosize :filterable="true" :multiple="true" v-model="params.operationTypes" class="w-120px"
+                    :datas="operationTypeList"/>
+          </div>
+          <div class="h-input-group">
+            <span class="h-input-addon ml-8px">单据日期：</span>
+            <DateRangePicker v-model="dateRange"></DateRangePicker>
+          </div>
+          <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+                  show-search-button class="w-360px ml-8px"
+                  placeholder="请输入商品名称/单据编号" @search="doSearch">
+            <i class="h-icon-search"/>
+          </Search>
+        </template>
+      </vxe-toolbar>
+      <div class="flex1">
+        <vxe-table row-id="id"
+                   ref="table"
+                   :data="dataList"
+                   highlight-hover-row
+                   show-overflow
+                   show-footer
+                   :row-config="{height: 48}"
+                   :column-config="{resizable: true}"
+                   :sort-config="{remote:true}"
+                   :loading="loading">
+          <vxe-column type="checkbox" width="40" align="center"/>
+          <vxe-column title="商品编号" field="productCode" align="center" width="130"/>
+          <vxe-column title="商品名称" field="productName" width="200"/>
+          <vxe-column title="商品类别" field="productCategoryName" width="200"/>
+          <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
+          <vxe-column title="单据日期" field="createdAt" width="120"/>
+          <vxe-column title="业务类型" field="operationType" width="120"/>
+          <vxe-column title="单据编号" field="batchNumber" width="200"/>
+          <vxe-column title="往来单位" field="supplierName" width="120">
+            <template #default="{ row }">
+              <div v-if="row.supplierName && row.supplierName !== ''">
+                {{ row.supplierName }}
+              </div>
+              <div v-else-if="row.customerName && row.customerName !== ''">
+                {{ row.customerName }}
+              </div>
+              <div v-else>
+              </div>
+            </template>
+          </vxe-column>
+          <vxe-column title="仓库" field="warehouseName" align="center" width="100"/>
+          <vxe-column title="单位" field="unitName" width="80"/>
+          <vxe-column title="商品名称备注" field="productRemarks" width="80"/>
+          <vxe-column title="入库数量" field="quantity" width="80">
+            <template #default="{ row }">
+              <div v-if="inboundItems.includes(row['operationType'])">
+                {{ row.quantity }}
+              </div>
+              <div v-else>
+              </div>
+            </template>
+          </vxe-column>
+          <vxe-colgroup title="入库" align="center">
+            <vxe-column title="基本单位数量" field="quantity" align="center" width="100">
+              <template #default="{ row }">
+                <div v-if="inboundItems.includes(row['operationType'])">
+                  {{ row.quantity }}
+                </div>
+                <div v-else>
+                </div>
               </template>
-            </DropdownCustom>
-            <Attachment v-model="form.billList" v-model:receiptNum="form.receiptNum"/>
-          </div>
-        </div>
+            </vxe-column>
+            <vxe-column title="单位成本" field="unitPrice" align="center" width="100">
+              <template #default="{ row }">
+                <div v-if="inboundItems.includes(row['operationType'])">
+                  {{ row.unitPrice }}
+                </div>
+                <div v-else>
+                </div>
+              </template>
+            </vxe-column>
+            <vxe-column title="成本" field="subtotal" align="center" width="100">
+              <template #default="{ row }">
+                <div
+                    v-if="inboundItems.includes(row['operationType'])">
+                  {{ row.subtotal }}
+                </div>
+                <div v-else>
+                </div>
+              </template>
+            </vxe-column>
+          </vxe-colgroup>
+          <vxe-column title="出库数量" field="quantity" width="80">
+            <template #default="{ row }">
+              <div v-if="outboundItems.includes(row['operationType'])">
+                {{ getAbsoluteValue(row.quantity) }}
+              </div>
+              <div v-else>
+              </div>
+            </template>
+          </vxe-column>
+          <vxe-colgroup title="出库" align="center">
+            <vxe-column title="基本单位数量" field="quantity" align="center" width="100">
+              <template #default="{ row }">
+                <div v-if="outboundItems.includes(row['operationType'])">
+                  {{ getAbsoluteValue(row.quantity) }}
+                </div>
+                <div v-else>
+                </div>
+              </template>
+            </vxe-column>
+            <vxe-column title="单位成本" field="unitPrice" align="center" width="100">
+              <template #default="{ row }">
+                <div v-if="outboundItems.includes(row['operationType'])">
+                  {{ row.unitPrice }}
+                </div>
+                <div v-else>
+                </div>
+              </template>
+            </vxe-column>
+            <vxe-column title="成本" field="subtotal" align="center" width="100">
+              <template #default="{ row }">
+                <div v-if="outboundItems.includes(row['operationType'])">
+                  {{ row.subtotal }}
+                </div>
+                <div v-else>
+                </div>
+              </template>
+            </vxe-column>
+          </vxe-colgroup>
+          <vxe-colgroup title="结存" align="center">
+            <vxe-column title="基本单位数量" field="currentQuantity" align="center" width="100"/>
+            <vxe-column title="单位成本" field="averageCost" align="center" width="100"/>
+            <vxe-column title="成本" field="totalCost" align="center" width="100"/>
+          </vxe-colgroup>
+        </vxe-table>
       </div>
-      <VoucherTable2 :carryover="isCarryover" ref="voucherTable2" :is-edit="!!form.auditMemberId"
-                     @update="onItemsUpdate" :voucherDetails="voucherDetails"/>
-      <div class="flex w-full px-20px pb-20px justify-between items-center">
-        <div>
-          <!--        <span>-->
-          <!--          制单人：{{ voucher.createMemberName || User.realName }}-->
-          <!--        </span>-->
-          <!--          <span class="ml-20px">-->
-          <!--          审核人：{{ voucher.auditMemberName ? voucher.auditMemberName : "无" }}-->
-          <!--        </span>-->
+      <div class="flex justify-between items-center pt-5px">
+        <vxe-pager perfect @page-change="loadList(false)"
+                   v-model:current-page="pagination.page"
+                   v-model:page-size="pagination.pageSize"
+                   :total="pagination.total"
+                   :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
+          <template #left>
+            <!--          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>-->
+            <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+                        :loading="loading"></vxe-button>
+          </template>
+        </vxe-pager>
+      </div>
+      <div class="mt-10px"></div>
+      <div class="filler-panel">
+        <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
+          <label class="mr-16px w-80px">备注说明：</label>
+          <Input placeholder="请输入备注" type="text" maxlength="150"
+                 style="width: 80%"
+                 v-model="form.remarks"/>
         </div>
       </div>
     </div>
-  </app-content>
+    <div class="modal-column-right">
+      <Button icon="fa fa-close" @click="$emit('close')" :loading="loading">
+        取消
+      </Button>
+      <Button icon="fa fa-save" color="primary" @click="confirm" :loading="loading">
+        保存
+      </Button>
+    </div>
+  </div>
 </template>
-
 <script>
-import {mapState} from 'vuex';
-import {message} from "heyui.ext";
 import manba from "manba";
-import {add, floor} from "xe-utils";
+import InventoryItem from "@js/api/inventory/InventoryItem";
+import {mapMutations} from "vuex";
+import {loading, message} from "heyui.ext";
+import Product from "@js/api/basic/Product";
+import Warehouse from "@js/api/basic/Warehouse";
+import Supplier from "@js/api/basic/Supplier";
+import FinanceVoucher from "@js/api/setting/FinanceVoucher";
+
+const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
+const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
 
 export default {
   name: "VoucherForm",
-  props: {
-    voucherId: [Number, String],
-    voucherDate: String,
-    voucherCode: Number,
-    voucherWord: String,
-    checkData: Object,
-    assetsData: Array,
-    profitCheckData: Array,
-    type: Object,
-    copy: Boolean,
-    reverse: Boolean,
-    insert: Boolean,
-    isView: Boolean,
-    carryover: Boolean,
-    localDate: ''
-  },
-  computed: {
-    ...mapState(['tabs',]),
-    canSave() {
-      return this.voucherItems.length > 0 && !this.form.locked
-    },
-    isCheck() {
-      return !!this.checkData
-    },
-    isCarryover() {
-      return this.carryover || this.form.carryForward;
-    },
-    isReadOnly() {
-      return this.isView || this.form.locked || (this.form.id && this.form.auditMemberId)
-    }
-  },
   data() {
     return {
-      entityId: null,
+      dataList: [],
       loading: false,
-      isCopy: false,
-      carryForward: false,
-      cachedDetails: [],
-      voucherItems: [],
-      voucherDetails: [],
-      voucherTable: {voucherItems: []},
-      dpOps: {
-        start: manba().format(),
-        end: null
+      amountTotal: 0,
+      totalParams: {},
+      pagination: {
+        page: 1,
+        pageSize: 20,
+        total: 0
       },
-      voucher: {},
-      form: {
-        id: null,
-        remark: '',
-        billList: [],
-        word: '',
-        code: '',
-        voucherDate: '',
-        receiptNum: 0,
-        locked: false,
-        carryForward: false,
-        checkTplId: null,
+      params: {
+        filter: null,
+        productIds: [],
+        supplierIds: [],
+        warehouseIds: [],
+        operationTypes: [],
+        state: null,
+        sortCol: null,
+        sort: null,
       },
+      dateRange: {
+        start: manba(startTime).format("YYYY-MM-dd"),
+        end: manba(endTime).format("YYYY-MM-dd")
+      },
+      warehouseList: [],
+      productList: [],
+      supplierList: [],
+      outboundItems: ["采购退货", "销售出库", "调拨出库", "盘亏出库", "其他出库"],
+      inboundItems: ["采购入库", "销售退货", "调拨入库", "其他入库", "盘盈入库"],
+      operationTypeList: {
+        "采购入库": "采购入库",
+        "销售退货": "销售退货",
+        "调拨入库": "调拨入库",
+        "其他入库": "其他入库",
+        "盘盈入库": "盘盈入库",
+        "采购退货": "采购退货",
+        "销售出库": "销售出库",
+        "调拨出库": "调拨出库",
+        "盘亏出库": "盘亏出库",
+        "其他出库": "其他出库",
+      },
+      form: {}
     }
   },
-  watch: {
-    'form.word'(val, old) {
-      if (!old && this.entityId) {
-        return;
-      }
-      val && this.loadCode();
-    },
-    voucherItems: {
-      deep: true,
-      handler(val) {
-        if (!this.form.id) {
-          localStorage.setItem(this.cacheKey, JSON.stringify(val));
-        }
-      }
-    },
-    'form.voucherDate'(val) {
-      this.loadCode(val);
+  computed: {
+    queryParams() {
+      return Object.assign(this.params, {
+        page: this.pagination.page,
+        pageSize: this.pagination.pageSize,
+        start: this.dateRange.start,
+        end: this.dateRange.end,
+      })
     },
   },
   methods: {
-    onItemsUpdate(val) {
-      this.voucherItems = val;
-      this.voucherTable.jfTotal = floor(val.reduce((total, row) => add(total, (row.debitAmount || 0)), 0), 2)
-      this.voucherTable.dfTotal = floor(val.reduce((total, row) => add(total, (row.creditAmount || 0)), 0), 2)
+    ...mapMutations(['pushTab']),
+    doSearch() {
+      this.pagination.page = 1;
+      this.loadList();
     },
-    loadVoucherWords() {
-      RelationVoucher.loadWord().then(({data}) => {
-        this.voucherWords = data
-      })
-      // this.form.word = this.voucherWords.find(value => value.isDefault)?.word
+    loadDict(callback) {
+      loading("加载中....");
+      Promise.all([Product.select(), Warehouse.select(), Supplier.select()])
+          .then((results) => {
+            this.productList = results[0].data || [];
+            this.warehouseList = results[1].data || [];
+            this.supplierList = results[2].data || [];
+            callback();
+          })
+          .finally(() => loading.close());
     },
-    loadCode(voucherDate = null) {
-      if (this.insert) {
-        return
-      }
-      if (this.voucher && this.voucher.id && voucherDate && manba(this.voucher.voucherDate).format("YYYYMM") === manba(voucherDate).format("YYYYMM")) {
-        this.form.code = this.voucher.code;
-      } else if (this.form.word) {
-        this.form.voucherDate && RelationVoucher.loadCode({
-          word: this.form.word,
-          currentAccountDate: voucherDate || this.form.voucherDate
-        }).then(({data}) => {
-          this.form.code = data
-        })
-      }
-    },
-    formValid() {
-      if (!this.form.voucherDate) {
-        message("亲，请选择日期！");
-        return false;
-      }
-
-      if (!this.form.code) {
-        message("亲，请输入编号！");
-        return false;
-      }
-
-      if (!this.voucherItems.length) {
-        message("亲，第1行不能为空！");
-        return false;
-      }
-
-      if (this.checkItem("摘要", 'summary') || this.checkItem("科目", 'subjectId') || this.checkItem("金额")) {
-        return false;
-      }
-
-      if (this.voucherTable.jfTotal !== this.voucherTable.dfTotal) {
-        message("亲，借贷不平衡！");
-        return false;
-      }
-      return true;
-    },
-    save(next, type = "") {
-      if (!this.formValid()) {
-        return
-      }
-      let formData = Object.assign({}, this.form, {
-        details: this.voucherItems,
-        carryForward: this.carryForward
-      });
-      if (this.type) {
-        formData.checkTplId = this.type.id;
-      }
+    loadList(type = true) {
       this.loading = true;
-      RelationVoucher.saveVoucher(this.voucherId, formData).then(({success, data}) => {
-        if (success) {
-          message("操作成功")
-          this.$emit('success')
-        }
-      }).catch(() => {
-        this.loading = false;
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.warehouseIds = params.warehouseIds.join(",");
+      params.productIds = params.productIds.join(",");
+      params.supplierIds = params.supplierIds.join(",");
+      params.operationTypes = params.operationTypes.join(",");
+      params.exclusion = true;
+      InventoryItem.report(params).then(({data: {results, total}}) => {
+        this.dataList = results || [];
+        this.pagination.total = total;
       }).finally(() => this.loading = false);
     },
-    checkItem(name, field) {
-      let i = 0, len = this.voucherItems.length, row = -1;
-      for (; i < len; i++) {
-        if ((field && !this.voucherItems[i][field]) || (!field && !this.voucherItems[i].debitAmount && !this.voucherItems[i].creditAmount)) {
-          row = i + 1;
-          break;
-        }
-      }
-      if (row > -1) {
-        message(`亲，第${row}行，请输入${name}！`);
-        return true;
-      }
-    },
-    async init() {
-      if ((this.voucherId || this.entityId) && !this.insert) {
-        this.loading = true;
-        RelationVoucher.loadVoucher(this.entityId || this.voucherId).then(({data}) => {
-          const oldVoucher = structuredClone(data);
-          data.details.forEach(val => {
-            if (this.reverse) {
-              val.creditAmount = 0 - val.creditAmount;
-              val.debitAmount = 0 - val.debitAmount;
-              val.num = 0 - val.num;
-              val.summary = `冲销${manba(oldVoucher.voucherDate).format("YYYYMM")}${oldVoucher.word}-${oldVoucher.code}_` + val.summary
-            }
-            if (!this.isCopy && !this.reverse) {
-              val.originalCreditAmount = val.creditAmount;
-              val.originalDebitAmount = val.debitAmount;
-            }
-          })
-          this.voucherDetails = data.details;
-          this.voucher = data;
-
-          this.form = {
-            id: data.id,
-            auditMemberId: data.auditMemberId,
-            createMember: data.createMember,
-            createMemberName: data.createMemberName,
-            word: data.word,
-            reverseVoucherId: data.reverseVoucherId,
-            locked: data.locked,
-            remark: data.remark,
-            receiptNum: data.receiptNum,
-            voucherDate: data.voucherDate,
-            carryForward: data.carryForward,
-            billList: data.billList || [],
-            code: data.code
-          };
-        }).finally(() => this.loading = false)
+    getAbsoluteValue(number) {
+      if (number < 0) {
+        return -number;
       } else {
-        if (this.insert) {
-          this.form.insert = true;
-          this.form.code = this.voucherCode;
-          this.form.word = this.voucherWord;
-          this.form.voucherDate = this.voucherDate;
-        } else {
-          const resp = await voucher.lastDate();
-          this.form.voucherDate = resp.data;
-          this.$nextTick(() => {
-            this.voucherDetails = this.cachedDetails || [];
-          })
-        }
+        return number;
       }
-
-      //结转凭证初始化
-      this.loadVoucherWords();
     },
+    confirm() {
+      const selectRecords = this.$refs.table.getCheckboxRecords();
+      if (!selectRecords || selectRecords.length === 0) {
+        message.warn("请选择要操作的数据~");
+        return;
+      }
+      if (selectRecords.length > 1) {
+        message.warn("请选择一条数据推送~");
+        return;
+      }
+      const record = selectRecords[0];
+      FinanceVoucher.save({
+        orderId: record.id,
+        productId: record.productId,
+        customerId: record.customerId,
+        supplierId: record.supplierId,
+        amount: record.subtotal,
+        type: record.operationType,
+        orderTime: record.createdAt,
+        remark: this.form.remark,
+        orderName: record.productName,
+      }).then((success) => {
+        if (success) {
+          message("推送成功~");
+          this.$refs.table.clearCheckboxRow();
+          this.loadList();
+        }
+      });
+    }
   },
   created() {
-    const cachedDetails = localStorage.getItem(this.cacheKey);
-    if (cachedDetails && !this.voucherId) {
-      this.cachedDetails = JSON.parse(cachedDetails);
-    }
-
-    this.isCopy = this.copy;
-    if (!this.isCopy) {
-      this.entityId = this.voucherId;
-    }
-    this.dpOps.start = this.firstCheckoutDate;
-    this.init();
+    this.loadDict(() => {
+    });
+    this.loadList();
   }
 }
 </script>
-
-<style scoped lang="less">
-.mask {
-  position: absolute;
-  height: 100%;
-  width: 100%;
-  z-index: 100;
-  bottom: 0;
-  top: 60px;
-}
-
-.auditpic {
-  position: absolute;
-  z-index: 100;
-  right: 100px;
-}
-
-.voucher-form-panel {
-  width: 1020px;
-  margin: 0 auto;
-  padding-top: 20px;
-  border-radius: 5px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.reverse {
-  display: inline-flex;
-  flex-direction: row-reverse;
-  align-items: center;
-
-  &:deep(i) {
-    margin-left: 5px;
-  }
-}
-
-.v-code {
-  display: inline-block;
-  width: 60px;
-
-  :deep(.h-numberinput-input) {
-    min-width: unset;
-    text-align: center;
-  }
-}
-
-.v-date {
-  width: 130px;
-}
-
-.v-receiptNum {
-  text-align: center;
-  height: 25px;
-}
-</style>

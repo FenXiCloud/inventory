@@ -7,7 +7,10 @@ import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flyemu.share.dto.VoucherDto;
+import com.flyemu.share.entity.setting.FinanceAccountLink;
 import com.flyemu.share.exception.ServiceException;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +18,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -66,6 +74,22 @@ public class FinOpsCloudApi {
         return res.getJSONArray("data");
     }
 
+    /**
+     * 加载凭证号
+     *
+     * @param finOpsRequest
+     * @param accountSetsId
+     * @param word
+     * @param currentAccountDate
+     * @return
+     * @throws UnsupportedEncodingException
+     */
+    public Integer loadWordCode(FinOpsRequest finOpsRequest, Long accountSetsId, String word, LocalDate currentAccountDate) throws UnsupportedEncodingException {
+        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/voucher/code" + "?word=" + URLEncoder.encode(word, "UTF-8") + "&currentAccountDate=" + currentAccountDate, accountSetsId, finOpsRequest);
+        log.info("凭证号{}", res);
+        return res.getInteger("data");
+    }
+
     private JSONObject executeJson(int retry, String url, Long accountSetsId, FinOpsRequest finOpsRequest) {
         HttpRequest request = HttpUtil.createGet(url);
         request.header("cookie", finOpsRequest.getCookie());
@@ -89,6 +113,35 @@ public class FinOpsCloudApi {
         } else {
             throw new ServiceException("workflowFormsSchemasProcessCodes HttpCode：" + response.getStatus());
         }
+    }
+
+
+    private JSONObject execute(HttpRequest post, int retry, Long accountSetsId, FinOpsRequest finOpsRequest) {
+        post.header("cookie", finOpsRequest.getCookie());
+        if (accountSetsId != null) {
+            post.header("accountSetId", accountSetsId.toString());
+        }
+        HttpResponse response = post.execute();
+        if (response.isOk()) {
+            JSONObject jsonObject = JSON.parseObject(response.body());
+            if (0 == jsonObject.getIntValue("error_code")) {
+                return jsonObject;
+            }
+            throw new HttpException(jsonObject.getString("errmsg"));
+        } else {
+            if (401 == response.getStatus() && retry < 3) {
+                String cookie = getCookie(finOpsRequest);
+                if (StringUtils.isNotBlank(cookie)) {
+                    FinOpsCallback callback = finOpsRequest.getCallback();
+                    if (callback != null) {
+                        callback.failCallback(cookie);
+                    }
+                    finOpsRequest.setCookie(cookie);
+                }
+                return execute(post, retry + 1, accountSetsId, finOpsRequest);
+            }
+        }
+        throw new ServiceException("财务系统提示：" + JSON.parseObject(response.body()).getString("msg"));
     }
 
     /**
@@ -115,5 +168,50 @@ public class FinOpsCloudApi {
         JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/subject/voucher/select", accountSetsId, finOpsRequest);
         log.info("科目{}", res);
         return res.getJSONArray("data");
+    }
+
+    /**
+     * 加载账号分类
+     *
+     * @param finOpsRequest
+     * @param accountSetsId
+     * @param categoryIdSet
+     * @return
+     */
+    public JSONObject loadAccountingCategory(FinOpsRequest finOpsRequest, Long accountSetsId, List<Long> categoryIdSet) {
+        HttpRequest post = HttpUtil.createPost(finOpsRequest.getBaseUrl() + "/accounting-category/byid");
+        post.body(JSON.toJSONString(categoryIdSet), "application/json");
+        return execute(post, 0, accountSetsId, finOpsRequest);
+    }
+
+    /**
+     * 新建凭证
+     *
+     * @param finOpsRequest
+     * @param accountSetsId
+     * @param dto
+     * @return
+     * @throws JsonProcessingException
+     */
+    public JSONObject createVoucher(FinOpsRequest finOpsRequest, Long accountSetsId, VoucherDto dto) throws JsonProcessingException {
+        HttpRequest post = HttpUtil.createPost(finOpsRequest.getBaseUrl() + "/voucher");
+        post.body(objectMapper.writeValueAsString(dto), "application/json");
+        return execute(post, 0, accountSetsId, finOpsRequest).getJSONObject("data");
+    }
+
+
+    /**
+     * 更新凭证
+     *
+     * @param finOpsRequest
+     * @param accountSetsId
+     * @param dto
+     * @return
+     * @throws JsonProcessingException
+     */
+    public JSONObject upVoucher(FinOpsRequest finOpsRequest, Long accountSetsId, VoucherDto dto) throws JsonProcessingException {
+        HttpRequest post = HttpRequest.put(finOpsRequest.getBaseUrl() + "/voucher");
+        post.body(objectMapper.writeValueAsString(dto), "application/json");
+        return execute(post, 0, accountSetsId, finOpsRequest).getJSONObject("data");
     }
 }

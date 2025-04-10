@@ -12,6 +12,8 @@ import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
 import com.flyemu.share.entity.inventory.QInventoryItem;
+import com.flyemu.share.entity.setting.FinanceVoucher;
+import com.flyemu.share.entity.setting.QFinanceVoucher;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.repository.InventoryItemRepository;
 import com.flyemu.share.service.AbsService;
@@ -61,6 +63,8 @@ public class InventoryItemService extends AbsService {
     private final static QInventory qInventory = QInventory.inventory;
 
     private final static QCustomer qCustomer = QCustomer.customer;
+
+    private final static QFinanceVoucher qFinanceVoucher = QFinanceVoucher.financeVoucher;
 
     private final InventoryItemRepository inventoryItemRepository;
 
@@ -128,6 +132,14 @@ public class InventoryItemService extends AbsService {
 
     public PageResults<InventoryItemReportDto> report(Page page, Query query) {
         List<Long> ids = this.findPreviousMonthIds(query);
+        Boolean exclusion = query.getExclusion();
+        List<Long> voucherOrderIds = new ArrayList<>();
+        if (Boolean.TRUE.equals(exclusion)) {
+            List<FinanceVoucher> fetch = jqf.selectFrom(qFinanceVoucher).fetch();
+            for (FinanceVoucher financeVoucher : fetch) {
+                voucherOrderIds.add(financeVoucher.getOrderId());
+            }
+        }
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryItem)
                 .select(
                         qInventoryItem.id,
@@ -162,6 +174,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qSupplier).on(qInventoryItem.supplierId.eq(qSupplier.id))
                 .leftJoin(qCustomer).on(qInventoryItem.customerId.eq(qCustomer.id))
                 .where(query.builders())
+                .where(qInventoryItem.id.notIn(voucherOrderIds))
                 .where(qInventoryItem.operationType.ne(OperationType.期初余额).or(qInventoryItem.id.in(ids)))
                 .orderBy(qInventoryItem.productId.asc())
                 .orderBy(qInventoryItem.firstSort.desc())
@@ -222,6 +235,14 @@ public class InventoryItemService extends AbsService {
     }
 
     public PageResults<InventoryItemReportDto> summary(Page page, Query query) {
+        Boolean exclusion = query.getExclusion();
+        List<Long> voucherOrderIds = new ArrayList<>();
+        if (Boolean.TRUE.equals(exclusion)) {
+            List<FinanceVoucher> fetch = jqf.selectFrom(qFinanceVoucher).fetch();
+            for (FinanceVoucher financeVoucher : fetch) {
+                voucherOrderIds.add(financeVoucher.getOrderId());
+            }
+        }
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryItem)
                 .select(
                         qProduct.id.as("productId"),
@@ -240,6 +261,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
                 .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
                 .where(query.builders())
+                .where(qInventoryItem.id.notIn(voucherOrderIds))
                 .where(qInventoryItem.operationType.ne(OperationType.期初余额))
                 .groupBy(qProduct.id)
                 .orderBy(qProduct.id.asc())
@@ -364,6 +386,8 @@ public class InventoryItemService extends AbsService {
         private OperationType operationType;
 
         private String operationTypes;
+
+        private Boolean exclusion;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {

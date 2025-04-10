@@ -22,4 +22,7 @@ export default {
     loadSubject() {
         return Ajax.get(`/financeAccountLink/loadSubject`)
     },
+    loadAccountingCategory(param) {
+        return Ajax.get(`/financeAccountLink/loadAccountingCategory`, param)
+    },
 }

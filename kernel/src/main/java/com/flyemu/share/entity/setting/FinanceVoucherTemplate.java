@@ -1,6 +1,6 @@
 package com.flyemu.share.entity.setting;
 
-import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson.JSONArray;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

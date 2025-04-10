@@ -5,9 +5,11 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.entity.setting.FinanceItemMap;
 import com.flyemu.share.entity.setting.QFinanceItemMap;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.FinanceItemMapRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,7 @@ public class FinanceItemMapService extends AbsService {
     public List<FinanceItemMap> query(FinanceItemMapService.Query query) {
         return bqf.selectFrom(qFinanceItemMap)
                 .where(query.builder)
+                .where(query.builders())
                 .orderBy(qFinanceItemMap.id.desc())
                 .fetch();
     }
@@ -50,6 +53,10 @@ public class FinanceItemMapService extends AbsService {
             BeanUtil.copyProperties(financeItemMap, original, CopyOptions.create().ignoreNullValue());
             original.setUpdatedAt(LocalDateTime.now());
             return financeItemMapRepository.save(original);
+        }
+        List<FinanceItemMap> result = financeItemMapRepository.findByInventoryIdAndCategoryId(financeItemMap.getInventoryId(), financeItemMap.getCategoryId());
+        if (!result.isEmpty()) {
+            throw new ServiceException("已有配置映射~");
         }
         financeItemMap.setCreatedAt(LocalDateTime.now());
         financeItemMap.setCreatedBy(accountDto.getAdminId());
@@ -67,8 +74,19 @@ public class FinanceItemMapService extends AbsService {
         return financeItemMapRepository.findById(id).orElseThrow(RuntimeException::new);
     }
 
+    public FinanceItemMap findByCategoryType(String categoryType) {
+        List<FinanceItemMap> byCategoryType = financeItemMapRepository.findByCategoryType(categoryType);
+        if (byCategoryType.isEmpty()) {
+            return null;
+        }
+        return byCategoryType.get(0);
+    }
+
+    @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
+
+        private Long categoryId;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -80,6 +98,13 @@ public class FinanceItemMapService extends AbsService {
             if (accountBookId != null) {
                 builder.and(qFinanceItemMap.accountBookId.eq(accountBookId));
             }
+        }
+
+        public BooleanBuilder builders() {
+            if (categoryId != null) {
+                builder.and(qFinanceItemMap.categoryId.eq(categoryId));
+            }
+            return builder;
         }
 
     }

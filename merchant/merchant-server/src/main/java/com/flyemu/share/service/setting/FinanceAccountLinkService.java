@@ -4,9 +4,11 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.flyemu.share.api.FinOpsCloudApi;
 import com.flyemu.share.api.FinOpsRequest;
 import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.dto.VoucherDto;
 import com.flyemu.share.entity.setting.FinanceAccountLink;
 import com.flyemu.share.entity.setting.QFinanceAccountLink;
 import com.flyemu.share.exception.ServiceException;
@@ -18,8 +20,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.UnsupportedEncodingException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 /**
@@ -82,7 +88,7 @@ public class FinanceAccountLinkService extends AbsService {
         return result;
     }
 
-    public FinanceAccountLink loadByAccountBookId(Long accountBookId, Long merchantId) {
+    public FinanceAccountLink loadByAccountBookId(Long accountBookId) {
         List<FinanceAccountLink> byAccountBookId = financeAccountLinkRepository.findByAccountBookId(accountBookId);
         if (byAccountBookId != null && !byAccountBookId.isEmpty()) {
             return byAccountBookId.get(0);
@@ -124,6 +130,56 @@ public class FinanceAccountLinkService extends AbsService {
             return finOpsCloudApi.loadSubject(finOpsRequest, financeAccountLink.getFinanceAccountId());
         }
         return new JSONArray();
+    }
+
+    @Transactional
+    public JSONObject loadAccountingCategory(String ids, AccountDto accountDto) {
+        Long accountBookId = accountDto.getAccountBookId();
+        List<FinanceAccountLink> byAccountBookId = financeAccountLinkRepository.findByAccountBookId(accountBookId);
+        if (byAccountBookId != null && !byAccountBookId.isEmpty()) {
+            FinanceAccountLink financeAccountLink = byAccountBookId.get(0);
+            FinOpsRequest finOpsRequest = new FinOpsRequest();
+            finOpsRequest.setCallback(cookie -> {
+                financeAccountLink.setFinanceCookie(cookie);
+                financeAccountLinkRepository.save(financeAccountLink);
+            });
+            finOpsRequest.setAccount(financeAccountLink.getFinanceAccount());
+            finOpsRequest.setPassword(financeAccountLink.getFinancePassword());
+            finOpsRequest.setBaseUrl(financeAccountLink.getUrl());
+            finOpsRequest.setCookie(finOpsRequest.getCookie());
+            return finOpsCloudApi.loadAccountingCategory(finOpsRequest, null,
+                    Arrays.stream(ids.split(",")).map(Long::parseLong).collect(Collectors.toList()));
+        }
+        return new JSONObject();
+    }
+
+    public JSONObject createVoucher(Long accountBookId, VoucherDto dto) throws JsonProcessingException {
+        FinanceAccountLink financeAccountLink = this.loadByAccountBookId(accountBookId);
+        FinOpsRequest finOpsRequest = new FinOpsRequest();
+        finOpsRequest.setAccount(financeAccountLink.getFinanceAccount());
+        finOpsRequest.setPassword(financeAccountLink.getFinancePassword());
+        finOpsRequest.setCallback(cookie -> {
+            financeAccountLink.setFinanceCookie(cookie);
+            financeAccountLinkRepository.save(financeAccountLink);
+        });
+        finOpsRequest.setBaseUrl(financeAccountLink.getUrl());
+        finOpsRequest.setCookie(finOpsRequest.getCookie());
+        dto.setAccountSetsId(financeAccountLink.getFinanceAccountId());
+        return finOpsCloudApi.createVoucher(finOpsRequest, null, dto);
+    }
+
+    public Integer loadWordCode(Long accountBookId, String word) throws UnsupportedEncodingException {
+        FinanceAccountLink financeAccountLink = this.loadByAccountBookId(accountBookId);
+        FinOpsRequest finOpsRequest = new FinOpsRequest();
+        finOpsRequest.setAccount(financeAccountLink.getFinanceAccount());
+        finOpsRequest.setPassword(financeAccountLink.getFinancePassword());
+        finOpsRequest.setCallback(cookie -> {
+            financeAccountLink.setFinanceCookie(cookie);
+            financeAccountLinkRepository.save(financeAccountLink);
+        });
+        finOpsRequest.setBaseUrl(financeAccountLink.getUrl());
+        finOpsRequest.setCookie(finOpsRequest.getCookie());
+        return finOpsCloudApi.loadWordCode(finOpsRequest, null, word, LocalDate.now());
     }
 
     public static class Query {

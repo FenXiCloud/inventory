@@ -1,18 +1,19 @@
 package com.flyemu.share.controller.setting;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.dto.AccountDto;
-import com.flyemu.share.entity.setting.FinanceVoucher;
-import com.flyemu.share.entity.setting.FinanceVoucherTemplate;
+import com.flyemu.share.form.FinanceVoucherForm;
 import com.flyemu.share.service.setting.FinanceVoucherService;
-import com.flyemu.share.service.setting.FinanceVoucherTemplateService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.UnsupportedEncodingException;
 
 /**
  * @功能描述: 云财务凭证
@@ -37,10 +38,10 @@ public class FinanceVoucherController {
     }
 
     @PostMapping("save")
-    public JsonResult save(@RequestBody @Valid FinanceVoucher financeVoucher, @SaAccountVal AccountDto accountDto) {
-        financeVoucher.setMerchantId(accountDto.getMerchantId());
-        financeVoucher.setAccountBookId(accountDto.getAccountBookId());
-        financeVoucherService.save(financeVoucher, accountDto);
+    public JsonResult batchSave(@RequestBody @Valid FinanceVoucherForm financeVoucherForm, @SaAccountVal AccountDto accountDto) throws JsonProcessingException, UnsupportedEncodingException {
+        financeVoucherForm.setMerchantId(accountDto.getMerchantId());
+        financeVoucherForm.setAccountBookId(accountDto.getAccountBookId());
+        financeVoucherService.save(financeVoucherForm);
         return JsonResult.successful();
     }
 

@@ -43,11 +43,11 @@
                    highlight-hover-row
                    show-overflow
                    show-footer
-                   :footer-method="footerMethod"
                    :row-config="{height: 48}"
                    :column-config="{resizable: true}"
                    :sort-config="{remote:true}"
                    :loading="loading">
+          <vxe-column type="checkbox" width="40" align="center"/>
           <vxe-column title="商品编号" field="productCode" align="center" width="130"/>
           <vxe-column title="商品名称" field="productName" width="200"/>
           <vxe-column title="商品类别" field="productCategoryName" width="200"/>
@@ -167,6 +167,23 @@
           </template>
         </vxe-pager>
       </div>
+      <div class="mt-10px"></div>
+      <div class="filler-panel">
+        <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
+          <label class="mr-16px w-80px">备注说明：</label>
+          <Input placeholder="请输入备注" type="text" maxlength="150"
+                 style="width: 80%"
+                 v-model="form.remarks"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-column-right">
+      <Button icon="fa fa-close" @click="$emit('close')" :loading="loading">
+        取消
+      </Button>
+      <Button icon="fa fa-save" color="primary" @click="confirm" :loading="loading">
+        保存
+      </Button>
     </div>
   </div>
 </template>
@@ -174,11 +191,11 @@
 import manba from "manba";
 import InventoryItem from "@js/api/inventory/InventoryItem";
 import {mapMutations} from "vuex";
-import {loading} from "heyui.ext";
+import {loading, message} from "heyui.ext";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import Supplier from "@js/api/basic/Supplier";
-import {exportExcel, exportExcelHeader} from "@js/excel";
+import FinanceVoucher from "@js/api/setting/FinanceVoucher";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -226,7 +243,8 @@ export default {
         "调拨出库": "调拨出库",
         "盘亏出库": "盘亏出库",
         "其他出库": "其他出库",
-      }
+      },
+      form: {}
     }
   },
   computed: {
@@ -241,49 +259,6 @@ export default {
   },
   methods: {
     ...mapMutations(['pushTab']),
-    footerMethod({columns, data}) {
-      let inQuantity = 0;
-      let outQuantity = 0;
-      let inTotal = 0;
-      let outTotal = 0;
-      let currentQuantity = 0;
-      let totalCost = 0;
-      data.forEach((row) => {
-        let rd = row['quantity'];
-        if (rd) {
-          if (this.inboundItems.includes(row['operationType'])) {
-            inQuantity += Number(rd || 0);
-          }
-          if (this.outboundItems.includes(row['operationType'])) {
-            outQuantity += Number(this.getAbsoluteValue(rd) || 0);
-          }
-        }
-      });
-      data.forEach((row) => {
-        let rd = row['subtotal'];
-        if (rd) {
-          if (this.inboundItems.includes(row['operationType'])) {
-            inTotal += Number(rd || 0);
-          }
-          if (this.outboundItems.includes(row['operationType'])) {
-            outTotal += Number(this.getAbsoluteValue(rd) || 0);
-          }
-        }
-      });
-      data.forEach((row) => {
-        let rd = row['currentQuantity'];
-        if (rd) {
-          currentQuantity += Number(rd || 0);
-        }
-      });
-      data.forEach((row) => {
-        let rd = row['totalCost'];
-        if (rd) {
-          totalCost += Number(rd || 0);
-        }
-      });
-      return [['合计', '', '', '', '', '', '', '', '', '', '', inQuantity, inQuantity, '', inTotal.toFixed(2), outQuantity, outQuantity, '', outTotal.toFixed(2), currentQuantity, '', totalCost.toFixed(2)]];
-    },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
@@ -306,6 +281,7 @@ export default {
       params.productIds = params.productIds.join(",");
       params.supplierIds = params.supplierIds.join(",");
       params.operationTypes = params.operationTypes.join(",");
+      params.exclusion = true;
       InventoryItem.report(params).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
@@ -318,105 +294,34 @@ export default {
         return number;
       }
     },
-    excel() {
-      this.loading = true;
-      const params = JSON.parse(JSON.stringify(this.queryParams));
-      params.warehouseIds = params.warehouseIds.join(",");
-      params.productIds = params.productIds.join(",");
-      params.supplierIds = params.supplierIds.join(",");
-      params.operationTypes = params.operationTypes.join(",");
-      params.page = 1;
-      params.pageSize = 99999;
-      InventoryItem.report(params).then(({data: {results, total}}) => {
-        let dataList = results || [];
-        let headList = [
-          {label: "商品编号", key: "productCode"},
-          {label: "商品名称", key: "productName"},
-          {label: "商品类别", key: "productCategoryName"},
-          {label: "规格型号", key: "productSpecification"},
-          {label: "单据日期", key: "createdAt"},
-          {label: "业务类型", key: "operationType"},
-          {label: "单据编号", key: "batchNumber"},
-          {label: "往来单位", key: "correspondent"},
-          {label: "仓库", key: "warehouseName"},
-          {label: "单位", key: "unitName"},
-          {label: "商品名称备注", key: "productRemarks"},
-          {label: "入库数量", key: "inQuantity"},
-          {label: "基本单位数量", key: "inQuantity"},
-          {label: "单位成本", key: "inUnitPrice"},
-          {label: "成本", key: "inSubtotal"},
-          {label: "出库数量", key: "outQuantity"},
-          {label: "基本单位数量", key: "outQuantity"},
-          {label: "单位成本", key: "outUnitPrice"},
-          {label: "成本", key: "outSubtotal"},
-          {label: "基本单位数量", key: "currentQuantity"},
-          {label: "单位成本", key: "averageCost"},
-          {label: "成本", key: "totalCost"},
-        ];
-        const tHeader = ['商品编号', '商品名称', '商品类别', '规格型号', '单据日期', '业务类型', '单据编号', '往来单位', '仓库', '单位', '商品名称备注', '入库数量', '入库',
-          null, null, '出库数量', '出库', null, null, '结存', null, null
-        ];
-        const merges = [
-          {s: {r: 0, c: 0}, e: {r: 1, c: 0}},
-          {s: {r: 0, c: 1}, e: {r: 1, c: 1}},
-          {s: {r: 0, c: 2}, e: {r: 1, c: 2}},
-          {s: {r: 0, c: 3}, e: {r: 1, c: 3}},
-          {s: {r: 0, c: 4}, e: {r: 1, c: 4}},
-          {s: {r: 0, c: 5}, e: {r: 1, c: 5}},
-          {s: {r: 0, c: 6}, e: {r: 1, c: 6}},
-          {s: {r: 0, c: 7}, e: {r: 1, c: 7}},
-          {s: {r: 0, c: 8}, e: {r: 1, c: 8}},
-          {s: {r: 0, c: 9}, e: {r: 1, c: 9}},
-          {s: {r: 0, c: 10}, e: {r: 1, c: 10}},
-          {s: {r: 0, c: 11}, e: {r: 1, c: 11}},
-          {s: {r: 0, c: 12}, e: {r: 0, c: 14}},
-          {s: {r: 0, c: 15}, e: {r: 1, c: 15}},
-          {s: {r: 0, c: 16}, e: {r: 0, c: 18}},
-          {s: {r: 0, c: 19}, e: {r: 0, c: 21}},
-        ];
-        const list = [[null, null, null, null, null, null, null, null, null, null, null, null, '基本单位数量', '单位成本', '成本', null, '基本单位数量',
-          '单位成本', '成本', '基本单位数量', '单位成本', '成本']];
-        // 处理传递数据
-        dataList = this.handleDataList(dataList);
-        exportExcelHeader(dataList, tHeader, headList, merges, list, manba(new Date()).format("YYYYMMddHHmmss") + "_进销存明细");
-      }).finally(() => this.loading = false);
-    },
-    handleDataList(dataList) {
-      let list = [];
-      dataList.forEach((item) => {
-        const element = item;
-        const operationType = item.operationType;
-        const quantity = item.quantity;
-        switch (operationType) {
-          case "采购入库":
-          case "销售退货":
-          case "调拨入库":
-          case "其他入库":
-          case "盘盈入库":
-            element.correspondent = item.supplierName;
-            element.inQuantity = quantity;
-            element.inUnitPrice = item.unitPrice;
-            element.inSubtotal = item.subtotal;
-            break;
-          case "采购退货":
-          case "销售出库":
-          case "调拨出库":
-          case "盘亏出库":
-          case "其他出库":
-            element.correspondent = item.customerName;
-            element.outQuantity = this.getAbsoluteValue(quantity);
-            element.outUnitPrice = item.unitPrice;
-            element.outSubtotal = item.subtotal;
-            break;
-          case "成本调整":
-            element.inSubtotal = item.subtotal;
-            break;
-          default:
-            break;
+    confirm() {
+      const selectRecords = this.$refs.table.getCheckboxRecords();
+      if (!selectRecords || selectRecords.length === 0) {
+        message.warn("请选择要操作的数据~");
+        return;
+      }
+      if (selectRecords.length > 1) {
+        message.warn("请选择一条数据推送~");
+        return;
+      }
+      const record = selectRecords[0];
+      FinanceVoucher.save({
+        orderId: record.id,
+        productId: record.productId,
+        customerId: record.customerId,
+        supplierId: record.supplierId,
+        amount: record.subtotal,
+        type: record.operationType,
+        orderTime: record.createdAt,
+        remark: this.form.remark,
+        orderName: record.productName,
+      }).then((success) => {
+        if (success) {
+          message("推送成功~");
+          this.$refs.table.clearCheckboxRow();
+          this.loadList();
         }
-        list.push(element);
       });
-      return list;
     }
   },
   created() {

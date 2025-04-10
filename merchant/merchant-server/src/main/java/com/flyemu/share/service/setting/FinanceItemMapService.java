@@ -74,6 +74,14 @@ public class FinanceItemMapService extends AbsService {
         return financeItemMapRepository.findById(id).orElseThrow(RuntimeException::new);
     }
 
+    public FinanceItemMap findByCategoryType(String categoryType) {
+        List<FinanceItemMap> byCategoryType = financeItemMapRepository.findByCategoryType(categoryType);
+        if (byCategoryType.isEmpty()) {
+            return null;
+        }
+        return byCategoryType.get(0);
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

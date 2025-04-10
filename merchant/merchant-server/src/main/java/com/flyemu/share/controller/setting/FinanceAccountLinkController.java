@@ -49,7 +49,7 @@ public class FinanceAccountLinkController {
 
     @GetMapping("/loadByAccountBookId/{accountBookId}")
     public JsonResult loadByAccountBookId(@PathVariable("accountBookId") Long accountBookId, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(financeAccountLinkService.loadByAccountBookId(accountBookId, merchantId));
+        return JsonResult.successful(financeAccountLinkService.loadByAccountBookId(accountBookId));
     }
 
     @GetMapping("/load/{id}")

@@ -5,6 +5,7 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.entity.setting.FinanceVoucherTemplate;
 import com.flyemu.share.entity.setting.QFinanceVoucherTemplate;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.FinanceVoucherTemplateRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -51,9 +52,21 @@ public class FinanceVoucherTemplateService extends AbsService {
             original.setUpdatedAt(LocalDateTime.now());
             return financeVoucherTemplateRepository.save(original);
         }
+        List<FinanceVoucherTemplate> byType = financeVoucherTemplateRepository.findByType(financeVoucherTemplate.getType());
+        if (!byType.isEmpty()) {
+            throw new ServiceException("已有对应类型凭证模板～");
+        }
         financeVoucherTemplate.setCreatedAt(LocalDateTime.now());
         financeVoucherTemplate.setCreatedBy(accountDto.getAdminId());
         return financeVoucherTemplateRepository.save(financeVoucherTemplate);
+    }
+
+    public FinanceVoucherTemplate findByType(String type) {
+        List<FinanceVoucherTemplate> byType = financeVoucherTemplateRepository.findByType(type);
+        if (!byType.isEmpty()) {
+            return byType.get(0);
+        }
+        return null;
     }
 
     @Transactional

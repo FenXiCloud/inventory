@@ -175,6 +175,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qCustomer).on(qInventoryItem.customerId.eq(qCustomer.id))
                 .where(query.builders())
                 .where(qInventoryItem.id.notIn(voucherOrderIds))
+                .where(qProduct.id.isNotNull())
                 .where(qInventoryItem.operationType.ne(OperationType.期初余额).or(qInventoryItem.id.in(ids)))
                 .orderBy(qInventoryItem.productId.asc())
                 .orderBy(qInventoryItem.firstSort.desc())
@@ -262,6 +263,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
                 .where(query.builders())
                 .where(qInventoryItem.id.notIn(voucherOrderIds))
+                .where(qProduct.id.isNotNull())
                 .where(qInventoryItem.operationType.ne(OperationType.期初余额))
                 .groupBy(qProduct.id)
                 .orderBy(qProduct.id.asc())
@@ -282,13 +284,15 @@ public class InventoryItemService extends AbsService {
             dto.setUnitName(tuple.get(qUnit.name.as("unitName")));
             dto.setWarehouseName(tuple.get(qWarehouse.name.as("warehouseName")));
             dto.setWarehouseId(tuple.get(qWarehouse.id.as("warehouseId")));
-            Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(dto.getProductId()).and(qInventory.warehouseId.eq(dto.getWarehouseId()))).fetchOne();
-            if (inventory != null) {
-                dto.setTotalCost(inventory.getTotalCost());
-                dto.setCurrentQuantity(inventory.getCurrentQuantity());
-            } else {
-                dto.setTotalCost(BigDecimal.ZERO);
-                dto.setCurrentQuantity(0);
+            if (dto.getProductId() != null && dto.getWarehouseId() != null) {
+                Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(dto.getProductId()).and(qInventory.warehouseId.eq(dto.getWarehouseId()))).fetchOne();
+                if (inventory != null) {
+                    dto.setTotalCost(inventory.getTotalCost());
+                    dto.setCurrentQuantity(inventory.getCurrentQuantity());
+                } else {
+                    dto.setTotalCost(BigDecimal.ZERO);
+                    dto.setCurrentQuantity(0);
+                }
             }
             dtos.add(dto);
         }
@@ -389,6 +393,8 @@ public class InventoryItemService extends AbsService {
 
         private Boolean exclusion;
 
+        private Boolean isReport;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qInventoryItem.merchantId.eq(merchantId));
@@ -402,9 +408,16 @@ public class InventoryItemService extends AbsService {
         }
 
         public BooleanBuilder builders() {
-            if (start != null && end != null) {
+            if (start != null && end != null && (isReport == null || Boolean.FALSE.equals(isReport))) {
                 builder.and(qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(addTimeOfFinalMoment(end).toInstant(), ZoneId.systemDefault())));
                 builder.and(qInventoryItem.createdAt.goe(LocalDateTime.ofInstant(start.toInstant(), ZoneId.systemDefault())));
+            }
+            if (start != null && end != null && Boolean.TRUE.equals(isReport)) {
+                builder.and(
+                        qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(addTimeOfFinalMoment(end).toInstant(), ZoneId.systemDefault()))
+                                .and(qInventoryItem.createdAt.goe(LocalDateTime.ofInstant(start.toInstant(), ZoneId.systemDefault())))
+                                .or(qInventoryItem.operationType.eq(OperationType.期初余额))
+                );
             }
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
                 builder.and(qInventoryItem.batchNumber.contains(filter))

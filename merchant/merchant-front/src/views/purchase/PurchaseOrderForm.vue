@@ -27,6 +27,15 @@
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
           </template>
         </vxe-column>
+        <vxe-column field="imgPath" title="商品图片" width="100">
+          <template #default="{row}">
+            <img
+                :src="productList.find(item => item.id === row.productId)?.imgPath || '-'"
+                alt=""
+                class="product-img cursor-pointer"
+                @click="previewImage(productList.find(item => item.id === row.productId)?.imgPath)">
+          </template>
+        </vxe-column>
         <vxe-column title="商品信息" width="300">
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
@@ -51,8 +60,8 @@
             </template>
           </template>
         </vxe-column>
-        <vxe-column title="类别" field="categoryName" align="center" width="80"/>
-        <vxe-column title="规格" field="spec" align="center" width="80"/>
+        <vxe-column title="商品类别" field="categoryName" align="center" width="80"/>
+        <vxe-column title="规格型号" field="spec" align="center" width="80"/>
         <vxe-column title="仓库" field="warehouse" align="center" width="120">
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
@@ -73,9 +82,33 @@
         <vxe-column title="基本数量" field="quantity" width="90"/>
         <vxe-column title="购货单价" field="secondaryPrice" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
-                       @blur="updatePrice(row)" v-model.number="row.secondaryPrice" type="float" min="0"
-                       :controls="false"></vxe-input>
+            <vxe-tooltip theme="light">
+              <template #content>
+                <div class="recent-sales-table">
+                  <table>
+                    <thead>
+                    <tr>
+                      <th>最近采购时间</th>
+                      <th>最近采购价</th>
+                      <th>供货商</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="(item, index) in recentSales || []" :key="index">
+                      <td>{{item.orderDate || '-'}}</td>
+                      <td>{{item.unitPrice || '-'}}</td>
+                      <td>{{item.supplierName || '-'}}</td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
+                <vxe-input :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
+                           @blur="updatePrice(row)"
+                           @focus="showPrice(row.productId)"
+                           v-model.number="row.secondaryPrice" type="float" min="0"
+                           :controls="false"></vxe-input>
+            </vxe-tooltip>
           </template>
         </vxe-column>
         <vxe-column title="折扣率(%)" field="discountRate" width="100">
@@ -119,7 +152,7 @@
           <Input v-model="form.discountRate" @blur="changeDiscountRate"/>
           <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
           <Input v-model="form.discountAmount" @blur="changeDiscountAmount"/>
-          <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
+          <label class="ml-16px mr-16px  w-100px">优惠后金额{{recentSales.length}}：</label>
           <Input v-model="form.finalAmount" @blur="changeFinalAmount"/>
         </div>
       </div>
@@ -130,11 +163,11 @@
         取消
       </Button>
       <div>
-        <Button color="primary" @click="saveOrder" :loading="loading">
+        <Button color="primary" @click="saveOrder('save')" :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder" :loading="loading">
-          保存{{allFinalAmount}}
+        <Button @click="saveOrder('add')" :loading="loading">
+          保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
         <Button @click="saveOrder" :loading="loading">
@@ -157,6 +190,7 @@ import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapState} from "vuex";
+import PriceRecord from "@js/api/basic/PriceRecord";
 
 export default {
   name: "PurchaseOrderForm",
@@ -200,6 +234,7 @@ export default {
         remarks: null,
       },
       productData: [],
+      recentSales: []
     }
   },
   watch: {
@@ -316,12 +351,28 @@ export default {
             }, 100);
           })
         });
+        this.showPrice(d.productId)
       }
       this.product = null;
     },
 
+    showPrice(productId){
+      if (!productId) {
+        console.log("请选择产品")
+        return;
+      }
+      // 获取商品库存进行提示
+      let param = {
+        productId: productId,
+      }
+      PriceRecord.showPurchasePrice(param).then(({data}) => {
+        this.recentSales = data || [];
+        console.log(this.recentSales)
+      }).finally(() => this.loading = false);
+    },
+
     //保存订单
-    saveOrder() {
+    saveOrder(type) {
       loading("保存中....");
       if (!this.form.supplierId) {
         message.error("请选择购货商~");
@@ -341,13 +392,17 @@ export default {
         return
       }
       PurchaseOrder.save({
-        purchaseOrder: Object.assign(this.form, {totalAmount : this.allFinalAmount}),
+        purchaseOrder: Object.assign(this.form, {totalAmount: this.allFinalAmount}),
         type: this.type,
         purchaseOrderItemList: productData
       }).then((success) => {
         if (success) {
           message("保存成功~");
           this.clearForm()
+          //保存
+          if (type === 'save') {
+            this.closeWindow()
+          }
         }
       }).finally(() =>
           loading.close());
@@ -491,20 +546,13 @@ export default {
 
     //关闭窗口
     closeWindow() {
-      let cache = localStorage.getItem("SYS_TABS");
-      let tagList = cache ? JSON.parse(cache) : [];
-      if (tagList) {
-        let index = tagList.findIndex(val => val.name === "NewPurchaserOrder")
-        tagList.splice(index, 1);
-        let newRoute;
-        if (tagList.length > 0) {
-          newRoute = tagList[index - 1];
-        } else {
-          this.$router.push({name: 'DashboardMain'});
-        }
-        if (newRoute) this.$router.replace(newRoute);
-        localStorage.setItem("SYS_TABS", JSON.stringify(newRoute))
-      }
+      this.$store.commit('closeTabKey', this.$store.state.currentTab);
+      this.$store.commit('newTab', "PurchaseOrderList");
+      // 使用 nextTick 确保在 DOM 更新后执行
+      this.$nextTick(() => {
+        // 通过 eventBus 或 vuex 触发刷新
+        this.$store.commit('SET_TAB_DATA', {refresh: true});
+      });
     }
   },
   beforeDestroy() {
@@ -546,3 +594,33 @@ export default {
   },
 }
 </script>
+<style scoped>
+
+.recent-sales-table {
+  min-width: 300px;
+}
+
+.recent-sales-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  border: 1px solid #dfe6ec;
+}
+
+.recent-sales-table th,
+.recent-sales-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid #dfe6ec;
+}
+
+.recent-sales-table th {
+  background-color: #f5f7fa;
+  font-weight: bold;
+  color: #606266;
+}
+
+.recent-sales-table tbody tr:hover {
+  background-color: #f5f7fa;
+}
+</style>

@@ -30,7 +30,7 @@ public class PirceRecordController {
     public JsonResult list(Page page, PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(priceRecordService.query(page,query));
+        return JsonResult.successful(priceRecordService.query(page, query));
     }
 
     @PostMapping
@@ -71,7 +71,7 @@ public class PirceRecordController {
 
     @PostMapping("/product/save")
     public JsonResult productSave(@RequestBody ProductForm productForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        priceRecordService.productSave(productForm, merchantId,accountBookId);
+        priceRecordService.productSave(productForm, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
@@ -79,7 +79,14 @@ public class PirceRecordController {
     public JsonResult showPrice(Page page, PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(priceRecordService.showPrice(page,query));
+        return JsonResult.successful(priceRecordService.showPrice(page, query));
+    }
+
+    @GetMapping("/show/purchase/price")
+    public JsonResult showPurchasePrice(PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(priceRecordService.showPurchasePrice(query));
     }
 
 }

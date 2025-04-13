@@ -16,7 +16,7 @@
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">供货商：</span>
           <Select class="w-160px" filterable required :datas="supplierList" keyName="id" titleName="name"
-                  :deletable="false" v-model="params.supplierId" placeholder="请选择供货商"/>
+                  v-model="params.supplierId" placeholder="请选择供货商"/>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
@@ -53,9 +53,10 @@
         </vxe-column>
         <vxe-column title="入库日期" field="inboundDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
-        <!--        <vxe-column title="关联采购订单" field="purchaseInboundId" width="200"/>-->
+        <vxe-column title="关联退货单" field="purchaseReturnOrderNo" width="200"/>
+        <vxe-column title="关联采购单" field="purchaseOrderNos" width="200"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
-        <vxe-column title="销售金额" field="totalAmount" width="120"/>
+        <vxe-column title="采购金额" field="totalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
         <vxe-column title="折后金额" field="finalAmount" width="120"/>
         <vxe-column title="数量" field="secondarySum" width="120"/>
@@ -140,7 +141,7 @@ export default {
     },
     detail(orderId = null) {
       this.pushTab({
-        key: 'PurchaseOrderDetail',
+        key: 'PurchaseInboundDetail',
         title: '采购订单',
         params: {orderId: orderId}
       });

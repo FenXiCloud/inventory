@@ -25,6 +25,16 @@ public class PurchaseInboundDto {
     private Long purchaseInboundId;
 
     /**
+     * 退货单主表ID
+     */
+    private Long purchaseReturnId;
+
+    /**
+     * 退货单orderNo
+     */
+    private String purchaseReturnOrderNo;
+
+    /**
      * 供货商ID
      */
     private Long supplierId;
@@ -107,4 +117,9 @@ public class PurchaseInboundDto {
      * 审核人名称
      */
     private String approvedName;
+
+    /**
+     * 关联采购单号
+     */
+    private String purchaseOrderNos;
 }

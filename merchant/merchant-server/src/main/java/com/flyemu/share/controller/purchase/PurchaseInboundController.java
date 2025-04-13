@@ -80,6 +80,19 @@ public class PurchaseInboundController {
         return JsonResult.successful(purchaseInboundService.select(merchantId, accountBookId));
     }
 
+
+    @GetMapping("/toReturn")
+    public JsonResult listToReturn(Page page, PurchaseInboundService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(purchaseInboundService.listToReturn(page, query));
+    }
+
+    @PostMapping("/toReturn/{supplierId}")
+    public JsonResult toReturn(@RequestBody List<Long> orderIds, @PathVariable Long supplierId, @SaMerchantId Long merchantId) {
+        return JsonResult.successful(purchaseInboundService.loadToReturn(orderIds, merchantId, supplierId));
+    }
+
     /**
      * 批量审核
      *

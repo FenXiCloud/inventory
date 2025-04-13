@@ -30,6 +30,15 @@
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
           </template>
         </vxe-column>
+        <vxe-column field="imgPath" title="商品图片" width="100">
+          <template #default="{row}">
+            <img
+                :src="productList.find(item => item.id === row.productId)?.imgPath || '-'"
+                alt=""
+                class="product-img cursor-pointer"
+                @click="previewImage(productList.find(item => item.id === row.productId)?.imgPath)">
+          </template>
+        </vxe-column>
         <vxe-column title="商品信息" width="300">
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
@@ -43,8 +52,8 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="类别" field="categoryName" align="center" width="80"/>
-        <vxe-column title="规格" field="spec" align="center" width="80"/>
+        <vxe-column title="商品类别" field="categoryName" align="center" width="80"/>
+        <vxe-column title="规格型号" field="spec" align="center" width="80"/>
         <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
@@ -76,9 +85,33 @@
         <vxe-column title="基本数量" field="quantity" width="90"/>
         <vxe-column title="购货单价" field="secondaryPrice" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
-                       @blur="updatePrice(row)" v-model.number="row.secondaryPrice" type="float" min="0"
-                       :controls="false"></vxe-input>
+            <vxe-tooltip theme="light">
+              <template #content>
+                <div class="recent-sales-table">
+                  <table>
+                    <thead>
+                    <tr>
+                      <th>最近采购时间</th>
+                      <th>最近采购价</th>
+                      <th>供货商</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="(item, index) in recentSales || []" :key="index">
+                      <td>{{item.orderDate || '-'}}</td>
+                      <td>{{item.unitPrice || '-'}}</td>
+                      <td>{{item.supplierName || '-'}}</td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
+              <vxe-input :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
+                         @blur="updatePrice(row)"
+                         @focus="showPrice(row.productId)"
+                         v-model.number="row.secondaryPrice" type="float" min="0"
+                         :controls="false"></vxe-input>
+            </vxe-tooltip>
           </template>
         </vxe-column>
         <vxe-column title="折扣率(%)" field="discountRate" width="100">
@@ -164,6 +197,7 @@ import {h} from "vue";
 import PurchaseOrderSelect from "@views/purchase/PurchaseOrderSelect.vue";
 import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
+import PriceRecord from "@js/api/basic/PriceRecord";
 
 export default {
   name: "PurchaseInboundForm",
@@ -194,6 +228,7 @@ export default {
       allFinalAmount: 0,
       warehouseList: [],
       supplierList: [],
+      orderIds: [],
       supplierId: null,
       warehouseId: null,
       form: {
@@ -206,6 +241,7 @@ export default {
         remarks: null,
       },
       productData: [],
+      recentSales: [],
     }
   },
   watch: {
@@ -239,6 +275,7 @@ export default {
       });
     },
     loadToInbound(params) {
+      this.orderIds = params.orderIds
       PurchaseOrder.toInbound(this.form.supplierId, params.orderIds).then(({data}) => {
         this.productData = data || [];
       })
@@ -350,8 +387,24 @@ export default {
             }, 100);
           })
         });
+        this.showPrice(d.productId)
       }
       this.product = null;
+    },
+
+    showPrice(productId){
+      if (!productId) {
+        console.log("请选择产品")
+        return;
+      }
+      // 获取商品库存进行提示
+      let param = {
+        productId: productId,
+      }
+      PriceRecord.showPurchasePrice(param).then(({data}) => {
+        this.recentSales = data || [];
+        console.log(this.recentSales)
+      }).finally(() => this.loading = false);
     },
 
     //保存订单
@@ -377,6 +430,7 @@ export default {
       PurchaseInbound.save({
         purchaseInbound: Object.assign(this.form, {totalAmount: this.allFinalAmount}),
         type: this.type,
+        orderIds: this.orderIds,
         purchaseInboundItemList: productData
       }).then((success) => {
         if (success) {
@@ -580,3 +634,33 @@ export default {
   },
 }
 </script>
+<style scoped>
+
+.recent-sales-table {
+  min-width: 300px;
+}
+
+.recent-sales-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  border: 1px solid #dfe6ec;
+}
+
+.recent-sales-table th,
+.recent-sales-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid #dfe6ec;
+}
+
+.recent-sales-table th {
+  background-color: #f5f7fa;
+  font-weight: bold;
+  color: #606266;
+}
+
+.recent-sales-table tbody tr:hover {
+  background-color: #f5f7fa;
+}
+</style>

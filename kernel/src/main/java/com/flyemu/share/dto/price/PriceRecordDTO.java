@@ -88,4 +88,9 @@ public class PriceRecordDTO {
     @Column(nullable = false)
     private Long merchantId;
 
+    /**
+     * 供货商名称
+     */
+    private String supplierName;
+
 }

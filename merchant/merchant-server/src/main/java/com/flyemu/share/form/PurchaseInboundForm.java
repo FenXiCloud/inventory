@@ -11,5 +11,7 @@ public class PurchaseInboundForm {
 
     private PurchaseInbound purchaseInbound;
 
+    private List<Long> orderIds;
+
     private List<PurchaseInboundItem> purchaseInboundItemList;
 }

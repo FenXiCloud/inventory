@@ -56,6 +56,7 @@ public class PurchaseOrderService extends AbsService {
 
     private final static QUnit qUnit = QUnit.unit;
     private final static QPurchaseOrder qPurchaseOrder = QPurchaseOrder.purchaseOrder;
+    private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
     private final static QProduct qProduct = QProduct.product;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final static QPurchaseOrderItem qPurchaseOrderItem = QPurchaseOrderItem.purchaseOrderItem;
@@ -69,10 +70,30 @@ public class PurchaseOrderService extends AbsService {
 
     public PageResults<PurchaseOrderDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseOrder)
+                .select(qPurchaseOrder, qSupplier.name, qMerchantUser.name, qPurchaseInbound.orderNo)
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
+                .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseOrder.purchaseInboundId))
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseOrder.createdBy))
+                .where(query.builder).orderBy(qPurchaseOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+
+        List<PurchaseOrderDto> dtos = new ArrayList<>();
+        fetchPage.forEach(tuple -> {
+            PurchaseOrderDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrder), PurchaseOrderDto.class);
+            dto.setSupplierName(tuple.get(qSupplier.name));
+            dto.setPurchaseInboundOrderNo(tuple.get(qPurchaseInbound.orderNo));
+            dto.setCreatedName(tuple.get(qMerchantUser.name));
+            dtos.add(dto);
+        });
+
+        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+    }
+
+    public PageResults<PurchaseOrderDto> queryToInBound(Page page, Query query) {
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseOrder)
                 .select(qPurchaseOrder, qSupplier.name, qMerchantUser.name)
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseOrder.createdBy))
-                .where(query.builder).orderBy(qPurchaseOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+                .where(query.builder.and(qPurchaseOrder.purchaseInboundId.isNull())).orderBy(qPurchaseOrder.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
         List<PurchaseOrderDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
@@ -118,10 +139,12 @@ public class PurchaseOrderService extends AbsService {
                 .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
+                .leftJoin(qPurchaseOrder).on(qPurchaseOrder.id.eq(qPurchaseOrderItem.purchaseOrderId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseOrderItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
                 .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseOrderItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseOrderItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
-                .where(qPurchaseOrderItem.purchaseOrderId.in(orderIds).and(qPurchaseOrderItem.merchantId.eq(merchantId)))
+                .where(qPurchaseOrderItem.purchaseOrderId.in(orderIds).and(qPurchaseOrderItem.merchantId.eq(merchantId))
+                        .and(qPurchaseOrder.orderStatus.eq(OrderStatus.已审核)).and(qPurchaseOrder.purchaseInboundId.isNull()))
                 .orderBy(qPurchaseOrderItem.id.asc())
                 .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
                     PurchaseInboundItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrderItem), PurchaseInboundItemDto.class);
@@ -213,7 +236,7 @@ public class PurchaseOrderService extends AbsService {
         }
     }
 
-    private void savePrice( PurchaseOrderItem item, PurchaseOrder order) {
+    private void savePrice(PurchaseOrderItem item, PurchaseOrder order) {
         PriceRecord priceRecord = new PriceRecord();
         priceRecord.setUnitPrice(item.getUnitPrice());
         priceRecord.setBaseUnitId(item.getBaseUnitId());
@@ -232,6 +255,7 @@ public class PurchaseOrderService extends AbsService {
         PurchaseOrder original = purchaseOrderRepository.getById(purchaseOrderId);
 
         Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能删除~");
+        Assert.isFalse(original.getPurchaseInboundId() != null, "已关联入库单不能删除~");
 
         jqf.delete(qPurchaseOrder)
                 .where(qPurchaseOrder.id.eq(purchaseOrderId).and(qPurchaseOrder.merchantId.eq(merchantId)).and(qPurchaseOrder.accountBookId.eq(accountBookId)))
@@ -275,7 +299,7 @@ public class PurchaseOrderService extends AbsService {
     }
 
     public Dict load(Long merchantId, Long orderId) {
-        Tuple fetchFirst = jqf.selectFrom(qPurchaseOrder)
+        Tuple fetchFirst = bqf.selectFrom(qPurchaseOrder)
                 .select(qPurchaseOrder, qSupplier.name)
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
                 .where(qPurchaseOrder.merchantId.eq(merchantId).and(qPurchaseOrder.id.eq(orderId))).fetchFirst();
@@ -285,7 +309,7 @@ public class PurchaseOrderService extends AbsService {
         PurchaseOrderDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseOrder), PurchaseOrderDto.class);
         orderDto.setSupplierName(fetchFirst.get(qSupplier.name));
         ArrayList<PurchaseOrderItemDto> collect = jqf.selectFrom(qPurchaseOrderItem)
-                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,qProductCategory.name,qProduct.specification,
+                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name, qProductCategory.name, qProduct.specification,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseOrderItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))

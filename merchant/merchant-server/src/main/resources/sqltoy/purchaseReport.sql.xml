@@ -173,6 +173,7 @@ FROM
 	ju.`name` as secondaryUnitName,
 	jp.`code` as productCode,
 	jp.`name` as supplierName,
+	jpc.`name` as categoryName,
 	jw.`name` as warehouseName
 FROM
 	(
@@ -218,11 +219,12 @@ FROM
 	LEFT JOIN jxc_unit AS ju ON ju.id = po.secondary_unit_id
 	LEFT JOIN jxc_product AS jp ON jp.id = po.product_id
 	LEFT JOIN jxc_supplier AS js ON js.id = po.supplier_id
+	LEFT JOIN jxc_product_category AS jpc ON jp.product_category_id = jpc.id
 	WHERE jp.merchant_id = :merchantId
 	#[AND (po.order_no like :filter OR js.name like :filter)]
-	#[AND js.id =  :supplierId]
-	#[AND jp.id =  :productId]
-	#[AND jw.id =  :warehouseId]
+	#[AND js.id in  :supplierId]
+	#[AND jp.id in  :productId]
+	#[AND jw.id in  :warehouseId]
 ]]></value>
     </sql>
 

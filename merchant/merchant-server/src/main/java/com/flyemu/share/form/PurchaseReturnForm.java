@@ -11,5 +11,7 @@ public class PurchaseReturnForm {
 
     private PurchaseReturn purchaseReturn;
 
+    private List<Long> inboundIds;
+
     private List<PurchaseReturnItem> purchaseReturnItemList;
 }

@@ -16,7 +16,7 @@
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">供货商：</span>
           <Select class="w-160px" filterable required :datas="supplierList" keyName="id" titleName="name"
-                  :deletable="false"  v-model="params.supplierId" placeholder="请选择供货商"/>
+                    v-model="params.supplierId" placeholder="请选择供货商"/>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
@@ -46,13 +46,13 @@
               <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
             </template>
             <template v-if="row.orderStatus === '已审核'">
-              <span class="primary-color  text-hover ml-10px" >详情</span>
+              <span class="primary-color  text-hover ml-10px" @click="detail(row.id)">详情</span>
             </template>
           </template>
         </vxe-column>
         <vxe-column title="订单日期" field="returnDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
-<!--        <vxe-column title="关联入库单" field="code" width="200"/>-->
+        <vxe-column title="关联入库单" field="purchaseInboundNos" width="200"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
         <vxe-column title="退货金额" field="refundTotalAmount" width="120"/>
         <vxe-column title="折扣金额" field="discountAmount" width="120"/>
@@ -85,7 +85,6 @@ import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 import {mapMutations} from "vuex";
 import {confirm, message} from "heyui.ext";
 import Supplier from "@js/api/basic/Supplier";
-import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -197,6 +196,14 @@ export default {
       } else {
         message.error("未选择数据~");
       }
+    },
+
+    detail(orderId = null) {
+      this.pushTab({
+        key: 'PurchaseReturnDetail',
+        title: '采购退货单',
+        params: {orderId: orderId}
+      });
     },
     backApproved() {
       let checkList = this.$refs.table.getCheckboxRecords();

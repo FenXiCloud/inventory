@@ -117,4 +117,9 @@ public class PurchaseReturnDto {
      * 审核人名称
      */
     private String approvedName;
+
+    /**
+     * 关联采购入库单号
+     */
+    private String purchaseInboundNos;
 }

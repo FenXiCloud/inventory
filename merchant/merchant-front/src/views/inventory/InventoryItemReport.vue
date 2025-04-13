@@ -53,7 +53,15 @@
         <vxe-column title="商品名称" field="productName" width="200"/>
         <vxe-column title="商品类别" field="productCategoryName" width="200"/>
         <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
-        <vxe-column title="单据日期" field="createdAt" width="120"/>
+        <vxe-column title="单据日期" field="createdAt" width="120">
+          <template #default="{ row }">
+            <div v-if="row.operationType !== '期初余额'">
+              {{ row.createdAt }}
+            </div>
+            <div v-else>
+            </div>
+          </template>
+        </vxe-column>
         <vxe-column title="业务类型" field="operationType" width="120"/>
         <vxe-column title="单据编号" field="batchNumber" width="200"/>
         <vxe-column title="往来单位" field="supplierName" width="120">
@@ -306,6 +314,7 @@ export default {
       params.productIds = params.productIds.join(",");
       params.supplierIds = params.supplierIds.join(",");
       params.operationTypes = params.operationTypes.join(",");
+      params.isReport = true;
       InventoryItem.report(params).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
@@ -327,6 +336,7 @@ export default {
       params.operationTypes = params.operationTypes.join(",");
       params.page = 1;
       params.pageSize = 99999;
+      params.isReport = true;
       InventoryItem.report(params).then(({data: {results, total}}) => {
         let dataList = results || [];
         let headList = [
@@ -388,6 +398,9 @@ export default {
         const operationType = item.operationType;
         const quantity = item.quantity;
         switch (operationType) {
+          case "期初余额":
+            element.createdAt = '';
+            break;
           case "采购入库":
           case "销售退货":
           case "调拨入库":

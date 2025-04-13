@@ -20,4 +20,7 @@ export default {
     select(param) {
         return Ajax.get('/inventoryInitial/select', param)
     },
+    batchSave(param) {
+        return Ajax.post('/inventoryInitial/batchSave', param)
+    },
 }

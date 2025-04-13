@@ -69,7 +69,7 @@ const groupRoutes = [
         name: 'InventoryInitialList',
         component: defineAsyncComponent(() => import('@views/basic/InventoryInitialList.vue'))
     },
-
+    {name: 'InventoryInitialForm', component: defineAsyncComponent(() => import('@views/basic/InventoryInitialForm.vue'))},
     {name: 'PriceRecordList', component: defineAsyncComponent(() => import('@views/basic/PriceRecordList.vue'))},
     {name: 'SalesOrderList', component: defineAsyncComponent(() => import('@views/sales/SalesOrderList.vue'))},
     {name: 'SalesOrderForm', component: defineAsyncComponent(() => import('@views/sales/SalesOrderForm.vue'))},

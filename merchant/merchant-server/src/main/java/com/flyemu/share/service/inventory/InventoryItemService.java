@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.InventoryItemDTO;
 import com.flyemu.share.dto.InventoryItemReportDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.Inventory;
@@ -15,6 +16,7 @@ import com.flyemu.share.entity.inventory.QInventoryItem;
 import com.flyemu.share.entity.setting.FinanceVoucher;
 import com.flyemu.share.entity.setting.QFinanceVoucher;
 import com.flyemu.share.enums.OperationType;
+import com.flyemu.share.form.InventoryInitialForm;
 import com.flyemu.share.repository.InventoryItemRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -74,6 +76,29 @@ public class InventoryItemService extends AbsService {
                 .orderBy(qInventoryItem.id.desc())
                 .fetch();
         return inventoryItems;
+    }
+
+    public PageResults<InventoryItemDTO> query(Page page, Query query) {
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryItem)
+                .select(qInventoryItem, qProduct.name, qProduct.code, qProduct.specification, qWarehouse.name, qUnit.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qInventoryItem.productId))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qInventoryItem.baseUnitId))
+                .where(query.builder)
+                .orderBy(qInventoryItem.id.desc())
+                .fetchPage(page.getOffset(), page.getOffsetEnd());
+
+        ArrayList<InventoryItemDTO> collect = fetchPage.stream().collect(ArrayList::new, (list, tuple) -> {
+            InventoryItemDTO dto = BeanUtil.toBean(tuple.get(qInventoryItem), InventoryItemDTO.class);
+            dto.setProductName(tuple.get(qProduct.name));
+            dto.setProductCode(tuple.get(qProduct.code));
+            dto.setSpecification(tuple.get(qProduct.specification));
+            dto.setWarehouseName(tuple.get(qWarehouse.name));
+            dto.setUnitName(tuple.get(qUnit.name));
+            list.add(dto);
+        }, List::addAll);
+        
+        return new PageResults<>(collect, page, fetchPage.getTotalSize());
     }
 
     @Transactional
@@ -360,6 +385,27 @@ public class InventoryItemService extends AbsService {
         return dtos;
     }
 
+    @Transactional
+    public void batchSave(InventoryInitialForm inventoryInitialForm) {
+        List<InventoryItem> inventoryItemList = inventoryInitialForm.getInventoryItemList();
+        for (InventoryItem inventoryItem : inventoryItemList) {
+            inventoryItem.setAccountBookId(inventoryInitialForm.getAccountBookId());
+            inventoryItem.setMerchantId(inventoryInitialForm.getMerchantId());
+            inventoryItem.setCreatedBy(inventoryInitialForm.getCreatedBy());
+            inventoryItem.setCreatedAt(LocalDateTime.now());
+            if (inventoryItem.getId() != null) {
+                //更新
+                InventoryItem original = inventoryItemRepository.getById(inventoryItem.getId());
+                BeanUtil.copyProperties(inventoryItem, original, CopyOptions.create().ignoreNullValue());
+                inventoryItemRepository.save(original);
+            }else{
+                inventoryItem.setUpdatedAt(LocalDateTime.now());
+                //新增
+                inventoryItemRepository.save(inventoryItem);
+            }
+        }
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
@@ -404,6 +450,12 @@ public class InventoryItemService extends AbsService {
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
                 builder.and(qInventoryItem.accountBookId.eq(accountBookId));
+            }
+        }
+
+        public void setOperationType(OperationType operationType) {
+            if (operationType != null) {
+                builder.and(qInventoryItem.operationType.eq(operationType));
             }
         }
 

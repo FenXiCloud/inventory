@@ -11,7 +11,7 @@
                  :column-config="{resizable: true}"
                  :loading="loading">
         <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
+        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left" v-if="this.type === 'add'">
           <template #default="{row,rowIndex}">
             <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert',rowIndex)"></div>
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
@@ -34,8 +34,16 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="单位" field="unitName"/>
-        <vxe-column title="规格型号" field="specification"/>
+        <vxe-column title="单位" field="unitName">
+          <template #default="{row}">
+            {{ getUnitName(row) }}
+          </template>
+        </vxe-column>
+        <vxe-column title="规格型号" field="specification">
+          <template #default="{row}">
+            {{ productList.find(item => item.id === row.productId)?.specification || '-' }}
+          </template>
+        </vxe-column>
         <vxe-column title="仓库" field="warehouseId" align="center" width="180">
           <template #default="{row,rowIndex}">
             <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
@@ -92,6 +100,7 @@ import {mapMutations, mapState} from "vuex";
 import {confirm, loading, message} from "heyui.ext";
 import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
+import Unit from "@js/api/basic/Unit";
 
 
 export default {
@@ -122,10 +131,22 @@ export default {
       },
       productList: [],
       warehouseList: [],
+      unitList: [],
     }
   },
   methods: {
     ...mapMutations(['closeSelfTab', 'pushTab']),
+
+    getUnitName(row) {
+      const product = this.productList.find(item => item.id === row.productId);
+      if (product?.unitId) {
+        const unit = this.unitList.find(item => item.id === product.unitId);
+        return unit?.name || '-';
+      } else {
+        const unit = this.unitList.find(item => item.id === row.unitId);
+        return unit?.name || '-';
+      }
+    },
 
     updateQuantity(item) {
       console.log("updateQuantity",item)
@@ -142,6 +163,9 @@ export default {
     selectProduct(item, index) {
       console.log("item",item)
       console.log("index",index)
+      if(this.type === 'edit'){
+        return
+      }
       let g = {
         quantity: 0,
         baseUnitId: item.unitId,
@@ -201,7 +225,10 @@ export default {
       });
     },
     editForm(){
-
+      InventoryInitial.getInfo(this.inventoryInitialId).then(({data}) => {
+        this.dataList[0] = data;
+        console.log("data",data)
+      }).finally(() => this.loading = false);
     },
     initForm(){
       for (let index = 0; index < 5; index++) {
@@ -220,9 +247,11 @@ export default {
     Promise.all([
       Product.select(),
       Warehouse.select(),
+      Unit.select(),
     ]).then((results) => {
       this.productList = results[0].data || [];
       this.warehouseList = results[1].data || [];
+      this.unitList = results[2].data || [];
       this.productList.forEach(item => {
         item.name = `${item.code}--${item.name}`;
       });

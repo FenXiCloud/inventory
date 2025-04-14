@@ -23,4 +23,7 @@ export default {
     batchSave(param) {
         return Ajax.post('/inventoryInitial/batchSave', param)
     },
+    getInfo(id) {
+        return Ajax.get("/inventoryInitial/getInfo/" + id);
+    },
 }

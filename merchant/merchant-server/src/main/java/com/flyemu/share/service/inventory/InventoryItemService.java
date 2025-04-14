@@ -18,6 +18,8 @@ import com.flyemu.share.entity.setting.QFinanceVoucher;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.form.InventoryInitialForm;
 import com.flyemu.share.repository.InventoryItemRepository;
+import com.flyemu.share.repository.ProductRepository;
+import com.flyemu.share.repository.UnitRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -404,6 +406,12 @@ public class InventoryItemService extends AbsService {
                 inventoryItemRepository.save(inventoryItem);
             }
         }
+    }
+
+    public InventoryItemDTO getById(InventoryItem query) {
+        InventoryItem inventoryItem = inventoryItemRepository.getById(query.getId());
+        InventoryItemDTO dto = BeanUtil.toBean(inventoryItem, InventoryItemDTO.class);
+        return dto;
     }
 
     @Data

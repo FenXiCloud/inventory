@@ -44,8 +44,8 @@
         <vxe-column title="期初总价" field="subtotal"/>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">
-            <i class="primary-color h-icon-edit ml-10px" @click="addForm(row)"></i>
-            <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
+            <i class="primary-color h-icon-edit ml-10px text-hover" @click="addForm('edit',row.id)"></i>
+            <i class="primary-color h-icon-trash ml-10px text-hover" @click="doRemove(row)"></i>
           </template>
         </vxe-column>
       </vxe-table>

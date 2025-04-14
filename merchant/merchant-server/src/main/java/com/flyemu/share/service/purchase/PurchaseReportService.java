@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @功能描述: 采购订单报表
@@ -89,58 +90,55 @@ public class PurchaseReportService extends AbsService {
         if (StrUtil.isNotBlank(query.filter)) {
             params.put("filter", query.filter);
         }
-        if (query.supplierIds != null) {
-            params.put("supplierId", query.supplierIds);
-        }
         if (query.accountBookId != null) {
             params.put("accountBookId", query.accountBookId);
         }
-        if (query.warehouseIds != null) {
-            params.put("warehouseId", query.warehouseIds);
+        if (CollUtil.isNotEmpty(query.supplierIds)) {
+            params.put("supplierIds", String.join(",", query.supplierIds.stream().map(Object::toString).collect(Collectors.toList())));
         }
-        if (query.productIds != null) {
-            params.put("productId", query.productIds);
+        if (CollUtil.isNotEmpty(query.warehouseIds)) {
+            String warehouseIdsStr = String.join(",", query.warehouseIds.stream().map(Object::toString).collect(Collectors.toList()));
+            params.put("warehouseIds", warehouseIdsStr);
+        }
+        if (CollUtil.isNotEmpty(query.productIds)) {
+            String productIdsStr = String.join(",", query.productIds.stream().map(Object::toString).collect(Collectors.toList()));
+            params.put("productIds", productIdsStr);
+        }
+        if (CollUtil.isNotEmpty(query.productCategoryIds)) {
+            params.put("productCategoryIds", String.join(",", query.productCategoryIds.stream().map(Object::toString).collect(Collectors.toList())));
+        }
+        if (CollUtil.isNotEmpty(query.supplierCategoryIds)) {
+            params.put("supplierCategoryIds", String.join(",", query.supplierCategoryIds.stream().map(Object::toString).collect(Collectors.toList())));
         }
 
-        String groupBy = "po.product_id";
+        String groupBy = "";
         if (groupValues.contains("warehouse")) {
             groupBy += ",po.warehouse_id";
         }
 
-        org.sagacity.sqltoy.model.Page sqlPage = new org.sagacity.sqltoy.model.Page(page.getSize(), page.getPage());
-
-        if ("in".equals(query.orderType)) {
-            if (groupValues.contains("supplier")) {
-                groupBy += ",p2_0.supplier_id";
-            }
-            params.put("groupBy", groupBy);
-            org.sagacity.sqltoy.model.Page<PurchaseReportSummaryDto> summaryPage = lazyDao.findPageBySql(sqlPage, "purchaseOrderReportSummaryList", params, PurchaseReportSummaryDto.class);
-
-            return new PageResults<>(summaryPage.getRows(), page, summaryPage.getRecordCount());
-        } else if ("out".equals(query.orderType)) {
-            if (groupValues.contains("supplier")) {
-                groupBy += ",p2_0.supplier_id";
-            }
-            params.put("groupBy", groupBy);
-            org.sagacity.sqltoy.model.Page<PurchaseReportSummaryDto> summaryPage = lazyDao.findPageBySql(sqlPage, "purchaseReturnReportSummaryList", params, PurchaseReportSummaryDto.class);
-
-            return new PageResults<>(summaryPage.getRows(), page, summaryPage.getRecordCount());
-        } else {
-
-            if (groupValues.contains("supplier")) {
-                groupBy += ",po.supplier_id";
-            }
-            params.put("groupBy", groupBy);
-            org.sagacity.sqltoy.model.Page<PurchaseReportSummaryDto> summaryPage = lazyDao.findPageBySql(sqlPage, "purchaseReportSummaryList", params, PurchaseReportSummaryDto.class);
-
-            return new PageResults<>(summaryPage.getRows(), page, summaryPage.getRecordCount());
+        if (groupValues.contains("supplier")) {
+            groupBy += ",po.supplier_id";
         }
+
+        if (groupValues.contains("product")) {
+            groupBy += ",po.product_id";
+        }
+
+        if (!groupBy.isEmpty()) {
+            groupBy = groupBy.substring(1);
+        }
+
+        org.sagacity.sqltoy.model.Page sqlPage = new org.sagacity.sqltoy.model.Page(page.getSize(), page.getPage());
+        params.put("groupBy", groupBy);
+        org.sagacity.sqltoy.model.Page<PurchaseReportSummaryDto> summaryPage = lazyDao.findPageBySql(sqlPage, "purchaseReportSummaryList", params, PurchaseReportSummaryDto.class);
+
+        return new PageResults<>(summaryPage.getRows(), page, summaryPage.getRecordCount());
     }
 
     public PageResults<PurchaseReportItemDto> queryReturn(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseReturnItem)
                 .select(qPurchaseReturnItem.secondaryPrice, qPurchaseReturnItem.subtotal, qWarehouse.name, qPurchaseReturnItem.secondaryQuantity,
-                        qPurchaseReturn.orderNo, qPurchaseReturn.returnDate, qSupplier.name, qProduct.name, qProduct.code, qUnit.name,qProductCategory.name)
+                        qPurchaseReturn.orderNo, qPurchaseReturn.returnDate, qSupplier.name, qProduct.name, qProduct.code, qUnit.name, qProductCategory.name)
                 .leftJoin(qPurchaseReturn).on(qPurchaseReturn.id.eq(qPurchaseReturnItem.purchaseReturnId))
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseReturn.supplierId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseReturnItem.warehouseId))
@@ -175,7 +173,7 @@ public class PurchaseReportService extends AbsService {
 
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInboundItem)
                 .select(qPurchaseInboundItem.secondaryPrice, qPurchaseInboundItem.subtotal, qWarehouse.name, qPurchaseInboundItem.secondaryQuantity, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qSupplier.name,
-                        qProduct.name, qProduct.code, qUnit.name,qProductCategory.name)
+                        qProduct.name, qProduct.code, qUnit.name, qProductCategory.name)
                 .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseInboundItem.warehouseId))
@@ -311,6 +309,8 @@ public class PurchaseReportService extends AbsService {
         public List<Long> warehouseIds;
         public List<Long> supplierIds;
         public List<Long> productIds;
+        public List<Long> productCategoryIds;
+        public List<Long> supplierCategoryIds;
         public Long accountBookId;
         public LocalDate end;
         public LocalDate start;
@@ -382,6 +382,14 @@ public class PurchaseReportService extends AbsService {
                 builder.and(qPurchaseReturnItem.productId.in(productIds));
                 inboundBuilder.and(qPurchaseInboundItem.productId.in(productIds));
             }
+        }
+
+        public void setProductCategoryIds(List<Long> productCategoryIds) {
+            this.productCategoryIds = productCategoryIds;
+        }
+
+        public void setSupplierCategoryIds(List<Long> supplierCategoryIds) {
+            this.supplierCategoryIds = supplierCategoryIds;
         }
 
         public void setOrderType(String orderType) {

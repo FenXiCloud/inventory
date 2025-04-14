@@ -372,7 +372,7 @@ public class PurchaseReturnService extends AbsService {
         }
         public void setFilter(String filter) {
             if (StrUtil.isNotEmpty(filter)) {
-                builder.and(qPurchaseReturn.orderNo.contains(filter).or(qSupplier.name.contains(filter)));
+                builder.and(qPurchaseReturn.orderNo.contains(filter));
             }
         }
         public void setSupplierId(Long supplierId) {

@@ -69,16 +69,28 @@
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
               <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
-                      titleName="name"/>
+                      titleName="name" @change="handleWarehouseChange(row, $event)"/>
             </template>
           </template>
         </vxe-column>
         <vxe-column title="数量" field="secondaryQuantity" width="90">
           <template #default="{row,rowIndex,columnIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3" @keyup="handleEnter($event,rowIndex,3)"
-                       @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.secondaryQuantity"
-                       type="float"
-                       min="0" :controls="false"></vxe-input>
+            <vxe-tooltip theme="light">
+              <template #content>
+                <div>当前库存: {{row.currentStockQuantity || 0}}</div>
+                <div>总库存: {{row.totalStockQuantity || 0}}</div>
+              </template>
+              <vxe-input
+                  :id="'r'+rowIndex+''+3"
+                  @blur="updateQuantity(row)"
+                  @focus="showStockQuantity(row)"
+                  ref="inputQuantity"
+                  v-model.number="row.secondaryQuantity"
+                  type="float"
+                  min="0"
+                  :controls="false">
+              </vxe-input>
+            </vxe-tooltip>
           </template>
         </vxe-column>
         <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
@@ -135,7 +147,7 @@
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
-        <vxe-column title="备注" field="remark">
+        <vxe-column title="备注" field="remark" width="160">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8" @keyup="handleEnter($event,rowIndex,8)"
                        v-model="row.remark" placeholder="输入备注" :controls="false"></vxe-input>
@@ -166,10 +178,10 @@
         取消
       </Button>
       <div>
-        <Button color="primary" @click="saveOrder" :loading="loading">
+        <Button color="primary" @click="saveOrder('add')" :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder" :loading="loading">
+        <Button @click="saveOrder('save')" :loading="loading">
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
@@ -198,6 +210,7 @@ import PurchaseOrderSelect from "@views/purchase/PurchaseOrderSelect.vue";
 import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import PriceRecord from "@js/api/basic/PriceRecord";
+import Inventory from "@js/api/inventory/Inventory";
 
 export default {
   name: "PurchaseInboundForm",
@@ -350,6 +363,41 @@ export default {
       return [["", "", "", "", "", "", "", quantity.toFixed(2), "", ""].concat(sums)];
     },
 
+    // 仓库选择框变化时触发
+    handleWarehouseChange(row) {
+      this.showStockQuantity(row);
+    },
+
+    showStockQuantity(row) {
+      let productId = row.productId;
+      let warehouseId = row.warehouseId;
+      if (!productId) {
+        console.log("请选择产品")
+        return;
+      }
+      // 获取商品库存进行提示
+      let param = {
+        productId: productId,
+        page:1,
+        pageSize:1000
+      }
+      Inventory.list(param).then(res => {
+        const {data} = res;
+        if (data && data.results) {
+          let totalQuantity = 0;
+          let quantity = 0;
+          data.results.forEach(item => {
+            totalQuantity += Number(item.currentQuantity);
+            if (Number(item.warehouseId) === Number(warehouseId)) {
+              quantity = item.currentQuantity;
+            }
+          });
+          row.currentStockQuantity = quantity;
+          row.totalStockQuantity = totalQuantity;
+        }
+      });
+    },
+
     //选择商品
     selectProduct(d, index) {
       if (d) {
@@ -436,6 +484,10 @@ export default {
         if (success) {
           message("保存成功~");
           this.clearForm()
+          //保存
+          if (type === 'save') {
+            this.closeWindow()
+          }
         }
       }).finally(() =>
           loading.close());
@@ -579,21 +631,15 @@ export default {
 
     //关闭窗口
     closeWindow() {
-      let cache = localStorage.getItem("SYS_TABS");
-      let tagList = cache ? JSON.parse(cache) : [];
-      if (tagList) {
-        let index = tagList.findIndex(val => val.name === "NewPurchaserOrder")
-        tagList.splice(index, 1);
-        let newRoute;
-        if (tagList.length > 0) {
-          newRoute = tagList[index - 1];
-        } else {
-          this.$router.push({name: 'DashboardMain'});
-        }
-        if (newRoute) this.$router.replace(newRoute);
-        localStorage.setItem("SYS_TABS", JSON.stringify(newRoute))
-      }
-    }
+      console.log("this.$store.state.currentTab", this.$store.state.currentTab)
+      this.$store.commit('closeTabKey', this.$store.state.currentTab);
+      this.$store.commit('newTab', "PurchaseOrderList");
+      // 使用 nextTick 确保在 DOM 更新后执行
+      this.$nextTick(() => {
+        // 通过 eventBus 或 vuex 触发刷新
+        this.$store.commit('SET_TAB_DATA', { refresh: true });
+      });
+    },
   },
   beforeDestroy() {
     confirm({

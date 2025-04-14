@@ -13,7 +13,6 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.PurchaseInboundDto;
 import com.flyemu.share.dto.purchase.PurchaseInboundItemDto;
 import com.flyemu.share.dto.purchase.PurchaseOrderDto;
-import com.flyemu.share.dto.purchase.PurchaseReturnItemDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.basic.PriceRecord;
 import com.flyemu.share.entity.basic.QSupplier;
@@ -38,7 +37,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -227,12 +225,13 @@ public class PurchaseInboundService extends AbsService {
 
         List<PurchaseInboundItemDto> collect = bqf.selectFrom(qPurchaseInboundItem)
                 .select(qPurchaseInboundItem, qProduct.code, qProduct.name, qWarehouse.name,
-                        qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
+                        qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name,qProductCategory.name,qProduct.specification)
                 .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId).and(qPurchaseInbound.merchantId.eq(merchantId)))
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseInboundItem.productId).and(qProduct.merchantId.eq(merchantId)))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseInboundItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
                 .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseInboundItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseInboundItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(qPurchaseInboundItem.purchaseInboundId.in(orderIds).and(qPurchaseInboundItem.merchantId.eq(merchantId))
                         .and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核)))
                 .orderBy(qPurchaseInboundItem.id.asc())
@@ -240,6 +239,8 @@ public class PurchaseInboundService extends AbsService {
                     PurchaseInboundItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseInboundItem), PurchaseInboundItemDto.class);
                     dto.setId(null);
                     dto.setProductCode(tuple.get(qProduct.code));
+                    dto.setSpec(tuple.get(qProduct.specification));
+                    dto.setCategoryName(tuple.get(qProductCategory.name));
                     dto.setProductName(tuple.get(qProduct.name));
                     dto.setBaseUnitName(tuple.get(qUnit.name));
                     dto.setWarehouseName(tuple.get(qWarehouse.name));
@@ -264,7 +265,7 @@ public class PurchaseInboundService extends AbsService {
             }
         } else if (OrderStatus.已保存.equals(state)) {
             for (PurchaseInbound order : orders) {
-                if (OrderStatus.已审核.equals(order.getOrderStatus())) {
+                if (OrderStatus.已审核.equals(order.getOrderStatus()) && order.getPurchaseReturnId() != null) {
                     setIds.add(order.getId());
                 } else {
                     log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
@@ -418,7 +419,7 @@ public class PurchaseInboundService extends AbsService {
 
         public void setFilter(String filter) {
             if (StrUtil.isNotEmpty(filter)) {
-                builder.and(qPurchaseInbound.orderNo.contains(filter).or(qSupplier.name.contains(filter)));
+                builder.and(qPurchaseInbound.orderNo.contains(filter));
             }
         }
 

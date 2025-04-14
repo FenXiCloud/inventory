@@ -281,7 +281,7 @@ public class PurchaseOrderService extends AbsService {
             }
         } else if (OrderStatus.已保存.equals(state)) {
             for (PurchaseOrder order : orders) {
-                if (OrderStatus.已审核.equals(order.getOrderStatus())) {
+                if (OrderStatus.已审核.equals(order.getOrderStatus()) && order.getPurchaseInboundId() == null) {
                     setIds.add(order.getId());
                 } else {
                     log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
@@ -350,7 +350,7 @@ public class PurchaseOrderService extends AbsService {
 
         public void setFilter(String filter) {
             if (StrUtil.isNotEmpty(filter)) {
-                builder.and(qPurchaseOrder.orderNo.contains(filter).or(qSupplier.name.contains(filter)));
+                builder.and(qPurchaseOrder.orderNo.contains(filter));
             }
         }
 

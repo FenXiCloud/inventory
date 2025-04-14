@@ -84,7 +84,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qProduct).on(qProduct.id.eq(qInventoryItem.productId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qInventoryItem.baseUnitId))
-                .where(query.builder)
+                .where(query.buildersV2())
                 .orderBy(qInventoryItem.id.desc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
 
@@ -113,9 +113,9 @@ public class InventoryItemService extends AbsService {
     }
 
     @Transactional
-    public void delete(Long supplierFlowId, Long merchantId, Long accountBookId) {
+    public void delete(Long inventoryItemId, Long merchantId, Long accountBookId) {
         jqf.delete(qInventoryItem)
-                .where(qInventoryItem.id.eq(supplierFlowId).and(qInventoryItem.merchantId.eq(merchantId)).and(qInventoryItem.accountBookId.eq(accountBookId)))
+                .where(qInventoryItem.id.eq(inventoryItemId).and(qInventoryItem.merchantId.eq(merchantId)).and(qInventoryItem.accountBookId.eq(accountBookId)))
                 .execute();
     }
 
@@ -453,12 +453,6 @@ public class InventoryItemService extends AbsService {
             }
         }
 
-        public void setOperationType(OperationType operationType) {
-            if (operationType != null) {
-                builder.and(qInventoryItem.operationType.eq(operationType));
-            }
-        }
-
         public BooleanBuilder builders() {
             if (start != null && end != null && (isReport == null || Boolean.FALSE.equals(isReport))) {
                 builder.and(qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(addTimeOfFinalMoment(end).toInstant(), ZoneId.systemDefault())));
@@ -505,6 +499,23 @@ public class InventoryItemService extends AbsService {
             }
             if (StrUtil.isNotBlank(operationTypes)) {
                 builder.and(qInventoryItem.operationType.in(Arrays.stream(operationTypes.split(",")).map(OperationType::valueOf).toList()));
+            }
+            return builder;
+        }
+
+        public BooleanBuilder buildersV2() {
+
+            if (operationType != null) {
+                builder.and(qInventoryItem.operationType.eq(operationType));
+            }
+            if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
+                builder.and(qProduct.code.contains(filter).or(qProduct.name.contains(filter)));
+            }
+            if (StrUtil.isNotBlank(warehouseIds)) {
+                builder.and(qInventoryItem.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(productIds)) {
+                builder.and(qInventoryItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
             }
             return builder;
         }

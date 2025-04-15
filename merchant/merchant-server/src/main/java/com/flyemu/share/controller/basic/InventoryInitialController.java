@@ -7,7 +7,9 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.dto.InventoryItemDTO;
 import com.flyemu.share.entity.inventory.InventoryItem;
+import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.form.InventoryInitialForm;
+import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.service.inventory.InventoryItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -91,6 +93,14 @@ public class InventoryInitialController {
         query.setId(id);
         InventoryItemDTO inventoryItemDTO =inventoryItemService.getById(query);
         return JsonResult.successful(inventoryItemDTO);
+    }
+
+    @PutMapping("/batchDelete")
+    public JsonResult batchDelete(
+            @RequestBody InventoryInitialForm inventoryInitialForm
+    ) {
+        inventoryItemService.batchDelete(inventoryInitialForm);
+        return JsonResult.successful();
     }
 
 }

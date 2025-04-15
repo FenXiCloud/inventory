@@ -24,4 +24,6 @@ public class InventoryInitialForm {
 
     @Comment("创建人")
     private Long createdBy;
+
+    private List<Long> ids;
 }

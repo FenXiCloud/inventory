@@ -3,6 +3,7 @@
     <vxe-toolbar>
       <template #buttons>
         <Button @click="addForm()" color="primary">新 增</Button>
+        <Button @click="batchDelete()" >批量删除</Button>
       </template>
       <template #tools>
         <div class="h-input-group">
@@ -70,6 +71,7 @@ import {mapMutations} from "vuex";
 import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
 import {loading, confirm,message} from "heyui.ext";
+import SalesOrder from "@js/api/sales/SalesOrder";
 
 export default {
   name: "InventoryInitialList",
@@ -145,6 +147,31 @@ export default {
         title: type === 'edit' ? '编辑库存初期' : '新增库存初期',
         params: {type: type, inventoryInitialId: inventoryInitialId}
       });
+    },
+    batchDelete(){
+      const selectedRows = this.$refs.table.getCheckboxRecords();
+      console.log(selectedRows);
+      if (selectedRows.length === 0) {
+        message.error("请选择至少一条数据");
+        return;
+      }
+      confirm({
+        content: `确定批量删除数据？`,
+        onConfirm: () => {
+          const ids = selectedRows.map(row => row.id);
+          let params = {
+            ids: ids,
+          };
+          InventoryInitial.batchDelete(params).then((success) => {
+            if (success) {
+              message.success("批量删除成功");
+              this.loadList(); // Refresh the list
+            }
+          }).finally(() =>
+              loading.close()
+          );
+        }
+      })
     },
     doRemove(row) {
       confirm({

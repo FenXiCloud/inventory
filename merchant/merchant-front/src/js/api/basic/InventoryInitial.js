@@ -26,4 +26,7 @@ export default {
     getInfo(id) {
         return Ajax.get("/inventoryInitial/getInfo/" + id);
     },
+    batchDelete(param) {
+        return Ajax.put('/inventoryInitial/batchDelete', param)
+    },
 }

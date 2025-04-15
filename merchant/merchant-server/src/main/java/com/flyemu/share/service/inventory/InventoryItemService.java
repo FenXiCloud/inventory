@@ -425,7 +425,7 @@ public class InventoryItemService extends AbsService {
                     Product product = productRepository.getById(inventoryItem.getProductId());
                     //根据仓库id查询仓库
                     Warehouse warehouse = warehouseRepository.getById(inventoryItem.getWarehouseId());
-                    throw new InvalidContextException("商品：" + product.getName() + "，仓库：" + warehouse.getName() + "，期初余额数据已存在");
+                    throw new InvalidContextException("商品：" + product.getName() + "，仓库：" + warehouse.getName() + "，期初库存数据已存在");
                 }
                 inventoryItem.setUpdatedAt(LocalDateTime.now());
                 //新增
@@ -438,6 +438,15 @@ public class InventoryItemService extends AbsService {
         InventoryItem inventoryItem = inventoryItemRepository.getById(query.getId());
         InventoryItemDTO dto = BeanUtil.toBean(inventoryItem, InventoryItemDTO.class);
         return dto;
+    }
+
+    @Transactional
+    public void batchDelete(InventoryInitialForm inventoryInitialForm) {
+        List<Long> ids = inventoryInitialForm.getIds();
+        if (ids.isEmpty()) {
+            return;
+        }
+        inventoryItemRepository.deleteAllByIdInBatch(ids);
     }
 
     @Data

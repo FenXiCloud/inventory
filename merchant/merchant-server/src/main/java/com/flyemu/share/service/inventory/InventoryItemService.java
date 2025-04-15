@@ -1,5 +1,6 @@
 package com.flyemu.share.service.inventory;
 
+import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
@@ -20,14 +21,17 @@ import com.flyemu.share.form.InventoryInitialForm;
 import com.flyemu.share.repository.InventoryItemRepository;
 import com.flyemu.share.repository.ProductRepository;
 import com.flyemu.share.repository.UnitRepository;
+import com.flyemu.share.repository.WarehouseRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.criteria.Predicate;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,6 +75,10 @@ public class InventoryItemService extends AbsService {
     private final static QFinanceVoucher qFinanceVoucher = QFinanceVoucher.financeVoucher;
 
     private final InventoryItemRepository inventoryItemRepository;
+
+    private final ProductRepository productRepository;
+
+    private final WarehouseRepository warehouseRepository;
 
     public List<InventoryItem> query(Query query) {
         List<InventoryItem> inventoryItems = bqf.selectFrom(qInventoryItem)
@@ -401,6 +409,24 @@ public class InventoryItemService extends AbsService {
                 BeanUtil.copyProperties(inventoryItem, original, CopyOptions.create().ignoreNullValue());
                 inventoryItemRepository.save(original);
             }else{
+                //按照商品id和仓库id 查询数据是否存在，组装查询条件
+                Specification<InventoryItem> query = (root, criteriaQuery, criteriaBuilder) -> {
+                    List<Predicate> predicates = new ArrayList<>();
+                    predicates.add(criteriaBuilder.equal(root.get("productId"), inventoryItem.getProductId()));
+                    predicates.add(criteriaBuilder.equal(root.get("warehouseId"), inventoryItem.getWarehouseId()));
+                    predicates.add(criteriaBuilder.equal(root.get("accountBookId"), inventoryItem.getAccountBookId()));
+                    predicates.add(criteriaBuilder.equal(root.get("merchantId"), inventoryItem.getMerchantId()));
+                    predicates.add(criteriaBuilder.equal(root.get("operationType"), OperationType.期初库存));
+                    return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+                };
+                //如果存在，则抛出异常
+                if (inventoryItemRepository.exists(query)) {
+                    //根据商品id查询商品
+                    Product product = productRepository.getById(inventoryItem.getProductId());
+                    //根据仓库id查询仓库
+                    Warehouse warehouse = warehouseRepository.getById(inventoryItem.getWarehouseId());
+                    throw new InvalidContextException("商品：" + product.getName() + "，仓库：" + warehouse.getName() + "，期初余额数据已存在");
+                }
                 inventoryItem.setUpdatedAt(LocalDateTime.now());
                 //新增
                 inventoryItemRepository.save(inventoryItem);

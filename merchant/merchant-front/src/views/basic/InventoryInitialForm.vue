@@ -26,7 +26,7 @@
           <template #default="scope">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
-                      keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false">
+                      keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false" :disabled="this.type === 'edit'">
                 <template v-slot:item="{ item }">
                   <div>{{ item.name }}</div>
                 </template>
@@ -47,7 +47,7 @@
         <vxe-column title="仓库" field="warehouseId" align="center" width="180">
           <template #default="{row,rowIndex}">
             <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
-                    titleName="name"
+                    titleName="name" :disabled="this.type === 'edit'"
             />
           </template>
         </vxe-column>
@@ -218,18 +218,72 @@ export default {
     },
 
     save(){
-      this.loading = true;
-
       let requestData = {
         inventoryItemList: this.dataList,
       };
       //移除掉productId 为null的数据
       requestData.inventoryItemList = requestData.inventoryItemList.filter(item => item.productId);
+      //校验
+      if (!this.checkHttp(requestData.inventoryItemList)) {
+        return
+      }
+      this.loading = true;
       InventoryInitial.batchSave(requestData).then(({data}) => {
         this.dataList = data;
         console.log("data",data)
         this.closeWindow();
       }).finally(() => this.loading = false);
+    },
+
+    checkHttp(requestData) {
+      if (requestData.length === 0) {
+        message.error("请选择商品~");
+        return false
+      }
+      let quantityFlag = false
+      let unitPriceFlag = false
+      let subtotalFlag = false
+      let warehouseFlag = false
+      let productFlag = false
+      requestData.map(item => {
+        console.log("item",item)
+        if (item.quantity === 0 || !item.quantity) {
+          quantityFlag = true
+        }
+        if (item.unitPrice === 0 || !item.unitPrice) {
+          unitPriceFlag = true
+        }
+        if (item.subtotal === 0 || !item.subtotal) {
+          subtotalFlag = true
+        }
+        if (!item.warehouseId) {
+          warehouseFlag = true
+        }
+        if (!item.productId) {
+          productFlag = true
+        }
+      })
+      if (productFlag) {
+        message.error("请选择商品~");
+        return false
+      }
+      if (warehouseFlag) {
+        message.error("请选择仓库~");
+        return false
+      }
+      if (quantityFlag) {
+        message.error("请填写数量~");
+        return false
+      }
+      if (unitPriceFlag) {
+        message.error("请填写单价~");
+        return false
+      }
+      if (subtotalFlag) {
+        message.error("金额不能为空~");
+        return false
+      }
+      return true
     },
 
     closeWindow() {

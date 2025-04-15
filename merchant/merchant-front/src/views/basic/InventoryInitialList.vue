@@ -33,6 +33,7 @@
                  :row-config="{height: 48}"
                  :column-config="{resizable: true}"
                  :loading="loading">
+        <vxe-column type="checkbox" width="40" align="center"/>
         <vxe-column type="seq" width="60" title="序号"/>
         <vxe-column title="产品编码" field="productCode" width="150"/>
         <vxe-column title="产品名称" field="productName"/>

@@ -18,6 +18,8 @@ import com.flyemu.share.entity.setting.QFinanceVoucher;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.form.InventoryInitialForm;
 import com.flyemu.share.repository.InventoryItemRepository;
+import com.flyemu.share.repository.ProductRepository;
+import com.flyemu.share.repository.UnitRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -84,7 +86,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qProduct).on(qProduct.id.eq(qInventoryItem.productId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qInventoryItem.baseUnitId))
-                .where(query.builder)
+                .where(query.buildersV2())
                 .orderBy(qInventoryItem.id.desc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
 
@@ -113,9 +115,9 @@ public class InventoryItemService extends AbsService {
     }
 
     @Transactional
-    public void delete(Long supplierFlowId, Long merchantId, Long accountBookId) {
+    public void delete(Long inventoryItemId, Long merchantId, Long accountBookId) {
         jqf.delete(qInventoryItem)
-                .where(qInventoryItem.id.eq(supplierFlowId).and(qInventoryItem.merchantId.eq(merchantId)).and(qInventoryItem.accountBookId.eq(accountBookId)))
+                .where(qInventoryItem.id.eq(inventoryItemId).and(qInventoryItem.merchantId.eq(merchantId)).and(qInventoryItem.accountBookId.eq(accountBookId)))
                 .execute();
     }
 
@@ -406,6 +408,12 @@ public class InventoryItemService extends AbsService {
         }
     }
 
+    public InventoryItemDTO getById(InventoryItem query) {
+        InventoryItem inventoryItem = inventoryItemRepository.getById(query.getId());
+        InventoryItemDTO dto = BeanUtil.toBean(inventoryItem, InventoryItemDTO.class);
+        return dto;
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
@@ -450,12 +458,6 @@ public class InventoryItemService extends AbsService {
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
                 builder.and(qInventoryItem.accountBookId.eq(accountBookId));
-            }
-        }
-
-        public void setOperationType(OperationType operationType) {
-            if (operationType != null) {
-                builder.and(qInventoryItem.operationType.eq(operationType));
             }
         }
 
@@ -505,6 +507,23 @@ public class InventoryItemService extends AbsService {
             }
             if (StrUtil.isNotBlank(operationTypes)) {
                 builder.and(qInventoryItem.operationType.in(Arrays.stream(operationTypes.split(",")).map(OperationType::valueOf).toList()));
+            }
+            return builder;
+        }
+
+        public BooleanBuilder buildersV2() {
+
+            if (operationType != null) {
+                builder.and(qInventoryItem.operationType.eq(operationType));
+            }
+            if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
+                builder.and(qProduct.code.contains(filter).or(qProduct.name.contains(filter)));
+            }
+            if (StrUtil.isNotBlank(warehouseIds)) {
+                builder.and(qInventoryItem.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(productIds)) {
+                builder.and(qInventoryItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
             }
             return builder;
         }

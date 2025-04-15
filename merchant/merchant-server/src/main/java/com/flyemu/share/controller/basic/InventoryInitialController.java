@@ -5,6 +5,7 @@ import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
+import com.flyemu.share.dto.InventoryItemDTO;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.form.InventoryInitialForm;
 import com.flyemu.share.service.inventory.InventoryItemService;
@@ -69,6 +70,27 @@ public class InventoryInitialController {
     @GetMapping("select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(inventoryItemService.select(merchantId, accountBookId));
+    }
+
+    /**
+     * 详情
+     * @param merchantId
+     * @param accountBookId
+     * @param id
+     * @return
+     */
+    @GetMapping("/getInfo/{id}")
+    public JsonResult getInfo(
+            @SaMerchantId Long merchantId,
+            @SaAccountBookId Long accountBookId,
+            @PathVariable Long id
+    ) {
+        InventoryItem query = new InventoryItem();
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        query.setId(id);
+        InventoryItemDTO inventoryItemDTO =inventoryItemService.getById(query);
+        return JsonResult.successful(inventoryItemDTO);
     }
 
 }

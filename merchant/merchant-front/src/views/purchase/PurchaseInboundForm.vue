@@ -105,14 +105,14 @@
                     <tr>
                       <th>最近采购时间</th>
                       <th>最近采购价</th>
-                      <th>供货商</th>
+                      <th>预计采购价</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr v-for="(item, index) in recentSales || []" :key="index">
                       <td>{{item.orderDate || '-'}}</td>
                       <td>{{item.unitPrice || '-'}}</td>
-                      <td>{{item.supplierName || '-'}}</td>
+                      <td>{{item.purchasePrice || '-'}}</td>
                     </tr>
                     </tbody>
                   </table>

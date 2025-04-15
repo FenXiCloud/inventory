@@ -79,7 +79,13 @@
         </vxe-column>
         <vxe-column title="金额" field="subtotal">
           <template #default="{row,rowIndex,}">
-            <vxe-input ref="inputAmount" v-model.number="row.subtotal" type="float" min="0" :controls="false">
+            <vxe-input ref="inputAmount"
+                       v-model.number="row.subtotal"
+                       type="float"
+                       min="0"
+                       :controls="false"
+                       @blur="updateSubtotal(row)"
+            >
             </vxe-input>
           </template>
         </vxe-column>
@@ -149,14 +155,21 @@ export default {
     },
 
     updateQuantity(item) {
-      console.log("updateQuantity",item)
+      this.compute(item);
       this.$refs.xTable.updateFooter();
     },
 
-    //更新单价
     updatePrice(item) {
-      console.log("updatePrice",item)
+      this.compute(item);
       this.$refs.xTable.updateFooter();
+    },
+    updateSubtotal(item){
+      this.compute(item);
+      this.$refs.xTable.updateFooter();
+    },
+    compute(item){
+      //计算总价 = 数量 * 单价
+      item.subtotal = (item.quantity * item.unitPrice).toFixed(2);
     },
 
     //选择商品
@@ -168,6 +181,8 @@ export default {
       }
       let g = {
         quantity: 0,
+        unitPrice: 0,
+        subtotal: 0,
         baseUnitId: item.unitId,
         unitName: item.unitName,
         productId: item.id,

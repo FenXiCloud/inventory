@@ -6,23 +6,21 @@
         <Button>打 印</Button>
       </template>
       <template #tools>
-        <Select v-model="params.orderType" class="w-120px" :datas="{in:'入库单',out:'退货单',all:'全部'}"
-                placeholder="订单类型：" :deletable="false"/>
         <Select v-model="groupValues" class="w-240px ml-8px"
                 :datas="{product:'商品',supplier:'供货商',warehouse:'仓库'}"
                 placeholder="统计字段：" :multiple="true"/>
         <DateRangePicker v-model="dateRange" class="w-220px ml-8px"></DateRangePicker>
-        <Select class="w-120px ml-8px" filterable required :datas="supplierList" keyName="id" titleName="name"
-                v-model="params.supplierId" placeholder="供货商"/>
-        <Select class="w-120px ml-8px" filterable required :datas="warehouseList" keyName="id" titleName="name"
-                v-model="params.warehouseId" placeholder="仓库"/>
-        <Select class="w-120px ml-8px" filterable required :datas="productList" keyName="id" titleName="name"
-                v-model="params.productId" placeholder="商品"/>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-260px ml-8px"
-                placeholder="请输入订单号/供货商名称" @search="doSearch">
-          <i class="h-icon-search"/>
-        </Search>
+        <Select class="ml-8px"  :datas="supplierList" keyName="id" titleName="name"
+                v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
+        <Select class="ml-8px"  :datas="warehouseList" keyName="id" titleName="name"
+                v-model="warehouseIds" placeholder="请选择仓库" :multiple="true"/>
+        <Select class="ml-8px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
+                v-model="supplierCategoryIds" placeholder="请选择仓库类别"/>
+        <Select class="ml-8px"  :datas="productList" keyName="id" titleName="name"
+                v-model="productIds" placeholder="请选择商品" :multiple="true"/>
+        <Select class="ml-8px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
+                v-model="productCategoryIds" placeholder="请选择商品类别"/>
+        <Button class="ml-8px" @click="doSearch" color="primary">查 询</Button>
       </template>
     </vxe-toolbar>
     <div class="flex1">
@@ -39,7 +37,7 @@
                  :sort-config="{remote:true}"
                  :loading="loading">
         <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="商品信息" width="300">
+        <vxe-column title="商品信息" width="300" v-if="isProduct">
           <template #default="{row,rowIndex}">
             <div class="flex">
               <div class="flex1 ml-8px">
@@ -48,7 +46,10 @@
             </div>
           </template>
         </vxe-column>
+        <vxe-column title="商品规格" field="spec" min-width="120" v-if="isProduct"/>
+        <vxe-column title="商品类别" field="categoryName" min-width="120" v-if="isProduct"/>
         <vxe-column title="供货商" field="supplierName" min-width="120" v-if="isSupplier"/>
+        <vxe-column title="供货商类别" field="supplierCategoryName" min-width="120" v-if="isSupplier"/>
         <vxe-column title="仓库名称" field="warehouseName" min-width="120" v-if="isWarehouse"/>
         <vxe-column title="基本数量" field="baseQuantitySum" min-width="200"/>
         <vxe-column title="基本单位" field="baseUnitName" min-width="200"/>
@@ -79,6 +80,8 @@ import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
 import {loading, message} from "heyui.ext";
 import PurchaseReport from "@js/api/purchase/PurchaseReport";
+import ProductCategory from "@js/api/basic/ProductCategory";
+import SupplierCategory from "@js/api/basic/SupplierCategory";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -89,11 +92,19 @@ export default {
     return {
       dataList: [],
       productList: [],
+      productCategoryList: [],
+      supplierCategoryList: [],
       warehouseList: [],
       supplierList: [],
+      supplierCategoryIds: [],
+      productCategoryIds: [],
+      productIds: [],
+      supplierIds: [],
+      warehouseIds: [],
       loading: false,
       isWarehouse: true,
       isSupplier: true,
+      isProduct: true,
       amountTotal: 0,
       totalParams: {},
       groupValues: ['product', 'supplier', 'warehouse'],
@@ -102,13 +113,7 @@ export default {
         pageSize: 20,
         total: 0
       },
-      params: {
-        filter: null,
-        state: null,
-        sortCol: null,
-        sort: null,
-        orderType: "in",
-      },
+      params: {},
       dateRange: {
         start: manba(startTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
@@ -121,10 +126,16 @@ export default {
         message.error("请统计字段~");
       }
       if (this.groupValues) {
+        this.isProduct = this.groupValues.find(item => item === 'product');
         this.isSupplier = this.groupValues.find(item => item === 'supplier');
         this.isWarehouse = this.groupValues.find(item => item === 'warehouse');
       }
       return Object.assign(this.params, {
+        productCategoryIds: this.productCategoryIds.map(item => item).toString(),
+        supplierCategoryIds: this.supplierCategoryIds.map(item => item).toString(),
+        supplierIds: this.supplierIds.map(item => item).toString(),
+        productIds: this.productIds.map(item => item).toString(),
+        warehouseIds: this.warehouseIds.map(item => item).toString(),
         groupValues: this.groupValues.map(item => item).toString(),
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
@@ -160,10 +171,14 @@ export default {
         Supplier.select(),
         Warehouse.select(),
         Product.select(),
+        ProductCategory.select(),
+        SupplierCategory.select(),
       ]).then((results) => {
         this.supplierList = results[0].data || [];
         this.warehouseList = results[1].data || [];
         this.productList = results[2].data || [];
+        this.productCategoryList = results[3].data || [];
+        this.supplierCategoryList = results[4].data || [];
       }).finally(() => loading.close());
     },
     loadList(type = true) {

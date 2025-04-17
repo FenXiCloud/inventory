@@ -64,16 +64,28 @@
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
               <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
-                      titleName="name"/>
+                      titleName="name" @change="handleWarehouseChange(row, $event)"/>
             </template>
           </template>
         </vxe-column>
         <vxe-column title="数量" field="secondaryQuantity" width="90">
           <template #default="{row,rowIndex,columnIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+3" @keyup="handleEnter($event,rowIndex,3)"
-                       @blur="updateQuantity(row)" ref="inputQuantity" v-model.number="row.secondaryQuantity"
-                       type="float"
-                       min="0" :controls="false"></vxe-input>
+            <vxe-tooltip theme="light">
+              <template #content>
+                <div>当前库存: {{row.currentStockQuantity || 0}}</div>
+                <div>总库存: {{row.totalStockQuantity || 0}}</div>
+              </template>
+              <vxe-input
+                  :id="'r'+rowIndex+''+3"
+                  @blur="updateQuantity(row)"
+                  @focus="showStockQuantity(row)"
+                  ref="inputQuantity"
+                  v-model.number="row.secondaryQuantity"
+                  type="float"
+                  min="0"
+                  :controls="false">
+              </vxe-input>
+            </vxe-tooltip>
           </template>
         </vxe-column>
         <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
@@ -130,7 +142,7 @@
                        :controls="false"></vxe-input>
           </template>
         </vxe-column>
-        <vxe-column title="备注" field="returnReason">
+        <vxe-column title="备注" field="returnReason" width="160">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8" @keyup="handleEnter($event,rowIndex,8)"
                        v-model="row.returnReason" placeholder="输入备注" :controls="false"></vxe-input>
@@ -202,6 +214,7 @@ import PurchaseReturnOrderSelect from "@views/purchase/PurchaseReturnOrderSelect
 import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
 import PriceRecord from "@js/api/basic/PriceRecord";
+import Inventory from "@js/api/inventory/Inventory";
 
 export default {
   name: "PurchaseReturnForm",
@@ -270,7 +283,7 @@ export default {
         return
       }
       let layerId = layer.drawer({
-        title: "请选择采购订单",
+        title: "请选择采购入库单",
         shadeClose: false,
         closeBtn: false,
         area: ['1200px', '100vh'],
@@ -378,6 +391,40 @@ export default {
       })
       this.allRefundAmount = sums[1]
       return [["", "", "", "", "", "", "", quantity.toFixed(2), "", ""].concat(sums)];
+    },
+    // 仓库选择框变化时触发
+    handleWarehouseChange(row) {
+      this.showStockQuantity(row);
+    },
+
+    showStockQuantity(row) {
+      let productId = row.productId;
+      let warehouseId = row.warehouseId;
+      if (!productId) {
+        console.log("请选择产品")
+        return;
+      }
+      // 获取商品库存进行提示
+      let param = {
+        productId: productId,
+        page:1,
+        pageSize:1000
+      }
+      Inventory.list(param).then(res => {
+        const {data} = res;
+        if (data && data.results) {
+          let totalQuantity = 0;
+          let quantity = 0;
+          data.results.forEach(item => {
+            totalQuantity += Number(item.currentQuantity);
+            if (Number(item.warehouseId) === Number(warehouseId)) {
+              quantity = item.currentQuantity;
+            }
+          });
+          row.currentStockQuantity = quantity;
+          row.totalStockQuantity = totalQuantity;
+        }
+      });
     },
 
     //保存订单

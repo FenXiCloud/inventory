@@ -13,14 +13,13 @@
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">供货商：</span>
-          <Select class="w-160px" filterable required :datas="supplierList" keyName="id" titleName="name"
+        <div class="h-input-group ml-8px">
+          <Select :datas="supplierList" keyName="id" titleName="name"
                   v-model="params.supplierId" placeholder="请选择供货商"/>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/供货商名称" @search="doSearch">
+                placeholder="请输入订单号" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -172,7 +171,7 @@ export default {
     backApproved() {
       let checkList = this.$refs.table.getCheckboxRecords();
       if (checkList.length) {
-        let ids = checkList.filter(val => val.orderStatus == '已审核').map(val => val.id);
+        let ids = checkList.filter(val => val.orderStatus == '已审核' && !val.purchaseReturnOrderNo).map(val => val.id);
         if (ids.length) {
           confirm({
             title: "批量反审核提示",

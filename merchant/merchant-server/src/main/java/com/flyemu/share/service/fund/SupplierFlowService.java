@@ -27,6 +27,7 @@ import com.querydsl.core.Tuple;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.criteria.Predicate;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
@@ -125,7 +126,7 @@ public class SupplierFlowService extends AbsService {
                     predicates.add(criteriaBuilder.equal(root.get("supplierId"), item.getSupplierId()));
                     predicates.add(criteriaBuilder.equal(root.get("accountBookId"), item.getAccountBookId()));
                     predicates.add(criteriaBuilder.equal(root.get("merchantId"), item.getMerchantId()));
-                    predicates.add(criteriaBuilder.equal(root.get("customerFlowType"), SupplierFlow.SupplierFlowType.期初));
+                    predicates.add(criteriaBuilder.equal(root.get("supplierFlowType"), SupplierFlow.SupplierFlowType.期初));
                     return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
                 };
                 //如果存在，则抛出异常
@@ -155,6 +156,7 @@ public class SupplierFlowService extends AbsService {
         supplierFlowRepository.deleteAllByIdInBatch(ids);
     }
 
+    @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 

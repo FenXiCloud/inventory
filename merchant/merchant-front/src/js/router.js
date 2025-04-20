@@ -65,6 +65,8 @@ const groupRoutes = [
         name: 'SupplierInitialList',
         component: defineAsyncComponent(() => import('@views/basic/SupplierInitialList.vue'))
     },
+    {name: 'SupplierInitialForm', component: defineAsyncComponent(() => import('@views/basic/SupplierInitialForm.vue'))},
+
 
     {
         name: 'InventoryInitialList',

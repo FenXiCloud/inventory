@@ -59,10 +59,9 @@
 </template>
 
 <script>
-import CustomerInitial from "@js/api/basic/CustomerInitial";
+import SupplierInitial from "@js/api/basic/SupplierInitial";
 import {mapMutations} from "vuex";
 import {loading, confirm,message} from "heyui.ext";
-import InventoryInitial from "@js/api/basic/InventoryInitial";
 import Customer from "@js/api/basic/Customer";
 
 /**
@@ -174,7 +173,7 @@ export default {
           let params = {
             ids: ids,
           };
-          InventoryInitial.batchDelete(params).then((success) => {
+          CustomerInitial.batchDelete(params).then((success) => {
             if (success) {
               message.success("批量删除成功");
               this.loadList(); // Refresh the list

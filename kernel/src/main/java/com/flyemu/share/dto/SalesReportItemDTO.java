@@ -77,6 +77,9 @@ public class SalesReportItemDTO {
     @Comment("单位")
     private String unitName;
 
+    private Long productCategoryId;
+    private String productCategoryName;
+
     @Comment("备注")
     private String remark;
 

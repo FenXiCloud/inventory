@@ -1,52 +1,34 @@
 package com.flyemu.share.service.sales;
 
-import cn.dev33.satoken.exception.InvalidContextException;
-import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.bean.copier.CopyOptions;
 import com.flyemu.share.constant.SalesReportConstant;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.dto.SalesOrderDTO;
-import com.flyemu.share.dto.SalesOrderItemDTO;
 import com.flyemu.share.dto.SalesReportItemDTO;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
-import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
-import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.form.SalesReportForm;
 import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
-import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.Tuple;
+
 import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Root;
 import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
-import org.sagacity.sqltoy.dao.SqlToyLazyDao;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+
 
 /**
  * @功能描述: 销售报表
@@ -67,6 +49,7 @@ public class SalesReportService extends AbsService {
     private final SalesOutboundRepository salesOutboundRepository;
     private final SalesReturnRepository salesReturnRepository;
     private final ProductRepository productRepository;
+    private final ProductCategoryRepository productCategoryRepository;
     private final UnitRepository unitRepository;
     private final WarehouseRepository warehouseRepository;
     private final CustomerRepository customerRepository;
@@ -107,6 +90,7 @@ public class SalesReportService extends AbsService {
             return results;
         }
         List<Product> productList = productRepository.findAll();
+        List<ProductCategory> productCategoryList = productCategoryRepository.findAll();
         List<Unit> unitList = unitRepository.findAll();
         List<Warehouse> warehouseList = warehouseRepository.findAll();
         List<Customer> customerList = customerRepository.findAll();
@@ -135,7 +119,7 @@ public class SalesReportService extends AbsService {
         //销售出库单商品详情list
         List<SalesOutboundItem> outboundItemList = salesOutboundItemRepository.findAll(salesOutboundItemSpecification);
         if (StringUtils.equals(salesType, SalesReportConstant.SALES_TYPE_OUT)){
-            List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productList, unitList, warehouseList, salesOutboundList, customerList);
+            List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList,productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
             return getSalesReportItemDTOPageResults(page, outItemDTOList);
         }
 
@@ -179,13 +163,13 @@ public class SalesReportService extends AbsService {
 
         List<SalesReportItemDTO> resultList = new ArrayList<>();
         if (StringUtils.equals(salesType, SalesReportConstant.SALES_TYPE_RETURN)) {
-            List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productList, unitList, warehouseList, salesReturnList, customerList);
+            List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList,productCategoryList, productList, unitList, warehouseList, salesReturnList, customerList);
             return getSalesReportItemDTOPageResults(page, returnItemDTOList);
         }
 
         if (StringUtils.equals(salesType, SalesReportConstant.SALES_TYPE_ALL)){
-            List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productList, unitList, warehouseList, salesOutboundList, customerList);
-            List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productList, unitList, warehouseList, salesReturnList, customerList);
+            List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList,productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
+            List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList,productCategoryList, productList, unitList, warehouseList, salesReturnList, customerList);
             resultList.addAll(outItemDTOList);
             resultList.addAll(returnItemDTOList);
             //降序排序
@@ -194,7 +178,7 @@ public class SalesReportService extends AbsService {
         return getSalesReportItemDTOPageResults(page, resultList);
     }
 
-    private List<SalesReportItemDTO> getSalesReportOutItemDTOS(List<SalesOutboundItem> outboundItemList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesOutbound> salesOutboundList, List<Customer> customerList) {
+    private List<SalesReportItemDTO> getSalesReportOutItemDTOS(List<SalesOutboundItem> outboundItemList,List<ProductCategory> productCategoryList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesOutbound> salesOutboundList, List<Customer> customerList) {
         List<SalesReportItemDTO> outItemDTOList = outboundItemList.stream().map(item -> {
             SalesReportItemDTO salesReportItemDTO = new SalesReportItemDTO();
             BeanUtils.copyProperties(item, salesReportItemDTO);
@@ -204,6 +188,11 @@ public class SalesReportService extends AbsService {
                 salesReportItemDTO.setProductName(product.getName());
                 salesReportItemDTO.setProductCode(product.getCode());
                 salesReportItemDTO.setSpecification(product.getSpecification());
+                Long productCategoryId = product.getProductCategoryId();
+                salesReportItemDTO.setProductCategoryId(productCategoryId);
+                productCategoryList.stream().filter(productCategory -> productCategory.getId().equals(productCategoryId)).findFirst().ifPresent(productCategory -> {
+                    salesReportItemDTO.setProductCategoryName(productCategory.getName());
+                });
             });
             //单位信息
             Long baseUnitId = item.getBaseUnitId();
@@ -235,7 +224,7 @@ public class SalesReportService extends AbsService {
         return outItemDTOList;
     }
 
-    private List<SalesReportItemDTO> getSalesReportReturnItemDTOS(List<SalesReturnItem> returnItemList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesReturn> salesReturnList, List<Customer> customerList) {
+    private List<SalesReportItemDTO> getSalesReportReturnItemDTOS(List<SalesReturnItem> returnItemList, List<ProductCategory> productCategoryList,List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesReturn> salesReturnList, List<Customer> customerList) {
         List<SalesReportItemDTO> returnItemDTOList = returnItemList.stream().map(item -> {
             SalesReportItemDTO salesReportItemDTO = new SalesReportItemDTO();
             BeanUtils.copyProperties(item, salesReportItemDTO);
@@ -245,6 +234,11 @@ public class SalesReportService extends AbsService {
                 salesReportItemDTO.setProductName(product.getName());
                 salesReportItemDTO.setProductCode(product.getCode());
                 salesReportItemDTO.setSpecification(product.getSpecification());
+                Long productCategoryId = product.getProductCategoryId();
+                salesReportItemDTO.setProductCategoryId(productCategoryId);
+                productCategoryList.stream().filter(productCategory -> productCategory.getId().equals(productCategoryId)).findFirst().ifPresent(productCategory -> {
+                    salesReportItemDTO.setProductCategoryName(productCategory.getName());
+                });
             });
             //单位信息
             Long baseUnitId = item.getBaseUnitId();
@@ -333,6 +327,7 @@ public class SalesReportService extends AbsService {
             return results;
         }
         List<Product> productList = productRepository.findAll();
+        List<ProductCategory> productCategoryList = productCategoryRepository.findAll();
         List<Unit> unitList = unitRepository.findAll();
         List<Warehouse> warehouseList = warehouseRepository.findAll();
         List<Customer> customerList = customerRepository.findAll();
@@ -370,7 +365,7 @@ public class SalesReportService extends AbsService {
         //返回数据
         List<SalesReportItemDTO> resultList = new ArrayList<>();
         //封装销售出库单商品列表
-        List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productList, unitList, warehouseList, salesOutboundList, customerList);
+        List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList,productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
         resultList.addAll(outItemDTOList);
 
         //销售退货单idList
@@ -417,7 +412,7 @@ public class SalesReportService extends AbsService {
             //销售退货单商品列表
             List<SalesReturnItem> returnItemList = salesReturnItemRepository.findAll(returnSpec);
 
-            List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productList, unitList, warehouseList, salesReturnList, customerList);
+            List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productCategoryList,productList, unitList, warehouseList, salesReturnList, customerList);
             resultList.addAll(returnItemDTOList);
         }
         //返回dtos
@@ -434,6 +429,8 @@ public class SalesReportService extends AbsService {
                             dto.setProductId(firstItem.getProductId());
                             dto.setProductName(firstItem.getProductName());
                             dto.setProductCode(firstItem.getProductCode());
+                            dto.setProductCategoryId(firstItem.getProductCategoryId());
+                            dto.setProductCategoryName(firstItem.getProductCategoryName());
                             dto.setUnitName(firstItem.getUnitName());
 
                             dto.setQuantity(items.stream()
@@ -492,6 +489,8 @@ public class SalesReportService extends AbsService {
                         dto.setProductId(firstItem.getProductId());
                         dto.setProductName(firstItem.getProductName());
                         dto.setProductCode(firstItem.getProductCode());
+                        dto.setProductCategoryId(firstItem.getProductCategoryId());
+                        dto.setProductCategoryName(firstItem.getProductCategoryName());
                         dto.setUnitName(firstItem.getUnitName());
                         dto.setSpecification(firstItem.getSpecification());
                         dto.setWarehouseName(firstItem.getWarehouseName());
@@ -522,6 +521,8 @@ public class SalesReportService extends AbsService {
                                 dto.setProductId(firstItem.getProductId());
                                 dto.setProductName(firstItem.getProductName());
                                 dto.setProductCode(firstItem.getProductCode());
+                                dto.setProductCategoryId(firstItem.getProductCategoryId());
+                                dto.setProductCategoryName(firstItem.getProductCategoryName());
                                 dto.setUnitName(firstItem.getUnitName());
                                 dto.setSpecification(firstItem.getSpecification());
                                 dto.setCustomerId(firstItem.getCustomerId());
@@ -556,6 +557,8 @@ public class SalesReportService extends AbsService {
                                 dto.setProductId(firstItem.getProductId());
                                 dto.setProductName(firstItem.getProductName());
                                 dto.setProductCode(firstItem.getProductCode());
+                                dto.setProductCategoryId(firstItem.getProductCategoryId());
+                                dto.setProductCategoryName(firstItem.getProductCategoryName());
                                 dto.setUnitName(firstItem.getUnitName());
                                 dto.setSpecification(firstItem.getSpecification());
                                 //客户信息

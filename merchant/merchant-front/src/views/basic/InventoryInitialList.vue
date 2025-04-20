@@ -71,7 +71,6 @@ import {mapMutations} from "vuex";
 import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
 import {loading, confirm,message} from "heyui.ext";
-import SalesOrder from "@js/api/sales/SalesOrder";
 
 export default {
   name: "InventoryInitialList",

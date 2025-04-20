@@ -20,4 +20,13 @@ export default {
     select(param) {
         return Ajax.get('/customerInitial/select', param)
     },
+    batchSave(param) {
+        return Ajax.post('/customerInitial/batchSave', param)
+    },
+    getInfo(id) {
+        return Ajax.get("/customerInitial/getInfo/" + id);
+    },
+    batchDelete(param) {
+        return Ajax.put('/customerInitial/batchDelete', param)
+    },
 }

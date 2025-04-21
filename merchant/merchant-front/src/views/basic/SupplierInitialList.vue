@@ -34,8 +34,8 @@
         <vxe-column type="seq" width="60" title="序号"/>
         <vxe-column title="货商编码" field="supplierCode" width="150"/>
         <vxe-column title="货商名称" field="supplierName"/>
-        <vxe-column title="期初应收款" field="balanceBefore"/>
-        <vxe-column title="期初预收款" field="amount"/>
+        <vxe-column title="期初应付款" field="balanceBefore"/>
+        <vxe-column title="期初预付款" field="amount"/>
         <vxe-column title="期初余额" field="balanceAfter"/>
         <vxe-column title="操作" align="center" width="150">
           <template #default="{row}">

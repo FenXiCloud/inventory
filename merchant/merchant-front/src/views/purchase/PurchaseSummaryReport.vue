@@ -10,12 +10,12 @@
                 :datas="{product:'商品',supplier:'供货商',warehouse:'仓库'}"
                 placeholder="统计字段：" :multiple="true"/>
         <DateRangePicker v-model="dateRange" class="w-220px ml-8px"></DateRangePicker>
-        <Select class="ml-8px"  :datas="supplierList" keyName="id" titleName="name"
-                v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
         <Select class="ml-8px"  :datas="warehouseList" keyName="id" titleName="name"
                 v-model="warehouseIds" placeholder="请选择仓库" :multiple="true"/>
+        <Select class="ml-8px"  :datas="supplierList" keyName="id" titleName="name"
+                v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
         <Select class="ml-8px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
-                v-model="supplierCategoryIds" placeholder="请选择仓库类别"/>
+                v-model="supplierCategoryIds" placeholder="请选择供货商类别"/>
         <Select class="ml-8px"  :datas="productList" keyName="id" titleName="name"
                 v-model="productIds" placeholder="请选择商品" :multiple="true"/>
         <Select class="ml-8px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
@@ -46,14 +46,15 @@
             </div>
           </template>
         </vxe-column>
+        <vxe-column title="基本单位" field="baseUnitName" min-width="100"/>
+        <vxe-column title="基本数量" field="baseQuantitySum" min-width="120"/>
+        <vxe-column title="总计" field="subtotalSum" min-width="120"/>
         <vxe-column title="商品规格" field="spec" min-width="120" v-if="isProduct"/>
         <vxe-column title="商品类别" field="categoryName" min-width="120" v-if="isProduct"/>
         <vxe-column title="供货商" field="supplierName" min-width="120" v-if="isSupplier"/>
+        <vxe-column title="供货商编码" field="supplierCode" min-width="120" v-if="isSupplier"/>
         <vxe-column title="供货商类别" field="supplierCategoryName" min-width="120" v-if="isSupplier"/>
         <vxe-column title="仓库名称" field="warehouseName" min-width="120" v-if="isWarehouse"/>
-        <vxe-column title="基本数量" field="baseQuantitySum" min-width="200"/>
-        <vxe-column title="基本单位" field="baseUnitName" min-width="200"/>
-        <vxe-column title="总计" field="subtotalSum" min-width="120"/>
       </vxe-table>
     </div>
     <div class=" justify-between items-center pt-5px">
@@ -63,7 +64,6 @@
                  :total="pagination.total"
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
           <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
@@ -149,7 +149,7 @@ export default {
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
+        if (column.property && ['baseQuantitySum','subtotalSum'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             let rd = row[column.property];
@@ -160,7 +160,7 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", "", ""].concat(sums)];
+      return [["", "", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;

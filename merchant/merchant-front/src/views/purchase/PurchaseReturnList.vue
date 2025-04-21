@@ -148,7 +148,7 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", ""].concat(sums)];
+      return [["", "", "", "","", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -190,7 +190,7 @@ export default {
             }
           })
         } else {
-          message.error("未找到需要审核数据~");
+          message.error("所选数据无需审核~");
         }
       } else {
         message.error("未选择数据~");
@@ -221,7 +221,7 @@ export default {
             }
           })
         } else {
-          message.error("未找到需要反审核数据~");
+          message.error("所选数据无需反审核~");
         }
       } else {
         message.error("未选择数据~");

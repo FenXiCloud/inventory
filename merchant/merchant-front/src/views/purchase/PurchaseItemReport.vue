@@ -53,6 +53,8 @@
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
+        <vxe-column title="供货商编码" field="supplierCode" min-width="120"/>
+        <vxe-column title="供货商类别" field="supplierCategoryName" min-width="120"/>
         <vxe-column title="仓库名称" field="warehouseName" min-width="120"/>
         <vxe-column title="订单类型" field="orderType" min-width="120"/>
         <vxe-column title="采购单位" field="secondaryUnitName" width="120"/>
@@ -148,7 +150,7 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", "","", "","","", ""].concat(sums)];
+      return [["", "", "", "", "","","","", "","","", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;

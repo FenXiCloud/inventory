@@ -123,7 +123,7 @@ export default {
           });
         }
       })
-      return [["", "", "", "", "", "", totalQuantity.toFixed(2),"",totalAmount.toFixed(2)]];
+      return [["", "", "", "", "", "", "", totalQuantity.toFixed(2),"",totalAmount.toFixed(2)]];
     },
     doSearch() {
       this.loadList();

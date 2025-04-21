@@ -59,10 +59,10 @@
 </template>
 
 <script>
-import SupplierInitial from "@js/api/basic/SupplierInitial";
 import {mapMutations} from "vuex";
 import {loading, confirm,message} from "heyui.ext";
 import Customer from "@js/api/basic/Customer";
+import CustomerInitial from "@js/api/basic/CustomerInitial";
 
 /**
  * @功能描述: 客户交易流水/期初

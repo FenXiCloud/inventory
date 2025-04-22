@@ -456,7 +456,7 @@ export default {
     },
 
     //保存订单
-    saveOrder() {
+    saveOrder(type) {
       loading("保存中....");
       if (!this.form.supplierId) {
         message.error("请选择购货商~");

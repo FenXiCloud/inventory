@@ -181,10 +181,10 @@
         取消
       </Button>
       <div>
-        <Button color="primary" @click="saveOrder" :loading="loading">
+        <Button color="primary" @click="saveOrder('add')" :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder" :loading="loading">
+        <Button @click="saveOrder(type='save')" :loading="loading">
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
@@ -428,7 +428,7 @@ export default {
     },
 
     //保存订单
-    saveOrder() {
+    saveOrder(type) {
       loading("保存中....");
       if (!this.form.supplierId) {
         message.error("请选择购货商~");
@@ -456,6 +456,10 @@ export default {
         if (success) {
           message("保存成功~");
           this.clearForm()
+          //保存
+          if (type === 'save') {
+            this.closeWindow()
+          }
         }
       }).finally(() =>
           loading.close());
@@ -569,21 +573,15 @@ export default {
 
     //关闭窗口
     closeWindow() {
-      let cache = localStorage.getItem("SYS_TABS");
-      let tagList = cache ? JSON.parse(cache) : [];
-      if (tagList) {
-        let index = tagList.findIndex(val => val.name === "NewPurchaserOrder")
-        tagList.splice(index, 1);
-        let newRoute;
-        if (tagList.length > 0) {
-          newRoute = tagList[index - 1];
-        } else {
-          this.$router.push({name: 'DashboardMain'});
-        }
-        if (newRoute) this.$router.replace(newRoute);
-        localStorage.setItem("SYS_TABS", JSON.stringify(newRoute))
-      }
-    }
+      console.log("this.$store.state.currentTab", this.$store.state.currentTab)
+      this.$store.commit('closeTabKey', this.$store.state.currentTab);
+      this.$store.commit('newTab', "PurchaseReturnList");
+      // 使用 nextTick 确保在 DOM 更新后执行
+      this.$nextTick(() => {
+        // 通过 eventBus 或 vuex 触发刷新
+        this.$store.commit('SET_TAB_DATA', { refresh: true });
+      });
+    },
   },
   beforeDestroy() {
     confirm({

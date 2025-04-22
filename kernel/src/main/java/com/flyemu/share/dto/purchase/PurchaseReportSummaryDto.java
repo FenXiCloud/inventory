@@ -42,6 +42,11 @@ public class PurchaseReportSummaryDto {
     private String supplierName;
 
     /**
+     * 供货商编码
+     */
+    private String supplierCode;
+
+    /**
      * 仓库名称
      */
     private String warehouseName;
@@ -56,12 +61,6 @@ public class PurchaseReportSummaryDto {
      * 供应商类别
      */
     private String supplierCategoryName;
-
-
-    /**
-     * 供应商code
-     */
-    private String supplierCode;
 
 
     /**

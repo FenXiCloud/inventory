@@ -52,7 +52,7 @@
         </vxe-column>
         <vxe-column title="入库日期" field="inboundDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
-        <vxe-column title="关联退货单" field="purchaseReturnOrderNo" width="200"/>
+<!--        <vxe-column title="关联退货单" field="purchaseReturnOrderNo" width="200"/>-->
         <vxe-column title="关联采购单" field="purchaseOrderNos" width="200"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
         <vxe-column title="采购金额" field="totalAmount" width="120"/>
@@ -162,7 +162,7 @@ export default {
             }
           })
         } else {
-          message.error("未找到需要审核数据~");
+          message.error("所选数据无需审核~");
         }
       } else {
         message.error("未选择数据~");
@@ -185,7 +185,7 @@ export default {
             }
           })
         } else {
-          message.error("未找到需要反审核数据~");
+          message.error("所选数据无需反审核~");
         }
       } else {
         message.error("未选择数据~");
@@ -205,7 +205,7 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", ""].concat(sums)];
+      return [["", "", "", "","",  ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;

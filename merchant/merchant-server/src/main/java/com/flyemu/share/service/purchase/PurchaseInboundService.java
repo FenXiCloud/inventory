@@ -265,7 +265,7 @@ public class PurchaseInboundService extends AbsService {
             }
         } else if (OrderStatus.已保存.equals(state)) {
             for (PurchaseInbound order : orders) {
-                if (OrderStatus.已审核.equals(order.getOrderStatus()) && order.getPurchaseReturnId() != null) {
+                if (OrderStatus.已审核.equals(order.getOrderStatus()) && order.getPurchaseReturnId() == null) {
                     setIds.add(order.getId());
                 } else {
                     log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());

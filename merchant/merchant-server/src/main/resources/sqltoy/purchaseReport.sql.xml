@@ -166,6 +166,7 @@ FROM
 	group by @value(:groupBy)
 ]]></value>
     </sql>
+
     <sql id="purchaseReportItemList">
         <value>
             <![CDATA[
@@ -181,7 +182,9 @@ FROM
 	ju.`name` as secondaryUnitName,
 	jp.`code` as productCode,
 	jp.`name` as supplierName,
+	jp.`code` as supplierCode,
 	jpc.`name` as categoryName,
+	jsc.`name` as supplierCategoryName,
 	jw.`name` as warehouseName
 FROM
 	(
@@ -228,6 +231,7 @@ FROM
 	LEFT JOIN jxc_product AS jp ON jp.id = po.product_id
 	LEFT JOIN jxc_supplier AS js ON js.id = po.supplier_id
 	LEFT JOIN jxc_product_category AS jpc ON jp.product_category_id = jpc.id
+	LEFT JOIN jxc_supplier_category AS jsc ON js.supplier_category_id = jsc.id
 	WHERE jp.merchant_id = :merchantId
 	#[AND (po.order_no like :filter OR js.name like :filter)]
 	#[AND js.id in  :supplierId]

@@ -42,6 +42,7 @@ public class PurchaseReportService extends AbsService {
     private final static QPurchaseReturnItem qPurchaseReturnItem = QPurchaseReturnItem.purchaseReturnItem;
     private final static QPurchaseInboundItem qPurchaseInboundItem = QPurchaseInboundItem.purchaseInboundItem;
     private final static QSupplier qSupplier = QSupplier.supplier;
+    private final static QSupplierCategory qSupplierCategory = QSupplierCategory.supplierCategory;
     private final static QProduct qProduct = QProduct.product;
     private final static QProductCategory qProductCategory = QProductCategory.productCategory;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
@@ -137,7 +138,7 @@ public class PurchaseReportService extends AbsService {
 
     public PageResults<PurchaseReportItemDto> queryReturn(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseReturnItem)
-                .select(qPurchaseReturnItem.secondaryPrice, qPurchaseReturnItem.subtotal, qWarehouse.name, qPurchaseReturnItem.secondaryQuantity,
+                .select(qPurchaseReturnItem.secondaryPrice, qPurchaseReturnItem.subtotal, qWarehouse.name, qPurchaseReturnItem.secondaryQuantity,qSupplierCategory.name,qSupplier.code,
                         qPurchaseReturn.orderNo, qPurchaseReturn.returnDate, qSupplier.name, qProduct.name, qProduct.code, qUnit.name, qProductCategory.name)
                 .leftJoin(qPurchaseReturn).on(qPurchaseReturn.id.eq(qPurchaseReturnItem.purchaseReturnId))
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseReturn.supplierId))
@@ -145,6 +146,7 @@ public class PurchaseReportService extends AbsService {
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseReturnItem.secondaryUnitId))
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseReturnItem.productId))
                 .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .leftJoin(qSupplierCategory).on(qSupplier.supplierCategoryId.eq(qSupplierCategory.id))
                 .where(query.builder.and(qPurchaseReturn.orderStatus.eq(OrderStatus.已审核)))
                 .orderBy(qPurchaseReturnItem.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
@@ -161,6 +163,8 @@ public class PurchaseReportService extends AbsService {
             dto.setOrderType("采购退货");
             dto.setCategoryName(tuple.get(qProductCategory.name));
             dto.setSupplierName(tuple.get(qSupplier.name));
+            dto.setSupplierCode(tuple.get(qSupplier.code));
+            dto.setSupplierCategoryName(tuple.get(qSupplierCategory.name));
             dto.setProductCode(tuple.get(qProduct.code));
             dto.setProductName(tuple.get(qProduct.name));
             dtos.add(dto);
@@ -173,13 +177,14 @@ public class PurchaseReportService extends AbsService {
 
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInboundItem)
                 .select(qPurchaseInboundItem.secondaryPrice, qPurchaseInboundItem.subtotal, qWarehouse.name, qPurchaseInboundItem.secondaryQuantity, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qSupplier.name,
-                        qProduct.name, qProduct.code, qUnit.name, qProductCategory.name)
+                        qProduct.name, qProduct.code, qUnit.name, qProductCategory.name,qSupplierCategory.name,qSupplier.code)
                 .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseInboundItem.warehouseId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseInboundItem.secondaryUnitId))
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseInboundItem.productId))
                 .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .leftJoin(qSupplierCategory).on(qSupplier.supplierCategoryId.eq(qSupplierCategory.id))
                 .where(query.inboundBuilder.and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核))).orderBy(qPurchaseInboundItem.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
         List<PurchaseReportItemDto> dtos = new ArrayList<>();
@@ -195,6 +200,8 @@ public class PurchaseReportService extends AbsService {
             dto.setCategoryName(tuple.get(qProductCategory.name));
             dto.setWarehouseName(tuple.get(qWarehouse.name));
             dto.setSupplierName(tuple.get(qSupplier.name));
+            dto.setSupplierCode(tuple.get(qSupplier.code));
+            dto.setSupplierCategoryName(tuple.get(qSupplierCategory.name));
             dto.setProductCode(tuple.get(qProduct.code));
             dto.setProductName(tuple.get(qProduct.name));
             dtos.add(dto);

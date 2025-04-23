@@ -53,7 +53,7 @@
         <vxe-column title="单据编号" field="orderNo" width="200"/>
         <!--        <vxe-column title="单据来源" field="code" width="200"/>-->
         <vxe-column title="仓库" field="warehouseName" min-width="120"/>
-        <vxe-column title="盘点结果" field="orderNoResult" width="200">
+        <vxe-column title="盘点结果" field="orderNoResult" min-width="230">
           <template #default="{row}">
             <span v-if="row['orderNos'] !== undefined">
               <div class="mb-5px mt-5px" v-for="(item) in row['orderNos']">

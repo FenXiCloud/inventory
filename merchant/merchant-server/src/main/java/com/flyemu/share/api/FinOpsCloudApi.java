@@ -194,7 +194,11 @@ public class FinOpsCloudApi {
     public JSONObject createVoucher(FinOpsRequest finOpsRequest, Long accountSetsId, VoucherDto dto) throws JsonProcessingException {
         HttpRequest post = HttpUtil.createPost(finOpsRequest.getBaseUrl() + "/api/voucher");
         post.body(objectMapper.writeValueAsString(dto), "application/json");
-        return execute(post, 0, accountSetsId, finOpsRequest).getJSONObject("data");
+        JSONObject execute = execute(post, 0, accountSetsId, finOpsRequest);
+        if (execute.getBooleanValue("success")) {
+            return execute.getJSONObject("data");
+        }
+        throw new ServiceException(execute.getString("msg"));
     }
 
 

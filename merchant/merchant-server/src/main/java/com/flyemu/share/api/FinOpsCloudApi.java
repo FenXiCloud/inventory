@@ -69,7 +69,7 @@ public class FinOpsCloudApi {
     public JSONArray loadAccountSets(FinOpsRequest finOpsRequest) {
         JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/account-sets", null, finOpsRequest);
         log.info("帐套信息{}", res);
-        return res.getJSONArray("data");
+        return res.getJSONObject("data").getJSONArray("results");
     }
 
     /**
@@ -97,7 +97,11 @@ public class FinOpsCloudApi {
         HttpResponse response = request.execute();
         if (response.isOk()) {
             log.debug("workflowFormsSchemasProcessCodes：{}", response.bodyBytes());
-            return JSON.parseObject(response.bodyBytes());
+            JSONObject jsonObject = JSON.parseObject(response.bodyBytes());
+            if (jsonObject.getBooleanValue("success")) {
+                return jsonObject;
+            }
+            throw new HttpException(jsonObject.getString("msg"));
         } else if (401 == response.getStatus() && retry < 3) {
             String cookie = getCookie(finOpsRequest);
             if (StringUtils.isNotBlank(cookie)) {
@@ -122,10 +126,10 @@ public class FinOpsCloudApi {
         HttpResponse response = post.execute();
         if (response.isOk()) {
             JSONObject jsonObject = JSON.parseObject(response.body());
-            if (0 == jsonObject.getIntValue("error_code")) {
+            if (jsonObject.getBooleanValue("success")) {
                 return jsonObject;
             }
-            throw new HttpException(jsonObject.getString("errmsg"));
+            throw new HttpException(jsonObject.getString("msg"));
         } else {
             if (401 == response.getStatus() && retry < 3) {
                 String cookie = getCookie(finOpsRequest);

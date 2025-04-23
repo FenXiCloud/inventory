@@ -75,6 +75,8 @@ public class OtherOutboundService extends AbsService {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qOtherOutbound)
                 .select(qOtherOutbound, qOtherOutboundItem.quantity.sum().as("item_quantity"))
                 .leftJoin(qOtherOutboundItem).on(qOtherOutboundItem.otherOutboundId.eq(qOtherOutbound.id))
+                .leftJoin(qCustomer).on(qOtherOutbound.customerId.eq(qCustomer.id))
+                .leftJoin(qAdmin).on(qOtherOutbound.createdBy.eq(qAdmin.id))
                 .where(query.builder)
                 .where(query.builders())
                 .orderBy(qOtherOutbound.id.desc())

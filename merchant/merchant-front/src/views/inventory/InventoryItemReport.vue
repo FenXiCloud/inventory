@@ -5,6 +5,15 @@
         <Button @click="excel" color="primary">导出</Button>
       </template>
       <template #tools>
+        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+                show-search-button class="w-360px ml-8px"
+                placeholder="请输入商品名称/单据编号" @search="doSearch">
+          <i class="h-icon-search"/>
+        </Search>
+      </template>
+    </vxe-toolbar>
+    <vxe-toolbar>
+      <template #buttons>
         <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">仓库：</span>
           <Select :multiple="true" v-model="params.warehouseIds" class="w-120px" keyName="id" titleName="name"
@@ -14,6 +23,11 @@
           <span class="h-input-addon ml-8px">商品：</span>
           <Select :multiple="true" v-model="params.productIds" class="w-120px" keyName="id" titleName="name"
                   :datas="productList"/>
+        </div>
+        <div class="h-input-group h-table-checkbox-wrap">
+          <span class="h-input-addon ml-8px">商品类别：</span>
+          <Select :multiple="true" v-model="params.productCategoryIds" class="w-120px" keyName="id" titleName="name"
+                  :datas="productCategoryList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">往来单位：</span>
@@ -29,11 +43,6 @@
           <span class="h-input-addon ml-8px">单据日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-360px ml-8px"
-                placeholder="请输入商品名称/单据编号" @search="doSearch">
-          <i class="h-icon-search"/>
-        </Search>
       </template>
     </vxe-toolbar>
     <div class="flex1">
@@ -110,7 +119,7 @@
           <vxe-column title="成本" field="subtotal" align="center" width="100">
             <template #default="{ row }">
               <div
-                  v-if="inboundItems.includes(row['operationType'])">
+                  v-if="inboundItems.includes(row['operationType']) || ['成本调整'].includes(row['operationType'])">
                 {{ row.subtotal }}
               </div>
               <div v-else>
@@ -184,6 +193,7 @@ import InventoryItem from "@js/api/inventory/InventoryItem";
 import {mapMutations} from "vuex";
 import {loading} from "heyui.ext";
 import Product from "@js/api/basic/Product";
+import ProductCategory from "@js/api/basic/ProductCategory";
 import Warehouse from "@js/api/basic/Warehouse";
 import Supplier from "@js/api/basic/Supplier";
 import {exportExcel, exportExcelHeader} from "@js/excel";
@@ -210,6 +220,7 @@ export default {
         supplierIds: [],
         warehouseIds: [],
         operationTypes: [],
+        productCategoryIds: [],
         state: null,
         sortCol: null,
         sort: null,
@@ -220,6 +231,7 @@ export default {
       },
       warehouseList: [],
       productList: [],
+      productCategoryList: [],
       supplierList: [],
       outboundItems: ["采购退货", "销售出库", "调拨出库", "盘亏出库", "其他出库"],
       inboundItems: ["采购入库", "销售退货", "调拨入库", "其他入库", "盘盈入库"],
@@ -234,6 +246,7 @@ export default {
         "调拨出库": "调拨出库",
         "盘亏出库": "盘亏出库",
         "其他出库": "其他出库",
+        "成本调整": "成本调整",
       }
     }
   },
@@ -298,11 +311,12 @@ export default {
     },
     loadDict(callback) {
       loading("加载中....");
-      Promise.all([Product.select(), Warehouse.select(), Supplier.select()])
+      Promise.all([Product.select(), Warehouse.select(), Supplier.select(),ProductCategory.select()])
           .then((results) => {
             this.productList = results[0].data || [];
             this.warehouseList = results[1].data || [];
             this.supplierList = results[2].data || [];
+            this.productCategoryList = results[3].data || [];
             callback();
           })
           .finally(() => loading.close());
@@ -314,6 +328,7 @@ export default {
       params.productIds = params.productIds.join(",");
       params.supplierIds = params.supplierIds.join(",");
       params.operationTypes = params.operationTypes.join(",");
+      params.productCategoryIds = params.productCategoryIds.join(",");
       params.isReport = true;
       InventoryItem.report(params).then(({data: {results, total}}) => {
         this.dataList = results || [];

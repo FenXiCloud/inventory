@@ -1,8 +1,8 @@
 import Ajax from "@common/Request";
 
 export default {
-    list() {
-        return Ajax.get('/financeItemMap')
+    list(param) {
+        return Ajax.get('/financeItemMap', param)
     },
     save(param) {
         return Ajax.post('/financeItemMap/save', param)

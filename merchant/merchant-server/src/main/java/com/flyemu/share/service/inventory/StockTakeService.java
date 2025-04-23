@@ -29,6 +29,7 @@ import com.querydsl.core.types.dsl.StringTemplate;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -112,11 +113,11 @@ public class StockTakeService extends AbsService {
             List<String> orderNos = new ArrayList<>();
             List<OtherInbound> otherInbounds = otherInboundService.findByStockTakeId(dto.getId());
             otherInbounds.forEach(inbound -> {
-                orderNos.add(inbound.getOrderNo());
+                orderNos.add(inbound.getOrderNo() + "-盘盈单");
             });
             List<OtherOutbound> otherOutbounds = otherOutboundService.findByStockTakeId(dto.getId());
             otherOutbounds.forEach(outbound -> {
-                orderNos.add(outbound.getOrderNo());
+                orderNos.add(outbound.getOrderNo() + "-盘亏单");
             });
             dto.setOrderNos(orderNos);
             dtos.add(dto);

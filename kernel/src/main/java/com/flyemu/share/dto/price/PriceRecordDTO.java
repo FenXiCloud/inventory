@@ -93,4 +93,9 @@ public class PriceRecordDTO {
      */
     private String supplierName;
 
+    /**
+     * 预计进货价
+     */
+    private BigDecimal purchasePrice;
+
 }

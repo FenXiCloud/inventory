@@ -12,12 +12,12 @@
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <Select class="w-160px ml-8px" filterable required :datas="supplierList" keyName="id" titleName="name"
-                v-model="supplierIds" placeholder="供货商" :multiple="true"/>
-        <Select class="w-160px ml-8px" filterable required :datas="warehouseList" keyName="id" titleName="name"
-                v-model="warehouseIds" placeholder="仓库" :multiple="true"/>
-        <Select class="w-160px ml-8px" filterable required :datas="productList" keyName="id" titleName="name"
-                 v-model="productIds" placeholder="商品" :multiple="true"/>
+        <Select class="ml-8px" required :datas="supplierList" keyName="id" titleName="name"
+                v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
+        <Select class="ml-8px" required :datas="warehouseList" keyName="id" titleName="name"
+                v-model="warehouseIds" placeholder="请选择仓库" :multiple="true"/>
+        <Select class="ml-8px" required :datas="productList" keyName="id" titleName="name"
+                 v-model="productIds" placeholder="请选择商品" :multiple="true"/>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-260px ml-8px"
                 placeholder="请输入订单号/供货商名称" @search="doSearch">
@@ -53,6 +53,8 @@
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
+        <vxe-column title="供货商编码" field="supplierCode" min-width="120"/>
+        <vxe-column title="供货商类别" field="supplierCategoryName" min-width="120"/>
         <vxe-column title="仓库名称" field="warehouseName" min-width="120"/>
         <vxe-column title="订单类型" field="orderType" min-width="120"/>
         <vxe-column title="采购单位" field="secondaryUnitName" width="120"/>
@@ -148,7 +150,7 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", "","", "","","", ""].concat(sums)];
+      return [["", "", "", "", "","","","", "","","", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;

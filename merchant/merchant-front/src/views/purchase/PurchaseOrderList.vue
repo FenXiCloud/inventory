@@ -13,14 +13,13 @@
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">供货商：</span>
-          <Select class="w-160px" filterable required :datas="supplierList" keyName="id" titleName="name"
-                   v-model="params.supplierId" placeholder="请选择供货商"/>
+        <div class="h-input-group ml-8px">
+          <Select :datas="supplierList" keyName="id" titleName="name"
+                  v-model="params.supplierId" placeholder="请选择供货商"/>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/供货商名称" @search="doSearch">
+                placeholder="请输入订单号" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -52,7 +51,7 @@
         </vxe-column>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
-<!--        <vxe-column title="关联入库单" field="purchaseInboundId" width="200"/>-->
+        <!--        <vxe-column title="关联入库单" field="purchaseInboundId" width="200"/>-->
         <vxe-column title="关联入库单" field="purchaseInboundOrderNo" min-width="120"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>
         <vxe-column title="采购金额" field="totalAmount" width="120"/>
@@ -162,7 +161,7 @@ export default {
             }
           })
         } else {
-          message.error("未找到需要审核数据~");
+          message.error("所选数据无需审核~");
         }
       } else {
         message.error("未选择数据~");
@@ -171,7 +170,8 @@ export default {
     backApproved() {
       let checkList = this.$refs.table.getCheckboxRecords();
       if (checkList.length) {
-        let ids = checkList.filter(val => val.orderStatus == '已审核').map(val => val.id);
+        console.log(checkList)
+        let ids = checkList.filter(val => val.orderStatus == '已审核' && !val.purchaseInboundOrderNo).map(val => val.id);
         if (ids.length) {
           confirm({
             title: "批量反审核提示",
@@ -185,7 +185,7 @@ export default {
             }
           })
         } else {
-          message.error("未找到需要反审核数据~");
+          message.error("所选数据无需反审核~");
         }
       } else {
         message.error("未选择数据~");
@@ -194,7 +194,7 @@ export default {
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {
-        if (column.property && ['totalAmount','discountAmount','finalAmount','secondarySum'].includes(column.property)) {
+        if (column.property && ['totalAmount', 'discountAmount', 'finalAmount', 'secondarySum'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             let rd = row[column.property];
@@ -205,7 +205,7 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", ""].concat(sums)];
+      return [["", "", "", "","", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -219,7 +219,7 @@ export default {
         this.pagination.total = total;
       }).finally(() => this.loading = false);
     },
-    loadTotal(){
+    loadTotal() {
       PurchaseOrder.total(this.queryParams).then(({data}) => {
         this.amountTotal = data || 0;
       })

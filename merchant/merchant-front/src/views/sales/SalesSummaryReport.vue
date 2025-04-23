@@ -93,6 +93,7 @@
           <vxe-column title="商品名称" field="productName" />
           <vxe-column title="销售单位" field="unitName" />
           <vxe-column title="规格型号" field="specification" />
+          <vxe-column title="商品类别" field="productCategoryName" />
         </template>
         <template
             v-if="this.params.salesGroupSearch === 'PRODUCT_WAREHOUSE' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'">

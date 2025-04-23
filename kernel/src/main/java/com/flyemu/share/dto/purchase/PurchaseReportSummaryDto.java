@@ -26,9 +26,25 @@ public class PurchaseReportSummaryDto {
     private String productName;
 
     /**
+     * 商品类别
+     */
+    private String spec;
+
+
+    /**
+     * 商品类别
+     */
+    private String categoryName;
+
+    /**
      * 供货商名称
      */
     private String supplierName;
+
+    /**
+     * 供货商编码
+     */
+    private String supplierCode;
 
     /**
      * 仓库名称
@@ -39,6 +55,12 @@ public class PurchaseReportSummaryDto {
      * 订单类型
      */
     private String orderType;
+
+
+    /**
+     * 供应商类别
+     */
+    private String supplierCategoryName;
 
 
     /**

@@ -43,6 +43,16 @@ public class PurchaseReportItemDto {
     private String supplierName;
 
     /**
+     * 供货商编码
+     */
+    private String supplierCode;
+
+    /**
+     * 供货商类别名称
+     */
+    private String supplierCategoryName;
+
+    /**
      * 仓库名称
      */
     private String warehouseName;

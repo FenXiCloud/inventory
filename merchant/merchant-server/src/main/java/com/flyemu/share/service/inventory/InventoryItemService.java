@@ -1,11 +1,13 @@
 package com.flyemu.share.service.inventory;
 
+import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.InventoryItemDTO;
 import com.flyemu.share.dto.InventoryItemReportDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.Inventory;
@@ -15,15 +17,21 @@ import com.flyemu.share.entity.inventory.QInventoryItem;
 import com.flyemu.share.entity.setting.FinanceVoucher;
 import com.flyemu.share.entity.setting.QFinanceVoucher;
 import com.flyemu.share.enums.OperationType;
+import com.flyemu.share.form.InventoryInitialForm;
 import com.flyemu.share.repository.InventoryItemRepository;
+import com.flyemu.share.repository.ProductRepository;
+import com.flyemu.share.repository.UnitRepository;
+import com.flyemu.share.repository.WarehouseRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.criteria.Predicate;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,12 +76,39 @@ public class InventoryItemService extends AbsService {
 
     private final InventoryItemRepository inventoryItemRepository;
 
+    private final ProductRepository productRepository;
+
+    private final WarehouseRepository warehouseRepository;
+
     public List<InventoryItem> query(Query query) {
         List<InventoryItem> inventoryItems = bqf.selectFrom(qInventoryItem)
                 .where(query.builder)
                 .orderBy(qInventoryItem.id.desc())
                 .fetch();
         return inventoryItems;
+    }
+
+    public PageResults<InventoryItemDTO> query(Page page, Query query) {
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryItem)
+                .select(qInventoryItem, qProduct.name, qProduct.code, qProduct.specification, qWarehouse.name, qUnit.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qInventoryItem.productId))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qInventoryItem.baseUnitId))
+                .where(query.buildersV2())
+                .orderBy(qInventoryItem.id.desc())
+                .fetchPage(page.getOffset(), page.getOffsetEnd());
+
+        ArrayList<InventoryItemDTO> collect = fetchPage.stream().collect(ArrayList::new, (list, tuple) -> {
+            InventoryItemDTO dto = BeanUtil.toBean(tuple.get(qInventoryItem), InventoryItemDTO.class);
+            dto.setProductName(tuple.get(qProduct.name));
+            dto.setProductCode(tuple.get(qProduct.code));
+            dto.setSpecification(tuple.get(qProduct.specification));
+            dto.setWarehouseName(tuple.get(qWarehouse.name));
+            dto.setUnitName(tuple.get(qUnit.name));
+            list.add(dto);
+        }, List::addAll);
+        
+        return new PageResults<>(collect, page, fetchPage.getTotalSize());
     }
 
     @Transactional
@@ -88,9 +123,9 @@ public class InventoryItemService extends AbsService {
     }
 
     @Transactional
-    public void delete(Long supplierFlowId, Long merchantId, Long accountBookId) {
+    public void delete(Long inventoryItemId, Long merchantId, Long accountBookId) {
         jqf.delete(qInventoryItem)
-                .where(qInventoryItem.id.eq(supplierFlowId).and(qInventoryItem.merchantId.eq(merchantId)).and(qInventoryItem.accountBookId.eq(accountBookId)))
+                .where(qInventoryItem.id.eq(inventoryItemId).and(qInventoryItem.merchantId.eq(merchantId)).and(qInventoryItem.accountBookId.eq(accountBookId)))
                 .execute();
     }
 
@@ -360,6 +395,60 @@ public class InventoryItemService extends AbsService {
         return dtos;
     }
 
+    @Transactional
+    public void batchSave(InventoryInitialForm inventoryInitialForm) {
+        List<InventoryItem> inventoryItemList = inventoryInitialForm.getInventoryItemList();
+        for (InventoryItem inventoryItem : inventoryItemList) {
+            inventoryItem.setAccountBookId(inventoryInitialForm.getAccountBookId());
+            inventoryItem.setMerchantId(inventoryInitialForm.getMerchantId());
+            inventoryItem.setCreatedBy(inventoryInitialForm.getCreatedBy());
+            inventoryItem.setCreatedAt(LocalDateTime.now());
+            if (inventoryItem.getId() != null) {
+                //更新
+                InventoryItem original = inventoryItemRepository.getById(inventoryItem.getId());
+                BeanUtil.copyProperties(inventoryItem, original, CopyOptions.create().ignoreNullValue());
+                inventoryItemRepository.save(original);
+            }else{
+                //按照商品id和仓库id 查询数据是否存在，组装查询条件
+                Specification<InventoryItem> query = (root, criteriaQuery, criteriaBuilder) -> {
+                    List<Predicate> predicates = new ArrayList<>();
+                    predicates.add(criteriaBuilder.equal(root.get("productId"), inventoryItem.getProductId()));
+                    predicates.add(criteriaBuilder.equal(root.get("warehouseId"), inventoryItem.getWarehouseId()));
+                    predicates.add(criteriaBuilder.equal(root.get("accountBookId"), inventoryItem.getAccountBookId()));
+                    predicates.add(criteriaBuilder.equal(root.get("merchantId"), inventoryItem.getMerchantId()));
+                    predicates.add(criteriaBuilder.equal(root.get("operationType"), OperationType.期初库存));
+                    return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+                };
+                //如果存在，则抛出异常
+                if (inventoryItemRepository.exists(query)) {
+                    //根据商品id查询商品
+                    Product product = productRepository.getById(inventoryItem.getProductId());
+                    //根据仓库id查询仓库
+                    Warehouse warehouse = warehouseRepository.getById(inventoryItem.getWarehouseId());
+                    throw new InvalidContextException("商品：" + product.getName() + "，仓库：" + warehouse.getName() + "，期初库存数据已存在");
+                }
+                inventoryItem.setUpdatedAt(LocalDateTime.now());
+                //新增
+                inventoryItemRepository.save(inventoryItem);
+            }
+        }
+    }
+
+    public InventoryItemDTO getById(InventoryItem query) {
+        InventoryItem inventoryItem = inventoryItemRepository.getById(query.getId());
+        InventoryItemDTO dto = BeanUtil.toBean(inventoryItem, InventoryItemDTO.class);
+        return dto;
+    }
+
+    @Transactional
+    public void batchDelete(InventoryInitialForm inventoryInitialForm) {
+        List<Long> ids = inventoryInitialForm.getIds();
+        if (ids.isEmpty()) {
+            return;
+        }
+        inventoryItemRepository.deleteAllByIdInBatch(ids);
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
@@ -453,6 +542,23 @@ public class InventoryItemService extends AbsService {
             }
             if (StrUtil.isNotBlank(operationTypes)) {
                 builder.and(qInventoryItem.operationType.in(Arrays.stream(operationTypes.split(",")).map(OperationType::valueOf).toList()));
+            }
+            return builder;
+        }
+
+        public BooleanBuilder buildersV2() {
+
+            if (operationType != null) {
+                builder.and(qInventoryItem.operationType.eq(operationType));
+            }
+            if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
+                builder.and(qProduct.code.contains(filter).or(qProduct.name.contains(filter)));
+            }
+            if (StrUtil.isNotBlank(warehouseIds)) {
+                builder.and(qInventoryItem.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(productIds)) {
+                builder.and(qInventoryItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
             }
             return builder;
         }

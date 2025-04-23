@@ -1,9 +1,16 @@
 package com.flyemu.share.controller.basic;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
+import com.flyemu.share.controller.Page;
+import com.flyemu.share.dto.CustomerFlowDTO;
+import com.flyemu.share.dto.SupplierFlowDTO;
 import com.flyemu.share.entity.fund.SupplierFlow;
+import com.flyemu.share.entity.inventory.InventoryItem;
+import com.flyemu.share.form.CustomerInitialForm;
+import com.flyemu.share.form.SupplierInitialForm;
 import com.flyemu.share.service.fund.SupplierFlowService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,10 +31,10 @@ public class SupplierInitialController {
     private final SupplierFlowService supplierFlowService;
 
     @GetMapping
-    public JsonResult list(SupplierFlowService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, SupplierFlowService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(supplierFlowService.query(query));
+        return JsonResult.successful(supplierFlowService.query(page,query));
     }
 
     @PostMapping
@@ -35,6 +42,48 @@ public class SupplierInitialController {
         supplierFlow.setMerchantId(merchantId);
         supplierFlow.setAccountBookId(accountBookId);
         supplierFlowService.save(supplierFlow);
+        return JsonResult.successful();
+    }
+
+    @PostMapping("batchSave")
+    public JsonResult batchSave(@RequestBody @Valid SupplierInitialForm form,
+                                @SaAccountBookId Long accountBookId,
+                                @SaMerchantId Long merchantId,
+                                @SaAdminId Long adminId
+    ) {
+        form.setMerchantId(merchantId);
+        form.setAccountBookId(accountBookId);
+        form.setCreatedBy(adminId);
+        supplierFlowService.batchSave(form);
+        return JsonResult.successful();
+    }
+
+    /**
+     * 详情
+     * @param merchantId
+     * @param accountBookId
+     * @param id
+     * @return
+     */
+    @GetMapping("/getInfo/{id}")
+    public JsonResult getInfo(
+            @SaMerchantId Long merchantId,
+            @SaAccountBookId Long accountBookId,
+            @PathVariable Long id
+    ) {
+        SupplierFlow query = new SupplierFlow();
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        query.setId(id);
+        SupplierFlowDTO supplierFlowDTO = supplierFlowService.getById(query);
+        return JsonResult.successful(supplierFlowDTO);
+    }
+
+    @PutMapping("/batchDelete")
+    public JsonResult batchDelete(
+            @RequestBody SupplierInitialForm form
+    ) {
+        supplierFlowService.batchDelete(form);
         return JsonResult.successful();
     }
 

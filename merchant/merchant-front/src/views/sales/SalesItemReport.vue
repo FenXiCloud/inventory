@@ -54,9 +54,18 @@
         <vxe-column title="销售日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="业务类别" field="salesType" width="200" :formatter="formatOrderType"/>
+        <vxe-column title="客户编码" field="customerCode" min-width="120"/>
         <vxe-column title="客户" field="customerName" min-width="120"/>
+        <vxe-column title="客户类别" field="customerCategoryId" min-width="120">
+          <template #default="{row}">
+            {{ customerCategoryList.find(item => item.id === row.customerCategoryId)?.name || '-' }}
+          </template>
+        </vxe-column>
+
         <vxe-column title="商品编码" field="productCode" width="100"/>
         <vxe-column title="商品名称" field="productName" width="100"/>
+        <vxe-column title="商品类别" field="productCategoryName" width="100"/>
+        <vxe-column title="规格型号" field="specification" width="100"/>
         <vxe-column title="销售单位" field="unitName" width="100"/>
         <vxe-column title="仓库名称" field="warehouseName" width="100"/>
         <vxe-column title="数量" field="quantity" width="100"/>
@@ -89,6 +98,7 @@ import {loading, message} from "heyui.ext";
 import * as XLSX from 'xlsx';
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
+import CustomerCategory from "@js/api/basic/CustomerCategory";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -116,6 +126,7 @@ export default {
       customerList: [],
       warehouseList: [],
       productList: [],
+      customerCategoryList: [],
       dateRange: {
         start: manba(startTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
@@ -258,10 +269,12 @@ export default {
         Customer.select(),
         Warehouse.select(),
         Product.select(),
+        CustomerCategory.select(),
       ]).then((results) => {
         this.customerList = results[0].data || [];
         this.warehouseList = results[1].data || [];
         this.productList = results[2].data || [];
+        this.customerCategoryList = results[3].data || [];
 
       }).finally(() => loading.close());
     },

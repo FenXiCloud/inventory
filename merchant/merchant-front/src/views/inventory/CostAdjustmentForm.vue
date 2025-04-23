@@ -350,10 +350,10 @@ export default {
         loading.close();
         throw new Error("请填写调整金额~")
       }
-      let totalCost = filterCostAdjustmentData.filter((c) => (c.totalCost - c.adjustmentAmount) <= 0);
+      let totalCost = filterCostAdjustmentData.filter((c) => (c.totalCost + c.adjustmentAmount) <= 0);
       if (totalCost.length > 0) {
         loading.close();
-        throw new Error("请填写调整金额不能大于等于商品总成本~")
+        throw new Error("调整后金额不能小于等于零~")
       }
     },
     //获取保存新增、保存方法提交数据

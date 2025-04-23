@@ -110,7 +110,7 @@
           <vxe-column title="成本" field="subtotal" align="center" width="100">
             <template #default="{ row }">
               <div
-                  v-if="inboundItems.includes(row['operationType'])">
+                  v-if="inboundItems.includes(row['operationType']) || ['成本调整'].includes(row['operationType'])">
                 {{ row.subtotal }}
               </div>
               <div v-else>
@@ -234,6 +234,7 @@ export default {
         "调拨出库": "调拨出库",
         "盘亏出库": "盘亏出库",
         "其他出库": "其他出库",
+        "成本调整": "成本调整",
       }
     }
   },

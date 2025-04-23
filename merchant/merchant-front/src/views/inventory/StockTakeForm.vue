@@ -8,7 +8,7 @@
           <label class="mr-20px ml-20px" style="font-size: 16px !important">仓库：</label>
           <Select class="w-178px" filterable :multiple="true" required :datas="warehouseList" keyName="id"
                   titleName="name"
-                  v-model="form.warehouseIds" placeholder="请选择仓库" :disabled="looked || form.id"
+                  v-model="form.warehouseIds" :placeholder="warehousePlaceholder" :disabled="looked || form.id"
                   @change="changeWarehouseId"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">商品：</label>
           <Select class="w-178px mr-20px" filterable required :datas="productList" keyName="id" titleName="name"
@@ -126,6 +126,7 @@ import Inventory from "@js/api/inventory/Inventory";
 import {mapMutations, mapState} from "vuex";
 import StockTake from "@js/api/inventory/StockTake";
 import Stamp from "../common/Stamp.vue";
+import form from "vxe-table/lib/form";
 
 export default {
   name: "StockTakeForm",
@@ -147,6 +148,7 @@ export default {
   },
   data() {
     return {
+      warehousePlaceholder: '请选择仓库',
       refresh: false,
       loading: false,
       productList: [],
@@ -387,6 +389,11 @@ export default {
       this.stockTakeData[rowIndex].deficient = actualQuantity - systemQuantity;
     },
     changeWarehouseId() {
+      if (this.form.warehouseIds && this.form.warehouseIds.length > 0) {
+        this.warehousePlaceholder = "";
+      } else {
+        this.warehousePlaceholder = "请选择仓库";
+      }
       this.doSearch();
     },
     //加载编辑表单

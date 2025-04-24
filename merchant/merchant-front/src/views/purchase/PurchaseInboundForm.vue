@@ -75,7 +75,7 @@
         </vxe-column>
         <vxe-column title="数量" field="secondaryQuantity" width="90">
           <template #default="{row,rowIndex,columnIndex}">
-            <vxe-tooltip theme="light">
+            <vxe-tooltip theme="light" v-if="!row.isNew">
               <template #content>
                 <div>当前库存: {{row.currentStockQuantity || 0}}</div>
                 <div>总库存: {{row.totalStockQuantity || 0}}</div>
@@ -97,7 +97,7 @@
         <vxe-column title="基本数量" field="quantity" width="90"/>
         <vxe-column title="购货单价" field="secondaryPrice" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-tooltip theme="light">
+            <vxe-tooltip theme="light" v-if="!row.isNew">
               <template #content>
                 <div class="recent-sales-table">
                   <table>

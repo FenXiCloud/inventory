@@ -15,6 +15,8 @@ Object.assign(vars, {
 	'layout-sider-collapse-width': '70px',
 	'menu-dark-color': '#001529',
 	'menu-white-background-color': '#ecf8f2',
-	'sys-tabs-height': '50px'
+	'sys-tabs-height': '50px',
+	'border-color': '#d3d3d3',
+	'border': '1px solid #d3d3d3',
 });
 module.exports = vars;

@@ -194,7 +194,9 @@ public class InventoryItemService extends AbsService {
                         qWarehouse.name.as("warehouseName"),
                         qProduct.remarks.as("productRemarks"),
                         qUnit.name.as("unitName"),
+                        qSupplier.id.as("supplierId"),
                         qSupplier.name.as("supplierName"),
+                        qCustomer.id.as("customerId"),
                         qCustomer.name.as("customerName"),
                         qInventoryItem.unitPrice.as("unitPrice"),
                         qInventoryItem.subtotal.as("subtotal"),
@@ -227,7 +229,9 @@ public class InventoryItemService extends AbsService {
             dto.setProductCategoryId(tuple.get(qProduct.id.as("productCategoryId")));
             dto.setProductCode(tuple.get(qProduct.code.as("productCode")));
             dto.setProductName(tuple.get(qProduct.name.as("productName")));
+            dto.setSupplierId(tuple.get(qSupplier.id.as("supplierId")));
             dto.setSupplierName(tuple.get(qSupplier.name.as("supplierName")));
+            dto.setCustomerId(tuple.get(qCustomer.id.as("customerId")));
             dto.setCustomerName(tuple.get(qCustomer.name.as("customerName")));
             dto.setCreatedAt(tuple.get(qInventoryItem.createdAt.as("createdAt")));
             dto.setProductCategoryName(tuple.get(qProductCategory.name.as("productCategoryName")));

@@ -18,6 +18,10 @@
           <Select v-model="params.productCategoryIds" :filterable="true" :multiple="true" keyName="id" titleName="name" class="w-120px"
                   :datas="productCategoryList"/>
         </div>
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">日期：</span>
+          <DateRangePicker v-model="dateRange"></DateRangePicker>
+        </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
                 placeholder="请输入商品编号/名称/类别/规格" @search="doSearch">

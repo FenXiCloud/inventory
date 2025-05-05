@@ -82,4 +82,8 @@ public class SalesOutboundItem {
 
     @Comment("备注")
     private String remark;
+
+    //临时字段，存储商品id
+    @Transient
+    private Long tempId;
 }

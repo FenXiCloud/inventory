@@ -59,6 +59,7 @@ public class SalesOutboundService extends AbsService {
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
     private final static QSalesOutboundItem qSalesOutboundItem = QSalesOutboundItem.salesOutboundItem;
+    private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
 
     private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
 
@@ -71,6 +72,7 @@ public class SalesOutboundService extends AbsService {
     private final SalesOutboundItemRepository salesOutboundItemRepository;
     private final CodeSeedService codeSeedService;
     private final SalesOrderRepository salesOrderRepository;
+    private final SalesOrderItemRepository salesOrderItemRepository;
     private final SalesReturnRepository salesReturnRepository;
 
     private final ProductRepository productRepository;
@@ -197,16 +199,41 @@ public class SalesOutboundService extends AbsService {
                 //批量保存
                 salesOutboundItemRepository.saveAll(salesOutboundItemList);
             }
+
             //选择的源单不为空
             List<Long> selectSalesOrderIdList = salesOutboundForm.getSelectSalesOrderIdList();
             if (!CollectionUtils.isEmpty(selectSalesOrderIdList)) {
-                List<Long> collect = selectSalesOrderIdList.stream().distinct().toList();
-                List<SalesOrder> salesOrderList = salesOrderRepository.findAllById(collect);
-                salesOrderList.forEach(order -> {
-                    //销售订单关联销售出库单
-                    order.setOutOrderId(save.getId());
-                });
-                salesOrderRepository.saveAll(salesOrderList);
+
+                //处理部分出库的订单状态
+                List<SalesOutboundItem> salesOutboundItemListTemp = salesOutboundForm.getSalesOutboundItemList();
+                for (SalesOutboundItem item : salesOutboundItemListTemp){
+                    Long tempId = item.getTempId();
+                    SalesOrderItem salesOrderItem = salesOrderItemRepository.getReferenceById(tempId);
+                    Double quantity = salesOrderItem.getQuantity();
+                    Double quantityOut = item.getQuantity();
+                    if(quantityOut<quantity){
+                        SalesOrder order = salesOrderRepository.getById(salesOrderItem.getSalesOrderId());
+                        //销售订单关联销售出库单
+                        order.setOutOrderId(save.getId());
+                        //部分出库
+                        order.setStatus(1);
+                        salesOrderRepository.save(order);
+                    }
+                    //出库数量
+                    salesOrderItem.setQuantityOut(quantityOut);
+                    salesOrderItemRepository.save(salesOrderItem);
+                }
+                //处理订单状态
+                for (Long salesOrderId : selectSalesOrderIdList){
+                    SalesOrder salesOrderUpdate = salesOrderRepository.getById(salesOrderId);
+                    //如果一个订单里面的所有商品都出库完成，将订单状态改成全部出库
+                    List<SalesOrderItem> salesOrderItemList = jqf.selectFrom(qSalesOrderItem).select(qSalesOrderItem)
+                            .where(qSalesOrderItem.salesOrderId.eq(salesOrderId)).fetch();
+                    if(salesOrderItemList.stream().allMatch(item -> (item.getQuantityOut()!= null && item.getQuantityOut() >= item.getQuantity()))){
+                        salesOrderUpdate.setStatus(2);
+                        salesOrderRepository.save(salesOrderUpdate);
+                    }
+                }
             }
             return save;
         }

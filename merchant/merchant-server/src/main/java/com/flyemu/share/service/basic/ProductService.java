@@ -57,6 +57,7 @@ public class ProductService extends AbsService {
     private final static QProduct qProduct = QProduct.product;
 
     private final static QProductCategory qProductCategory = QProductCategory.productCategory;
+    private final static QPriceRecord qPriceRecord = QPriceRecord.priceRecord;
 
     private final QUnit qUnit = QUnit.unit;
 
@@ -296,6 +297,22 @@ public class ProductService extends AbsService {
             dto.setUnitName(tuple.get(qUnit.name));
             dto.setProductCategoryName(tuple.get(qProductCategory.name));
             list.add(dto);
+            //查询产品QCustomerLevelPrice 的客户等级价格
+            List<CustomerLevelPrice> customerLevelPrices = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(dto.getId())).fetch();
+            dto.setCustomerLevelPriceList(customerLevelPrices);
+            //查询产品QPriceRecord 的最近销售价格
+            PriceRecord priceRecord = jqf.selectFrom(qPriceRecord).where(
+                    qPriceRecord.productId.eq(dto.getId())
+                            .and(qPriceRecord.priceSource.eq(PriceSource.最近销售价格))
+                            .and(qPriceRecord.priceType.eq(PriceType.最近销售价格))
+                            .and(qPriceRecord.accountBookId.eq(accountBookId))
+                            .and(qPriceRecord.merchantId.eq(merchantId))
+                    //降序排序
+
+            ).orderBy(qPriceRecord.id.desc()).fetchFirst();
+            if(priceRecord != null){
+                dto.setLastSalePrice(priceRecord.getUnitPrice());
+            }
         }, List::addAll);
         return result;
     }

@@ -489,7 +489,7 @@ public class InventoryItemService extends AbsService {
                 .orderBy(qInventoryItem.createdAt.asc())
                 .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId);
         List<Tuple> fetch = tupleJPAQuery
-                .offset(page.getOffset()).limit(page.getPageSize())
+//                .offset(page.getOffset()).limit(page.getPageSize())
                 .fetch();
         List<InventoryItemBalanceDTO> dtos = new ArrayList<>();
         for (Tuple tuple : fetch) {

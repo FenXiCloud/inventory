@@ -140,6 +140,8 @@ public class SalesOrderService extends AbsService {
         }else{
             //销售订单状态初始化
             salesOrder.setOrderStatus(OrderStatus.已保存);
+            //初始化订单状态;
+            salesOrder.setStatus(0);
             //销售订单编号
             salesOrder.setOrderNo(codeSeedService.generateCode(salesOrder.getMerchantId(), "销售订单"));
             //保存销售订单
@@ -153,6 +155,8 @@ public class SalesOrderService extends AbsService {
                     item.setMerchantId(salesOrder.getMerchantId());
                     item.setCreatedBy(salesOrder.getCreatedBy());
                     item.setCreatedAt(salesOrder.getCreatedAt());
+                    //初始化出库数量
+                    item.setQuantityOut(0D);
                 });
                 //批量添加销售订单商品
                 salesOrderItemRepository.saveAll(salesOrderItemList);

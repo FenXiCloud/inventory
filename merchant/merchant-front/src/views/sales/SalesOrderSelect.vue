@@ -145,7 +145,6 @@ export default {
               item.quantity = quantity - quantityOut;
             }
           })
-          con
           selectSalesOrderIdList = selectSalesOrderIdList.concat(row.id);
         }
       });

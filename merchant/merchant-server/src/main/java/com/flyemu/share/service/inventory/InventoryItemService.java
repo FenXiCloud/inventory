@@ -113,6 +113,7 @@ public class InventoryItemService extends AbsService {
 
     @Transactional
     public InventoryItem save(InventoryItem inventoryItem) {
+        inventoryItem.setFirstSort(false);
         if (inventoryItem.getId() != null) {
             //更新
             InventoryItem original = inventoryItemRepository.getById(inventoryItem.getId());
@@ -432,6 +433,7 @@ public class InventoryItemService extends AbsService {
                     throw new InvalidContextException("商品：" + product.getName() + "，仓库：" + warehouse.getName() + "，期初库存数据已存在");
                 }
                 inventoryItem.setUpdatedAt(LocalDateTime.now());
+                inventoryItem.setFirstSort(false);
                 //新增
                 inventoryItemRepository.save(inventoryItem);
             }

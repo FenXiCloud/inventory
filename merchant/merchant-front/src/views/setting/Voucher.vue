@@ -52,12 +52,12 @@
                      show-overflow
                      :loading="loading">
             <vxe-column type="seq" width="60" align="center"/>
-            <vxe-column title="凭证类型" field="name" width="200"/>
-            <vxe-column title="凭证code" field="documentType"/>
+            <vxe-column title="凭证类型" field="type" width="200"/>
+            <vxe-column title="凭证code" field="code"/>
             <vxe-column title="操作" align="center" width="120" fixed="right">
               <template #default="{row}">
                 <div class="flex items-center justify-center">
-                  <span class=" primary-color text-hover ml-10px" @click="showForm(row)" size="s">编辑</span>
+                  <span class=" primary-color text-hover ml-10px" @click="showForm(row.id)" size="s">编辑</span>
                   <span class=" primary-color text-hover ml-10px" @click="doRemove(row)" size="s">删除</span>
                 </div>
               </template>
@@ -98,8 +98,7 @@ export default {
       ],
       dataList: [],
       params: {
-        name: null,
-        documentType: '期初余额',
+        type: '期初余额',
       },
     }
   },
@@ -124,7 +123,7 @@ export default {
       });
     },
     loadList() {
-      FinanceVoucher.list({}).then(({data}) => {
+      FinanceVoucher.list(this.params).then(({data}) => {
         console.log(data);
         this.dataList = data;
       })
@@ -154,11 +153,12 @@ export default {
     },
   },
   created() {
-    this.loadList();
+
   },
   mounted() {
     // 默认选中第一个单据类型
     this.selectFirstDocumentType();
+    this.loadList();
   },
 }
 </script>

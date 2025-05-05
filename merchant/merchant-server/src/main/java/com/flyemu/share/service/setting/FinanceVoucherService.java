@@ -1,5 +1,6 @@
 package com.flyemu.share.service.setting;
 
+import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -13,6 +14,7 @@ import com.flyemu.share.form.FinanceVoucherForm;
 import com.flyemu.share.repository.FinanceVoucherRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -58,6 +60,7 @@ public class FinanceVoucherService extends AbsService {
     public List<FinanceVoucher> query(FinanceVoucherService.Query query) {
         return bqf.selectFrom(qFinanceVoucher)
                 .where(query.builder)
+                .where(query.builders())
                 .orderBy(qFinanceVoucher.id.desc())
                 .fetch();
     }
@@ -184,7 +187,11 @@ public class FinanceVoucherService extends AbsService {
         return financeVoucherRepository.findById(id).orElseThrow(RuntimeException::new);
     }
 
+    @Data
     public static class Query {
+
+        private String type;
+
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
@@ -199,5 +206,11 @@ public class FinanceVoucherService extends AbsService {
             }
         }
 
+        public BooleanBuilder builders() {
+            if (StrUtil.isNotBlank(type)) {
+                builder.and(qFinanceVoucher.type.eq(type));
+            }
+            return builder;
+        }
     }
 }

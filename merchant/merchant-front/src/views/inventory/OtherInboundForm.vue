@@ -45,10 +45,33 @@
         <vxe-column field="productName" title="商品名称" min-width="300">
           <template #default="scope">
             <div class="h-input-group goodsSelect" v-if="!looked">
-              <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable
-                      placeholder="输入编码/名称" keyName="id" titleName="name" @change="changeRow(scope, 'product')">
+              <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable :equalWidth="false"
+                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="changeRow(scope, 'product')">
+                <template v-slot:top>
+                  <table class="h-table" style="width: 100%">
+                    <thead class="h-table-header">
+                    <tr>
+                      <td width="150" align="center">商品编号</td>
+                      <td width="150" align="center">商品图片</td>
+                      <td width="150" align="center">商品名称</td>
+                      <td width="150" align="center">商品类别</td>
+                      <td width="150" align="center">商品规格</td>
+                    </tr>
+                    </thead>
+                  </table>
+                </template>
                 <template v-slot:item="{ item }">
-                  <div>{{ item.name }}</div>
+                  <table>
+                    <tbody class="h-table-body-table">
+                    <tr>
+                      <td width="150" align="center">{{ item.code }}</td>
+                      <td width="150" align="center">{{ item.imageUrl }}</td>
+                      <td width="150" align="center">{{ item.name }}</td>
+                      <td width="150" align="center">{{ item.productCategoryName }}</td>
+                      <td width="150" align="center">{{ item.specification }}</td>
+                    </tr>
+                    </tbody>
+                  </table>
                 </template>
               </Select>
             </div>
@@ -571,10 +594,11 @@ export default {
     loadDict(callback) {
       Promise.all([Product.select(), Warehouse.select(), Customer.select(), Supplier.select()])
           .then((results) => {
+            console.log("productList:", results[0].data);
             this.productList = results[0].data || [];
-            // 调整productList的name值
+            // // 调整productList的name值
             this.productList.forEach(item => {
-              item.name = `${item.code}--${item.name}`;
+              item.customName = `${item.code}--${item.name}`;
             });
             this.warehouseList = results[1].data || [];
             this.customerList = results[2].data || [];

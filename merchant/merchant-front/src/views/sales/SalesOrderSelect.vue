@@ -138,6 +138,14 @@ export default {
         if (row.salesOrderItemList && row.salesOrderItemList.length > 0) {
           // 将当前订单的明细添加到总列表中
           allItemList = allItemList.concat(row.salesOrderItemList);
+          allItemList.forEach(item => {
+            let quantity = item.quantity;
+            let quantityOut = item.quantityOut;
+            if(quantity>quantityOut){
+              item.quantity = quantity - quantityOut;
+            }
+          })
+          con
           selectSalesOrderIdList = selectSalesOrderIdList.concat(row.id);
         }
       });

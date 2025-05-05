@@ -44,6 +44,9 @@ public class SalesOrderItem {
     @Comment("出库数量")
     private Double quantityOut;
 
+    @Comment("退货数量")
+    private Double quantityReturn;
+
     @Comment("辅助单位ID(可为空)")
     private Long secondaryUnitId;
 

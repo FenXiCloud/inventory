@@ -157,6 +157,8 @@ public class SalesOrderService extends AbsService {
                     item.setCreatedAt(salesOrder.getCreatedAt());
                     //初始化出库数量
                     item.setQuantityOut(0D);
+                    //初始化退货数量
+                    item.setQuantityReturn(0D);
                 });
                 //批量添加销售订单商品
                 salesOrderItemRepository.saveAll(salesOrderItemList);
@@ -347,7 +349,7 @@ public class SalesOrderService extends AbsService {
         public void setQueryUnOutOrder(Integer queryUnOutOrder) {
             if (queryUnOutOrder == 1) {
                 // status ("出库单状态 0初始化 1部分出库 2全部出库")
-                builder.and(qSalesOrder.outOrderId.isNull()).and(qSalesOrder.status.ne(2));
+                builder.and(qSalesOrder.status.ne(2));
             }
         }
 

@@ -473,6 +473,8 @@ public class InventoryItemService extends AbsService {
 
         private String supplierIds;
 
+        private String customerIds;
+
         private Long productId;
 
         private String productIds;
@@ -531,6 +533,9 @@ public class InventoryItemService extends AbsService {
             }
             if (StrUtil.isNotBlank(supplierIds)) {
                 builder.and(qInventoryItem.supplierId.in(Arrays.stream(supplierIds.split(",")).map(Long::parseLong).toList()));
+            }
+            if (StrUtil.isNotBlank(customerIds)) {
+                builder.and(qInventoryItem.customerId.in(Arrays.stream(customerIds.split(",")).map(Long::parseLong).toList()));
             }
             if (StrUtil.isNotBlank(productCategoryIds)) {
                 builder.and(qProduct.productCategoryId.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).toList()));

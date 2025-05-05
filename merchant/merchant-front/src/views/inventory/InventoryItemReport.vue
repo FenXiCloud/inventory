@@ -30,9 +30,14 @@
                   :datas="productCategoryList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">往来单位：</span>
+          <span class="h-input-addon ml-8px">供应商：</span>
           <Select :multiple="true" v-model="params.supplierIds" class="w-120px" keyName="id" titleName="name"
                   :datas="supplierList"/>
+        </div>
+        <div class="h-input-group h-table-checkbox-wrap">
+          <span class="h-input-addon ml-8px">客户：</span>
+          <Select :multiple="true" v-model="params.customerIds" class="w-120px" keyName="id" titleName="name"
+                  :datas="customerList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">业务类型：</span>
@@ -196,6 +201,7 @@ import Product from "@js/api/basic/Product";
 import ProductCategory from "@js/api/basic/ProductCategory";
 import Warehouse from "@js/api/basic/Warehouse";
 import Supplier from "@js/api/basic/Supplier";
+import Customer from "@js/api/basic/Customer";
 import {exportExcel, exportExcelHeader} from "@js/excel";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
@@ -218,6 +224,7 @@ export default {
         filter: null,
         productIds: [],
         supplierIds: [],
+        customerIds: [],
         warehouseIds: [],
         operationTypes: [],
         productCategoryIds: [],
@@ -233,6 +240,7 @@ export default {
       productList: [],
       productCategoryList: [],
       supplierList: [],
+      customerList: [],
       outboundItems: ["采购退货", "销售出库", "调拨出库", "盘亏出库", "其他出库"],
       inboundItems: ["采购入库", "销售退货", "调拨入库", "其他入库", "盘盈入库"],
       operationTypeList: {
@@ -311,12 +319,13 @@ export default {
     },
     loadDict(callback) {
       loading("加载中....");
-      Promise.all([Product.select(), Warehouse.select(), Supplier.select(),ProductCategory.select()])
+      Promise.all([Product.select(), Warehouse.select(), Supplier.select(), ProductCategory.select(), Customer.select()])
           .then((results) => {
             this.productList = results[0].data || [];
             this.warehouseList = results[1].data || [];
             this.supplierList = results[2].data || [];
             this.productCategoryList = results[3].data || [];
+            this.customerList = results[4].data || [];
             callback();
           })
           .finally(() => loading.close());
@@ -327,6 +336,7 @@ export default {
       params.warehouseIds = params.warehouseIds.join(",");
       params.productIds = params.productIds.join(",");
       params.supplierIds = params.supplierIds.join(",");
+      params.customerIds = params.customerIds.join(",");
       params.operationTypes = params.operationTypes.join(",");
       params.productCategoryIds = params.productCategoryIds.join(",");
       params.isReport = true;

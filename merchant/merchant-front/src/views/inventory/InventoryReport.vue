@@ -7,15 +7,18 @@
       <template #tools>
         <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">仓库：</span>
-          <Select v-model="params.warehouseIds" :filterable="true" :multiple="true" class="w-120px" keyName="id" titleName="name" :datas="warehouseList"/>
+          <Select v-model="params.warehouseIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
+                  titleName="name" :datas="warehouseList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">商品：</span>
-          <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id" titleName="name" :datas="productList"/>
+          <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
+                  titleName="name" :datas="productList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
           <span class="h-input-addon ml-8px">商品类别：</span>
-          <Select v-model="params.productCategoryIds" :filterable="true" :multiple="true" keyName="id" titleName="name" class="w-120px"
+          <Select v-model="params.productCategoryIds" :filterable="true" :multiple="true" keyName="id" titleName="name"
+                  class="w-120px"
                   :datas="productCategoryList"/>
         </div>
         <div class="h-input-group">
@@ -88,6 +91,7 @@ import Warehouse from "@js/api/basic/Warehouse";
 import {mapMutations} from "vuex";
 import {loading, message} from "heyui.ext";
 import {exportExcelHeader} from "@js/excel";
+import InventoryItem from "../../js/api/inventory/InventoryItem";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -169,7 +173,7 @@ export default {
       });
       sums.push(allQuantity);
       sums.push('');
-      sums.push(allTotalCost);
+      sums.push(allTotalCost.toFixed(2));
       columns.forEach((column) => {
         if (column.property && propertyNames.includes(column.property)) {
           let total = 0;
@@ -206,9 +210,9 @@ export default {
       params.productCategoryIds = params.productCategoryIds.join(",");
       params.productIds = params.productIds.join(",");
       params.warehouseIds = params.warehouseIds.join(",");
-      Promise.all([Inventory.reportInventory(params)])
+      Promise.all([InventoryItem.balance(params)])
           .then(results => {
-            this.reportInventoryList = results[0].data || [];
+            this.reportInventoryList = results[0].data.results || [];
             this.amountTotal = 0;
             Inventory.report(params).then(({data: {results, total}}) => {
               this.dataList = results || [];
@@ -234,6 +238,9 @@ export default {
                   item['all_quantity'] = allQuantity;
                   item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
                   item['all_totalCost'] = allTotalCost;
+                  if (isNaN(item['all_averageCost'])) {
+                    item['all_averageCost'] = 0;
+                  }
                 });
               });
               this.amountTotal = this.amountTotal.toFixed(2);

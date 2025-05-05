@@ -6,7 +6,6 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.service.inventory.InventoryItemService;
-import com.flyemu.share.service.inventory.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -83,5 +82,12 @@ public class InventoryItemController {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(inventoryItemService.summaryInitial(query));
+    }
+
+    @GetMapping("balance")
+    public JsonResult balance(Page page, InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(inventoryItemService.balance(page, query));
     }
 }

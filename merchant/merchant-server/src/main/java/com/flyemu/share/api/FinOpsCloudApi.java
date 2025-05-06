@@ -129,7 +129,7 @@ public class FinOpsCloudApi {
             if (jsonObject.getBooleanValue("success")) {
                 return jsonObject;
             }
-            throw new HttpException(jsonObject.getString("msg"));
+            throw new ServiceException(jsonObject.getString("msg"));
         } else {
             if (401 == response.getStatus() && retry < 3) {
                 String cookie = getCookie(finOpsRequest);

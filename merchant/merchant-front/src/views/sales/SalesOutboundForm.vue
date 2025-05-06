@@ -308,6 +308,7 @@ export default {
     },
 
     handleSelectedOrders(params) {
+      this.itemTemp = params.itemList;
       let itemList = params.itemList;
       const unitMap = new Map(this.unitList.map(unit => [unit.id, unit]));
       itemList.forEach(row => {
@@ -316,13 +317,17 @@ export default {
         if (unit) {
           row.unitName = unit.name;
         }
-        //将id置为空，因为是新增的商品
+        //临时id后台需要做判断
+        row.tempId =row.id;
+            //将id置为空，因为是新增的商品
         row.id = null;
       });
       console.log('处理后的订单数据:', itemList)
       // 将 itemList 赋值给 productData
       this.productData = itemList;
       this.selectSalesOrderIdList = params.selectSalesOrderIdList;
+      console.log('this.selectSalesOrderIdList',this.selectSalesOrderIdList)
+      console.log('itemList',itemList)
 
       // this.productData = itemList.map(item => ({
       //   ...item,

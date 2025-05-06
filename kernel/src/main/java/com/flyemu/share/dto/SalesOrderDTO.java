@@ -80,4 +80,7 @@ public class SalesOrderDTO {
 
     @Comment("商品数量")
     private AtomicReference<Double> totalQuantity;
+
+    @Comment("出库单状态 0初始化 1部分出库 2全部出库")
+    private Integer status;
 }

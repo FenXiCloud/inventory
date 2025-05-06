@@ -1,17 +1,20 @@
 package com.flyemu.share.service.setting;
 
+import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.flyemu.share.dto.AcDetailsDto;
 import com.flyemu.share.dto.VoucherDetailsDto;
 import com.flyemu.share.dto.VoucherDto;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.setting.*;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.FinanceVoucherForm;
 import com.flyemu.share.repository.FinanceVoucherRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,10 +50,17 @@ public class FinanceVoucherService extends AbsService {
 
     private final FinanceItemMapService financeItemMapService;
 
+    public final QProduct qProduct = QProduct.product;
+
+    public final QCustomer qCustomer = QCustomer.customer;
+
+    public final QSupplier qSupplier = QSupplier.supplier;
+
 
     public List<FinanceVoucher> query(FinanceVoucherService.Query query) {
         return bqf.selectFrom(qFinanceVoucher)
                 .where(query.builder)
+                .where(query.builders())
                 .orderBy(qFinanceVoucher.id.desc())
                 .fetch();
     }
@@ -90,45 +100,47 @@ public class FinanceVoucherService extends AbsService {
             List<AcDetailsDto> auxiliaryAccountingList = new ArrayList<>();
             AcDetailsDto acDetailsDto;
             for (int j = 0; j < auxiliaryAccounting.size(); j++) {
-                String categoryType = auxiliaryAccounting.getString(0);
-                FinanceItemMap financeItemMap = financeItemMapService.findByCategoryType(categoryType);
+                Long categoryId = auxiliaryAccounting.getLong(0);
+                Long inventoryId = -1L;
+                String msgTips = "";
+                String name = "";
+                switch (categoryId.toString()) {
+                    case "0": {
+                        inventoryId = financeVoucherForm.getCustomerId();
+                        msgTips = "客户";
+                        Customer customer = jqf.selectFrom(qCustomer).where(qCustomer.id.eq(inventoryId)).fetchOne();
+                        name = customer.getName();
+                        break;
+                    }
+                    case "1": {
+                        inventoryId = financeVoucherForm.getSupplierId();
+                        msgTips = "供应商";
+                        Supplier supplier = jqf.selectFrom(qSupplier).where(qSupplier.id.eq(inventoryId)).fetchOne();
+                        name = supplier.getName();
+                        break;
+                    }
+                    case "6": {
+                        inventoryId = financeVoucherForm.getProductId();
+                        Product product = jqf.selectFrom(qProduct).where(qProduct.id.eq(inventoryId)).fetchOne();
+                        name = product.getName();
+                        msgTips = "商品";
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                FinanceItemMap financeItemMap = financeItemMapService.findByCategoryIdAndInventoryId(categoryId, inventoryId);
                 if (financeItemMap == null) {
-                    throw new ServiceException("未配置辅助映射～");
+                    throw new ServiceException("未配置“" + msgTips + "”辅助映射～");
                 }
-                Long inventoryId = financeItemMap.getInventoryId();
                 acDetailsDto = new AcDetailsDto();
-                switch (categoryType) {
-                    case "0":
-                        // 客户
-                        if (inventoryId.equals(financeVoucherForm.getCustomerId())) {
-                            acDetailsDto.setAccountSetsId(financeAccountLink.getFinanceAccountId());
-                            acDetailsDto.setCategoryId(financeItemMap.getCategoryId());
-                            acDetailsDto.setCategoryName(financeItemMap.getCategoryName());
-                            acDetailsDto.setCategoryType(financeItemMap.getCategoryType());
-                            acDetailsDto.setCreateTime(LocalDateTime.now());
-                        }
-                        break;
-                    case "1":
-                        // 供应商
-                        if (inventoryId.equals(financeVoucherForm.getSupplierId())) {
-                            acDetailsDto.setAccountSetsId(financeAccountLink.getFinanceAccountId());
-                            acDetailsDto.setCategoryId(financeItemMap.getCategoryId());
-                            acDetailsDto.setCategoryName(financeItemMap.getCategoryName());
-                            acDetailsDto.setCategoryType(financeItemMap.getCategoryType());
-                            acDetailsDto.setCreateTime(LocalDateTime.now());
-                        }
-                        break;
-                    case "6":
-                        // 商品
-                        if (inventoryId.equals(financeVoucherForm.getProductId())) {
-                            acDetailsDto.setAccountSetsId(financeAccountLink.getFinanceAccountId());
-                            acDetailsDto.setCategoryId(financeItemMap.getCategoryId());
-                            acDetailsDto.setCategoryName(financeItemMap.getCategoryName());
-                            acDetailsDto.setCategoryType(financeItemMap.getCategoryType());
-                            acDetailsDto.setCreateTime(LocalDateTime.now());
-                        }
-                        break;
-                }
+                acDetailsDto.setAccountSetsId(financeAccountLink.getFinanceAccountId());
+                acDetailsDto.setCategoryId(financeItemMap.getCategoryId());
+                acDetailsDto.setCategoryName(financeItemMap.getCategoryName());
+                acDetailsDto.setCategoryType(financeItemMap.getCategoryType());
+                acDetailsDto.setEnable(true);
+                acDetailsDto.setName(name);
+                acDetailsDto.setCreateTime(LocalDateTime.now());
                 auxiliaryAccountingList.add(acDetailsDto);
             }
             Long subjectId = jsonObject.getLong("subjectId");
@@ -175,7 +187,11 @@ public class FinanceVoucherService extends AbsService {
         return financeVoucherRepository.findById(id).orElseThrow(RuntimeException::new);
     }
 
+    @Data
     public static class Query {
+
+        private String type;
+
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
@@ -190,5 +206,11 @@ public class FinanceVoucherService extends AbsService {
             }
         }
 
+        public BooleanBuilder builders() {
+            if (StrUtil.isNotBlank(type)) {
+                builder.and(qFinanceVoucher.type.eq(type));
+            }
+            return builder;
+        }
     }
 }

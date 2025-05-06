@@ -74,8 +74,8 @@ public class FinanceItemMapService extends AbsService {
         return financeItemMapRepository.findById(id).orElseThrow(RuntimeException::new);
     }
 
-    public FinanceItemMap findByCategoryType(String categoryType) {
-        List<FinanceItemMap> byCategoryType = financeItemMapRepository.findByCategoryType(categoryType);
+    public FinanceItemMap findByCategoryIdAndInventoryId(Long categoryId, Long inventoryId) {
+        List<FinanceItemMap> byCategoryType = financeItemMapRepository.findByCategoryIdAndInventoryId(categoryId, inventoryId);
         if (byCategoryType.isEmpty()) {
             return null;
         }

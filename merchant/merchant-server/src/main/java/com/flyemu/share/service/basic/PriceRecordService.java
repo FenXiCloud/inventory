@@ -2,6 +2,7 @@ package com.flyemu.share.service.basic;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.collection.CollUtil;
 import com.alibaba.fastjson2.JSON;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.common.PinYinUtil;
@@ -34,11 +35,9 @@ import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import static com.flyemu.share.enums.PolicySource.*;
 
@@ -393,6 +392,18 @@ public class PriceRecordService extends AbsService {
         public void setProductCategoryId(Long productCategoryId) {
             if (productCategoryId != null) {
                 builder.and(qProductCategory.id.eq(productCategoryId));
+            }
+        }
+
+        public void setProductIds(String productIds) {
+            if (StringUtils.isNotBlank(productIds)) {
+                builder.and(qPriceRecord.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).collect(Collectors.toList())));
+            }
+        }
+
+        public void setProductCategoryIds(String productCategoryIds) {
+            if (StringUtils.isNotBlank(productCategoryIds)) {
+                builder.and(qProductCategory.id.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).collect(Collectors.toList())));
             }
         }
 

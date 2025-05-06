@@ -1,8 +1,8 @@
 import Ajax from "@common/Request";
 
 export default {
-    list() {
-        return Ajax.get('/financeVoucher')
+    list(param) {
+        return Ajax.get('/financeVoucher', param)
     },
     save(param) {
         return Ajax.post('/financeVoucher/save', param)

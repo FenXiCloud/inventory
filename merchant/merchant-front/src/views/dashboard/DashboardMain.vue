@@ -5,7 +5,7 @@
         <div class="flex border-bottom p-16px m-10px justify-between">
           <div class="flex  items-center">
             <span class="text-28px mr-9px">{{ user.admin.name }} </span>
-            你好，纷析云进销存管理系统！
+            你好，欢迎使用进销存管理系统！
           </div>
         </div>
       </div>

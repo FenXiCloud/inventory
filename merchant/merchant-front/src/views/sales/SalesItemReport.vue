@@ -178,7 +178,7 @@ export default {
       })
       this.quantityTotal = quantityTotal.toFixed(2);
       this.subtotalTotal = subtotalTotal.toFixed(2);
-      return [["", "", "", "", "", "", "", "", quantityTotal.toFixed(2), "", subtotalTotal.toFixed(2)]];
+      return [["", "", "", "", "", "", "", "", "", "", "", "", quantityTotal.toFixed(2), "", subtotalTotal.toFixed(2)]];
     },
 
     printEvent () {

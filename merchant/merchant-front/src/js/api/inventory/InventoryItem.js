@@ -32,4 +32,7 @@ export default {
     summaryInitial(param) {
         return Ajax.get('/inventoryItem/summaryInitial', param)
     },
+    balance(param) {
+        return Ajax.get('/inventoryItem/balance', param)
+    },
 }

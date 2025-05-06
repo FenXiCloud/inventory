@@ -31,10 +31,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @功能描述: 库存余额表
@@ -413,6 +410,10 @@ public class InventoryService extends AbsService {
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
+        private Date start;
+
+        private Date end;
+
         private Long warehouseId;
 
         private Long productId;
@@ -437,6 +438,15 @@ public class InventoryService extends AbsService {
             if (accountBookId != null) {
                 builder.and(qInventory.accountBookId.eq(accountBookId));
             }
+        }
+
+        private static Date addTimeOfFinalMoment(Date date) {
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(date);
+            calendar.add(Calendar.HOUR, 23);
+            calendar.add(Calendar.MINUTE, 59);
+            calendar.add(Calendar.SECOND, 59);
+            return calendar.getTime();
         }
 
         public BooleanBuilder builders() {

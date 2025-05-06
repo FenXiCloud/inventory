@@ -117,10 +117,14 @@ public class InventoryItemReportDto implements Serializable {
      */
     private BigDecimal averageCost;
 
+    private Long supplierId;
+
     /**
      * 往来单位
      */
     private String supplierName;
+
+    private Long customerId;
 
     /**
      * 往来单位

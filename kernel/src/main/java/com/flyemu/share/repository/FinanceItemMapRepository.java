@@ -14,4 +14,8 @@ public interface FinanceItemMapRepository extends JpaRepositoryImplementation<Fi
     List<FinanceItemMap> findByInventoryIdAndCategoryId(Long inventoryId, Long categoryId);
 
     List<FinanceItemMap> findByCategoryType(String categoryType);
+
+    List<FinanceItemMap> findByCategoryId(Long categoryId);
+
+    List<FinanceItemMap> findByCategoryIdAndInventoryId(Long categoryId, Long inventoryId);
 }

@@ -63,16 +63,22 @@ public class PurchaseReportService extends AbsService {
                 params.put("filter", query.filter);
             }
             if (CollUtil.isNotEmpty(query.supplierIds)) {
-                params.put("supplierId", query.supplierIds);
+                params.put("supplierId", String.join(",", query.supplierIds.stream().map(Object::toString).collect(Collectors.toList())));
             }
             if (query.accountBookId != null) {
                 params.put("accountBookId", query.accountBookId);
             }
             if (CollUtil.isNotEmpty(query.warehouseIds)) {
-                params.put("warehouseId", query.warehouseIds);
+                params.put("warehouseId", String.join(",", query.warehouseIds.stream().map(Object::toString).collect(Collectors.toList())));
             }
             if (CollUtil.isNotEmpty(query.productIds)) {
-                params.put("productId", query.productIds);
+                params.put("productId", String.join(",", query.productIds.stream().map(Object::toString).collect(Collectors.toList())));
+            }
+            if (CollUtil.isNotEmpty(query.productCategoryIds)) {
+                params.put("productCategoryIds", String.join(",", query.productCategoryIds.stream().map(Object::toString).collect(Collectors.toList())));
+            }
+            if (CollUtil.isNotEmpty(query.supplierCategoryIds)) {
+                params.put("supplierCategoryIds", String.join(",", query.supplierCategoryIds.stream().map(Object::toString).collect(Collectors.toList())));
             }
 
             org.sagacity.sqltoy.model.Page sqlPage = new org.sagacity.sqltoy.model.Page(page.getSize(), page.getPage());
@@ -392,11 +398,19 @@ public class PurchaseReportService extends AbsService {
         }
 
         public void setProductCategoryIds(List<Long> productCategoryIds) {
-            this.productCategoryIds = productCategoryIds;
+            if (CollUtil.isNotEmpty(productCategoryIds)){
+                this.productCategoryIds = productCategoryIds;
+                builder.and(qProduct.productCategoryId.in(productCategoryIds));
+                inboundBuilder.and(qProduct.productCategoryId.in(productCategoryIds));
+            }
         }
 
         public void setSupplierCategoryIds(List<Long> supplierCategoryIds) {
-            this.supplierCategoryIds = supplierCategoryIds;
+            if (CollUtil.isNotEmpty(supplierCategoryIds)){
+                this.supplierCategoryIds = supplierCategoryIds;
+                builder.and(qSupplier.supplierCategoryId.in(supplierCategoryIds));
+                inboundBuilder.and(qSupplier.supplierCategoryId.in(supplierCategoryIds));
+            }
         }
 
         public void setOrderType(String orderType) {

@@ -35,9 +35,6 @@ public class PurchaseReturn {
     @Comment("单据编号")
     private String orderNo;
 
-    @Comment("采购入库主表ID")
-    private Long purchaseInboundId;
-
     @Comment("供货商ID")
     private Long supplierId;
 

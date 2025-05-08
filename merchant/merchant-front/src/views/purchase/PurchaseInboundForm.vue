@@ -43,10 +43,33 @@
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,rowIndex)" v-model="row.productId" :datas="productList"
-                      filterable
+                      filterable :equalWidth="false"
                       placeholder="输入编码/名称" keyName="productId">
+                <template v-slot:top>
+                  <table class="h-table" style="width: 100%">
+                    <thead class="h-table-header">
+                    <tr>
+                      <td width="150" align="center">编码</td>
+                      <td width="150" align="center">图片</td>
+                      <td width="150" align="center">名称</td>
+                      <td width="150" align="center">类别</td>
+                      <td width="150" align="center">规格</td>
+                    </tr>
+                    </thead>
+                  </table>
+                </template>
                 <template v-slot:item="{ item }">
-                  <div>{{ item.productCode }} {{ item.productName }}</div>
+                  <table>
+                    <tbody class="h-table-body-table">
+                    <tr>
+                      <td width="150" align="center">{{ item.productCode }}</td>
+                      <td width="150" align="center">{{ item.imageUrl }}</td>
+                      <td width="150" align="center">{{ item.productName }}</td>
+                      <td width="150" align="center">{{ item.productCategoryName }}</td>
+                      <td width="150" align="center">{{ item.spec }}</td>
+                    </tr>
+                    </tbody>
+                  </table>
                 </template>
               </Select>
             </div>

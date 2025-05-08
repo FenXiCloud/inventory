@@ -71,6 +71,7 @@ public class PurchaseInboundService extends AbsService {
     private final static QProductCategory qProductCategory = QProductCategory.productCategory;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final static QUnit qUnit = QUnit.unit;
+    private final static QPurchaseInboundReturnConnection qConnection = QPurchaseInboundReturnConnection.purchaseInboundReturnConnection;
 
     private final PurchaseInboundRepository purchaseInboundRepository;
     private final PurchaseInboundItemRepository inboundItemRepository;
@@ -82,9 +83,8 @@ public class PurchaseInboundService extends AbsService {
 
     public PageResults<PurchaseInboundDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInbound)
-                .select(qPurchaseInbound, qSupplier.name, qMerchantUser.name, qPurchaseReturn.orderNo)
+                .select(qPurchaseInbound, qSupplier.name, qMerchantUser.name)
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
-                .leftJoin(qPurchaseReturn).on(qPurchaseReturn.id.eq(qPurchaseInbound.purchaseReturnId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseInbound.createdBy))
                 .where(query.builder).orderBy(qPurchaseInbound.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
@@ -95,8 +95,18 @@ public class PurchaseInboundService extends AbsService {
             dto.setCreatedName(tuple.get(qMerchantUser.name));
             dto.setPurchaseReturnOrderNo(tuple.get(qPurchaseReturn.orderNo));
             List<String> orderNos = bqf.selectFrom(qPurchaseOrder).select(qPurchaseOrder.orderNo).where(qPurchaseOrder.purchaseInboundId.eq(dto.getId())).fetch();
+
+            List<String> returnOrderNos = bqf.selectFrom(qConnection)
+                    .select(qPurchaseInbound.orderNo)
+                    .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qConnection.purchaseInboundId))
+                    .where(qConnection.purchaseReturnId.eq(dto.getId())).fetch();
+
             if (CollUtil.isNotEmpty(orderNos)) {
                 dto.setPurchaseOrderNos(String.join(",", orderNos));
+            }
+
+            if (CollUtil.isNotEmpty(returnOrderNos)) {
+                dto.setPurchaseReturnOrderNo(String.join(",", returnOrderNos));
             }
             dtos.add(dto);
         });
@@ -131,12 +141,14 @@ public class PurchaseInboundService extends AbsService {
                 d.setAccountBookId(purchaseInbound.getAccountBookId());
                 d.setPurchaseInboundId(purchaseInbound.getId());
                 d.setMerchantId(merchantId);
+                d.setReturnQuantity(d.getSecondaryQuantity());
                 secondarySum += d.getSecondaryQuantity();
                 //保存更新购货商品价格
                 savePrice(d, purchaseInbound);
             }
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
             original.setSecondarySum(secondarySum);
+            original.setReturnSum(secondarySum);
             return purchaseInboundRepository.save(original);
         } else {
 
@@ -147,6 +159,7 @@ public class PurchaseInboundService extends AbsService {
                     .map(PurchaseInboundItem::getSecondaryQuantity)
                     .reduce(0.0, Double::sum);
             purchaseInbound.setSecondarySum(secondarySum);
+            purchaseInbound.setReturnSum(secondarySum);
             purchaseInbound = purchaseInboundRepository.save(purchaseInbound);
 
             if (CollUtil.isNotEmpty(purchaseInboundForm.getOrderIds())) {
@@ -161,6 +174,7 @@ public class PurchaseInboundService extends AbsService {
                 d.setAccountBookId(purchaseInbound.getAccountBookId());
                 d.setPurchaseInboundId(purchaseInbound.getId());
                 d.setMerchantId(merchantId);
+                d.setReturnQuantity(d.getSecondaryQuantity());
                 //保存更新购货商品价格
                 savePrice(d, purchaseInbound);
             }
@@ -189,8 +203,14 @@ public class PurchaseInboundService extends AbsService {
         PurchaseInbound original = purchaseInboundRepository.getById(purchaseInboundId);
 
         Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能删除~");
-        Assert.isFalse(original.getPurchaseReturnId() != null, "已关联退货单不能删除~");
 
+        Assert.isFalse(bqf.selectFrom(qConnection)
+                .where(qConnection.purchaseInboundId.eq(purchaseInboundId))
+                .fetchCount() > 0, "已关联退货单不能删除~");
+
+        jqf.delete(qPurchaseInboundItem)
+                .where(qPurchaseInboundItem.purchaseInboundId.eq(purchaseInboundId).and(qPurchaseInboundItem.accountBookId.eq(accountBookId)).and(qPurchaseInboundItem.merchantId.eq(merchantId)))
+                .execute();
         jqf.delete(qPurchaseInbound)
                 .where(qPurchaseInbound.id.eq(purchaseInboundId).and(qPurchaseInbound.merchantId.eq(merchantId)).and(qPurchaseInbound.accountBookId.eq(accountBookId)))
                 .execute();
@@ -206,7 +226,8 @@ public class PurchaseInboundService extends AbsService {
                 .select(qPurchaseInbound, qSupplier.name, qMerchantUser.name)
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseInbound.createdBy))
-                .where(query.builder.and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核)).and(qPurchaseInbound.purchaseReturnId.isNull())).orderBy(qPurchaseInbound.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+                .where(query.builder.and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核))
+                        .and(qPurchaseInbound.returnSum.gt(0))).orderBy(qPurchaseInbound.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
         List<PurchaseInboundDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
@@ -224,8 +245,8 @@ public class PurchaseInboundService extends AbsService {
         QUnit qUnit1 = new QUnit("id");
 
         List<PurchaseInboundItemDto> collect = bqf.selectFrom(qPurchaseInboundItem)
-                .select(qPurchaseInboundItem, qProduct.code, qProduct.name, qWarehouse.name,
-                        qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name,qProductCategory.name,qProduct.specification)
+                .select(qPurchaseInboundItem, qProduct.code, qProduct.name, qWarehouse.name,qPurchaseInbound.orderNo,
+                        qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name, qProductCategory.name, qProduct.specification)
                 .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId).and(qPurchaseInbound.merchantId.eq(merchantId)))
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseInboundItem.productId).and(qProduct.merchantId.eq(merchantId)))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseInboundItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
@@ -233,11 +254,15 @@ public class PurchaseInboundService extends AbsService {
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseInboundItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
                 .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(qPurchaseInboundItem.purchaseInboundId.in(orderIds).and(qPurchaseInboundItem.merchantId.eq(merchantId))
+                        .and(qPurchaseInboundItem.returnQuantity.gt(0))
                         .and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核)))
                 .orderBy(qPurchaseInboundItem.id.asc())
                 .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
                     PurchaseInboundItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseInboundItem), PurchaseInboundItemDto.class);
                     dto.setId(null);
+                    dto.setPurchaseInboundOrderNo(tuple.get(qPurchaseInbound.orderNo));
+                    dto.setSecondaryQuantity(dto.getReturnQuantity());
+                    dto.setPurchaseInboundItemId(tuple.get(qPurchaseInboundItem).getId());
                     dto.setProductCode(tuple.get(qProduct.code));
                     dto.setSpec(tuple.get(qProduct.specification));
                     dto.setCategoryName(tuple.get(qProductCategory.name));
@@ -265,7 +290,9 @@ public class PurchaseInboundService extends AbsService {
             }
         } else if (OrderStatus.已保存.equals(state)) {
             for (PurchaseInbound order : orders) {
-                if (OrderStatus.已审核.equals(order.getOrderStatus()) && order.getPurchaseReturnId() == null) {
+                if (OrderStatus.已审核.equals(order.getOrderStatus()) && bqf.selectFrom(qConnection)
+                        .where(qConnection.purchaseInboundId.eq(order.getId()))
+                        .fetchCount() == 0) {
                     setIds.add(order.getId());
                 } else {
                     log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());

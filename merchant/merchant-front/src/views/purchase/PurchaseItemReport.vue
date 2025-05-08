@@ -12,12 +12,16 @@
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <Select class="ml-8px" required :datas="supplierList" keyName="id" titleName="name"
-                v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
         <Select class="ml-8px" required :datas="warehouseList" keyName="id" titleName="name"
                 v-model="warehouseIds" placeholder="请选择仓库" :multiple="true"/>
+        <Select class="ml-8px" required :datas="supplierList" keyName="id" titleName="name"
+                v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
+        <Select class="ml-8px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
+                v-model="supplierCategoryIds" placeholder="请选择供货商类别"/>
         <Select class="ml-8px" required :datas="productList" keyName="id" titleName="name"
                  v-model="productIds" placeholder="请选择商品" :multiple="true"/>
+        <Select class="ml-8px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
+                v-model="productCategoryIds" placeholder="请选择商品类别"/>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-260px ml-8px"
                 placeholder="请输入订单号/供货商名称" @search="doSearch">
@@ -85,6 +89,8 @@ import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
 import {loading} from "heyui.ext";
 import Product from "@js/api/basic/Product";
+import ProductCategory from "@js/api/basic/ProductCategory";
+import SupplierCategory from "@js/api/basic/SupplierCategory";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -96,6 +102,10 @@ export default {
       dataList: [],
       productList: [],
       warehouseList: [],
+      productCategoryList: [],
+      supplierCategoryList: [],
+      supplierCategoryIds: [],
+      productCategoryIds: [],
       supplierList: [],
       supplierIds: [],
       productIds: [],
@@ -124,6 +134,8 @@ export default {
   computed: {
     queryParams() {
       return Object.assign(this.params, {
+        productCategoryIds: this.productCategoryIds.map(item => item).toString(),
+        supplierCategoryIds: this.supplierCategoryIds.map(item => item).toString(),
         supplierIds: this.supplierIds.map(item => item).toString(),
         productIds: this.productIds.map(item => item).toString(),
         warehouseIds: this.warehouseIds.map(item => item).toString(),
@@ -161,10 +173,14 @@ export default {
         Supplier.select(),
         Warehouse.select(),
         Product.select(),
+        ProductCategory.select(),
+        SupplierCategory.select(),
       ]).then((results) => {
         this.supplierList = results[0].data || [];
         this.warehouseList = results[1].data || [];
         this.productList = results[2].data || [];
+        this.productCategoryList = results[3].data || [];
+        this.supplierCategoryList = results[4].data || [];
       }).finally(() => loading.close());
     },
     loadList(type = true) {

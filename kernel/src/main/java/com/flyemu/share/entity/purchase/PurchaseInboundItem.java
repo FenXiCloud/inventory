@@ -86,4 +86,7 @@ public class PurchaseInboundItem {
     @Column(nullable = false)
     private Long merchantId;
 
+    @Comment("可退货数量")
+    private Double returnQuantity;
+
 }

@@ -111,6 +111,7 @@ import {confirm, loading, message} from "heyui.ext";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import Customer from "@js/api/basic/Customer";
+import {sum} from "xe-utils";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -169,8 +170,9 @@ export default {
     },
     footerMethod({columns, data}) {
       let sums = [];
+      let num = 0;
       columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
+        if (column.property && ['totalAmount'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             let rd = row[column.property];
@@ -180,8 +182,19 @@ export default {
           });
           sums.push(total.toFixed(2));
         }
+        if (column.property && ['quantity'].includes(column.property)) {
+          let total = 0;
+          data.forEach((row) => {
+            let rd = row[column.property];
+            if (rd) {
+              total += Number(rd || 0);
+            }
+          });
+          num = total;
+        }
       })
-      return [["", "", "", "", "", ""].concat(sums)];
+      sums.push("", "", num);
+      return [["", "合计", "", "", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;

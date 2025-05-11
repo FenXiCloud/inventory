@@ -126,7 +126,7 @@ export default {
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
+        if (column.property && ['adjustmentAmount'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             let rd = row[column.property];
@@ -137,7 +137,7 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", "", ""].concat(sums)];
+      return [["", "", "", "", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;

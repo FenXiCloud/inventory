@@ -29,7 +29,6 @@ import com.querydsl.core.types.dsl.StringTemplate;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -88,6 +87,8 @@ public class StockTakeService extends AbsService {
                 .select(qStockTake)
                 .leftJoin(qStockTakeWarehouse).on(qStockTakeWarehouse.stockTakeId.eq(qStockTake.id))
                 .leftJoin(qWarehouse).on(qStockTakeWarehouse.warehouseId.eq(qWarehouse.id))
+                .leftJoin(qStockTakeItem).on(qStockTakeItem.StockTakeId.eq(qStockTake.id))
+                .leftJoin(qProduct).on(qProduct.id.eq(qStockTakeItem.productId))
                 .where(query.builder)
                 .where(query.builders())
                 .groupBy(qStockTake.id)
@@ -423,6 +424,8 @@ public class StockTakeService extends AbsService {
 
         private String warehouseIds;
 
+        private String productCategoryIds;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qStockTake.merchantId.eq(merchantId));
@@ -462,6 +465,9 @@ public class StockTakeService extends AbsService {
             }
             if (StrUtil.isNotBlank(warehouseIds)) {
                 builder.and(qStockTakeWarehouse.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()).or(qStockTakeWarehouse.id.isNull()));
+            }
+            if (StrUtil.isNotBlank(productCategoryIds)) {
+                builder.and(qProduct.productCategoryId.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).toList()));
             }
             return builder;
         }

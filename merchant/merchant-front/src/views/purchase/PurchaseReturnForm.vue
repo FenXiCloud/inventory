@@ -70,56 +70,60 @@
         </vxe-column>
         <vxe-column title="退货数量" field="secondaryQuantity" width="90">
           <template #default="{row,rowIndex,columnIndex}">
-            <vxe-tooltip theme="light" v-if="!row.isNew">
-              <template #content>
-                <div>当前库存: {{ row.currentStockQuantity || 0 }}</div>
-                <div>总库存: {{ row.totalStockQuantity || 0 }}</div>
-              </template>
-              <vxe-input
-                  :id="'r'+rowIndex+''+3"
-                  @blur="updateQuantity(row)"
-                  @focus="showStockQuantity(row)"
-                  ref="inputQuantity"
-                  v-model.number="row.secondaryQuantity"
-                  type="float"
-                  min="0"
-                  :max="row.returnQuantity"
-                  :controls="false">
-              </vxe-input>
-            </vxe-tooltip>
+            <template v-if="!row.isNew">
+              <vxe-tooltip theme="light" v-if="!row.isNew">
+                <template #content>
+                  <div>当前库存: {{ row.currentStockQuantity || 0 }}</div>
+                  <div>总库存: {{ row.totalStockQuantity || 0 }}</div>
+                </template>
+                <vxe-input
+                    :id="'r'+rowIndex+''+3"
+                    @blur="updateQuantity(row)"
+                    @focus="showStockQuantity(row)"
+                    ref="inputQuantity"
+                    v-model.number="row.secondaryQuantity"
+                    type="float"
+                    min="0"
+                    :max="row.returnQuantity"
+                    :controls="false">
+                </vxe-input>
+              </vxe-tooltip>
+            </template>
           </template>
         </vxe-column>
         <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
         <vxe-column title="基本数量" field="quantity" width="90"/>
         <vxe-column title="购货单价" field="secondaryPrice" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-tooltip theme="light" v-if="!row.isNew">
-              <template #content>
-                <div class="recent-sales-table">
-                  <table>
-                    <thead>
-                    <tr>
-                      <th>最近采购时间</th>
-                      <th>最近采购价</th>
-                      <th>供货商</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr v-for="(item, index) in recentSales || []" :key="index">
-                      <td>{{ item.orderDate || '-' }}</td>
-                      <td>{{ item.unitPrice || '-' }}</td>
-                      <td>{{ item.supplierName || '-' }}</td>
-                    </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </template>
-              <vxe-input :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
-                         @blur="updatePrice(row)"
-                         @focus="showPrice(row.productId)"
-                         v-model.number="row.secondaryPrice" type="float" min="0"
-                         :controls="false"></vxe-input>
-            </vxe-tooltip>
+            <template v-if="!row.isNew">
+              <vxe-tooltip theme="light" v-if="!row.isNew">
+                <template #content>
+                  <div class="recent-sales-table">
+                    <table>
+                      <thead>
+                      <tr>
+                        <th>最近采购时间</th>
+                        <th>最近采购价</th>
+                        <th>供货商</th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                      <tr v-for="(item, index) in recentSales || []" :key="index">
+                        <td>{{ item.orderDate || '-' }}</td>
+                        <td>{{ item.unitPrice || '-' }}</td>
+                        <td>{{ item.supplierName || '-' }}</td>
+                      </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
+                <vxe-input :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
+                           @blur="updatePrice(row)"
+                           @focus="showPrice(row.productId)"
+                           v-model.number="row.secondaryPrice" type="float" min="0"
+                           :controls="false"></vxe-input>
+              </vxe-tooltip>
+            </template>
           </template>
         </vxe-column>
         <vxe-column title="折扣率(%)" field="discountRate" width="100">

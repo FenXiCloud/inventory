@@ -475,8 +475,8 @@ public class InventoryItemService extends AbsService {
         BooleanBuilder timerBuilder = new BooleanBuilder();
         Date start = query.getStart();
         Date end = query.getEnd();
-        if (start != null && end != null) {
-            timerBuilder.and(qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(addTimeOfFinalMoment(end).toInstant(), ZoneId.systemDefault())));
+        if (start != null) {
+            timerBuilder.and(qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(addTimeOfFinalMoment(start).toInstant(), ZoneId.systemDefault())));
             timerBuilder.and(qInventoryItem.createdAt.goe(LocalDateTime.ofInstant(start.toInstant(), ZoneId.systemDefault())));
         }
         timerJpaQuery.where(timerBuilder)

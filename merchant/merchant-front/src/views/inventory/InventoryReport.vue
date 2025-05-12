@@ -23,7 +23,7 @@
         </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">日期：</span>
-          <DateRangePicker v-model="dateRange"></DateRangePicker>
+          <DatePicker v-model="dateRange.start" :clearable="false"></DatePicker>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"

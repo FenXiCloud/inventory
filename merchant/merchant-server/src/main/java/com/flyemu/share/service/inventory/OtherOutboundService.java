@@ -151,6 +151,7 @@ public class OtherOutboundService extends AbsService {
         if (otherOutbound == null) {
             throw new ServiceException("审核数据不存在～");
         }
+        otherOutbound = otherOutboundItemService.recalculateAmount(otherOutbound);
         OutboundType outboundType = otherOutbound.getOutboundType();
         OperationType operationType;
         if (outboundType.equals(OutboundType.其他出库)) {

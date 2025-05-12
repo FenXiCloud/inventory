@@ -7,6 +7,15 @@
         <Button @click="auditsForm('antiAudits')">反审核</Button>
       </template>
       <template #tools>
+        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+                show-search-button class="w-360px ml-8px"
+                placeholder="请输入单据编号/仓库名称" @search="doSearch">
+          <i class="h-icon-search"/>
+        </Search>
+      </template>
+    </vxe-toolbar>
+    <vxe-toolbar>
+      <template #buttons>
         <Select v-model="params.state" class="w-120px" :datas="{未审核:'未审核',已审核:'已审核'}"
                 placeholder="审核状态："/>
         <div class="h-input-group">
@@ -18,11 +27,12 @@
           <Select v-model="params.warehouseIds" :multiple="true" class="w-120px" :datas="warehouseList" keyName="id"
                   titleName="name"/>
         </div>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-360px ml-8px"
-                placeholder="请输入单据编号/仓库名称" @search="doSearch">
-          <i class="h-icon-search"/>
-        </Search>
+        <div class="h-input-group h-table-checkbox-wrap">
+          <span class="h-input-addon ml-8px">商品类别：</span>
+          <Select v-model="params.productCategoryIds" :multiple="true" class="w-120px" :datas="productCategoryList"
+                  keyName="id"
+                  titleName="name"/>
+        </div>
       </template>
     </vxe-toolbar>
     <div class="flex1">
@@ -87,6 +97,7 @@
 import manba from "manba";
 import StockTake from "@js/api/inventory/StockTake";
 import Warehouse from "@js/api/basic/Warehouse";
+import ProductCategory from "@js/api/basic/ProductCategory";
 import {mapMutations} from "vuex";
 import {confirm, loading, message} from "heyui.ext";
 
@@ -109,6 +120,7 @@ export default {
       params: {
         filter: null,
         warehouseIds: [],
+        productCategoryIds: [],
         state: null,
         sortCol: null,
         sort: null,
@@ -117,7 +129,8 @@ export default {
         start: manba(startTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
       },
-      warehouseList: []
+      warehouseList: [],
+      productCategoryList: []
     }
   },
   computed: {
@@ -164,6 +177,7 @@ export default {
       this.loading = true;
       const params = JSON.parse(JSON.stringify(this.queryParams));
       params.warehouseIds = params.warehouseIds.join(",");
+      params.productCategoryIds = params.productCategoryIds.join(",");
       StockTake.list(params).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
@@ -171,9 +185,10 @@ export default {
     },
     //加载字典
     loadDict(callback) {
-      Promise.all([Warehouse.select()])
+      Promise.all([Warehouse.select(), ProductCategory.select()])
           .then((results) => {
             this.warehouseList = results[0].data || [];
+            this.productCategoryList = results[1].data || [];
             if (callback) {
               callback();
             }

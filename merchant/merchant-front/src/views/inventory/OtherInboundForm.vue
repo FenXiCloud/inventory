@@ -406,12 +406,12 @@ export default {
         loading.close();
         throw new Error("请填写数量~")
       }
-      let unitPrice = filterOtherInboundData.filter((c) => this.isEmpty(c.unitPrice) || Number(c.unitPrice) === 0);
+      let unitPrice = filterOtherInboundData.filter((c) => this.isEmpty(c.unitPrice));
       if (unitPrice.length > 0) {
         loading.close();
         throw new Error("请填写入库单价~")
       }
-      let subtotal = filterOtherInboundData.filter((c) => this.isEmpty(c.subtotal) || Number(c.subtotal) === 0);
+      let subtotal = filterOtherInboundData.filter((c) => this.isEmpty(c.subtotal));
       if (subtotal.length > 0) {
         loading.close();
         throw new Error("请填写入库金额~")

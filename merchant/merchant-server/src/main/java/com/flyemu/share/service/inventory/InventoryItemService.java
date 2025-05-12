@@ -25,6 +25,7 @@ import com.flyemu.share.repository.WarehouseRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import jakarta.persistence.EnumType;
@@ -458,39 +459,48 @@ public class InventoryItemService extends AbsService {
     }
 
     public PageResults<InventoryItemBalanceDTO> balance(Page page, Query query) {
-        JPAQuery<Tuple> tupleJPAQuery = jqf.selectFrom(qInventoryItem)
-                .select(
-                        qInventoryItem.id.as("inventoryItemId"),
-                        qInventoryItem.productId.as("productId"),
-                        qInventoryItem.createdAt.as("createdAt"),
-                        qInventoryItem.warehouseId.as("warehouseId"),
-                        qWarehouse.name.as("warehouseName"),
-                        qInventoryItem.totalCost.as("totalCost"),
-                        qInventoryItem.currentQuantity.as("currentQuantity"),
-                        qInventoryItem.averageCost.as("averageCost")
-                )
-                .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
-                .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
-                .leftJoin(qWarehouse).on(qInventoryItem.warehouseId.eq(qWarehouse.id))
-                .where(query.balanceBuilders())
-                .where(
-                        qInventoryItem.createdAt.in(
-                                JPAExpressions.select(qInventoryItem.createdAt.max().as("createdAt")).from(qInventoryItem)
-                                        .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
-                                        .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
-                                        .leftJoin(qWarehouse).on(qInventoryItem.warehouseId.eq(qWarehouse.id))
-                                        .where(qInventoryItem.operationType.notIn(OperationType.期初余额, OperationType.期初库存))
-                                        .where(qProduct.id.isNotNull())
-                                        .orderBy(qInventoryItem.createdAt.asc())
-                                        .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId)
-                        ).and(qInventoryItem.operationType.notIn(OperationType.期初余额, OperationType.期初库存))
-                )
-                .where(qProduct.id.isNotNull())
-                .orderBy(qInventoryItem.createdAt.asc())
+        BooleanExpression expression = qInventoryItem.createdAt.in(
+                JPAExpressions.select(qInventoryItem.createdAt.max().as("createdAt")).from(qInventoryItem)
+                        .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
+                        .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
+                        .leftJoin(qWarehouse).on(qInventoryItem.warehouseId.eq(qWarehouse.id))
+                        .where(qInventoryItem.operationType.notIn(OperationType.期初余额, OperationType.期初库存))
+                        .where(qProduct.id.isNotNull())
+                        .orderBy(qInventoryItem.createdAt.asc())
+                        .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId)
+        ).and(qInventoryItem.operationType.notIn(OperationType.期初余额, OperationType.期初库存));
+        JPAQuery<Tuple> timerJpaQuery = getBalanceJpaQuery(query, expression);
+        JPAQuery<Tuple> tupleJPAQuery = getBalanceJpaQuery(query, expression);
+        // 获取日期范围内数据
+        BooleanBuilder timerBuilder = new BooleanBuilder();
+        Date start = query.getStart();
+        Date end = query.getEnd();
+        if (start != null && end != null) {
+            timerBuilder.and(qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(addTimeOfFinalMoment(end).toInstant(), ZoneId.systemDefault())));
+            timerBuilder.and(qInventoryItem.createdAt.goe(LocalDateTime.ofInstant(start.toInstant(), ZoneId.systemDefault())));
+        }
+        timerJpaQuery.where(timerBuilder)
                 .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId);
-        List<Tuple> fetch = tupleJPAQuery
-//                .offset(page.getOffset()).limit(page.getPageSize())
-                .fetch();
+        List<Tuple> fetch = timerJpaQuery.fetch();
+        // 获取日期开始时间前数据
+        List<Tuple> beforeFetch = new ArrayList<>();
+        if (start != null && end != null) {
+            BooleanBuilder whereBuilder = new BooleanBuilder();
+            whereBuilder.and(qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(start.toInstant(), ZoneId.systemDefault())));
+            whereBuilder.and(qInventoryItem.productId.notIn(
+                    JPAExpressions.select(qInventoryItem.productId).from(qInventoryItem)
+                            .where(expression)
+                            .where(timerBuilder)
+                            .where(query.balanceBuilders())
+            ).and(qInventoryItem.warehouseId.notIn(
+                    JPAExpressions.select(qInventoryItem.warehouseId).from(qInventoryItem)
+                            .where(expression)
+                            .where(timerBuilder)
+                            .where(query.balanceBuilders())
+            )));
+            beforeFetch = tupleJPAQuery.where(whereBuilder).groupBy(qInventoryItem.productId, qInventoryItem.warehouseId).fetch();
+        }
+        fetch.addAll(beforeFetch);
         List<InventoryItemBalanceDTO> dtos = new ArrayList<>();
         for (Tuple tuple : fetch) {
             InventoryItemBalanceDTO dto = new InventoryItemBalanceDTO();
@@ -505,6 +515,27 @@ public class InventoryItemService extends AbsService {
             dtos.add(dto);
         }
         return new PageResults<>(dtos, page, fetch.size());
+    }
+
+    private JPAQuery<Tuple> getBalanceJpaQuery(Query query, BooleanExpression expression) {
+        return jqf.selectFrom(qInventoryItem)
+                .select(
+                        qInventoryItem.id.as("inventoryItemId"),
+                        qInventoryItem.productId.as("productId"),
+                        qInventoryItem.createdAt.as("createdAt"),
+                        qInventoryItem.warehouseId.as("warehouseId"),
+                        qWarehouse.name.as("warehouseName"),
+                        qInventoryItem.totalCost.as("totalCost"),
+                        qInventoryItem.currentQuantity.as("currentQuantity"),
+                        qInventoryItem.averageCost.as("averageCost")
+                )
+                .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
+                .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
+                .leftJoin(qWarehouse).on(qInventoryItem.warehouseId.eq(qWarehouse.id))
+                .where(query.balanceBuilders())
+                .where(expression)
+                .where(qProduct.id.isNotNull())
+                .orderBy(qInventoryItem.createdAt.asc());
     }
 
     @Data
@@ -627,10 +658,6 @@ public class InventoryItemService extends AbsService {
         }
 
         public BooleanBuilder balanceBuilders() {
-            if (start != null && end != null) {
-                builder.and(qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(addTimeOfFinalMoment(end).toInstant(), ZoneId.systemDefault())));
-                builder.and(qInventoryItem.createdAt.goe(LocalDateTime.ofInstant(start.toInstant(), ZoneId.systemDefault())));
-            }
             if (StrUtil.isNotBlank(productIds)) {
                 builder.and(qProduct.id.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
             }

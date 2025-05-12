@@ -5,12 +5,11 @@ import com.flyemu.share.entity.basic.CustomerLevelPrice;
 import com.flyemu.share.entity.basic.Product;
 import com.flyemu.share.entity.inventory.OtherOutbound;
 import com.flyemu.share.entity.inventory.OtherOutboundItem;
+import com.flyemu.share.entity.inventory.QOtherOutbound;
 import com.flyemu.share.entity.inventory.QOtherOutboundItem;
-import com.flyemu.share.repository.CustomerLevelPriceRepository;
 import com.flyemu.share.repository.OtherOutboundItemRepository;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.CustomerLevelPriceService;
-import com.flyemu.share.service.basic.CustomerLevelService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.basic.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +36,8 @@ public class OtherOutboundItemService extends AbsService {
 
     private final static QOtherOutboundItem qOtherOutboundItem = QOtherOutboundItem.otherOutboundItem;
 
+    private final static QOtherOutbound qOtherOutbound = QOtherOutbound.otherOutbound;
+
     private final CustomerService customerService;
 
     private final CustomerLevelPriceService customerLevelPriceService;
@@ -51,6 +52,7 @@ public class OtherOutboundItemService extends AbsService {
      * @param otherOutbound      其他出库信息
      * @param otherOutboundItems 其他出库单列表
      */
+    @Transactional
     public BigDecimal generateOutboundDetails(OtherOutbound otherOutbound, List<OtherOutboundItem> otherOutboundItems) {
         Long otherOutboundId = otherOutbound.getId();
         Long merchantId = otherOutbound.getMerchantId();
@@ -80,6 +82,29 @@ public class OtherOutboundItemService extends AbsService {
             otherOutboundItemRepository.saveAll(otherOutboundItems);
         }
         return totalAmount[0].setScale(2, RoundingMode.HALF_EVEN);
+    }
+
+    @Transactional
+    public OtherOutbound recalculateAmount(OtherOutbound otherOutbound) {
+        List<OtherOutboundItem> fetch = jqf.select(qOtherOutboundItem)
+                .from(qOtherOutboundItem).where(qOtherOutboundItem.otherOutboundId.eq(otherOutbound.getId())).fetch();
+        Long customerId = otherOutbound.getCustomerId();
+        Long merchantId = otherOutbound.getMerchantId();
+        final BigDecimal[] totalAmount = {BigDecimal.ZERO};
+        fetch.forEach(otherOutboundItem -> {
+            Long productId = otherOutboundItem.getProductId();
+            Double quantity = otherOutboundItem.getQuantity();
+            // 获取商品出库单位成本
+            BigDecimal otherOutboundUnitPrice = this.findOtherOutboundUnitPrice(productId, customerId, merchantId);
+            otherOutboundItem.setUnitPrice(otherOutboundUnitPrice);
+            otherOutboundItem.setSubtotal(otherOutboundUnitPrice.multiply(new BigDecimal(quantity)));
+            totalAmount[0] = totalAmount[0].add(otherOutboundItem.getSubtotal());
+            otherOutboundItemRepository.save(otherOutboundItem);
+        });
+        otherOutbound.setTotalAmount(totalAmount[0].setScale(2, RoundingMode.HALF_EVEN));
+        jqf.update(qOtherOutbound).set(qOtherOutbound.totalAmount, otherOutbound.getTotalAmount())
+                .where(qOtherOutbound.id.eq(otherOutbound.getId())).execute();
+        return otherOutbound;
     }
 
     /**

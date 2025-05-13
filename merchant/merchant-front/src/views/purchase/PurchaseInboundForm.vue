@@ -212,12 +212,8 @@
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="saveOrder" :loading="loading">
+        <Button @click="approved()" :loading="loading" v-if="form.id">
           审核
-        </Button>
-        <!-- 仅当状态为审核时显示 -->
-        <Button @click="saveOrder" :loading="loading">
-          反审核
         </Button>
       </div>
     </div>
@@ -656,11 +652,26 @@ export default {
       this.$refs.xTable.updateFooter();
     },
 
+    //审核
+    approved() {
+      let ids = [this.form.id]
+      confirm({
+        title: "审核提示",
+        content: `确认审核该订单?`,
+        onConfirm: () => {
+          PurchaseInbound.approved('已审核', ids).then(() => {
+            message("操作成功~");
+            this.closeWindow();
+          })
+        }
+      })
+    },
+
     //关闭窗口
     closeWindow() {
       console.log("this.$store.state.currentTab", this.$store.state.currentTab)
       this.$store.commit('closeTabKey', this.$store.state.currentTab);
-      this.$store.commit('newTab', "PurchaseOrderList");
+      this.$store.commit('newTab', "PurchaseInboundList");
       // 使用 nextTick 确保在 DOM 更新后执行
       this.$nextTick(() => {
         // 通过 eventBus 或 vuex 触发刷新

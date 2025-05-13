@@ -234,9 +234,11 @@ FROM
 	LEFT JOIN jxc_supplier_category AS jsc ON js.supplier_category_id = jsc.id
 	WHERE jp.merchant_id = :merchantId
 	#[AND (po.order_no like :filter OR js.name like :filter)]
-	#[AND js.id in  :supplierId]
-	#[AND jp.id in  :productId]
-	#[AND jw.id in  :warehouseId]
+	#[AND js.id in  (:supplierId)]
+	#[AND jp.id in  (:productId)]
+	#[AND jw.id in  (:warehouseId)]
+	#[AND jp.product_category_id in  (:productCategoryIds)]
+	#[AND js.supplier_category_id in  (:supplierCategoryIds)]
 ]]></value>
     </sql>
 

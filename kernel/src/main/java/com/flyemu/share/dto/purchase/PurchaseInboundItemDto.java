@@ -22,9 +22,19 @@ public class PurchaseInboundItemDto {
     private Long id;
 
     /**
-     * 采购入库单主表ID
+     * 采购入库单id
      */
-    private Long PurchaseInboundId;
+    private Long purchaseInboundId;
+
+    /**
+     * 采购入库单orderNo
+     */
+    private String purchaseInboundOrderNo;
+
+    /**
+     * 采购明细单id
+     */
+    private Long purchaseInboundItemId;
 
     /**
      * 产品ID
@@ -70,6 +80,11 @@ public class PurchaseInboundItemDto {
      * 采购数量
      */
     private Double secondaryQuantity;
+
+    /**
+     * 退货数量
+     */
+    private Double returnQuantity;
 
     /**
      * 采购单价

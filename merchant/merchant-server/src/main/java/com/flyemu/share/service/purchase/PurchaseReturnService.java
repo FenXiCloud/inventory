@@ -22,6 +22,7 @@ import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.PurchaseReturnForm;
+import com.flyemu.share.repository.PurchaseInboundReturnConnectionRepository;
 import com.flyemu.share.repository.PurchaseReturnItemRepository;
 import com.flyemu.share.repository.PurchaseReturnRepository;
 import com.flyemu.share.service.AbsService;
@@ -39,10 +40,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -59,8 +57,10 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PurchaseReturnService extends AbsService {
 
     private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
+    private final static QPurchaseInboundItem qPurchaseInboundItem = QPurchaseInboundItem.purchaseInboundItem;
     private final static QPurchaseReturn qPurchaseReturn = QPurchaseReturn.purchaseReturn;
     private final static QPurchaseReturnItem qPurchaseReturnItem = QPurchaseReturnItem.purchaseReturnItem;
+    private final static QPurchaseInboundReturnConnection qConnection = QPurchaseInboundReturnConnection.purchaseInboundReturnConnection;
     private final static QSupplier qSupplier = QSupplier.supplier;
     private final static QProduct qProduct = QProduct.product;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
@@ -68,6 +68,7 @@ public class PurchaseReturnService extends AbsService {
     private final static QUnit qUnit = QUnit.unit;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
 
+    private final PurchaseInboundReturnConnectionRepository connectionRepository;
     private final PurchaseReturnRepository purchaseReturnRepository;
     private final PurchaseReturnItemRepository purchaseReturnItemRepository;
     private final CodeSeedService codeSeedService;
@@ -87,7 +88,10 @@ public class PurchaseReturnService extends AbsService {
             dto.setSupplierName(tuple.get(qSupplier.name));
             dto.setCreatedName(tuple.get(qMerchantUser.name));
 
-            List<String> orderNos = bqf.selectFrom(qPurchaseInbound).select(qPurchaseInbound.orderNo).where(qPurchaseInbound.purchaseReturnId.eq(dto.getId())).fetch();
+            List<String> orderNos = bqf.selectFrom(qConnection)
+                    .select(qPurchaseInbound.orderNo)
+                    .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qConnection.purchaseInboundId))
+                    .where(qConnection.purchaseReturnId.eq(dto.getId())).fetch();
             if (CollUtil.isNotEmpty(orderNos)) {
                 dto.setPurchaseInboundNos(String.join(",", orderNos));
             }
@@ -111,48 +115,145 @@ public class PurchaseReturnService extends AbsService {
     public PurchaseReturn save(PurchaseReturnForm purchaseReturnForm, Long merchantId) {
         PurchaseReturn order = purchaseReturnForm.getPurchaseReturn();
         if (order.getId() != null) {
+            Long returnOrderId = order.getId();
             PurchaseReturn original = purchaseReturnRepository.getById(order.getId());
             Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能更新~");
             BeanUtil.copyProperties(order, original, CopyOptions.create().ignoreNullValue());
 
+            final Double[] secondarySum = {0.0};
+            Set<Long> inboundIds = new HashSet<>();
+            Set<Long> upInboundIds = new HashSet<>();
+
+            purchaseReturnForm.getPurchaseReturnItemList().forEach(item -> {
+                secondarySum[0] = secondarySum[0] + item.getSecondaryQuantity();
+                inboundIds.add(item.getPurchaseInboundId());
+                upInboundIds.add(item.getPurchaseInboundId());
+            });
+
+            //1、回退原有的数量到入库单和入库单明细
+            List<Tuple> tuples = bqf.selectFrom(qPurchaseReturnItem)
+                    .select(qPurchaseReturnItem.secondaryQuantity, qPurchaseReturnItem.purchaseInboundId, qPurchaseReturnItem.purchaseInboundItemId, qPurchaseInboundItem.returnQuantity)
+                    .leftJoin(qPurchaseInboundItem).on(qPurchaseInboundItem.id.eq(qPurchaseReturnItem.purchaseInboundItemId))
+                    .where(qPurchaseReturnItem.purchaseReturnId.eq(order.getId()))
+                    .fetch();
+
+
+            tuples.forEach(tuple -> {
+                double v = NumberUtil.add(tuple.get(qPurchaseReturnItem.secondaryQuantity), tuple.get(qPurchaseInboundItem.returnQuantity));
+                upInboundIds.add(tuple.get(qPurchaseReturnItem.purchaseInboundId));
+                jqf.update(qPurchaseInboundItem)
+                        .set(qPurchaseInboundItem.returnQuantity, v)
+                        .where(qPurchaseInboundItem.id.eq(tuple.get(qPurchaseReturnItem.purchaseInboundItemId))).execute();
+            });
+
+            //删除联系表记录
+            jqf.delete(qConnection)
+                    .where(qConnection.purchaseReturnId.eq(order.getId()))
+                    .execute();
+
+            //删除退货明细表记录
+            jqf.delete(qPurchaseReturnItem)
+                    .where(qPurchaseReturnItem.purchaseReturnId.eq(order.getId()))
+                    .execute();
+
+
+            Map<Long, PurchaseInboundItem> inboundItemMap = new HashMap<>();
+
+            //查询所有的入库单明细
+            bqf.selectFrom(qPurchaseInboundItem)
+                    .where(qPurchaseInboundItem.purchaseInboundId.in(inboundIds)).fetch()
+                    .forEach(item -> {
+                        inboundItemMap.put(item.getId(), item);
+                    });
+
+
             Set<Long> ids = new HashSet<>();
-            Double secondarySum = 0.0;
             for (PurchaseReturnItem d : purchaseReturnForm.getPurchaseReturnItemList()) {
+                PurchaseInboundItem purchaseInboundItem = inboundItemMap.get(d.getPurchaseInboundItemId());
+
                 //计算基本单价
                 d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
 
                 if (d.getId() != null) {
                     ids.add(d.getId());
                 }
+
+                /**
+                 * 更新对应入库单明细
+                 */
+                double v = NumberUtil.sub(purchaseInboundItem.getReturnQuantity(), d.getSecondaryQuantity());
+                jqf.update(qPurchaseInboundItem)
+                        .set(qPurchaseInboundItem.returnQuantity, v)
+                        .where(qPurchaseInboundItem.id.eq(purchaseInboundItem.getId())).execute();
+
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseReturnId(order.getId());
                 d.setMerchantId(merchantId);
-                secondarySum += d.getSecondaryQuantity();
                 //保存更新购货商品价格
                 savePrice(d, order);
-            }original.setSecondarySum(secondarySum);
+            }
+            original.setSecondarySum(secondarySum[0]);
             purchaseReturnItemRepository.saveAll(purchaseReturnForm.getPurchaseReturnItemList());
+
+
+            //保存入库单和退货单关系
+            List<PurchaseInboundReturnConnection> connections = new ArrayList<>();
+            inboundIds.forEach(item -> {
+                PurchaseInboundReturnConnection connection = new PurchaseInboundReturnConnection();
+                connection.setPurchaseInboundId(item);
+                connection.setPurchaseReturnId(returnOrderId);
+                connections.add(connection);
+            });
+            connectionRepository.saveAllAndFlush(connections);
+
+            //更新入库单的可退数量
+            bqf.selectFrom(qPurchaseInboundItem)
+                    .select(qPurchaseInboundItem.returnQuantity.sum(), qPurchaseInboundItem.purchaseInboundId)
+                    .where(qPurchaseInboundItem.purchaseInboundId.in(inboundIds))
+                    .groupBy(qPurchaseInboundItem.purchaseInboundId).fetch().forEach(tuple -> {
+                        jqf.update(qPurchaseInbound)
+                                .set(qPurchaseInbound.returnSum, tuple.get(qPurchaseInboundItem.returnQuantity.sum()))
+                                .where(qPurchaseInbound.id.eq(tuple.get(qPurchaseInboundItem.purchaseInboundId))).execute();
+                    });
+
             return purchaseReturnRepository.save(original);
         } else {
             String code = codeSeedService.generateCode(order.getMerchantId(), "采购退货单");
             Assert.notNull(code, "生成单号失败~");
             order.setOrderNo(code);
             order.setOrderStatus(OrderStatus.已保存);
-            Double secondarySum = purchaseReturnForm.getPurchaseReturnItemList()
-                    .stream()
-                    .map(PurchaseReturnItem::getSecondaryQuantity)
-                    .reduce(0.0, Double::sum);
-            order.setSecondarySum(secondarySum);
 
-            order=purchaseReturnRepository.save(order);
+            final Double[] secondarySum = {0.0};
+            Set<Long> inboundIds = new HashSet<>();
+            purchaseReturnForm.getPurchaseReturnItemList().forEach(item -> {
+                secondarySum[0] = secondarySum[0] + item.getSecondaryQuantity();
+                inboundIds.add(item.getPurchaseInboundId());
+            });
+            order.setSecondarySum(secondarySum[0]);
 
-            if (CollUtil.isNotEmpty(purchaseReturnForm.getInboundIds())){
-                jqf.update(qPurchaseInbound)
-                        .set(qPurchaseInbound.purchaseReturnId,order.getId())
-                        .where(qPurchaseInbound.id.in(purchaseReturnForm.getInboundIds()))
-                        .execute();
-            }
+            order = purchaseReturnRepository.save(order);
+
+            Long returnOrderId = order.getId();
+
+            Map<Long, PurchaseInboundItem> inboundItemMap = new HashMap<>();
+
+            //查询所有的入库单明细
+            bqf.selectFrom(qPurchaseInboundItem)
+                    .where(qPurchaseInboundItem.purchaseInboundId.in(inboundIds)).fetch()
+                    .forEach(item -> {
+                        inboundItemMap.put(item.getId(), item);
+                    });
+
+
             for (PurchaseReturnItem d : purchaseReturnForm.getPurchaseReturnItemList()) {
+                PurchaseInboundItem purchaseInboundItem = inboundItemMap.get(d.getPurchaseInboundItemId());
+                /**
+                 * 更新对应入库单明细
+                 */
+                double v = NumberUtil.sub(purchaseInboundItem.getReturnQuantity(), d.getSecondaryQuantity());
+                jqf.update(qPurchaseInboundItem)
+                        .set(qPurchaseInboundItem.returnQuantity, v)
+                        .where(qPurchaseInboundItem.id.eq(purchaseInboundItem.getId())).execute();
                 //计算基本单价
                 d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
 
@@ -163,6 +264,27 @@ public class PurchaseReturnService extends AbsService {
                 savePrice(d, order);
             }
             purchaseReturnItemRepository.saveAll(purchaseReturnForm.getPurchaseReturnItemList());
+
+            //保存入库单和退货单关系
+            List<PurchaseInboundReturnConnection> connections = new ArrayList<>();
+            inboundIds.forEach(item -> {
+                PurchaseInboundReturnConnection connection = new PurchaseInboundReturnConnection();
+                connection.setPurchaseInboundId(item);
+                connection.setPurchaseReturnId(returnOrderId);
+                connections.add(connection);
+            });
+            connectionRepository.saveAllAndFlush(connections);
+
+            //更新入库单的可退数量
+            bqf.selectFrom(qPurchaseInboundItem)
+                    .select(qPurchaseInboundItem.returnQuantity.sum(), qPurchaseInboundItem.purchaseInboundId)
+                    .where(qPurchaseInboundItem.purchaseInboundId.in(inboundIds))
+                    .groupBy(qPurchaseInboundItem.purchaseInboundId).fetch().forEach(tuple -> {
+                        jqf.update(qPurchaseInbound)
+                                .set(qPurchaseInbound.returnSum, tuple.get(qPurchaseInboundItem.returnQuantity.sum()))
+                                .where(qPurchaseInbound.id.eq(tuple.get(qPurchaseInboundItem.purchaseInboundId))).execute();
+                    });
+
             return order;
         }
     }
@@ -183,6 +305,49 @@ public class PurchaseReturnService extends AbsService {
 
     @Transactional
     public void delete(Long PurchaseReturnId, Long merchantId, Long accountBookId) {
+        PurchaseReturn original = purchaseReturnRepository.getById(PurchaseReturnId);
+        Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能删除~");
+
+        Set<Long> upInboundIds = new HashSet<>();
+
+        //1、回退原有的数量到入库单和入库单明细
+        //2、删除退货明细单
+        List<Tuple> tuples = bqf.selectFrom(qPurchaseReturnItem)
+                .select(qPurchaseReturnItem.secondaryQuantity, qPurchaseReturnItem.purchaseInboundId, qPurchaseReturnItem.purchaseInboundItemId, qPurchaseInboundItem.returnQuantity)
+                .leftJoin(qPurchaseInboundItem).on(qPurchaseInboundItem.id.eq(qPurchaseReturnItem.purchaseInboundItemId))
+                .where(qPurchaseReturnItem.purchaseReturnId.eq(PurchaseReturnId))
+                .fetch();
+
+
+        tuples.forEach(tuple -> {
+            double v = NumberUtil.add(tuple.get(qPurchaseReturnItem.secondaryQuantity), tuple.get(qPurchaseInboundItem.returnQuantity));
+            upInboundIds.add(tuple.get(qPurchaseReturnItem.purchaseInboundId));
+            jqf.update(qPurchaseInboundItem)
+                    .set(qPurchaseInboundItem.returnQuantity, v)
+                    .where(qPurchaseInboundItem.id.eq(tuple.get(qPurchaseReturnItem.purchaseInboundItemId))).execute();
+        });
+
+        //删除联系表记录
+        jqf.delete(qConnection)
+                .where(qConnection.purchaseReturnId.eq(PurchaseReturnId))
+                .execute();
+
+        //删除退货明细表记录
+        jqf.delete(qPurchaseReturnItem)
+                .where(qPurchaseReturnItem.purchaseReturnId.eq(PurchaseReturnId))
+                .execute();
+
+        //更新入库单的可退数量
+        bqf.selectFrom(qPurchaseInboundItem)
+                .select(qPurchaseInboundItem.returnQuantity.sum(), qPurchaseInboundItem.purchaseInboundId)
+                .where(qPurchaseInboundItem.purchaseInboundId.in(upInboundIds))
+                .groupBy(qPurchaseInboundItem.purchaseInboundId).fetch().forEach(tuple -> {
+                    jqf.update(qPurchaseInbound)
+                            .set(qPurchaseInbound.returnSum, tuple.get(qPurchaseInboundItem.returnQuantity.sum()))
+                            .where(qPurchaseInbound.id.eq(tuple.get(qPurchaseInboundItem.purchaseInboundId))).execute();
+                });
+
+
         jqf.delete(qPurchaseReturn)
                 .where(qPurchaseReturn.id.eq(PurchaseReturnId).and(qPurchaseReturn.merchantId.eq(merchantId)).and(qPurchaseReturn.accountBookId.eq(accountBookId)))
                 .execute();
@@ -327,12 +492,13 @@ public class PurchaseReturnService extends AbsService {
         PurchaseReturnDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseReturn), PurchaseReturnDto.class);
         orderDto.setSupplierName(fetchFirst.get(qSupplier.name));
         ArrayList<PurchaseReturnItemDto> collect = jqf.selectFrom(qPurchaseReturnItem)
-                .select(qPurchaseReturnItem, qProduct.code, qProduct.name, qWarehouse.name,qProductCategory.name,qProduct.specification,
+                .select(qPurchaseReturnItem, qPurchaseInbound.orderNo, qProduct.code, qProduct.name, qWarehouse.name, qProductCategory.name, qProduct.specification,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseReturnItem.productId).and(qProduct.merchantId.eq(merchantId)))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseReturnItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
                 .leftJoin(qUnit1).on(qUnit1.id.eq(qPurchaseReturnItem.secondaryUnitId).and(qUnit1.merchantId.eq(merchantId)))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseReturnItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
+                .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseReturnItem.purchaseInboundId))
                 .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(qPurchaseReturnItem.purchaseReturnId.eq(orderId).and(qPurchaseReturnItem.merchantId.eq(merchantId)))
                 .orderBy(qPurchaseReturnItem.id.asc())
@@ -341,6 +507,7 @@ public class PurchaseReturnService extends AbsService {
                     dto.setProductCode(tuple.get(qProduct.code));
                     dto.setProductName(tuple.get(qProduct.name));
                     dto.setBaseUnitName(tuple.get(qUnit.name));
+                    dto.setPurchaseInboundOrderNo(tuple.get(qPurchaseInbound.orderNo));
                     dto.setSpec(tuple.get(qProduct.specification));
                     dto.setCategoryName(tuple.get(qProductCategory.name));
                     dto.setWarehouseName(tuple.get(qWarehouse.name));
@@ -370,11 +537,13 @@ public class PurchaseReturnService extends AbsService {
                 builder.and(qPurchaseReturn.merchantId.eq(merchantId));
             }
         }
+
         public void setFilter(String filter) {
             if (StrUtil.isNotEmpty(filter)) {
                 builder.and(qPurchaseReturn.orderNo.contains(filter));
             }
         }
+
         public void setSupplierId(Long supplierId) {
             if (supplierId != null) {
                 builder.and(qPurchaseReturn.supplierId.eq(supplierId));

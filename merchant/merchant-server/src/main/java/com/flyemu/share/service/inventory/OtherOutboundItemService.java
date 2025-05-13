@@ -118,7 +118,7 @@ public class OtherOutboundItemService extends AbsService {
     private BigDecimal findOtherOutboundUnitPrice(Long productId, Long customerId, Long merchantId) {
         //todo 需调整获取商品出库单位成本
         BigDecimal otherOutboundUnitPrice;
-        if (customerId != null) {
+        /*if (customerId != null) {
             Customer customer = customerService.selectByPrimaryKey(customerId);
             if (customer != null) {
                 CustomerLevelPrice customerLevelPrice = customerLevelPriceService.findByProductIdAndCustomerLevelId(productId, customer.getCustomerLevelId());
@@ -127,7 +127,7 @@ public class OtherOutboundItemService extends AbsService {
                     return otherOutboundUnitPrice;
                 }
             }
-        }
+        }*/
         Product product = productService.loadById(productId, merchantId);
         otherOutboundUnitPrice = product.getPurchasePrice();
         return otherOutboundUnitPrice;

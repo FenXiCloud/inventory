@@ -584,15 +584,15 @@ export default {
         if (this.productData.length > 1) {
           confirm({
             title: "系统提示",
-            content: `修改供货商后，将清除已选择的商品数据，确定修改？`,
+            content: `修改客户后，将清除已选择的商品数据，确定修改？`,
             onConfirm: () => {
-              //this.productData = [{isNew: true}];
+              this.productData = [{isNew: true}];
               this.form.customerId = e.id;
             }
           })
         } else {
           this.form.customerId = e.id;
-          //this.productData = [{isNew: true}];
+          this.productData = [{isNew: true}];
         }
       }
     },

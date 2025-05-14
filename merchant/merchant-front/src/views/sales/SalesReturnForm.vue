@@ -614,6 +614,9 @@ export default {
 
     //更新数量
     updateQuantity(item) {
+      if(!item.productId){
+        return;
+      }
       item.quantity = item.quantity || 1;
       item.subtotal = ((item.quantity * item.unitPrice * (100 - item.discountRate)) / 100).toFixed(2);
       item.discountValue = (((item.quantity * item.unitPrice) * item.discountRate) / 100).toFixed(2);
@@ -622,6 +625,9 @@ export default {
 
     //更新单价
     updatePrice(item) {
+      if(!item.productId){
+        return;
+      }
       item.unitPrice = item.unitPrice || 0.00
       item.discountValue = (item.unitPrice * item.quantity * item.discountRate / 100).toFixed(2);
       item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);

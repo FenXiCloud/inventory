@@ -11,10 +11,14 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.CustomerDto;
 import com.flyemu.share.dto.CustomerImportVo;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.CustomerRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.way.CodeGenerator;
+import com.flyemu.share.way.ProductExistenceChecker;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -78,14 +82,33 @@ public class CustomerService extends AbsService {
             BeanUtil.copyProperties(customer, original, CopyOptions.create().ignoreNullValue());
             return customerRepository.save(original);
         }
+        if (StringUtils.isEmpty(customer.getCode())){
+            customer.setCode(CodeGenerator.generateCode(CodeGenerator.CodeType.CUSTOMER));
+        }
         Customer m = customerRepository.save(customer);
 
         return m;
     }
 
-
+    private final ProductExistenceChecker existenceChecker;
     @Transactional
     public void delete(Long customersId, Long merchantId, Long accountBookId) {
+
+        if (existenceChecker.existsInSalesOrder(customersId, 2)) {
+            throw new ServiceException("该档案已存在销售单,不能删除");
+        }
+        if (existenceChecker.existsInSalesOutbound(customersId, 2)) {
+            throw new ServiceException("该档案已存在销售出库单,不能删除");
+        }
+        if (existenceChecker.existsInSalesReturn(customersId, 2)) {
+            throw new ServiceException("该档案已存在销售退货单,不能删除");
+        }
+        if (existenceChecker.existsInOtherInbound(customersId, 2)) {
+            throw new ServiceException("该档案已存在其他入库单,不能删除");
+        }
+        if (existenceChecker.existsInOtherOutbound(customersId, 2)) {
+            throw new ServiceException("该档案已存在其他出库单,不能删除");
+        }
         jqf.delete(qCustomer)
                 .where(qCustomer.id.eq(customersId).and(qCustomer.merchantId.eq(merchantId)).and(qCustomer.accountBookId.eq(accountBookId))).execute();
     }

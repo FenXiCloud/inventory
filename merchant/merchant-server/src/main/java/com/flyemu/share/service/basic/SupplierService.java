@@ -17,6 +17,8 @@ import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.SupplierRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.way.CodeGenerator;
+import com.flyemu.share.way.ProductExistenceChecker;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
@@ -78,15 +80,30 @@ public class SupplierService extends AbsService {
                 BeanUtil.copyProperties(supplier, original, CopyOptions.create().ignoreNullValue());
                 return supplierRepository.save(original);
             }
+            if (io.micrometer.common.util.StringUtils.isEmpty(supplier.getCode())){
+                supplier.setCode(CodeGenerator.generateCode(CodeGenerator.CodeType.SUPPLIER));
+            }
             return supplierRepository.save(supplier);
         } catch (Exception e) {
             log.error("supplier save", e);
             throw new ServiceException(e.getMessage());
         }
     }
-
+    private final ProductExistenceChecker existenceChecker;
     @Transactional
     public void delete(Long supplierId, Long merchantId) {
+        if (existenceChecker.existsInPurchaseOrder(supplierId, 3)) {
+            throw new ServiceException("该档案已存在采购单,不能删除");
+        }
+        if (existenceChecker.existsInPurchaseInbound(supplierId, 3)) {
+            throw new ServiceException("该档案已存在采购入库单,不能删除");
+        }
+        if (existenceChecker.existsInPurchaseReturn(supplierId, 3)) {
+            throw new ServiceException("该档案已存在采购退货单,不能删除");
+        }
+        if (existenceChecker.existsInOtherInbound(supplierId, 3)) {
+            throw new ServiceException("该档案已存在其他入库单,不能删除");
+        }
         jqf.delete(qSupplier).where(qSupplier.id.eq(supplierId).and(qSupplier.merchantId.eq(merchantId))).execute();
     }
 

@@ -2,8 +2,11 @@ package com.flyemu.share.hibernate;
 
 import com.blazebit.persistence.CriteriaBuilderFactory;
 import com.blazebit.persistence.querydsl.BlazeJPAQuery;
+import com.querydsl.core.Tuple;
 import com.querydsl.core.types.EntityPath;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.formula.functions.T;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.Resource;
@@ -28,4 +31,6 @@ public class BlazeJPAQueryFactory {
         BlazeJPAQuery<T> query = new BlazeJPAQuery<T>(em, cbf);
         return query.select(from).from(from);
     }
+
+
 }

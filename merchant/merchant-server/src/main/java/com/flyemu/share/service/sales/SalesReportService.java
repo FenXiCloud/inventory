@@ -82,6 +82,14 @@ public class SalesReportService extends AbsService {
             if(StringUtils.isNotBlank(form.getFilter())){
                 predicates.add(cb.like(root.get("orderNo"), "%" + form.getFilter() + "%"));
             }
+            // 添加客户分类查询条件
+            List<Long> customerCategoryIds = form.getCustomerCategoryIds();
+            if (!CollectionUtils.isEmpty(customerCategoryIds)) {
+                // 创建与产品表的关联
+                Root<Customer> customerRoot = query.from(Customer.class);
+                predicates.add(cb.equal(root.get("customerId"), customerRoot.get("id")));
+                predicates.add(cb.in(customerRoot.get("customerCategoryId")).value(customerCategoryIds));
+            }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         //销售出库单列表
@@ -113,6 +121,15 @@ public class SalesReportService extends AbsService {
             List<Long> warehouseIds = form.getWarehouseIds();
             if (!CollectionUtils.isEmpty(warehouseIds)){
                 predicates.add(root.get("warehouseId").in(warehouseIds));
+            }
+
+            // 添加产品分类查询条件
+            List<Long> productCategoryIds = form.getProductCategoryIds();
+            if (!CollectionUtils.isEmpty(productCategoryIds)) {
+                // 创建与产品表的关联
+                Root<Product> productRoot = query.from(Product.class);
+                predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
+                predicates.add(cb.in(productRoot.get("productCategoryId")).value(productCategoryIds));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
@@ -153,6 +170,14 @@ public class SalesReportService extends AbsService {
                 List<Long> warehouseIds = form.getWarehouseIds();
                 if (!CollectionUtils.isEmpty(warehouseIds)){
                     predicates.add(root.get("warehouseId").in(warehouseIds));
+                }
+                // 添加产品分类查询条件
+                List<Long> productCategoryIds = form.getProductCategoryIds();
+                if (!CollectionUtils.isEmpty(productCategoryIds)) {
+                    // 创建与产品表的关联
+                    Root<Product> productRoot = query.from(Product.class);
+                    predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
+                    predicates.add(cb.in(productRoot.get("productCategoryId")).value(productCategoryIds));
                 }
                 return cb.and(predicates.toArray(new Predicate[0]));
             };

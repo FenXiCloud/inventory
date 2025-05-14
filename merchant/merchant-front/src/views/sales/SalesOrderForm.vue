@@ -341,6 +341,14 @@ export default {
           productName: d.name,
           remark: "",
         };
+
+        //选择产品后自动带出默认仓库
+        //warehouseList 中属性为systemDefault = true 为默认仓库
+        let defaultWarehouse = this.warehouseList.find(item => item.systemDefault === true);
+        if(defaultWarehouse){
+          g.warehouseId = defaultWarehouse.id;
+        }
+
         this.productData[index] = g;
         console.log("this.productData",this.productData)
         if (!this.productData[index + 1]) {

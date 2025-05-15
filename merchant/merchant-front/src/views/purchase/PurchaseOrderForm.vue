@@ -197,7 +197,6 @@
       </div>
     </div>
     <div class="modal-column-between bg-white-color  border">
-
       <Button @click="closeWindow" :loading="loading">
         取消
       </Button>
@@ -209,12 +208,8 @@
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="saveOrder" :loading="loading">
+        <Button @click="approved()" :loading="loading" v-if="form.id">
           审核
-        </Button>
-        <!-- 仅当状态为审核时显示 -->
-        <Button @click="saveOrder" :loading="loading">
-          反审核
         </Button>
       </div>
     </div>
@@ -615,6 +610,21 @@ export default {
       item.secondaryPrice = ((item.subtotal) / ((100 - item.discountRate)) * 100 / item.secondaryQuantity).toFixed(2);
       item.discoutPrice = (item.secondaryPrice - item.subtotal).toFixed(2);
       this.$refs.xTable.updateFooter();
+    },
+
+    //审核
+    approved() {
+      let ids = [this.form.id]
+      confirm({
+        title: "审核提示",
+        content: `确认审核该订单?`,
+        onConfirm: () => {
+          PurchaseOrder.approved('已审核', ids).then(() => {
+            message("操作成功~");
+            this.closeWindow();
+          })
+        }
+      })
     },
 
     //关闭窗口

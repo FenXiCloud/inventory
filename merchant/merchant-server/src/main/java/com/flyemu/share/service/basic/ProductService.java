@@ -7,6 +7,7 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.blazebit.persistence.PagedList;
+import com.blazebit.persistence.querydsl.BlazeJPAQuery;
 import com.flyemu.share.common.PinYinUtil;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
@@ -14,27 +15,42 @@ import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.ProductDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.InventoryItem;
+import com.flyemu.share.entity.inventory.QStockTake;
+import com.flyemu.share.entity.inventory.QStockTakeItem;
+import com.flyemu.share.entity.inventory.StockTake;
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOrderItem;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.repository.CustomerLevelPriceRepository;
 import com.flyemu.share.repository.CustomerLevelRepository;
 import com.flyemu.share.repository.InventoryItemRepository;
 import com.flyemu.share.repository.ProductRepository;
 import com.flyemu.share.service.AbsService;
-import com.flyemu.share.service.inventory.InventoryItemService;
+import com.flyemu.share.service.inventory.*;
+import com.flyemu.share.service.purchase.PurchaseInboundService;
+import com.flyemu.share.service.purchase.PurchaseOrderService;
+import com.flyemu.share.service.purchase.PurchaseReturnService;
+import com.flyemu.share.service.sales.SalesOrderService;
+import com.flyemu.share.service.sales.SalesOutboundService;
+import com.flyemu.share.service.sales.SalesReturnService;
+import com.flyemu.share.way.CodeGenerator;
+import com.flyemu.share.way.ProductExistenceChecker;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.rowset.serial.SerialException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -76,13 +92,7 @@ public class ProductService extends AbsService {
     private final InventoryItemRepository inventoryItemRepository;
 
     public PageResults<ProductDto> query(Page page, Query query) {
-        PagedList<Tuple> pagedList = bqf.selectFrom(qProduct)
-                .select(qProduct, qUnit.name, qProductCategory.name)
-                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
-                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
-                .where(query.builders())
-                .orderBy(qProduct.id.desc())
-                .fetchPage(page.getOffset(), page.getOffsetEnd());
+        PagedList<Tuple> pagedList = bqf.selectFrom(qProduct).select(qProduct, qUnit.name, qProductCategory.name).leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId)).where(query.builders()).orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         ArrayList<ProductDto> collect = pagedList.stream().collect(ArrayList::new, (list, tuple) -> {
             ProductDto dto = BeanUtil.toBean(tuple.get(qProduct), ProductDto.class);
             dto.setProductCategoryName(tuple.get(qProductCategory.name));
@@ -133,7 +143,9 @@ public class ProductService extends AbsService {
             product = productRepository.save(original);
 
         } else {
-
+            if (io.micrometer.common.util.StringUtils.isEmpty(product.getCode())){
+                product.setCode(CodeGenerator.generateCode(CodeGenerator.CodeType.PRODUCT));
+            }
             product.setAccountBookId(accountBookId);
             product.setMerchantId(merchantId);
             product.setMerchantId(merchantId);
@@ -167,8 +179,7 @@ public class ProductService extends AbsService {
                 savePrice(levelPrice);
                 cps.add(levelPrice);
             }
-            jqf.delete(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(product.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).
-                    execute();
+            jqf.delete(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(product.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).execute();
             customerLevelPriceRepository.saveAll(cps);
         } else {
             List<CustomerLevelPrice> priceList = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(product.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).fetch();
@@ -274,23 +285,60 @@ public class ProductService extends AbsService {
         priceRecordService.savePriceRecord(priceRecord);
     }
 
+
+    private final ProductExistenceChecker existenceChecker;
     @Transactional
     public void delete(Long productsId, Long merchantId, Long accountBookId) {
-        jqf.delete(qCustomerLevelPrice)
-                .where(qCustomerLevelPrice.productId.eq(productsId).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId)))
-                .execute();
-        jqf.delete(qProduct)
-                .where(qProduct.id.eq(productsId).and(qProduct.merchantId.eq(merchantId)).and(qProduct.accountBookId.eq(accountBookId)))
-                .execute();
+
+        if (existenceChecker.existsInPurchaseOrder(productsId, 1)) {
+            throw new ServiceException("该商品已存在采购单,不能删除");
+        }
+        if (existenceChecker.existsInPurchaseInbound(productsId, 1)) {
+            throw new ServiceException("该商品已存在采购入库单,不能删除");
+        }
+        if (existenceChecker.existsInPurchaseReturn(productsId, 1)) {
+            throw new ServiceException("该商品已存在采购退货单,不能删除");
+        }
+        if (existenceChecker.existsInSalesOrder(productsId, 1)) {
+            throw new ServiceException("该商品已存在销售单,不能删除");
+        }
+        if (existenceChecker.existsInSalesOutbound(productsId, 1)) {
+            throw new ServiceException("该商品已存在销售出库单,不能删除");
+        }
+        if (existenceChecker.existsInSalesReturn(productsId, 1)) {
+            throw new ServiceException("该商品已存在销售退货单,不能删除");
+        }
+        if (existenceChecker.existsInInventoryTransfer(productsId, 1)) {
+            throw new ServiceException("该商品已存在库存调拨单,不能删除");
+        }
+        if (existenceChecker.existsInStockTake(productsId, 1)) {
+            throw new ServiceException("该商品已存在库存盘点单,不能删除");
+        }
+        if (existenceChecker.existsInOtherInbound(productsId, 1)) {
+            throw new ServiceException("该商品已存在其他入库单,不能删除");
+        }
+        if (existenceChecker.existsInOtherOutbound(productsId, 1)) {
+            throw new ServiceException("该商品已存在其他出库单,不能删除");
+        }
+        if (existenceChecker.existsInCostAdjustment(productsId, 1)) {
+            throw new ServiceException("该商品已存在成本调整单,不能删除");
+        }
+
+        jqf.delete(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(productsId).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).execute();
+        jqf.delete(qProduct).where(qProduct.id.eq(productsId).and(qProduct.merchantId.eq(merchantId)).and(qProduct.accountBookId.eq(accountBookId))).execute();
     }
 
-    public List<ProductDto> select(Long merchantId, Long accountBookId) {
+    public List<ProductDto> select(Long merchantId, Long accountBookId,Long productCategoryId) {
         //left join 查询商品单位
-        List<Tuple> fetch = bqf.selectFrom(qProduct)
-                .select(qProduct, qUnit.name,qProductCategory.name)
-                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
-                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
-                .where(qProduct.merchantId.eq(merchantId).and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue())).fetch();
+        BlazeJPAQuery<Tuple> where = bqf.selectFrom(qProduct).
+                select(qProduct, qUnit.name, qProductCategory.name).
+                leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).where(qProduct.merchantId.eq(merchantId)
+                        .and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue()));
+        if (productCategoryId!=null){
+            where.where(qProduct.productCategoryId.eq(productCategoryId));
+        }
+        List<Tuple> fetch =where.fetch();
         //封装产品单位返回;
         ArrayList<ProductDto> result = fetch.stream().collect(ArrayList::new, (list, tuple) -> {
             ProductDto dto = BeanUtil.toBean(tuple.get(qProduct), ProductDto.class);
@@ -301,16 +349,11 @@ public class ProductService extends AbsService {
             List<CustomerLevelPrice> customerLevelPrices = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(dto.getId())).fetch();
             dto.setCustomerLevelPriceList(customerLevelPrices);
             //查询产品QPriceRecord 的最近销售价格
-            PriceRecord priceRecord = jqf.selectFrom(qPriceRecord).where(
-                    qPriceRecord.productId.eq(dto.getId())
-                            .and(qPriceRecord.priceSource.eq(PriceSource.最近销售价格))
-                            .and(qPriceRecord.priceType.eq(PriceType.最近销售价格))
-                            .and(qPriceRecord.accountBookId.eq(accountBookId))
-                            .and(qPriceRecord.merchantId.eq(merchantId))
+            PriceRecord priceRecord = jqf.selectFrom(qPriceRecord).where(qPriceRecord.productId.eq(dto.getId()).and(qPriceRecord.priceSource.eq(PriceSource.最近销售价格)).and(qPriceRecord.priceType.eq(PriceType.最近销售价格)).and(qPriceRecord.accountBookId.eq(accountBookId)).and(qPriceRecord.merchantId.eq(merchantId))
                     //降序排序
 
             ).orderBy(qPriceRecord.id.desc()).fetchFirst();
-            if(priceRecord != null){
+            if (priceRecord != null) {
                 dto.setLastSalePrice(priceRecord.getUnitPrice());
             }
         }, List::addAll);
@@ -335,7 +378,7 @@ public class ProductService extends AbsService {
 
         private String filter;
 
-        private Integer categoryId;
+        private Long productCategoryId;
 
         private Boolean enabled;
 
@@ -362,15 +405,16 @@ public class ProductService extends AbsService {
         public BooleanBuilder builders() {
 
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
-                builder.and(qProduct.name.contains(filter)
-                        .or(qProduct.code.contains(filter))
-                        .or(qProduct.pinyin.contains(filter)));
+                builder.and(qProduct.name.contains(filter).or(qProduct.code.contains(filter)).or(qProduct.pinyin.contains(filter)));
             }
             if (enabled != null) {
                 builder.and(qProduct.enabled.eq(enabled));
             }
             if (id != null) {
                 builder.and(qProduct.id.eq(id));
+            }
+            if (productCategoryId != null) {
+                builder.and(qProduct.productCategoryId.eq(productCategoryId));
             }
             return builder;
         }

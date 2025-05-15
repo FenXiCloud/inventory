@@ -1,35 +1,48 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules" mode="twocolumn" :label-width="110">
-        <FormItem label="编码" required prop="code">
-          <Input placeholder="请输入编码" :disabled="model.id" v-model="model.code"/>
+      <Form
+        ref="form"
+        :model="model"
+        :rules="validationRules"
+        mode="twocolumn"
+        :label-width="110"
+      >
+        <FormItem label="编码" prop="code">
+          <Input
+            placeholder="请输入编码"
+            :disabled="model.id"
+            v-model="model.code"
+          />
         </FormItem>
         <FormItem label="名称" required prop="name">
-          <Input placeholder="请输入名称" v-model="model.name"/>
+          <Input placeholder="请输入名称" v-model="model.name" />
         </FormItem>
         <FormItem label="联系人" prop="linkman">
-          <Input placeholder="联系人" v-model="model.contact"/>
+          <Input placeholder="联系人" v-model="model.contact" />
         </FormItem>
         <FormItem label="电话" prop="phone">
-          <Input placeholder="电话" v-model="model.phone"/>
+          <Input placeholder="电话" v-model="model.phone" />
         </FormItem>
         <FormItem label="货商分类" required prop="supplierCategoryId" single>
-          <Select :datas="supplierCategoryList" keyName="id" titleName="name" v-model="model.supplierCategoryId"
-                  placeholder="请选择货商分类"/>
+          <Select
+            :datas="supplierCategoryList"
+            keyName="id"
+            titleName="name"
+            v-model="model.supplierCategoryId"
+            placeholder="请选择货商分类"
+          />
         </FormItem>
         <FormItem label="是否启用" prop="enabled" single>
-          <Radio v-model="model.enabled" dict="enableRadios"/>
+          <Radio v-model="model.enabled" dict="enableRadios" />
         </FormItem>
         <FormItem label="地址" prop="address" single>
-          <Input placeholder="地址" v-model="model.address"/>
+          <Input placeholder="地址" v-model="model.address" />
         </FormItem>
       </Form>
     </div>
     <div class="modal-column-between">
-      <Button @click="$emit('close')" :loading="loading">
-        取消
-      </Button>
+      <Button @click="$emit('close')" :loading="loading"> 取消 </Button>
       <Button color="primary" @click="confirm" :loading="loading">
         保存
       </Button>
@@ -45,15 +58,15 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import Supplier from "@js/api/basic/Supplier";
-import {message} from "heyui.ext";
-import {CopyObj} from "@common/utils";
-import SupplierCategory from "@js/api/basic/SupplierCategory";
+import Supplier from '@js/api/basic/Supplier';
+import { message } from 'heyui.ext';
+import { CopyObj } from '@common/utils';
+import SupplierCategory from '@js/api/basic/SupplierCategory';
 
 export default {
-  name: "SupplierForm",
+  name: 'SupplierForm',
   props: {
-    entity: Object,
+    entity: Object
   },
   data() {
     return {
@@ -67,30 +80,32 @@ export default {
         phone: null,
         supplierCategoryId: null,
         address: null,
-        enabled:true,
+        enabled: true
       },
       validationRules: {}
-    }
+    };
   },
   methods: {
     confirm() {
       let validResult = this.$refs.form.valid();
       if (validResult.result) {
         this.loading = true;
-        Supplier.save(this.model).then(() => {
-          message("保存成功~");
-          this.$emit('success');
-        }).finally(() => this.loading = false);
+        Supplier.save(this.model)
+          .then(() => {
+            message('保存成功~');
+            this.$emit('success');
+          })
+          .finally(() => (this.loading = false));
       }
     }
   },
   created() {
     CopyObj(this.model, this.entity);
-    Promise.all([
-      SupplierCategory.select(),
-    ]).then((results) => {
-      this.supplierCategoryList = results[0].data;
-    }).finally(() => this.loading = false);
+    Promise.all([SupplierCategory.select()])
+      .then((results) => {
+        this.supplierCategoryList = results[0].data;
+      })
+      .finally(() => (this.loading = false));
   }
-}
+};
 </script>

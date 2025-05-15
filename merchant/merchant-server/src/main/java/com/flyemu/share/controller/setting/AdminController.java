@@ -35,7 +35,7 @@ public class AdminController {
     }
 
 
-    @PostMapping
+    @PostMapping    
     public JsonResult save(@RequestBody @Valid Admin admin, @SaMerchantId Long merchantId, @SaAccountVal AccountDto accountDto) {
         Assert.isNull(admin.getId(), "新增管理员Id必须为空~");
         admin.setMerchantId(merchantId);

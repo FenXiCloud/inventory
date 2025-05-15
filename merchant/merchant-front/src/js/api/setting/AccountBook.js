@@ -9,25 +9,33 @@
  * </ul>
  * <p>****************************************************************************</p>
  */
-import Ajax from "@common/Request";
+import Ajax from '@common/Request';
 
 export default {
 	save(param) {
-		return Ajax[param.id ? 'put' : 'post']('/accountBook', param)
+		return Ajax[param.id ? 'put' : 'post']('/accountBook', param);
 	},
 	list(param) {
-		return Ajax.get('/accountBook', param)
+		return Ajax.get('/accountBook', param);
 	},
 	listAll() {
-		return Ajax.get('/accountBook/all')
+		return Ajax.get('/accountBook/all');
 	},
 	remove(id) {
 		return Ajax.delete('/accountBook/' + id);
 	},
 	select(param) {
-		return Ajax.get('/accountBook/select', param)
+		return Ajax.get('/accountBook/select', param);
 	},
 	changeCurrentAccountBook(id) {
-		return Ajax.put('/accountBook/change/current/'+id)
+		return Ajax.put('/accountBook/change/current/' + id);
 	},
-}
+
+	/* 参数列表 */
+	getByAccountBookId(param) {
+		return Ajax.get(`/accountBookParameters/getByAccountBookId`, param);
+	},
+	saveParameters(param) {
+		return Ajax.post('/accountBookParameters/update', param);
+	}
+};

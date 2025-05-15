@@ -231,7 +231,7 @@ export default {
         }
       })
       this.amountTotal = totalAmount.toFixed(2);
-      return [["", "", "", "", "", "",
+      return [["", "", "", "", "", "","",
         totalAmount.toFixed(2),discountAmount.toFixed(2),
         finalAmount.toFixed(2),totalQuantity.toFixed(2)]];
     },

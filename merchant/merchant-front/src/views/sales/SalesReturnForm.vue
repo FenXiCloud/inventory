@@ -400,6 +400,12 @@ export default {
           productName: d.name,
           remark: "",
         };
+        //选择产品后自动带出默认仓库
+        //warehouseList 中属性为systemDefault = true 为默认仓库
+        let defaultWarehouse = this.warehouseList.find(item => item.systemDefault === true);
+        if(defaultWarehouse){
+          g.warehouseId = defaultWarehouse.id;
+        }
         this.productData[index] = g;
         console.log("this.productData",this.productData)
         if (!this.productData[index + 1]) {
@@ -584,15 +590,15 @@ export default {
         if (this.productData.length > 1) {
           confirm({
             title: "系统提示",
-            content: `修改供货商后，将清除已选择的商品数据，确定修改？`,
+            content: `修改客户后，将清除已选择的商品数据，确定修改？`,
             onConfirm: () => {
-              //this.productData = [{isNew: true}];
+              this.productData = [{isNew: true}];
               this.form.customerId = e.id;
             }
           })
         } else {
           this.form.customerId = e.id;
-          //this.productData = [{isNew: true}];
+          this.productData = [{isNew: true}];
         }
       }
     },
@@ -608,6 +614,9 @@ export default {
 
     //更新数量
     updateQuantity(item) {
+      if(!item.productId){
+        return;
+      }
       item.quantity = item.quantity || 1;
       item.subtotal = ((item.quantity * item.unitPrice * (100 - item.discountRate)) / 100).toFixed(2);
       item.discountValue = (((item.quantity * item.unitPrice) * item.discountRate) / 100).toFixed(2);
@@ -616,6 +625,9 @@ export default {
 
     //更新单价
     updatePrice(item) {
+      if(!item.productId){
+        return;
+      }
       item.unitPrice = item.unitPrice || 0.00
       item.discountValue = (item.unitPrice * item.quantity * item.discountRate / 100).toFixed(2);
       item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);

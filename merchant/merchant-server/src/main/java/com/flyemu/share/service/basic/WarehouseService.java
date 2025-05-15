@@ -36,22 +36,40 @@ public class WarehouseService extends AbsService {
     public Warehouse save(Warehouse warehouse) {
         // 如果是默认
         if (warehouse.getSystemDefault()) {
-            jqf.update(qWarehouse).set(qWarehouse.systemDefault, false).where(qWarehouse.merchantId.eq(warehouse.getMerchantId()).and(qWarehouse.accountBookId.eq(warehouse.getAccountBookId()))).execute();
+            jqf.update(qWarehouse).set(qWarehouse.systemDefault, false)
+                    .where(qWarehouse.merchantId.eq(warehouse.getMerchantId())
+                            .and(qWarehouse.accountBookId.eq(warehouse.getAccountBookId())))
+                    .execute();
         }
+
         if (warehouse.getId() != null) {
-            //更新
+            // 更新
             Warehouse original = warehouseRepository.getById(warehouse.getId());
             BeanUtil.copyProperties(warehouse, original, CopyOptions.create().ignoreNullValue());
             return warehouseRepository.save(original);
         }
-        if (io.micrometer.common.util.StringUtils.isEmpty(warehouse.getCode())){
+
+        if (io.micrometer.common.util.StringUtils.isEmpty(warehouse.getCode())) {
             warehouse.setCode(CodeGenerator.generateCode(CodeGenerator.CodeType.WAREHOUSE));
         }
+        Long merchantId = warehouse.getMerchantId();
+        Long accountBookId = warehouse.getAccountBookId();
+        Boolean existsOtherWarehouse = jqf.select(qWarehouse.id.isNotNull())
+                .from(qWarehouse)
+                .where(qWarehouse.merchantId.eq(merchantId)
+                        .and(qWarehouse.accountBookId.eq(accountBookId)))
+                .limit(1)
+                .fetchFirst();
+
+        if (!warehouse.getSystemDefault() && !existsOtherWarehouse) {
+            warehouse.setSystemDefault(true);
+        }
+
         return warehouseRepository.save(warehouse);
     }
 
-
     private final ProductExistenceChecker existenceChecker;
+
     @Transactional
     public void delete(Long warehousesId, Long merchantId, Long accountBookId) {
         if (existenceChecker.existsInPurchaseOrder(warehousesId, 4)) {
@@ -87,7 +105,30 @@ public class WarehouseService extends AbsService {
         if (existenceChecker.existsInInventoryTransfer(warehousesId, 4)) {
             throw new ServiceException("该仓库已存在库存调拨单,不能删除");
         }
-        jqf.delete(qWarehouse).where(qWarehouse.merchantId.eq(merchantId).and(qWarehouse.accountBookId.eq(accountBookId)).and(qWarehouse.id.eq(warehousesId))).execute();
+
+        Warehouse toDelete = warehouseRepository.findById(warehousesId).orElseThrow(() -> new ServiceException("仓库不存在"));
+        if (toDelete.getSystemDefault()) {
+            List<Warehouse> otherWarehouses = jqf.selectFrom(qWarehouse)
+                    .where(qWarehouse.merchantId.eq(merchantId)
+                            .and(qWarehouse.accountBookId.eq(accountBookId))
+                            .and(qWarehouse.id.ne(warehousesId)))
+                    .orderBy(qWarehouse.id.desc())
+                    .fetch();
+
+            if (otherWarehouses.isEmpty()) {
+                throw new ServiceException("至少保留一个仓库");
+            } else {
+                Warehouse nextDefault = otherWarehouses.get(0);
+                nextDefault.setSystemDefault(true);
+                warehouseRepository.save(nextDefault);
+            }
+        }
+
+        jqf.delete(qWarehouse)
+                .where(qWarehouse.merchantId.eq(merchantId)
+                        .and(qWarehouse.accountBookId.eq(accountBookId))
+                        .and(qWarehouse.id.eq(warehousesId)))
+                .execute();
     }
 
     public List<Warehouse> select(Long merchantId, Long accountBookId) {

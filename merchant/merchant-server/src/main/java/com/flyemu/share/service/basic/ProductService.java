@@ -3,6 +3,7 @@ package com.flyemu.share.service.basic;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONObject;
@@ -20,6 +21,7 @@ import com.flyemu.share.entity.inventory.QStockTakeItem;
 import com.flyemu.share.entity.inventory.StockTake;
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOrderItem;
+import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
@@ -37,10 +39,12 @@ import com.flyemu.share.service.purchase.PurchaseReturnService;
 import com.flyemu.share.service.sales.SalesOrderService;
 import com.flyemu.share.service.sales.SalesOutboundService;
 import com.flyemu.share.service.sales.SalesReturnService;
+import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.flyemu.share.way.ProductExistenceChecker;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.jpa.impl.JPAQuery;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -90,6 +94,7 @@ public class ProductService extends AbsService {
     private final CustomerLevelRepository customerLevelRepository;
 
     private final InventoryItemRepository inventoryItemRepository;
+    private final CodeRuleService codeRuleService;
 
     public PageResults<ProductDto> query(Page page, Query query) {
         PagedList<Tuple> pagedList = bqf.selectFrom(qProduct).select(qProduct, qUnit.name, qProductCategory.name).leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId)).where(query.builders()).orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -143,8 +148,41 @@ public class ProductService extends AbsService {
             product = productRepository.save(original);
 
         } else {
-            if (io.micrometer.common.util.StringUtils.isEmpty(product.getCode())){
-                product.setCode(CodeGenerator.generateCode(CodeGenerator.CodeType.PRODUCT));
+            if (StringUtils.isEmpty(product.getCode())) {
+                CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
+                        CodeRule.DocumentType.商品,
+                        merchantId,
+                        accountBookId
+                );
+
+                if (codeRule != null) {
+                    StringBuilder codeBuilder = new StringBuilder();
+                    if (StrUtil.isNotBlank(codeRule.getPrefix())) {
+                        codeBuilder.append(codeRule.getPrefix());
+                    }
+                    if (StrUtil.isNotBlank(codeRule.getFormat())) {
+                        String formattedDate = DateUtil.format(LocalDateTime.now(), codeRule.getFormat());
+                        codeBuilder.append(formattedDate);
+                    }
+                    Integer serialLength = codeRule.getSerialNumberLength();
+                    if (serialLength != null && serialLength > 0) {
+                        JPAQuery<Long> query = jqf.select(qProduct.id.count())
+                                .from(qProduct)
+                                .where(
+                                        qProduct.merchantId.eq(merchantId)
+                                                .and(qProduct.accountBookId.eq(accountBookId))
+                                );
+                        Long count = query.fetchOne();
+                        Integer currentSerial = Math.toIntExact(count != null ? count + 1 : 1L);
+                        String serialStr = String.format("%0" + serialLength + "d", currentSerial);
+                        codeBuilder.append(serialStr);
+                    }
+
+                    product.setCode(codeBuilder.toString());
+
+                } else {
+                    product.setCode(CodeGenerator.generateCode());
+                }
             }
             product.setAccountBookId(accountBookId);
             product.setMerchantId(merchantId);

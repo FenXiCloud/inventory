@@ -3,6 +3,7 @@ package com.flyemu.share.service.basic;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
@@ -11,21 +12,25 @@ import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.SelectProductDto;
 import com.flyemu.share.dto.SupplierDto;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.enums.PolicySource;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.SupplierRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.flyemu.share.way.ProductExistenceChecker;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.jpa.impl.JPAQuery;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,6 +64,7 @@ public class SupplierService extends AbsService {
     private final static QPricingPolicy qPricingPolicy = QPricingPolicy.pricingPolicy;
 
     private final SupplierRepository supplierRepository;
+    private final CodeRuleService codeRuleService;
 
 
     public PageResults query(Page page, Query query) {
@@ -80,8 +86,41 @@ public class SupplierService extends AbsService {
                 BeanUtil.copyProperties(supplier, original, CopyOptions.create().ignoreNullValue());
                 return supplierRepository.save(original);
             }
-            if (io.micrometer.common.util.StringUtils.isEmpty(supplier.getCode())){
-                supplier.setCode(CodeGenerator.generateCode(CodeGenerator.CodeType.SUPPLIER));
+            if (io.micrometer.common.util.StringUtils.isEmpty(supplier.getCode())) {
+                CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
+                        CodeRule.DocumentType.供货商,
+                        supplier.getMerchantId(),
+                        supplier.getAccountBookId()
+                );
+
+                if (codeRule != null) {
+                    StringBuilder codeBuilder = new StringBuilder();
+                    if (StrUtil.isNotBlank(codeRule.getPrefix())) {
+                        codeBuilder.append(codeRule.getPrefix());
+                    }
+                    if (StrUtil.isNotBlank(codeRule.getFormat())) {
+                        String formattedDate = DateUtil.format(LocalDateTime.now(), codeRule.getFormat());
+                        codeBuilder.append(formattedDate);
+                    }
+                    Integer serialLength = codeRule.getSerialNumberLength();
+                    if (serialLength != null && serialLength > 0) {
+                        JPAQuery<Long> query = jqf.select(qSupplier.id.count())
+                                .from(qSupplier)
+                                .where(
+                                        qSupplier.merchantId.eq(supplier.getMerchantId())
+                                                .and(qSupplier.accountBookId.eq(supplier.getAccountBookId()))
+                                );
+                        Long count = query.fetchOne();
+                        Integer currentSerial = Math.toIntExact(count != null ? count + 1 : 1L);
+                        String serialStr = String.format("%0" + serialLength + "d", currentSerial);
+                        codeBuilder.append(serialStr);
+                    }
+
+                    supplier.setCode(codeBuilder.toString());
+
+                } else {
+                    supplier.setCode(CodeGenerator.generateCode());
+                }
             }
             return supplierRepository.save(supplier);
         } catch (Exception e) {

@@ -32,7 +32,20 @@ public class CodeRuleService extends AbsService {
     private final static QCodeRule qCodeRule = QCodeRule.codeRule;
 
     private final CodeRuleRepository codeRuleRepository;
+    /**
+     * 根据单据类型、商户ID和账本ID查询系统默认的编码规则（只返回一条）
+     */
+    public CodeRule findByDocumentTypeAndMerchantIdAndAccountBookId(CodeRule.DocumentType documentType, Long merchantId, Long accountBookId) {
 
+        CodeRule codeRule = bqf.selectFrom(qCodeRule)
+                .where(qCodeRule.documentType.eq(documentType)
+                        .and(qCodeRule.merchantId.eq(merchantId))
+                        .and(qCodeRule.accountBookId.eq(accountBookId))
+                        .and(qCodeRule.systemDefault.eq(true)))
+                .fetchFirst();
+
+        return codeRule;
+    }
     public List<CodeRule> query(Query query) {
         List<CodeRule> codeRules = bqf.selectFrom(qCodeRule)
                 .where(query.builder)

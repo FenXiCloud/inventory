@@ -2,21 +2,26 @@ package com.flyemu.share.service.basic;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.flyemu.share.entity.basic.QWarehouse;
 import com.flyemu.share.entity.basic.Warehouse;
+import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.WarehouseRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.flyemu.share.way.ProductExistenceChecker;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.jpa.impl.JPAQuery;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -27,6 +32,7 @@ public class WarehouseService extends AbsService {
 
     private static final QWarehouse qWarehouse = QWarehouse.warehouse;
     private final WarehouseRepository warehouseRepository;
+    private final CodeRuleService codeRuleService;
 
     public List<Warehouse> query(Query query) {
         return bqf.selectFrom(qWarehouse).where(query.builder).where(query.builders()).orderBy(qWarehouse.id.desc()).fetch();
@@ -50,7 +56,39 @@ public class WarehouseService extends AbsService {
         }
 
         if (io.micrometer.common.util.StringUtils.isEmpty(warehouse.getCode())) {
-            warehouse.setCode(CodeGenerator.generateCode(CodeGenerator.CodeType.WAREHOUSE));
+            // 查询系统默认编码规则（仓库）
+            CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
+                    CodeRule.DocumentType.仓库,
+                    warehouse.getMerchantId(),
+                    warehouse.getAccountBookId()
+            );
+
+            if (codeRule != null) {
+                StringBuilder codeBuilder = new StringBuilder();
+                if (StrUtil.isNotBlank(codeRule.getPrefix())) {
+                    codeBuilder.append(codeRule.getPrefix());
+                }
+                if (StrUtil.isNotBlank(codeRule.getFormat())) {
+                    String formattedDate = DateUtil.format(LocalDateTime.now(), codeRule.getFormat());
+                    codeBuilder.append(formattedDate);
+                }
+                Integer serialLength = codeRule.getSerialNumberLength();
+                if (serialLength != null && serialLength > 0) {
+                    JPAQuery<Long> query = jqf.select(qWarehouse.id.count())
+                            .from(qWarehouse)
+                            .where(
+                                    qWarehouse.merchantId.eq(warehouse.getMerchantId())
+                                            .and(qWarehouse.accountBookId.eq(warehouse.getAccountBookId()))
+                            );
+                    Long count = query.fetchOne();
+                    Integer currentSerial = Math.toIntExact(count != null ? count + 1 : 1L);
+                    String serialStr = String.format("%0" + serialLength + "d", currentSerial);
+                    codeBuilder.append(serialStr);
+                }
+                warehouse.setCode(codeBuilder.toString());
+            } else {
+                warehouse.setCode(CodeGenerator.generateCode());
+            }
         }
         Long merchantId = warehouse.getMerchantId();
         Long accountBookId = warehouse.getAccountBookId();

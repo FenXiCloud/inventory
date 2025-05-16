@@ -7,31 +7,13 @@ import java.util.Random;
  */
 public class CodeGenerator {
 
-    public enum CodeType {
-        PRODUCT("PR"),         // 商品
-        SUPPLIER("SU"),         // 货商
-        CUSTOMER("CU"),         // 客户
-        WAREHOUSE("WH");          // 仓库
-
-        private final String prefix;
-
-        CodeType(String prefix) {
-            this.prefix = prefix;
-        }
-
-        public String getPrefix() {
-            return prefix;
-        }
-    }
 
     private static final int RANDOM_LENGTH = 8;
     private static final Random random = new Random();
 
-    public static String generateCode(CodeType codeType) {
-        String prefix = codeType.getPrefix();
-        String randomSuffix = generateRandomDigits(RANDOM_LENGTH);      // 随机数部分
-
-        return prefix + randomSuffix;
+    public static String generateCode() {
+        String randomSuffix = generateRandomDigits(RANDOM_LENGTH);
+        return randomSuffix;
     }
 
     private static String generateRandomDigits(int length) {

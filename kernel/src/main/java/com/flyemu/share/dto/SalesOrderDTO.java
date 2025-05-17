@@ -78,6 +78,8 @@ public class SalesOrderDTO {
     @Comment("销售出库单编号")
     private String outOrderNo;
 
+    private List<String> outOrderNoList;
+
     @Comment("商品数量")
     private AtomicReference<Double> totalQuantity;
 

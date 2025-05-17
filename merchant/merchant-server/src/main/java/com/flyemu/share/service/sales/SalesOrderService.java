@@ -7,6 +7,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
+import com.flyemu.share.dto.SalesOutboundDTO;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
@@ -30,9 +31,13 @@ import org.springframework.util.CollectionUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+
+import static com.flyemu.share.entity.sales.QSalesOutboundItem.salesOutboundItem;
 
 /**
  * @功能描述: 销售订单
@@ -51,6 +56,7 @@ public class SalesOrderService extends AbsService {
     private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
+    private final static QSalesOutboundItem qSalesOutboundItem = salesOutboundItem;
     private final SalesOutboundRepository salesOutboundRepository;
 
     private final SalesOrderRepository salesOrderRepository;
@@ -63,6 +69,9 @@ public class SalesOrderService extends AbsService {
     private final static QUnit qUnit = QUnit.unit;
     private final PriceRecordService priceRecordService;
     private final PriceRecordRepository priceRecordRepository;
+
+
+
 
     public PageResults<SalesOrderDTO> query(Page page, SalesOrderService.Query query) {
         long totalSize = bqf.selectFrom(qSalesOrder)
@@ -101,9 +110,33 @@ public class SalesOrderService extends AbsService {
             });
             salesOrderDTO.setSalesOrderItemList(itemDTOs);
             salesOrderDTO.setTotalQuantity(totalQuantity);
+            //关联查询出库单
+            subQueryOutOrder(salesOrderDTO);
             dtos.add(salesOrderDTO);
         });
         return new PageResults<>(dtos, page, totalSize);
+    }
+
+    private void subQueryOutOrder(SalesOrderDTO salesOrderDTO) {
+        //通过销售订单id 关联查询出销售出库单的所有商品
+        List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                .where(qSalesOutboundItem.salesOrderId.eq(salesOrderDTO.getId()))
+                .fetch();
+        if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
+            List<String> outOrderNoList = new ArrayList<>();
+            //通过销售出库单id关联查询出销售出库单
+            for (SalesOutboundItem item : salesOutboundItemList){
+                //只查询订单编号
+                String outOrderNo = bqf.selectFrom(qSalesOutbound)
+                        .select(qSalesOutbound.orderNo)
+                        .where(qSalesOutbound.id.eq(item.getSalesOutboundId()))
+                        .fetchOne();
+                outOrderNoList.add(outOrderNo);
+            }
+            //将所有outOrderNo封装到list中，去重后返回
+            salesOrderDTO.setOutOrderNo(outOrderNoList.stream().distinct().collect(Collectors.joining(",")));
+            salesOrderDTO.setOutOrderNoList(outOrderNoList.stream().distinct().collect(Collectors.toList()));
+        }
     }
 
     @Transactional

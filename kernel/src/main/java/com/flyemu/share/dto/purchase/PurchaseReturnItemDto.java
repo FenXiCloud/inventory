@@ -154,5 +154,10 @@ public class PurchaseReturnItemDto {
      * 退货原因
      */
     private String returnReason;
+    /**
+     * 可退数量
+     */
+    private Double returnQuantity;
+
 
 }

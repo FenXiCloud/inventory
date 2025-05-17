@@ -141,7 +141,7 @@ export default {
     detail(orderId = null) {
       this.pushTab({
         key: 'PurchaseInboundDetail',
-        title: '采购订单',
+        title: '采购入库单',
         params: {orderId: orderId}
       });
     },

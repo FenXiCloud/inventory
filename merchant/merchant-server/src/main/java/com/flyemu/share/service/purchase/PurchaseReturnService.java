@@ -21,6 +21,7 @@ import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.PurchaseReturnForm;
 import com.flyemu.share.repository.PurchaseInboundReturnConnectionRepository;
 import com.flyemu.share.repository.PurchaseReturnItemRepository;
@@ -182,6 +183,9 @@ public class PurchaseReturnService extends AbsService {
                  * 更新对应入库单明细
                  */
                 double v = NumberUtil.sub(purchaseInboundItem.getReturnQuantity(), d.getSecondaryQuantity());
+                if (v < 0) {
+                    throw new ServiceException("可退数量不能小于0,请刷新重试");
+                }
                 jqf.update(qPurchaseInboundItem)
                         .set(qPurchaseInboundItem.returnQuantity, v)
                         .where(qPurchaseInboundItem.id.eq(purchaseInboundItem.getId())).execute();
@@ -251,6 +255,9 @@ public class PurchaseReturnService extends AbsService {
                  * 更新对应入库单明细
                  */
                 double v = NumberUtil.sub(purchaseInboundItem.getReturnQuantity(), d.getSecondaryQuantity());
+                if (v < 0) {
+                    throw new RuntimeException("可退数量不能小于0,请刷新重试");
+                }
                 jqf.update(qPurchaseInboundItem)
                         .set(qPurchaseInboundItem.returnQuantity, v)
                         .where(qPurchaseInboundItem.id.eq(purchaseInboundItem.getId())).execute();
@@ -492,7 +499,7 @@ public class PurchaseReturnService extends AbsService {
         PurchaseReturnDto orderDto = BeanUtil.toBean(fetchFirst.get(qPurchaseReturn), PurchaseReturnDto.class);
         orderDto.setSupplierName(fetchFirst.get(qSupplier.name));
         ArrayList<PurchaseReturnItemDto> collect = jqf.selectFrom(qPurchaseReturnItem)
-                .select(qPurchaseReturnItem, qPurchaseInbound.orderNo, qProduct.code, qProduct.name, qWarehouse.name, qProductCategory.name, qProduct.specification,
+                .select(qPurchaseReturnItem, qPurchaseInboundItem.returnQuantity, qPurchaseInbound.orderNo, qProduct.code, qProduct.name, qWarehouse.name, qProductCategory.name, qProduct.specification,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseReturnItem.productId).and(qProduct.merchantId.eq(merchantId)))
                 .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseReturnItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
@@ -500,6 +507,7 @@ public class PurchaseReturnService extends AbsService {
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseReturnItem.warehouseId).and(qWarehouse.merchantId.eq(merchantId)))
                 .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseReturnItem.purchaseInboundId))
                 .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .leftJoin(qPurchaseInboundItem).on(qPurchaseInboundItem.id.eq(qPurchaseReturnItem.purchaseInboundItemId))
                 .where(qPurchaseReturnItem.purchaseReturnId.eq(orderId).and(qPurchaseReturnItem.merchantId.eq(merchantId)))
                 .orderBy(qPurchaseReturnItem.id.asc())
                 .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
@@ -512,6 +520,7 @@ public class PurchaseReturnService extends AbsService {
                     dto.setCategoryName(tuple.get(qProductCategory.name));
                     dto.setWarehouseName(tuple.get(qWarehouse.name));
                     dto.setSecondaryUnitName(tuple.get(qUnit1.name));
+                    dto.setReturnQuantity(tuple.get(qPurchaseInboundItem.returnQuantity) + dto.getSecondaryQuantity());
                     list.add(dto);
                 }, List::addAll);
         return Dict.create().set("purchaseReturn", orderDto).set("purchaseReturnItemList", collect);

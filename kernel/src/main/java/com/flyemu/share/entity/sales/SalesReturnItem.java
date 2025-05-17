@@ -86,6 +86,9 @@ public class SalesReturnItem {
     @Comment("出库商品id")
     private Long outItemId;
 
+    @Comment("出库单id")
+    private Long outOrderId;
+
     @Comment("备注")
     private String remark;
 }

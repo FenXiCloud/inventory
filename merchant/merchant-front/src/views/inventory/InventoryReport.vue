@@ -93,7 +93,7 @@ import {loading, message} from "heyui.ext";
 import {exportExcelHeader} from "@js/excel";
 import InventoryItem from "../../js/api/inventory/InventoryItem";
 
-const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
+// const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
 
 export default {
@@ -122,7 +122,7 @@ export default {
         sort: null,
       },
       dateRange: {
-        start: manba(startTime).format("YYYY-MM-dd"),
+        start: manba(endTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
       },
       warehouseList: [],

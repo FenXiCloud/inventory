@@ -84,4 +84,6 @@ public class SalesOutboundItemDTO {
 
     @Comment("订单id")
     private Long salesOrderId;
+    @Comment("订单编号")
+    private String salesOrderNo;
 }

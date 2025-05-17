@@ -150,12 +150,20 @@
                          :controls="false" readonly disabled></vxe-input>
             </template>
           </vxe-column>
-          <vxe-column title="备注" field="remark">
+          <vxe-column title="备注" field="remark" width="100">
             <template #default="{row,rowIndex}">
               <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8"
                          v-model="row.remark" placeholder="输入备注" :controls="false"></vxe-input>
             </template>
           </vxe-column>
+          <vxe-column title="关联销售单号" field="salesOrderNo" width="200">
+            <template #default="{row,rowIndex}">
+              <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+9"
+                         v-model="row.salesOrderNo" placeholder="关联销售单号" :controls="false" readonly disabled></vxe-input>
+            </template>
+          </vxe-column>
+
+
         </vxe-table>
         <div class="mt-10px"></div>
         <div class="filler-panel" v-if="type==='edit'">

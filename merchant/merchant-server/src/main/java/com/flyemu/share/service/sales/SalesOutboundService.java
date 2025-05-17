@@ -122,11 +122,13 @@ public class SalesOutboundService extends AbsService {
 
             //封装销售订单编号返回
             List<String> orderNoList = new ArrayList<>();
-            for (SalesOutboundItem item : salesOutboundItemList){
+            for (SalesOutboundItemDTO item : itemDTOs){
                 if (item.getSalesOrderId() != null){
                     SalesOrder salesOrder = salesOrderRepository.findById(item.getSalesOrderId()).orElse(null);
                     if (salesOrder != null){
-                        orderNoList.add(salesOrder.getOrderNo());
+                        String orderNo = salesOrder.getOrderNo();
+                        item.setSalesOrderNo(orderNo);
+                        orderNoList.add(orderNo);
                     }
                 }
             }
@@ -313,6 +315,16 @@ public class SalesOutboundService extends AbsService {
             salesOutboundItemDTO.setProductName(tuple.get(qProduct.name));
             salesOutboundItemDTO.setProductCode(tuple.get(qProduct.code));
             salesOutboundItemDTO.setUnitName(tuple.get(qUnit.name));
+
+            Long salesOrderId = salesOutboundItemDTO.getSalesOrderId();
+            if (salesOrderId != null){
+                //返回销售订单编号
+                SalesOrder salesOrder = salesOrderRepository.findById(salesOrderId).orElse(null);
+                if (salesOrder != null){
+                    String orderNo = salesOrder.getOrderNo();
+                    salesOutboundItemDTO.setSalesOrderNo(orderNo);
+                }
+            }
             salesOutboundItemDTOList.add(salesOutboundItemDTO);
         });
         dto.setSalesOutboundItemList(salesOutboundItemDTOList);

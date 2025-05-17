@@ -120,15 +120,18 @@ public class SalesOutboundService extends AbsService {
             salesOutboundDTO.setSalesOutboundItemList(itemDTOs);
             salesOutboundDTO.setTotalQuantity(totalQuantity);
 
-            //查询关联的销售订单
-            List<String> salesOrderList = bqf.selectFrom(qSalesOrder)
-                    .select(qSalesOrder.orderNo)
-                    .where(qSalesOrder.outOrderId.eq(salesOutboundDTO.getId()))
-                    .fetch();
-            if (!CollectionUtils.isEmpty(salesOrderList)) {
-                salesOutboundDTO.setSalesOrderNos(String.join(",", salesOrderList));
+            //封装销售订单编号返回
+            List<String> orderNoList = new ArrayList<>();
+            for (SalesOutboundItem item : salesOutboundItemList){
+                if (item.getSalesOrderId() != null){
+                    SalesOrder salesOrder = salesOrderRepository.findById(item.getSalesOrderId()).orElse(null);
+                    if (salesOrder != null){
+                        orderNoList.add(salesOrder.getOrderNo());
+                    }
+                }
             }
-
+            //orderNoList 去重
+            salesOutboundDTO.setSalesOrderNos(orderNoList.stream().distinct().collect(Collectors.joining(",")));
             dtos.add(salesOutboundDTO);
         });
 
@@ -165,7 +168,7 @@ public class SalesOutboundService extends AbsService {
             //修改
             SalesOutbound update = salesOutboundRepository.save(original);
             //清除出库单商品
-            jqf.delete(qSalesOutboundItem).where(qSalesOutboundItem.salesOutboundId.eq(id)).execute();
+            //jqf.delete(qSalesOutboundItem).where(qSalesOutboundItem.salesOutboundId.eq(id)).execute();
             //保存新关系
             if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                 salesOutboundItemList.forEach(item -> {
@@ -174,10 +177,13 @@ public class SalesOutboundService extends AbsService {
                     item.setSalesOutboundId(update.getId());
                     item.setAccountBookId(salesOutbound.getAccountBookId());
                     item.setMerchantId(salesOutbound.getMerchantId());
+                    item.setUpdatedAt(LocalDateTime.now());
                 });
                 //批量修改
                 salesOutboundItemRepository.saveAll(salesOutboundItemList);
             }
+            //修改关联订单状态
+            extracted(salesOutboundItemList);
             return update;
         } else {
             //状态初始化
@@ -203,39 +209,42 @@ public class SalesOutboundService extends AbsService {
             //选择的源单不为空
             List<Long> selectSalesOrderIdList = salesOutboundForm.getSelectSalesOrderIdList();
             if (!CollectionUtils.isEmpty(selectSalesOrderIdList)) {
-
-                //处理部分出库的订单状态
-                List<SalesOutboundItem> salesOutboundItemListTemp = salesOutboundForm.getSalesOutboundItemList();
-                for (SalesOutboundItem item : salesOutboundItemListTemp){
-                    Long tempId = item.getTempId();
-                    SalesOrderItem salesOrderItem = salesOrderItemRepository.getReferenceById(tempId);
-                    Double quantity = salesOrderItem.getQuantity();
-                    Double quantityOut = item.getQuantity();
-                    if(quantityOut<quantity){
-                        SalesOrder order = salesOrderRepository.getById(salesOrderItem.getSalesOrderId());
-                        //销售订单关联销售出库单
-                        order.setOutOrderId(save.getId());
-                        //部分出库
-                        order.setStatus(1);
-                        salesOrderRepository.save(order);
-                    }
-                    //出库数量
-                    salesOrderItem.setQuantityOut(quantityOut);
-                    salesOrderItemRepository.save(salesOrderItem);
-                }
                 //处理订单状态
-                for (Long salesOrderId : selectSalesOrderIdList){
-                    SalesOrder salesOrderUpdate = salesOrderRepository.getById(salesOrderId);
-                    //如果一个订单里面的所有商品都出库完成，将订单状态改成全部出库
-                    List<SalesOrderItem> salesOrderItemList = jqf.selectFrom(qSalesOrderItem).select(qSalesOrderItem)
-                            .where(qSalesOrderItem.salesOrderId.eq(salesOrderId)).fetch();
-                    if(salesOrderItemList.stream().allMatch(item -> (item.getQuantityOut()!= null && item.getQuantityOut() >= item.getQuantity()))){
-                        salesOrderUpdate.setStatus(2);
-                        salesOrderRepository.save(salesOrderUpdate);
-                    }
-                }
+                extracted(salesOutboundItemList);
             }
             return save;
+        }
+    }
+
+    private void extracted(List<SalesOutboundItem> salesOutboundItemList) {
+        for (SalesOutboundItem salesOutboundItem : salesOutboundItemList){
+            Long tempId = salesOutboundItem.getTempId();
+            if (tempId == null){
+                continue;
+            }
+            SalesOrderItem salesOrderItem = salesOrderItemRepository.getReferenceById(tempId);
+            Long salesOrderId = salesOrderItem.getSalesOrderId();
+            Double quantity = salesOrderItem.getQuantity();
+            Double quantityOut = salesOutboundItem.getQuantity();
+            SalesOrder order = salesOrderRepository.getById(salesOrderId);
+            if(quantityOut<quantity){
+                //部分出库 第一此更新，后续有兜底逻辑
+                order.setStatus(1);
+                salesOrderRepository.save(order);
+            }
+            //出库数量
+            salesOrderItem.setQuantityOut(quantityOut);
+            salesOrderItemRepository.save(salesOrderItem);
+
+            //兜底逻辑
+            SalesOrder salesOrderUpdate = salesOrderRepository.getById(salesOrderId);
+            //如果一个订单里面的所有商品都出库完成，将订单状态改成全部出库
+            List<SalesOrderItem> salesOrderItemList = jqf.selectFrom(qSalesOrderItem).select(qSalesOrderItem)
+                    .where(qSalesOrderItem.salesOrderId.eq(salesOrderId)).fetch();
+            if(salesOrderItemList.stream().allMatch(item -> (item.getQuantityOut()!= null && item.getQuantityOut() >= item.getQuantity()))){
+                salesOrderUpdate.setStatus(2);
+                salesOrderRepository.save(salesOrderUpdate);
+            }
         }
     }
 

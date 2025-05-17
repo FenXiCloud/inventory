@@ -79,10 +79,9 @@ public class SalesOrderService extends AbsService {
                 .fetchCount();
 
         List<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
-                .select(qSalesOrder, qCustomer.name, qMerchantUser.name,qSalesOutbound.orderNo)
+                .select(qSalesOrder, qCustomer.name, qMerchantUser.name)
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
-                .leftJoin(qSalesOutbound).on(qSalesOutbound.id.eq(qSalesOrder.outOrderId))
                 .where(query.builder)
                 .orderBy(qSalesOrder.id.desc())
                 .offset(page.getOffset())
@@ -94,7 +93,6 @@ public class SalesOrderService extends AbsService {
             SalesOrderDTO salesOrderDTO = BeanUtil.toBean(tuple.get(qSalesOrder), SalesOrderDTO.class);
             salesOrderDTO.setCustomerName(tuple.get(qCustomer.name));
             salesOrderDTO.setCreatedName(tuple.get(qMerchantUser.name));
-            salesOrderDTO.setOutOrderNo(tuple.get(qSalesOutbound.orderNo));
             //查询子表
             List<SalesOrderItem> salesOrderItemList = bqf.selectFrom(qSalesOrderItem)
                     .select(qSalesOrderItem)
@@ -223,13 +221,12 @@ public class SalesOrderService extends AbsService {
         if (orderStatus.equals(OrderStatus.已审核)) {
             throw new InvalidContextException("已审核单据不能删除");
         }
-        //已关联销售出库单不能删除
-        Long outOrderId = original.getOutOrderId();
-        if (outOrderId != null){
-            Optional<SalesOutbound> salesOutboundOptional = salesOutboundRepository.findById(outOrderId);
-            salesOutboundOptional.ifPresent(salesOutbound -> {
-                throw new InvalidContextException("已关联销售出库单不能删除");
-            });
+        //根据销售单id查询销售出库单商品
+        List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
+                .fetch();
+        if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
+            throw new InvalidContextException("已关联销售出库单不能删除");
         }
 
         //删除销售订单
@@ -287,12 +284,15 @@ public class SalesOrderService extends AbsService {
             OrderStatus orderStatus = salesOrderForm.getOrderStatus();
             if (orderStatus.equals(OrderStatus.已保存)) {
                 //已关联销售出库单不能审核
-                Long outOrderId = order.getOutOrderId();
-                if (outOrderId != null){
-                    Optional<SalesOutbound> salesOutboundOptional = salesOutboundRepository.findById(outOrderId);
-                    salesOutboundOptional.ifPresent(salesOutbound -> {
+                Long salesOrderId = order.getId();
+                if (salesOrderId != null){
+                    //根据销售单id查询销售出库单商品
+                    List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                            .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
+                            .fetch();
+                    if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                         throw new InvalidContextException("已关联销售出库单不能反审核");
-                    });
+                    }
                 }
             }
             order.setOrderStatus(orderStatus);
@@ -315,12 +315,13 @@ public class SalesOrderService extends AbsService {
         OrderStatus orderStatus = salesOrder.getOrderStatus();
         if (orderStatus.equals(OrderStatus.已保存)) {
             //已关联销售出库单不能审核
-            Long outOrderId = original.getOutOrderId();
-            if (outOrderId != null){
-                Optional<SalesOutbound> salesOutboundOptional = salesOutboundRepository.findById(outOrderId);
-                salesOutboundOptional.ifPresent(salesOutbound -> {
-                    throw new InvalidContextException("已关联销售出库单不能反审核");
-                });
+            Long salesOrderId = original.getId();
+            //根据销售单id查询销售出库单商品
+            List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                    .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
+                    .fetch();
+            if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
+                throw new InvalidContextException("已关联销售出库单不能反审核");
             }
         }
         original.setApprovedAt(LocalDateTime.now());

@@ -317,11 +317,22 @@ export default {
         if (unit) {
           row.unitName = unit.name;
         }
-        //临时id后台需要做判断
+        //订单商品id 后台需要存储关联
         row.tempId =row.id;
-            //将id置为空，因为是新增的商品
+        //将id置为空，因为是新增的商品
         row.id = null;
       });
+
+      //this.productList  封装产品名称和产品编码，进行回显  productList中的id 和 itemList中的productId  需要做判断
+      console.log("this.productList",this.productList)
+      this.productList.map(item => {
+        itemList.map(item2 => {
+          if(item.id === item2.productId){
+            item2.productName = item.name;
+            item2.productCode = item.code;
+          }
+        })
+      })
       console.log('处理后的订单数据:', itemList)
       // 将 itemList 赋值给 productData
       this.productData = itemList;
@@ -334,6 +345,7 @@ export default {
       //   //封装产品名称和产品编码，进行回显
       //   productName: item.name,
       //   productCode: item.code,
+      //   //封装产品名称和code
       //   // 如果需要添加或修改其他字段可以在这里处理
       // }));
     },

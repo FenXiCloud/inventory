@@ -78,8 +78,6 @@ public class SalesOrder {
     @Column(nullable = false)
     private Long merchantId;
 
-    @Comment("销售出库单id")
-    private Long outOrderId;
     @Comment("出库单状态 0初始化 1部分出库 2全部出库")
     private Integer status;
 }

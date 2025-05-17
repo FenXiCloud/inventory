@@ -87,5 +87,5 @@ public class SalesOutboundItem {
     private Long tempId;
 
     @Comment("订单id")
-    private Long orderId;
+    private Long salesOrderId;
 }

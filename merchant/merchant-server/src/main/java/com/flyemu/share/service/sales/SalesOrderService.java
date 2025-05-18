@@ -59,6 +59,8 @@ public class SalesOrderService extends AbsService {
     private final static QSalesOutboundItem qSalesOutboundItem = salesOutboundItem;
     private final SalesOutboundRepository salesOutboundRepository;
 
+    private final static QSalesReturnItem qsalesReturnItem = QSalesReturnItem.salesReturnItem;
+
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderItemRepository salesOrderItemRepository;
     private final CodeSeedService codeSeedService;
@@ -105,6 +107,26 @@ public class SalesOrderService extends AbsService {
                 itemDTOs.add(itemDTO);
                 Double quantity = itemDTO.getQuantity();
                 totalQuantity.updateAndGet(v -> v + quantity);
+
+                //查询销售出库数量和退货数量
+                List<Tuple> fetch = bqf.selectFrom(qSalesOutboundItem)
+                        .leftJoin(qsalesReturnItem)
+                        .on(qsalesReturnItem.salesOutboundId.eq(qSalesOutboundItem.salesOutboundId).and(qsalesReturnItem.outItemId.eq(qSalesOutboundItem.id)))
+                        .select(qSalesOutboundItem.quantity, qsalesReturnItem.quantity)
+                        .where(qSalesOutboundItem.salesOrderId.eq(item.getSalesOrderId())
+                            .and(qSalesOutboundItem.tempId.eq(item.getId())))
+                        .fetch();
+                //出库数量
+                Double outQuantity = fetch.stream()
+                        .mapToDouble(tuple1 -> tuple1.get(qSalesOutboundItem.quantity))
+                        .sum();
+                //退货数量
+                Double returnQuantity = fetch.stream()
+                        .mapToDouble(tuple2 -> tuple2.get(qsalesReturnItem.quantity) != null ? tuple2.get(qsalesReturnItem.quantity) : 0.0)
+                        .sum();
+                
+                itemDTO.setQuantityOut(outQuantity);
+                itemDTO.setQuantityReturn(returnQuantity);
             });
             salesOrderDTO.setSalesOrderItemList(itemDTOs);
             salesOrderDTO.setTotalQuantity(totalQuantity);

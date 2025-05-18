@@ -288,6 +288,16 @@ public class SalesReturnService extends AbsService {
             salesReturnItemDTO.setProductName(tuple.get(qProduct.name));
             salesReturnItemDTO.setProductCode(tuple.get(qProduct.code));
             salesReturnItemDTO.setUnitName(tuple.get(qUnit.name));
+            //关联查询销售出库单编号
+            Long salesOutboundId = salesReturnItemDTO.getSalesOutboundId();
+            if (salesOutboundId != null){
+                //返回销售出库单编号
+                SalesOutbound salesOutbound = salesOutboundRepository.findById(salesOutboundId).orElse(null);
+                if (salesOutbound != null){
+                    String orderNo = salesOutbound.getOrderNo();
+                    salesReturnItemDTO.setSalesOutboundNo(orderNo);
+                }
+            }
             salesReturnItemDTOList.add(salesReturnItemDTO);
         });
         dto.setSalesReturnItemList(salesReturnItemDTOList);

@@ -3,6 +3,7 @@ package com.flyemu.share.service.sales;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.json.JSONUtil;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesOutboundDTO;
@@ -11,6 +12,8 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.sales.*;
+import com.flyemu.share.entity.setting.AccountBookParameters;
+import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
@@ -21,6 +24,8 @@ import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.inventory.InventoryService;
+import com.flyemu.share.service.setting.AccountBookParametersService;
+import com.flyemu.share.service.setting.AccountBookService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -81,6 +86,8 @@ public class SalesOutboundService extends AbsService {
     @Autowired
     private InventoryService inventoryService;
     private final PriceRecordService priceRecordService;
+
+    private static final QAccountBookParameters Q_ACCOUNT_BOOK_PARAMETERS = QAccountBookParameters.accountBookParameters;
 
     public PageResults<SalesOutboundDTO> query(Page page, SalesOutboundService.Query query) {
 
@@ -146,18 +153,27 @@ public class SalesOutboundService extends AbsService {
         Long id = salesOutbound.getId();
         List<SalesOutboundItem> salesOutboundItemList = salesOutboundForm.getSalesOutboundItemList();
 
-        for (SalesOutboundItem item : salesOutboundItemList) {
-            Boolean exist = inventoryService.exist(item.getProductId(), item.getWarehouseId(), salesOutbound.getMerchantId(), salesOutbound.getAccountBookId());
-            if (!exist) {
-                Optional<Product> productOptional = productRepository.findById(item.getProductId());
-                Optional<Warehouse> warehouseOptional = warehouseRepository.findById(item.getWarehouseId());
+        //查询账套参数
+        AccountBookParameters accountBookParameters = bqf.selectFrom(Q_ACCOUNT_BOOK_PARAMETERS)
+                .where(Q_ACCOUNT_BOOK_PARAMETERS.accountBookId.eq(Math.toIntExact(salesOutbound.getAccountBookId())))
+                .fetchOne();
+        if (accountBookParameters != null && accountBookParameters.getCostAccounting() == 1) {
+            log.info("可用库存允许为负,放行 accountBookParameters:{}",  JSONUtil.toJsonStr(salesOutboundItemList));
+        }else{
+            for (SalesOutboundItem item : salesOutboundItemList) {
+                Boolean exist = inventoryService.exist(item.getProductId(), item.getWarehouseId(), salesOutbound.getMerchantId(), salesOutbound.getAccountBookId());
+                if (!exist) {
+                    Optional<Product> productOptional = productRepository.findById(item.getProductId());
+                    Optional<Warehouse> warehouseOptional = warehouseRepository.findById(item.getWarehouseId());
 
-                String productName = productOptional.map(Product::getName).orElse("未知产品");
-                String warehouseName = warehouseOptional.map(Warehouse::getName).orElse("未知仓库");
+                    String productName = productOptional.map(Product::getName).orElse("未知产品");
+                    String warehouseName = warehouseOptional.map(Warehouse::getName).orElse("未知仓库");
 
-                throw new InvalidContextException(String.format("库存不足：产品「%s」在仓库「%s」中库存不足", productName, warehouseName));
+                    throw new InvalidContextException(String.format("库存不足：产品「%s」在仓库「%s」中库存不足", productName, warehouseName));
+                }
             }
         }
+
         if (id != null) {
             //查询
             SalesOutbound original = salesOutboundRepository.getById(id);

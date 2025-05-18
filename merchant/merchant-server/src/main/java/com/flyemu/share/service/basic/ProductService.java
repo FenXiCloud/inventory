@@ -23,6 +23,7 @@ import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOrderItem;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.enums.OperationType;
+import com.flyemu.share.enums.PolicySource;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
@@ -92,6 +93,8 @@ public class ProductService extends AbsService {
     private final PriceRecordService priceRecordService;
 
     private final CustomerLevelRepository customerLevelRepository;
+
+    private final static QPricingPolicy qPricingPolicy = QPricingPolicy.pricingPolicy;
 
     private final InventoryItemRepository inventoryItemRepository;
     private final CodeRuleService codeRuleService;
@@ -394,6 +397,20 @@ public class ProductService extends AbsService {
             if (priceRecord != null) {
                 dto.setLastSalePrice(priceRecord.getUnitPrice());
             }
+
+            //获取当前的价格取数规则qPricingPolicy
+            PricingPolicy pricingPolicy = jqf.selectFrom(qPricingPolicy).where(qPricingPolicy.enabled.eq(true)).orderBy(qPricingPolicy.priority.asc()).fetchFirst();
+            if (pricingPolicy != null) {
+                PolicySource policySource = pricingPolicy.getPolicySource();
+                if(policySource == PolicySource.客户等级价格){
+                    //获取最新的客户等级价格
+                    CustomerLevelPrice customerLevelPrice = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(dto.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).orderBy(qCustomerLevelPrice.id.desc()).fetchFirst();
+                    if (customerLevelPrice != null) {
+                        dto.setLastSalePrice(customerLevelPrice.getPrice());
+                    }
+                }
+            }
+
         }, List::addAll);
         return result;
     }

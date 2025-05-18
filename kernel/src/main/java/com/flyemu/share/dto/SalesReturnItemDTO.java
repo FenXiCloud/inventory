@@ -84,4 +84,9 @@ public class SalesReturnItemDTO {
 
     @Comment("出库商品id")
     private Long outItemId;
+
+    @Comment("出库单id")
+    private Long salesOutboundId;
+
+    private String salesOutboundNo;
 }

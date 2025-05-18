@@ -82,4 +82,10 @@ public class SalesOutboundItem {
 
     @Comment("备注")
     private String remark;
+
+    @Comment("订单商品id")
+    private Long tempId;
+
+    @Comment("订单id")
+    private Long salesOrderId;
 }

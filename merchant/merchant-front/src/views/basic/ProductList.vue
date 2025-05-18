@@ -253,7 +253,7 @@ export default {
     loadProduct() {
       this.loading = true;
       Product.list(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results || [];
+        this.productDataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
     },

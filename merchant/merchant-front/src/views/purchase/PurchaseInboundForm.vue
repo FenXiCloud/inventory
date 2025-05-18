@@ -43,10 +43,33 @@
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,rowIndex)" v-model="row.productId" :datas="productList"
-                      filterable
+                      filterable :equalWidth="false"
                       placeholder="输入编码/名称" keyName="productId">
+                <template v-slot:top>
+                  <table class="h-table" style="width: 100%">
+                    <thead class="h-table-header">
+                    <tr>
+                      <td width="150" align="center">编码</td>
+                      <td width="150" align="center">图片</td>
+                      <td width="150" align="center">名称</td>
+                      <td width="150" align="center">类别</td>
+                      <td width="150" align="center">规格</td>
+                    </tr>
+                    </thead>
+                  </table>
+                </template>
                 <template v-slot:item="{ item }">
-                  <div>{{ item.productCode }} {{ item.productName }}</div>
+                  <table>
+                    <tbody class="h-table-body-table">
+                    <tr>
+                      <td width="150" align="center">{{ item.productCode }}</td>
+                      <td width="150" align="center">{{ item.imageUrl }}</td>
+                      <td width="150" align="center">{{ item.productName }}</td>
+                      <td width="150" align="center">{{ item.productCategoryName }}</td>
+                      <td width="150" align="center">{{ item.spec }}</td>
+                    </tr>
+                    </tbody>
+                  </table>
                 </template>
               </Select>
             </div>
@@ -75,55 +98,59 @@
         </vxe-column>
         <vxe-column title="数量" field="secondaryQuantity" width="90">
           <template #default="{row,rowIndex,columnIndex}">
-            <vxe-tooltip theme="light">
-              <template #content>
-                <div>当前库存: {{row.currentStockQuantity || 0}}</div>
-                <div>总库存: {{row.totalStockQuantity || 0}}</div>
-              </template>
-              <vxe-input
-                  :id="'r'+rowIndex+''+3"
-                  @blur="updateQuantity(row)"
-                  @focus="showStockQuantity(row)"
-                  ref="inputQuantity"
-                  v-model.number="row.secondaryQuantity"
-                  type="float"
-                  min="0"
-                  :controls="false">
-              </vxe-input>
-            </vxe-tooltip>
+            <template v-if="!row.isNew">
+              <vxe-tooltip theme="light" v-if="!row.isNew">
+                <template #content>
+                  <div>当前库存: {{ row.currentStockQuantity || 0 }}</div>
+                  <div>总库存: {{ row.totalStockQuantity || 0 }}</div>
+                </template>
+                <vxe-input
+                    :id="'r'+rowIndex+''+3"
+                    @blur="updateQuantity(row)"
+                    @focus="showStockQuantity(row)"
+                    ref="inputQuantity"
+                    v-model.number="row.secondaryQuantity"
+                    type="float"
+                    min="0"
+                    :controls="false">
+                </vxe-input>
+              </vxe-tooltip>
+            </template>
           </template>
         </vxe-column>
         <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
         <vxe-column title="基本数量" field="quantity" width="90"/>
         <vxe-column title="购货单价" field="secondaryPrice" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-tooltip theme="light">
-              <template #content>
-                <div class="recent-sales-table">
-                  <table>
-                    <thead>
-                    <tr>
-                      <th>最近采购时间</th>
-                      <th>最近采购价</th>
-                      <th>预计采购价</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr v-for="(item, index) in recentSales || []" :key="index">
-                      <td>{{item.orderDate || '-'}}</td>
-                      <td>{{item.unitPrice || '-'}}</td>
-                      <td>{{item.purchasePrice || '-'}}</td>
-                    </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </template>
-              <vxe-input :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
-                         @blur="updatePrice(row)"
-                         @focus="showPrice(row.productId)"
-                         v-model.number="row.secondaryPrice" type="float" min="0"
-                         :controls="false"></vxe-input>
-            </vxe-tooltip>
+            <template v-if="!row.isNew">
+              <vxe-tooltip theme="light" v-if="!row.isNew">
+                <template #content>
+                  <div class="recent-sales-table">
+                    <table>
+                      <thead>
+                      <tr>
+                        <th>最近采购时间</th>
+                        <th>最近采购价</th>
+                        <th>预计采购价</th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                      <tr v-for="(item, index) in recentSales || []" :key="index">
+                        <td>{{ item.orderDate || '-' }}</td>
+                        <td>{{ item.unitPrice || '-' }}</td>
+                        <td>{{ item.purchasePrice || '-' }}</td>
+                      </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
+                <vxe-input :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
+                           @blur="updatePrice(row)"
+                           @focus="showPrice(row.productId)"
+                           v-model.number="row.secondaryPrice" type="float" min="0"
+                           :controls="false"></vxe-input>
+              </vxe-tooltip>
+            </template>
           </template>
         </vxe-column>
         <vxe-column title="折扣率(%)" field="discountRate" width="100">
@@ -185,12 +212,8 @@
           保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="saveOrder" :loading="loading">
+        <Button @click="approved()" :loading="loading" v-if="form.id">
           审核
-        </Button>
-        <!-- 仅当状态为审核时显示 -->
-        <Button @click="saveOrder" :loading="loading">
-          反审核
         </Button>
       </div>
     </div>
@@ -378,8 +401,8 @@ export default {
       // 获取商品库存进行提示
       let param = {
         productId: productId,
-        page:1,
-        pageSize:1000
+        page: 1,
+        pageSize: 1000
       }
       Inventory.list(param).then(res => {
         const {data} = res;
@@ -440,7 +463,7 @@ export default {
       this.product = null;
     },
 
-    showPrice(productId){
+    showPrice(productId) {
       if (!productId) {
         console.log("请选择产品")
         return;
@@ -629,15 +652,30 @@ export default {
       this.$refs.xTable.updateFooter();
     },
 
+    //审核
+    approved() {
+      let ids = [this.form.id]
+      confirm({
+        title: "审核提示",
+        content: `确认审核该订单?`,
+        onConfirm: () => {
+          PurchaseInbound.approved('已审核', ids).then(() => {
+            message("操作成功~");
+            this.closeWindow();
+          })
+        }
+      })
+    },
+
     //关闭窗口
     closeWindow() {
       console.log("this.$store.state.currentTab", this.$store.state.currentTab)
       this.$store.commit('closeTabKey', this.$store.state.currentTab);
-      this.$store.commit('newTab', "PurchaseOrderList");
+      this.$store.commit('newTab', "PurchaseInboundList");
       // 使用 nextTick 确保在 DOM 更新后执行
       this.$nextTick(() => {
         // 通过 eventBus 或 vuex 触发刷新
-        this.$store.commit('SET_TAB_DATA', { refresh: true });
+        this.$store.commit('SET_TAB_DATA', {refresh: true});
       });
     },
   },

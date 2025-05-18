@@ -1,5 +1,6 @@
 package com.flyemu.share.dto;
 
+import com.flyemu.share.entity.basic.CustomerLevelPrice;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -10,7 +11,7 @@ import java.util.List;
 @Data
 public class ProductDto {
 
-    private Integer id;
+    private Long id;
 
     private String code;
 
@@ -53,4 +54,8 @@ public class ProductDto {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    List<CustomerLevelPrice> customerLevelPriceList;
+
+    private BigDecimal lastSalePrice;
 }

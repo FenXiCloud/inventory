@@ -7,6 +7,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
+import com.flyemu.share.dto.SalesOutboundDTO;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
@@ -30,9 +31,13 @@ import org.springframework.util.CollectionUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+
+import static com.flyemu.share.entity.sales.QSalesOutboundItem.salesOutboundItem;
 
 /**
  * @功能描述: 销售订单
@@ -51,7 +56,10 @@ public class SalesOrderService extends AbsService {
     private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
+    private final static QSalesOutboundItem qSalesOutboundItem = salesOutboundItem;
     private final SalesOutboundRepository salesOutboundRepository;
+
+    private final static QSalesReturnItem qsalesReturnItem = QSalesReturnItem.salesReturnItem;
 
     private final SalesOrderRepository salesOrderRepository;
     private final SalesOrderItemRepository salesOrderItemRepository;
@@ -64,16 +72,18 @@ public class SalesOrderService extends AbsService {
     private final PriceRecordService priceRecordService;
     private final PriceRecordRepository priceRecordRepository;
 
+
+
+
     public PageResults<SalesOrderDTO> query(Page page, SalesOrderService.Query query) {
         long totalSize = bqf.selectFrom(qSalesOrder)
                 .where(query.builder)
                 .fetchCount();
 
         List<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
-                .select(qSalesOrder, qCustomer.name, qMerchantUser.name,qSalesOutbound.orderNo)
+                .select(qSalesOrder, qCustomer.name, qMerchantUser.name)
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
-                .leftJoin(qSalesOutbound).on(qSalesOutbound.id.eq(qSalesOrder.outOrderId))
                 .where(query.builder)
                 .orderBy(qSalesOrder.id.desc())
                 .offset(page.getOffset())
@@ -85,7 +95,6 @@ public class SalesOrderService extends AbsService {
             SalesOrderDTO salesOrderDTO = BeanUtil.toBean(tuple.get(qSalesOrder), SalesOrderDTO.class);
             salesOrderDTO.setCustomerName(tuple.get(qCustomer.name));
             salesOrderDTO.setCreatedName(tuple.get(qMerchantUser.name));
-            salesOrderDTO.setOutOrderNo(tuple.get(qSalesOutbound.orderNo));
             //查询子表
             List<SalesOrderItem> salesOrderItemList = bqf.selectFrom(qSalesOrderItem)
                     .select(qSalesOrderItem)
@@ -98,12 +107,56 @@ public class SalesOrderService extends AbsService {
                 itemDTOs.add(itemDTO);
                 Double quantity = itemDTO.getQuantity();
                 totalQuantity.updateAndGet(v -> v + quantity);
+
+                //查询销售出库数量和退货数量
+                List<Tuple> fetch = bqf.selectFrom(qSalesOutboundItem)
+                        .leftJoin(qsalesReturnItem)
+                        .on(qsalesReturnItem.salesOutboundId.eq(qSalesOutboundItem.salesOutboundId).and(qsalesReturnItem.outItemId.eq(qSalesOutboundItem.id)))
+                        .select(qSalesOutboundItem.quantity, qsalesReturnItem.quantity)
+                        .where(qSalesOutboundItem.salesOrderId.eq(item.getSalesOrderId())
+                            .and(qSalesOutboundItem.tempId.eq(item.getId())))
+                        .fetch();
+                //出库数量
+                Double outQuantity = fetch.stream()
+                        .mapToDouble(tuple1 -> tuple1.get(qSalesOutboundItem.quantity))
+                        .sum();
+                //退货数量
+                Double returnQuantity = fetch.stream()
+                        .mapToDouble(tuple2 -> tuple2.get(qsalesReturnItem.quantity) != null ? tuple2.get(qsalesReturnItem.quantity) : 0.0)
+                        .sum();
+                
+                itemDTO.setQuantityOut(outQuantity);
+                itemDTO.setQuantityReturn(returnQuantity);
             });
             salesOrderDTO.setSalesOrderItemList(itemDTOs);
             salesOrderDTO.setTotalQuantity(totalQuantity);
+            //关联查询出库单
+            subQueryOutOrder(salesOrderDTO);
             dtos.add(salesOrderDTO);
         });
         return new PageResults<>(dtos, page, totalSize);
+    }
+
+    private void subQueryOutOrder(SalesOrderDTO salesOrderDTO) {
+        //通过销售订单id 关联查询出销售出库单的所有商品
+        List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                .where(qSalesOutboundItem.salesOrderId.eq(salesOrderDTO.getId()))
+                .fetch();
+        if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
+            List<String> outOrderNoList = new ArrayList<>();
+            //通过销售出库单id关联查询出销售出库单
+            for (SalesOutboundItem item : salesOutboundItemList){
+                //只查询订单编号
+                String outOrderNo = bqf.selectFrom(qSalesOutbound)
+                        .select(qSalesOutbound.orderNo)
+                        .where(qSalesOutbound.id.eq(item.getSalesOutboundId()))
+                        .fetchOne();
+                outOrderNoList.add(outOrderNo);
+            }
+            //将所有outOrderNo封装到list中，去重后返回
+            salesOrderDTO.setOutOrderNo(outOrderNoList.stream().distinct().collect(Collectors.joining(",")));
+            salesOrderDTO.setOutOrderNoList(outOrderNoList.stream().distinct().collect(Collectors.toList()));
+        }
     }
 
     @Transactional
@@ -140,6 +193,8 @@ public class SalesOrderService extends AbsService {
         }else{
             //销售订单状态初始化
             salesOrder.setOrderStatus(OrderStatus.已保存);
+            //初始化订单状态;
+            salesOrder.setStatus(0);
             //销售订单编号
             salesOrder.setOrderNo(codeSeedService.generateCode(salesOrder.getMerchantId(), "销售订单"));
             //保存销售订单
@@ -153,6 +208,10 @@ public class SalesOrderService extends AbsService {
                     item.setMerchantId(salesOrder.getMerchantId());
                     item.setCreatedBy(salesOrder.getCreatedBy());
                     item.setCreatedAt(salesOrder.getCreatedAt());
+                    //初始化出库数量
+                    item.setQuantityOut(0D);
+                    //初始化退货数量
+                    item.setQuantityReturn(0D);
                 });
                 //批量添加销售订单商品
                 salesOrderItemRepository.saveAll(salesOrderItemList);
@@ -184,13 +243,12 @@ public class SalesOrderService extends AbsService {
         if (orderStatus.equals(OrderStatus.已审核)) {
             throw new InvalidContextException("已审核单据不能删除");
         }
-        //已关联销售出库单不能删除
-        Long outOrderId = original.getOutOrderId();
-        if (outOrderId != null){
-            Optional<SalesOutbound> salesOutboundOptional = salesOutboundRepository.findById(outOrderId);
-            salesOutboundOptional.ifPresent(salesOutbound -> {
-                throw new InvalidContextException("已关联销售出库单不能删除");
-            });
+        //根据销售单id查询销售出库单商品
+        List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
+                .fetch();
+        if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
+            throw new InvalidContextException("已关联销售出库单不能删除");
         }
 
         //删除销售订单
@@ -248,12 +306,15 @@ public class SalesOrderService extends AbsService {
             OrderStatus orderStatus = salesOrderForm.getOrderStatus();
             if (orderStatus.equals(OrderStatus.已保存)) {
                 //已关联销售出库单不能审核
-                Long outOrderId = order.getOutOrderId();
-                if (outOrderId != null){
-                    Optional<SalesOutbound> salesOutboundOptional = salesOutboundRepository.findById(outOrderId);
-                    salesOutboundOptional.ifPresent(salesOutbound -> {
+                Long salesOrderId = order.getId();
+                if (salesOrderId != null){
+                    //根据销售单id查询销售出库单商品
+                    List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                            .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
+                            .fetch();
+                    if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                         throw new InvalidContextException("已关联销售出库单不能反审核");
-                    });
+                    }
                 }
             }
             order.setOrderStatus(orderStatus);
@@ -276,12 +337,13 @@ public class SalesOrderService extends AbsService {
         OrderStatus orderStatus = salesOrder.getOrderStatus();
         if (orderStatus.equals(OrderStatus.已保存)) {
             //已关联销售出库单不能审核
-            Long outOrderId = original.getOutOrderId();
-            if (outOrderId != null){
-                Optional<SalesOutbound> salesOutboundOptional = salesOutboundRepository.findById(outOrderId);
-                salesOutboundOptional.ifPresent(salesOutbound -> {
-                    throw new InvalidContextException("已关联销售出库单不能反审核");
-                });
+            Long salesOrderId = original.getId();
+            //根据销售单id查询销售出库单商品
+            List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                    .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
+                    .fetch();
+            if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
+                throw new InvalidContextException("已关联销售出库单不能反审核");
             }
         }
         original.setApprovedAt(LocalDateTime.now());
@@ -342,7 +404,8 @@ public class SalesOrderService extends AbsService {
         //查询未出库订单
         public void setQueryUnOutOrder(Integer queryUnOutOrder) {
             if (queryUnOutOrder == 1) {
-                builder.and(qSalesOrder.outOrderId.isNull());
+                // status ("出库单状态 0初始化 1部分出库 2全部出库")
+                builder.and(qSalesOrder.status.ne(2));
             }
         }
 

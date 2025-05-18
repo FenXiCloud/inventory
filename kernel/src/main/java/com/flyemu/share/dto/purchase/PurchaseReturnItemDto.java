@@ -3,6 +3,7 @@ package com.flyemu.share.dto.purchase;
 import jakarta.persistence.Column;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -19,11 +20,21 @@ import java.time.LocalDateTime;
 public class PurchaseReturnItemDto {
 
     private Long id;
+    /**
+     * 采购入库单id
+     */
+    private Long purchaseInboundId;
 
     /**
-     * 采购订单主表ID
+     * 采购入库单orderNo
      */
-    private Long purchaseOrderId;
+    private String purchaseInboundOrderNo;
+
+
+    /**
+     * 采购明细单id
+     */
+    private Long purchaseInboundItemId;
 
     /**
      * 产品ID
@@ -143,5 +154,10 @@ public class PurchaseReturnItemDto {
      * 退货原因
      */
     private String returnReason;
+    /**
+     * 可退数量
+     */
+    private Double returnQuantity;
+
 
 }

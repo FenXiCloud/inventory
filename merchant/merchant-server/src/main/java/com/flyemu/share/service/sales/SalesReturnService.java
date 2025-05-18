@@ -20,10 +20,7 @@ import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.SalesReturnForm;
-import com.flyemu.share.repository.SalesOutboundItemRepository;
-import com.flyemu.share.repository.SalesOutboundRepository;
-import com.flyemu.share.repository.SalesReturnItemRepository;
-import com.flyemu.share.repository.SalesReturnRepository;
+import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.inventory.InventoryService;
@@ -76,6 +73,9 @@ public class SalesReturnService extends AbsService {
 
     private final SalesOutboundRepository salesOutboundRepository;
     private final SalesOutboundItemRepository salesOutboundItemRepository;
+
+    private final SalesOrderItemRepository salesOrderItemRepository;
+
     private final PriceRecordService priceRecordService;
 
     private final InventoryService inventoryService;
@@ -183,11 +183,27 @@ public class SalesReturnService extends AbsService {
             //选择的源单不为空
             List<Long> selectSalesOutboundIdList = salesReturnForm.getSelectSalesOutboundIdList();
             if (!CollectionUtils.isEmpty(selectSalesOutboundIdList)) {
+
+                List<SalesReturnItem> salesReturnItemListTemp = salesReturnForm.getSalesReturnItemList();
+                for (SalesReturnItem item : salesReturnItemListTemp){
+                    //出库单id
+                    Long outItemId = item.getOutItemId();
+                    //出库单
+                    SalesOutboundItem salesOutboundItem = salesOutboundItemRepository.getById(outItemId);
+                    //订单id
+                    Long tempId = salesOutboundItem.getTempId();
+                    //订单
+                    SalesOrderItem salesOrderItem = salesOrderItemRepository.getReferenceById(tempId);
+                    //修改订单退货数量
+                    salesOrderItem.setQuantityReturn(item.getQuantity());
+                    salesOrderItemRepository.save(salesOrderItem);
+                }
                 List<Long> collect = selectSalesOutboundIdList.stream().distinct().toList();
                 List<SalesOutbound> salesOutboundList = salesOutboundRepository.findAllById(collect);
                 salesOutboundList.forEach(order -> {
                     //退货单 关联 销售出库单
                     order.setReturnOrderId(save.getId());
+
                 });
                 salesOutboundRepository.saveAll(salesOutboundList);
             }
@@ -272,6 +288,16 @@ public class SalesReturnService extends AbsService {
             salesReturnItemDTO.setProductName(tuple.get(qProduct.name));
             salesReturnItemDTO.setProductCode(tuple.get(qProduct.code));
             salesReturnItemDTO.setUnitName(tuple.get(qUnit.name));
+            //关联查询销售出库单编号
+            Long salesOutboundId = salesReturnItemDTO.getSalesOutboundId();
+            if (salesOutboundId != null){
+                //返回销售出库单编号
+                SalesOutbound salesOutbound = salesOutboundRepository.findById(salesOutboundId).orElse(null);
+                if (salesOutbound != null){
+                    String orderNo = salesOutbound.getOrderNo();
+                    salesReturnItemDTO.setSalesOutboundNo(orderNo);
+                }
+            }
             salesReturnItemDTOList.add(salesReturnItemDTO);
         });
         dto.setSalesReturnItemList(salesReturnItemDTOList);

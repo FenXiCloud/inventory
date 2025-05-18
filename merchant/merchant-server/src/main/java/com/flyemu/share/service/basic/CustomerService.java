@@ -2,24 +2,35 @@ package com.flyemu.share.service.basic;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.blazebit.persistence.PagedList;
+import com.blazebit.persistence.querydsl.BlazeJPAQuery;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.CustomerDto;
 import com.flyemu.share.dto.CustomerImportVo;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.setting.CodeRule;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.CustomerRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.setting.CodeRuleService;
+import com.flyemu.share.way.CodeGenerator;
+import com.flyemu.share.way.ProductExistenceChecker;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.jpa.impl.JPAQuery;
+import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -46,6 +57,7 @@ public class CustomerService extends AbsService {
     private static final QCustomerLevel qCustomerLevel = QCustomerLevel.customerLevel;
 
     private final CustomerRepository customerRepository;
+    private final CodeRuleService codeRuleService;
 
     public PageResults<CustomerDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qCustomer)
@@ -78,14 +90,67 @@ public class CustomerService extends AbsService {
             BeanUtil.copyProperties(customer, original, CopyOptions.create().ignoreNullValue());
             return customerRepository.save(original);
         }
+        if (StringUtils.isEmpty(customer.getCode())) {
+            CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
+                    CodeRule.DocumentType.客户,
+                    customer.getMerchantId(),
+                    customer.getAccountBookId()
+            );
+
+            if (codeRule != null) {
+                StringBuilder codeBuilder = new StringBuilder();
+                if (StrUtil.isNotBlank(codeRule.getPrefix())) {
+                    codeBuilder.append(codeRule.getPrefix());
+                }
+                if (StrUtil.isNotBlank(codeRule.getFormat())) {
+                    String formattedDate = DateUtil.format(LocalDateTime.now(), codeRule.getFormat());
+                    codeBuilder.append(formattedDate);
+                }
+                Integer serialLength = codeRule.getSerialNumberLength();
+                if (serialLength != null && serialLength > 0) {
+                    JPAQuery<Long> query = jqf.select(qCustomer.id.count())
+                            .from(qCustomer)
+                            .where(
+                                    qCustomer.merchantId.eq(customer.getMerchantId())
+                                            .and(qCustomer.accountBookId.eq(customer.getAccountBookId()))
+                            );
+                    Long count = query.fetchOne();
+                    Integer currentSerial = Math.toIntExact(count + 1);
+                    String serialStr = String.format("%0" + serialLength + "d", currentSerial);
+                    codeBuilder.append(serialStr);
+                }
+
+                customer.setCode(codeBuilder.toString());
+            } else {
+                customer.setCode(CodeGenerator.generateCode());
+            }
+        }
         Customer m = customerRepository.save(customer);
 
         return m;
+
     }
 
+    private final ProductExistenceChecker existenceChecker;
 
     @Transactional
     public void delete(Long customersId, Long merchantId, Long accountBookId) {
+
+        if (existenceChecker.existsInSalesOrder(customersId, 2)) {
+            throw new ServiceException("该档案已存在销售单,不能删除");
+        }
+        if (existenceChecker.existsInSalesOutbound(customersId, 2)) {
+            throw new ServiceException("该档案已存在销售出库单,不能删除");
+        }
+        if (existenceChecker.existsInSalesReturn(customersId, 2)) {
+            throw new ServiceException("该档案已存在销售退货单,不能删除");
+        }
+        if (existenceChecker.existsInOtherInbound(customersId, 2)) {
+            throw new ServiceException("该档案已存在其他入库单,不能删除");
+        }
+        if (existenceChecker.existsInOtherOutbound(customersId, 2)) {
+            throw new ServiceException("该档案已存在其他出库单,不能删除");
+        }
         jqf.delete(qCustomer)
                 .where(qCustomer.id.eq(customersId).and(qCustomer.merchantId.eq(merchantId)).and(qCustomer.accountBookId.eq(accountBookId))).execute();
     }

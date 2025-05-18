@@ -150,12 +150,20 @@
                          :controls="false" readonly disabled></vxe-input>
             </template>
           </vxe-column>
-          <vxe-column title="备注" field="remark">
+          <vxe-column title="备注" field="remark" width="100">
             <template #default="{row,rowIndex}">
               <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8"
                          v-model="row.remark" placeholder="输入备注" :controls="false"></vxe-input>
             </template>
           </vxe-column>
+          <vxe-column title="关联销售单号" field="salesOrderNo" width="200">
+            <template #default="{row,rowIndex}">
+              <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+9"
+                         v-model="row.salesOrderNo" placeholder="关联销售单号" :controls="false" readonly disabled></vxe-input>
+            </template>
+          </vxe-column>
+
+
         </vxe-table>
         <div class="mt-10px"></div>
         <div class="filler-panel" v-if="type==='edit'">
@@ -308,6 +316,7 @@ export default {
     },
 
     handleSelectedOrders(params) {
+      this.itemTemp = params.itemList;
       let itemList = params.itemList;
       const unitMap = new Map(this.unitList.map(unit => [unit.id, unit]));
       itemList.forEach(row => {
@@ -316,19 +325,35 @@ export default {
         if (unit) {
           row.unitName = unit.name;
         }
+        //订单商品id 后台需要存储关联
+        row.tempId =row.id;
         //将id置为空，因为是新增的商品
         row.id = null;
       });
+
+      //this.productList  封装产品名称和产品编码，进行回显  productList中的id 和 itemList中的productId  需要做判断
+      console.log("this.productList",this.productList)
+      this.productList.map(item => {
+        itemList.map(item2 => {
+          if(item.id === item2.productId){
+            item2.productName = item.name;
+            item2.productCode = item.code;
+          }
+        })
+      })
       console.log('处理后的订单数据:', itemList)
       // 将 itemList 赋值给 productData
       this.productData = itemList;
       this.selectSalesOrderIdList = params.selectSalesOrderIdList;
+      console.log('this.selectSalesOrderIdList',this.selectSalesOrderIdList)
+      console.log('itemList',itemList)
 
       // this.productData = itemList.map(item => ({
       //   ...item,
       //   //封装产品名称和产品编码，进行回显
       //   productName: item.name,
       //   productCode: item.code,
+      //   //封装产品名称和code
       //   // 如果需要添加或修改其他字段可以在这里处理
       // }));
     },
@@ -394,6 +419,12 @@ export default {
           productName: d.name,
           remark: "",
         };
+        //选择产品后自动带出默认仓库
+        //warehouseList 中属性为systemDefault = true 为默认仓库
+        let defaultWarehouse = this.warehouseList.find(item => item.systemDefault === true);
+        if(defaultWarehouse){
+          g.warehouseId = defaultWarehouse.id;
+        }
         this.productData[index] = g;
         console.log("this.productData",this.productData)
         if (!this.productData[index + 1]) {
@@ -609,7 +640,7 @@ export default {
         if (this.productData.length > 1) {
           confirm({
             title: "系统提示",
-            content: `修改供货商后，将清除已选择的商品数据，确定修改？`,
+            content: `修改客户后，将清除已选择的商品数据，确定修改？`,
             onConfirm: () => {
               this.productData = [{isNew: true}];
               this.form.customerId = e.id;
@@ -633,6 +664,9 @@ export default {
 
     //更新数量
     updateQuantity(item) {
+      if(!item.productId){
+        return;
+      }
       item.quantity = item.quantity || 1;
       item.subtotal = ((item.quantity * item.unitPrice * (100 - item.discountRate)) / 100).toFixed(2);
       item.discountValue = (((item.quantity * item.unitPrice) * item.discountRate) / 100).toFixed(2);
@@ -641,6 +675,9 @@ export default {
 
     //更新单价
     updatePrice(item) {
+      if(!item.productId){
+        return;
+      }
       item.unitPrice = item.unitPrice || 0.00
       item.discountValue = (item.unitPrice * item.quantity * item.discountRate / 100).toFixed(2);
       item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);

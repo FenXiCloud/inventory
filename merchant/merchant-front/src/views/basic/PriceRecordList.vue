@@ -11,13 +11,13 @@
                 placeholder="价格来源："/>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">商品：</span>
-          <Select class="w-178px" filterable :datas="productList" keyName="id" titleName="name"
-                  v-model="params.productId" placeholder="请选择商品"  />
+          <Select class="w-178px" :multiple="true" filterable :datas="productList" keyName="id" titleName="name"
+                  v-model="params.productIds" placeholder="请选择商品"  />
         </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">商品类别：</span>
-          <Select class="w-178px" filterable :datas="productCategoryList" keyName="id" titleName="name"
-                  v-model="params.productCategoryId" placeholder="请选择类别"  />
+          <Select class="w-178px" :multiple="true" filterable :datas="productCategoryList" keyName="id" titleName="name"
+                  v-model="params.productCategoryIds" placeholder="请选择类别"  />
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-280px ml-8px"
@@ -85,7 +85,9 @@ export default {
       dataList: [],
       params: {
         filter: null,
-        productId:null
+        productId:null,
+        productIds: [],
+        productCategoryIds: [],
       },
       pagination: {
         page: 1,
@@ -99,7 +101,12 @@ export default {
   computed: {
     //查询货商参数
     queryParams() {
-      return Object.assign(this.params, {
+      console.log("this.params", this.params)
+      const params = JSON.parse(JSON.stringify(this.params));
+      params.productIds = this.params.productIds.join(",");
+      params.productCategoryIds = this.params.productCategoryIds.join(",");
+      console.log("params", params)
+      return Object.assign(params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
       })

@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.support.JpaRepositoryImplementati
 
 public interface PurchaseOrderItemRepository extends JpaRepositoryImplementation<PurchaseOrderItem, Long> {
 
+
 }

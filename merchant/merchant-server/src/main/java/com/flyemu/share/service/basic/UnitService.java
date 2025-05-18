@@ -7,6 +7,7 @@ import com.flyemu.share.entity.basic.Unit;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.UnitRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.way.ProductExistenceChecker;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,9 +58,40 @@ public class UnitService extends AbsService {
         }
     }
 
+    private final ProductExistenceChecker existenceChecker;
 
     @Transactional
     public void delete(Long unitsId, Long merchantId, Long accountBookId) {
+        if (existenceChecker.existsInPurchaseOrder(unitsId, 5)) {
+            throw new ServiceException("该单位已存在采购单,不能删除");
+        }
+        if (existenceChecker.existsInPurchaseInbound(unitsId, 5)) {
+            throw new ServiceException("该单位已存在采购入库单,不能删除");
+        }
+        if (existenceChecker.existsInPurchaseReturn(unitsId, 5)) {
+            throw new ServiceException("该单位已存在采购退货单,不能删除");
+        }
+        if (existenceChecker.existsInSalesOrder(unitsId, 5)) {
+            throw new ServiceException("该单位已存在销售单,不能删除");
+        }
+        if (existenceChecker.existsInSalesOutbound(unitsId, 5)) {
+            throw new ServiceException("该单位已存在销售出库单,不能删除");
+        }
+        if (existenceChecker.existsInSalesReturn(unitsId, 5)) {
+            throw new ServiceException("该单位已存在销售退货单,不能删除");
+        }
+        if (existenceChecker.existsInOtherInbound(unitsId, 5)) {
+            throw new ServiceException("该单位已存在其他入库单,不能删除");
+        }
+        if (existenceChecker.existsInOtherOutbound(unitsId, 5)) {
+            throw new ServiceException("该单位已存在其他出库单,不能删除");
+        }
+        if (existenceChecker.existsInCostAdjustment(unitsId, 5)) {
+            throw new ServiceException("该单位已存在成本调整单,不能删除");
+        }
+        if (existenceChecker.checkOutTheProduct(unitsId, 5)) {
+            throw new ServiceException("该单位已存在产品,不能删除");
+        }
         jqf.delete(qUnit)
                 .where(qUnit.id.eq(unitsId).and(qUnit.merchantId.eq(merchantId)).and(qUnit.accountBookId.eq(accountBookId)))
                 .execute();

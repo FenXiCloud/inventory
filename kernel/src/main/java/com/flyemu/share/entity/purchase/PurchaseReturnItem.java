@@ -32,6 +32,12 @@ public class PurchaseReturnItem {
     @Comment("采购入库单ID")
     private Long purchaseReturnId;
 
+    @Comment("采购入库主表ID")
+    private Long purchaseInboundId;
+
+    @Comment("采购入库明细表ID")
+    private Long purchaseInboundItemId;
+
     @Comment("产品ID")
     private Long productId;
 

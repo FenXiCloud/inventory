@@ -47,6 +47,13 @@
         </vxe-column>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
+        <vxe-column title="出库状态" field="status" width="80">
+          <template #default="{row}">
+            <span v-if="row.status === 0">未出库</span>
+            <span v-else-if="row.status === 1">部分出库</span>
+            <span v-else-if="row.status === 2">全部出库</span>
+          </template>
+        </vxe-column>
         <vxe-column title="关联销售出库单" field="outOrderNo" width="200"/>
         <vxe-column title="客户" field="customerName" min-width="120"/>
         <vxe-column title="销售金额" field="totalAmount" width="120"/>
@@ -224,7 +231,7 @@ export default {
         }
       })
       this.amountTotal = totalAmount.toFixed(2);
-      return [["", "", "", "", "", "",
+      return [["", "", "", "", "", "","",
         totalAmount.toFixed(2),discountAmount.toFixed(2),
         finalAmount.toFixed(2),totalQuantity.toFixed(2)]];
     },

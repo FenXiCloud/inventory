@@ -21,6 +21,11 @@
                 v-model="params.customerIds" placeholder="请选择客户"  />
       </div>
       <div class="h-input-group">
+        <span class="h-input-addon">客户类别：</span>
+        <Select :multiple="true" :datas="customerCategoryList" keyName="id" titleName="name"
+                v-model="params.customerCategoryIds" placeholder="请选择类别"/>
+      </div>
+      <div class="h-input-group">
         <span class="h-input-addon">仓库：</span>
         <Select :multiple="true" v-model="params.warehouseIds"  keyName="id" titleName="name"
                 :datas="warehouseList" placeholder="请选择仓库"/>
@@ -28,6 +33,11 @@
       <div class="h-input-group">
         <span class="h-input-addon ml-8px">商品：</span>
         <Select :multiple="true" v-model="params.productIds"  keyName="id" titleName="name" :datas="productList" placeholder="请选择商品"/>
+      </div>
+      <div class="h-input-group">
+        <span class="h-input-addon">商品类别：</span>
+        <Select :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
+                v-model="params.productCategoryIds" placeholder="请选择类别"/>
       </div>
       <div class="h-input-group">
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
@@ -99,6 +109,7 @@ import * as XLSX from 'xlsx';
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import CustomerCategory from "@js/api/basic/CustomerCategory";
+import ProductCategory from "@js/api/basic/ProductCategory";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -127,6 +138,7 @@ export default {
       warehouseList: [],
       productList: [],
       customerCategoryList: [],
+      productCategoryList:[],
       dateRange: {
         start: manba(startTime).format("YYYY-MM-dd"),
         end: manba(endTime).format("YYYY-MM-dd")
@@ -178,7 +190,7 @@ export default {
       })
       this.quantityTotal = quantityTotal.toFixed(2);
       this.subtotalTotal = subtotalTotal.toFixed(2);
-      return [["", "", "", "", "", "", "", "", quantityTotal.toFixed(2), "", subtotalTotal.toFixed(2)]];
+      return [["", "", "", "", "", "", "", "", "", "", "", "", quantityTotal.toFixed(2), "", subtotalTotal.toFixed(2)]];
     },
 
     printEvent () {
@@ -270,11 +282,13 @@ export default {
         Warehouse.select(),
         Product.select(),
         CustomerCategory.select(),
+        ProductCategory.select(),
       ]).then((results) => {
         this.customerList = results[0].data || [];
         this.warehouseList = results[1].data || [];
         this.productList = results[2].data || [];
         this.customerCategoryList = results[3].data || [];
+        this.productCategoryList = results[4].data || [];
 
       }).finally(() => loading.close());
     },

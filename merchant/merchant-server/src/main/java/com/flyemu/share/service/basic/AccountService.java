@@ -3,7 +3,7 @@ package com.flyemu.share.service.basic;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.flyemu.share.entity.basic.Account;
-import com.flyemu.share.entity.fund.QAccount;
+import com.flyemu.share.entity.basic.QAccount;
 import com.flyemu.share.repository.AccountRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;

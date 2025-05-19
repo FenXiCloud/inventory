@@ -38,7 +38,7 @@
 
 <script>
 import AccountFlow from "@js/api/fund/AccountFlow";
-import Account from "@js/api/fund/Account";
+import Account from "@js/api/basic/Account";
 
 
 /**

@@ -43,7 +43,7 @@
 </template>
 
 <script>
-import Account from "@js/api/fund/Account";
+import Account from "@js/api/basic/Account";
 import AccountForm from "./AccountForm.vue";
 import AccountFlowReport from "./AccountFlowList.vue";
 import {confirm, message} from "heyui.ext";

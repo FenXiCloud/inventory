@@ -166,6 +166,10 @@ public class InventoryItemService extends AbsService {
         if (list == null || list.isEmpty()) {
             return;
         }
+        // 明细时间记录为录入时间（排序用）
+        list.forEach(item -> {
+            item.setCreatedAt(LocalDateTime.now());
+        });
         inventoryItemRepository.saveAll(list);
     }
 
@@ -465,7 +469,7 @@ public class InventoryItemService extends AbsService {
                         .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
                         .leftJoin(qWarehouse).on(qInventoryItem.warehouseId.eq(qWarehouse.id))
                         .where(qInventoryItem.operationType.notIn(OperationType.期初余额, OperationType.期初库存))
-                        .where(qProduct.id.isNotNull())
+                        .where(qProduct.id.isNotNull(), qWarehouse.id.isNotNull())
                         .orderBy(qInventoryItem.createdAt.asc())
                         .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId)
         ).and(qInventoryItem.operationType.notIn(OperationType.期初余额, OperationType.期初库存));
@@ -534,7 +538,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qWarehouse).on(qInventoryItem.warehouseId.eq(qWarehouse.id))
                 .where(query.balanceBuilders())
                 .where(expression)
-                .where(qProduct.id.isNotNull())
+                .where(qProduct.id.isNotNull(), qWarehouse.id.isNotNull())
                 .orderBy(qInventoryItem.createdAt.asc());
     }
 

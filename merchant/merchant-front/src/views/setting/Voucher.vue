@@ -1,25 +1,6 @@
 <template>
   <div class="modal-column">
-    <div>
-      <Button @click="showForm()" status="primary" class="float-right mt-4px mr-16px">新 增</Button>
-    </div>
-    <!--    <div class="flex-1 p-16px">-->
-    <!--      <div class="border p-8px mb-16px" v-for="(items,key) in dataList" :key="key">-->
-    <!--        <vxe-toolbar>-->
-    <!--          <template #buttons>-->
-    <!--            <div class="text-14px">-->
-    <!--              凭证类型：{{ items.type }} 凭证code：{{ items.code }}-->
-    <!--            </div>-->
-    <!--          </template>-->
-    <!--          <template #tools>-->
-    <!--&lt;!&ndash;            <Button @click="showForm(items.id)" color="primary">编辑</Button>&ndash;&gt;-->
-    <!--&lt;!&ndash;            <Button @click="doRemove(items.id)">删除</Button>&ndash;&gt;-->
-    <!--          </template>-->
-    <!--        </vxe-toolbar>-->
-    <!--      </div>-->
-    <!--    </div>-->
     <div class="frame-page flex flex-column">
-
       <div class="parent_container">
         <div class="left">
           <vxe-table
@@ -35,33 +16,125 @@
         </div>
 
         <div class="right">
-          <!--          <vxe-toolbar>-->
-          <!--            <template #buttons>-->
-          <!--              <Button @click="showForm()" color="primary">新 增</Button>-->
-          <!--            </template>-->
-          <!--            <template #tools>-->
-          <!--              <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入规则名称"/>-->
-          <!--              <Button color="primary" :loading="loading" @click="doSearch">查询</Button>-->
-          <!--            </template>-->
-          <!--          </vxe-toolbar>-->
-
           <vxe-table row-id="id"
                      ref="table"
                      :data="dataList"
                      highlight-hover-row
                      show-overflow
+                     show-footer
+                     :row-config="{height: 48}"
+                     :column-config="{resizable: true}"
+                     :sort-config="{remote:true}"
                      :loading="loading">
-            <vxe-column type="seq" width="60" align="center"/>
-            <vxe-column title="凭证类型" field="type" width="200"/>
-            <vxe-column title="凭证code" field="code"/>
-            <vxe-column title="操作" align="center" width="120" fixed="right">
+            <vxe-column title="操作" align="center">
               <template #default="{row}">
-                <div class="flex items-center justify-center">
-                  <span class=" primary-color text-hover ml-10px" @click="showForm(row.id)" size="s">编辑</span>
-                  <span class=" primary-color text-hover ml-10px" @click="doRemove(row)" size="s">删除</span>
+                <span class="primary-color  text-hover ml-10px" @click="pushVoucher(row)">推送</span>
+              </template>
+            </vxe-column>
+            <vxe-column title="商品编号" field="productCode" align="center"/>
+            <vxe-column title="商品名称" field="productName"/>
+            <vxe-column title="商品类别" field="productCategoryName"/>
+            <vxe-column title="规格型号" field="productSpecification"/>
+            <vxe-column title="单据日期" field="createdAt"/>
+            <vxe-column title="业务类型" field="operationType"/>
+            <vxe-column title="单据编号" field="batchNumber"/>
+            <vxe-column title="往来单位" field="supplierName">
+              <template #default="{ row }">
+                <div v-if="row.supplierName && row.supplierName !== ''">
+                  {{ row.supplierName }}
+                </div>
+                <div v-else-if="row.customerName && row.customerName !== ''">
+                  {{ row.customerName }}
+                </div>
+                <div v-else>
                 </div>
               </template>
             </vxe-column>
+            <vxe-column title="仓库" field="warehouseName" align="center"/>
+            <vxe-column title="单位" field="unitName"/>
+            <vxe-column title="商品名称备注" field="productRemarks"/>
+            <vxe-column title="入库数量" field="quantity">
+              <template #default="{ row }">
+                <div v-if="inboundItems.includes(row['operationType'])">
+                  {{ row.quantity }}
+                </div>
+                <div v-else>
+                </div>
+              </template>
+            </vxe-column>
+            <vxe-colgroup title="入库" align="center">
+              <vxe-column title="基本单位数量" field="quantity" align="center">
+                <template #default="{ row }">
+                  <div v-if="inboundItems.includes(row['operationType'])">
+                    {{ row.quantity }}
+                  </div>
+                  <div v-else>
+                  </div>
+                </template>
+              </vxe-column>
+              <vxe-column title="单位成本" field="unitPrice" align="center">
+                <template #default="{ row }">
+                  <div v-if="inboundItems.includes(row['operationType'])">
+                    {{ row.unitPrice }}
+                  </div>
+                  <div v-else>
+                  </div>
+                </template>
+              </vxe-column>
+              <vxe-column title="成本" field="subtotal" align="center">
+                <template #default="{ row }">
+                  <div
+                      v-if="inboundItems.includes(row['operationType'])">
+                    {{ row.subtotal }}
+                  </div>
+                  <div v-else>
+                  </div>
+                </template>
+              </vxe-column>
+            </vxe-colgroup>
+            <vxe-column title="出库数量" field="quantity">
+              <template #default="{ row }">
+                <div v-if="outboundItems.includes(row['operationType'])">
+                  {{ getAbsoluteValue(row.quantity) }}
+                </div>
+                <div v-else>
+                </div>
+              </template>
+            </vxe-column>
+            <vxe-colgroup title="出库" align="center">
+              <vxe-column title="基本单位数量" field="quantity" align="center">
+                <template #default="{ row }">
+                  <div v-if="outboundItems.includes(row['operationType'])">
+                    {{ getAbsoluteValue(row.quantity) }}
+                  </div>
+                  <div v-else>
+                  </div>
+                </template>
+              </vxe-column>
+              <vxe-column title="单位成本" field="unitPrice" align="center">
+                <template #default="{ row }">
+                  <div v-if="outboundItems.includes(row['operationType'])">
+                    {{ row.unitPrice }}
+                  </div>
+                  <div v-else>
+                  </div>
+                </template>
+              </vxe-column>
+              <vxe-column title="成本" field="subtotal" align="center">
+                <template #default="{ row }">
+                  <div v-if="outboundItems.includes(row['operationType'])">
+                    {{ row.subtotal }}
+                  </div>
+                  <div v-else>
+                  </div>
+                </template>
+              </vxe-column>
+            </vxe-colgroup>
+            <vxe-colgroup title="结存" align="center">
+              <vxe-column title="基本单位数量" field="currentQuantity" align="center"/>
+              <vxe-column title="单位成本" field="averageCost" align="center"/>
+              <vxe-column title="成本" field="totalCost" align="center"/>
+            </vxe-colgroup>
           </vxe-table>
         </div>
       </div>
@@ -70,12 +143,16 @@
 </template>
 
 <script>
-
+import manba from "manba";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 import FinanceVoucher from "@js/api/setting/FinanceVoucher";
+import InventoryItem from "@js/api/inventory/InventoryItem";
 import {confirm, message} from "heyui.ext";
 import VoucherForm from "./VoucherForm.vue";
+
+const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
+const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
 
 export default {
   name: "Voucher",
@@ -100,7 +177,53 @@ export default {
       params: {
         type: '期初余额',
       },
+      pagination: {
+        page: 1,
+        pageSize: 20,
+        total: 0
+      },
+      dataParams: {
+        filter: null,
+        productIds: [],
+        supplierIds: [],
+        warehouseIds: [],
+        operationTypes: [],
+        state: null,
+        sortCol: null,
+        sort: null,
+      },
+      dateRange: {
+        start: manba(startTime).format("YYYY-MM-dd"),
+        end: manba(endTime).format("YYYY-MM-dd")
+      },
+      warehouseList: [],
+      productList: [],
+      supplierList: [],
+      outboundItems: ["采购退货", "销售出库", "调拨出库", "盘亏出库", "其他出库"],
+      inboundItems: ["采购入库", "销售退货", "调拨入库", "其他入库", "盘盈入库"],
+      operationTypeList: {
+        "采购入库": "采购入库",
+        "销售退货": "销售退货",
+        "调拨入库": "调拨入库",
+        "其他入库": "其他入库",
+        "盘盈入库": "盘盈入库",
+        "采购退货": "采购退货",
+        "销售出库": "销售出库",
+        "调拨出库": "调拨出库",
+        "盘亏出库": "盘亏出库",
+        "其他出库": "其他出库",
+      },
     }
+  },
+  computed: {
+    queryParams() {
+      return Object.assign(this.dataParams, {
+        page: this.pagination.page,
+        pageSize: this.pagination.pageSize,
+        start: this.dateRange.start,
+        end: this.dateRange.end,
+      })
+    },
   },
   methods: {
     showForm(id) {
@@ -123,10 +246,24 @@ export default {
       });
     },
     loadList() {
-      FinanceVoucher.list(this.params).then(({data}) => {
-        console.log(data);
-        this.dataList = data;
-      })
+      this.loading = true;
+      const params = JSON.parse(JSON.stringify(this.queryParams));
+      params.warehouseIds = params.warehouseIds.join(",");
+      params.productIds = params.productIds.join(",");
+      params.supplierIds = params.supplierIds.join(",");
+      params.operationTypes = this.params.type;
+      params.exclusion = true;
+      InventoryItem.report(params).then(({data: {results, total}}) => {
+        this.dataList = results || [];
+        this.pagination.total = total;
+      }).finally(() => this.loading = false);
+    },
+    getAbsoluteValue(number) {
+      if (number < 0) {
+        return -number;
+      } else {
+        return number;
+      }
     },
     doRemove(id) {
       confirm({
@@ -151,6 +288,23 @@ export default {
       const table = this.$refs.documentTypeGridRef;
       table.setRadioRow(this.documentTypeDataList[0]);
     },
+    pushVoucher(record) {
+      FinanceVoucher.save({
+        orderId: record.id,
+        productId: record.productId,
+        customerId: record.customerId,
+        supplierId: record.supplierId,
+        amount: record.subtotal,
+        type: record.operationType,
+        orderTime: record.createdAt,
+        orderName: record.productName,
+      }).then((success) => {
+        if (success) {
+          message("推送成功~");
+          this.loadList();
+        }
+      });
+    }
   },
   created() {
 
@@ -172,11 +326,11 @@ export default {
 
 .parent_container {
   display: flex;
-  height: 100%;
+  height: 50%;
 }
 
 .left {
-  width: 300px; /* 固定宽度 */
+  width: 150px; /* 固定宽度 */
   padding: 20px;
 }
 

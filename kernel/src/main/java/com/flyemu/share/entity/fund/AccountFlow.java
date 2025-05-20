@@ -68,7 +68,7 @@ public class AccountFlow implements Serializable {
     private Long merchantId;
 
     public enum AccountFlowType {
-        支出, 收入, 转账
+        其他支出单, 其他收入单, 付款单, 收款单, 资金转账
     }
 
 }

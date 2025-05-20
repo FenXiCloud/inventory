@@ -103,14 +103,14 @@
                       <tr>
                         <th>最近销售时间</th>
                         <th>最近销售价</th>
-                        <th>零售客户</th>
+                        <th>{{ customerLevel }}</th>
                       </tr>
                       </thead>
                       <tbody>
                       <tr v-for="(item, index) in recentSales || []" :key="index">
                         <td>{{item.orderDate || '-'}}</td>
                         <td>{{item.unitPrice || '-'}}</td>
-                        <td>{{item.customer || '-'}}</td>
+                        <td>{{item.customerPrice || '-'}}</td>
                       </tr>
                       </tbody>
                     </table>
@@ -279,7 +279,10 @@ export default {
       type:null,
       previewVisible: false,
       previewImageUrl: '',
-      recentSales: []
+      recentSales: [],
+      customerLevel:null,
+      customerLevelId:null,
+      customerPrice:null
     }
   },
   methods: {
@@ -404,14 +407,24 @@ export default {
 
     //选择商品
     selectProduct(d, index) {
+      console.log("selectProduct",d);
+      let customerLevelPriceList = d.customerLevelPriceList;
+      if(customerLevelPriceList && customerLevelPriceList.length > 0){
+        //this.customerLevelId
+        customerLevelPriceList.forEach(cp => {
+          if(cp.customerLevelId === this.customerLevelId && d.id === cp.productId){
+            this.customerPrice = cp.price;
+          }
+        })
+      }
       if (d) {
         let g = {
           quantity: 1,
-          unitPrice: d.price || 0,
+          unitPrice: d.lastSalePrice || 0,
           warehouseId: this.warehousesId,
           discountValue: 0.00,
           discountRate: 0.00,
-          subtotal: d.price || 0,
+          subtotal: d.lastSalePrice || 0,
           baseUnitId: d.unitId,
           unitName: d.unitName,
           productId: d.id,
@@ -632,6 +645,12 @@ export default {
 
     //修改客户
     changeCustomer(e) {
+      if(e.customerLevelId === 1){
+        this.customerLevel = "零售价"
+      }else {
+        this.customerLevel = "会员价"
+      }
+      this.customerLevelId = e.customerLevelId
       console.log("e",e)
       if (!e) {
         this.form.customerId = null;
@@ -699,6 +718,9 @@ export default {
       }
       PriceRecord.showPrice(param).then(({data: {results}}) => {
         this.recentSales = results || [];
+        this.recentSales.forEach(item => {
+          item.customerPrice = this.customerPrice
+        })
         console.log("results",results)
       }).finally(() => this.loading = false);
     },

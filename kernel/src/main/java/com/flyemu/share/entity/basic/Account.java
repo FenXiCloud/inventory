@@ -1,4 +1,4 @@
-package com.flyemu.share.entity.fund;
+package com.flyemu.share.entity.basic;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -58,6 +58,9 @@ public class Account implements Serializable {
 
     @Comment("账户余额")
     private BigDecimal balance;
+
+    @Comment("期初余额")
+    private BigDecimal balanceInitial;
 
     @Column(nullable = false)
     private Long accountBookId;

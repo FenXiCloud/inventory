@@ -2,50 +2,50 @@
   <div class="modal-column">
     <div class="modal-column-full-body">
       <Form
-        ref="form"
-        :model="model"
-        :rules="validationRules"
-        :labelWidth="140"
+          ref="form"
+          :model="model"
+          :rules="validationRules"
+          :labelWidth="140"
       >
-        <FormItem label="成本核算方法" required prop="accountBookId">
-          <Input
-            placeholder="请输入成本核算方法"
-            v-model="model.accountBookId"
-          />
-        </FormItem>
-        <FormItem label="可用库存允许为负" required prop="costAccounting">
+        <FormItem label="成本核算方法" required prop="costAccounting">
           <Select
-            v-model="model.costAccounting"
-            :datas="costAccSelectParams"
+              v-model="model.costAccounting"
+              :datas="accSelectParams"
+          ></Select>
+        </FormItem>
+        <FormItem label="可用库存允许为负" required prop="availableInventory">
+          <Select
+              v-model="model.availableInventory"
+              :datas="costAccSelectParams"
           ></Select>
         </FormItem>
         <FormItem label="数量小数位" required prop="quantityDecimal">
           <Input
-            type="number"
-            min="0"
-            max="8"
-            placeholder="请输入数量小数位"
-            v-model="model.quantityDecimal"
+              type="number"
+              min="0"
+              max="8"
+              placeholder="请输入数量小数位"
+              v-model="model.quantityDecimal"
           />
         </FormItem>
         <FormItem label="单价小数位" required prop="priceDecimal">
           <Input
-            type="number"
-            min="0"
-            max="8"
-            placeholder="请输入数量小数位"
-            v-model="model.priceDecimal"
+              type="number"
+              min="0"
+              max="8"
+              placeholder="请输入数量小数位"
+              v-model="model.priceDecimal"
           />
         </FormItem>
       </Form>
     </div>
     <div class="modal-column-right">
       <Button
-        icon="fa fa-save"
-        style="justify-content: right"
-        color="primary"
-        @click="confirm"
-        :loading="loading"
+          icon="fa fa-save"
+          style="justify-content: right"
+          color="primary"
+          @click="confirm"
+          :loading="loading"
       >
         保存
       </Button>
@@ -148,30 +148,30 @@ export default {
       if (validResult.result) {
         this.loading = true;
         AccountBook.saveParameters(this.model)
-          .then(() => {
-            message('保存成功~');
-            this.$emit('success');
-          })
-          .finally(() => (this.loading = false));
+            .then(() => {
+              message('保存成功~');
+              this.$emit('success');
+            })
+            .finally(() => (this.loading = false));
       }
     },
     loadList() {
       this.loading = true;
       AccountBook.getByAccountBookId({ id: this.accountBook.id })
-        .then(({ data }) => {
-          console.log(data);
-          this.model = data;
-        })
-        .finally(() => (this.loading = false));
+          .then(({ data }) => {
+            console.log(data);
+            this.model = data;
+          })
+          .finally(() => (this.loading = false));
     },
     loadList22() {
       this.loading = true;
       SystemConfig.list(this.queryParams)
-        .then(({ data }) => {
-          console.log(data);
-          this.dataList = data;
-        })
-        .finally(() => (this.loading = false));
+          .then(({ data }) => {
+            console.log(data);
+            this.dataList = data;
+          })
+          .finally(() => (this.loading = false));
     }
   },
   created() {

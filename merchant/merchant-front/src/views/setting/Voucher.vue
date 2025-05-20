@@ -26,115 +26,79 @@
                      :column-config="{resizable: true}"
                      :sort-config="{remote:true}"
                      :loading="loading">
-            <vxe-column title="操作" align="center">
+            <!--<vxe-column type="checkbox" width="40" align="center"/>-->
+            <vxe-column title="操作" align="center" width="150">
               <template #default="{row}">
                 <span class="primary-color  text-hover ml-10px" @click="pushVoucher(row)">推送</span>
               </template>
             </vxe-column>
-            <vxe-column title="商品编号" field="productCode" align="center"/>
-            <vxe-column title="商品名称" field="productName"/>
-            <vxe-column title="商品类别" field="productCategoryName"/>
-            <vxe-column title="规格型号" field="productSpecification"/>
-            <vxe-column title="单据日期" field="createdAt"/>
-            <vxe-column title="业务类型" field="operationType"/>
-            <vxe-column title="单据编号" field="batchNumber"/>
-            <vxe-column title="往来单位" field="supplierName">
-              <template #default="{ row }">
-                <div v-if="row.supplierName && row.supplierName !== ''">
-                  {{ row.supplierName }}
-                </div>
-                <div v-else-if="row.customerName && row.customerName !== ''">
-                  {{ row.customerName }}
-                </div>
-                <div v-else>
-                </div>
-              </template>
-            </vxe-column>
-            <vxe-column title="仓库" field="warehouseName" align="center"/>
-            <vxe-column title="单位" field="unitName"/>
-            <vxe-column title="商品名称备注" field="productRemarks"/>
-            <vxe-column title="入库数量" field="quantity">
-              <template #default="{ row }">
-                <div v-if="inboundItems.includes(row['operationType'])">
-                  {{ row.quantity }}
-                </div>
-                <div v-else>
-                </div>
-              </template>
-            </vxe-column>
-            <vxe-colgroup title="入库" align="center">
-              <vxe-column title="基本单位数量" field="quantity" align="center">
-                <template #default="{ row }">
-                  <div v-if="inboundItems.includes(row['operationType'])">
-                    {{ row.quantity }}
-                  </div>
-                  <div v-else>
-                  </div>
-                </template>
-              </vxe-column>
-              <vxe-column title="单位成本" field="unitPrice" align="center">
-                <template #default="{ row }">
-                  <div v-if="inboundItems.includes(row['operationType'])">
-                    {{ row.unitPrice }}
-                  </div>
-                  <div v-else>
-                  </div>
-                </template>
-              </vxe-column>
-              <vxe-column title="成本" field="subtotal" align="center">
-                <template #default="{ row }">
-                  <div
-                      v-if="inboundItems.includes(row['operationType'])">
-                    {{ row.subtotal }}
-                  </div>
-                  <div v-else>
-                  </div>
-                </template>
-              </vxe-column>
+            <vxe-column title="商品编号" field="productCode" align="center" width="130"/>
+            <vxe-column title="商品名称" field="productName" width="200"/>
+            <vxe-column title="商品类别" field="productCategoryName" width="200"/>
+            <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
+            <vxe-column title="单位" field="unitName" width="120"/>
+            <vxe-column title="仓库" field="warehouseName" width="120"/>
+            <vxe-colgroup title="期初" align="center">
+              <vxe-column title="数量" field="initialQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="initialSubtotal" align="center" width="100"/>
             </vxe-colgroup>
-            <vxe-column title="出库数量" field="quantity">
-              <template #default="{ row }">
-                <div v-if="outboundItems.includes(row['operationType'])">
-                  {{ getAbsoluteValue(row.quantity) }}
-                </div>
-                <div v-else>
-                </div>
-              </template>
-            </vxe-column>
-            <vxe-colgroup title="出库" align="center">
-              <vxe-column title="基本单位数量" field="quantity" align="center">
-                <template #default="{ row }">
-                  <div v-if="outboundItems.includes(row['operationType'])">
-                    {{ getAbsoluteValue(row.quantity) }}
-                  </div>
-                  <div v-else>
-                  </div>
-                </template>
-              </vxe-column>
-              <vxe-column title="单位成本" field="unitPrice" align="center">
-                <template #default="{ row }">
-                  <div v-if="outboundItems.includes(row['operationType'])">
-                    {{ row.unitPrice }}
-                  </div>
-                  <div v-else>
-                  </div>
-                </template>
-              </vxe-column>
-              <vxe-column title="成本" field="subtotal" align="center">
-                <template #default="{ row }">
-                  <div v-if="outboundItems.includes(row['operationType'])">
-                    {{ row.subtotal }}
-                  </div>
-                  <div v-else>
-                  </div>
-                </template>
-              </vxe-column>
+            <vxe-colgroup title="采购入库" align="center">
+              <vxe-column title="数量" field="purchaseStockQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="purchaseStockSubtotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="销售退货" align="center">
+              <vxe-column title="数量" field="salesReturnsQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="salesReturnsSubtotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="调拨入库" align="center">
+              <vxe-column title="数量" field="channelInQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="channelInSubtotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="其他入库" align="center">
+              <vxe-column title="数量" field="otherInQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="otherInSubtotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="盘盈单" align="center">
+              <vxe-column title="数量" field="takeProfitQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="takeProfitSubtotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="入库合计" align="center">
+              <vxe-column title="数量" field="inQuantityTotal" align="center" width="100"/>
+              <vxe-column title="成本" field="inSubtotalTotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="采购退货" align="center">
+              <vxe-column title="数量" field="purchaseReturnsQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="purchaseReturnsSubtotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="销售出库" align="center">
+              <vxe-column title="数量" field="sellOutQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="sellOutSubtotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="调拨出库" align="center">
+              <vxe-column title="数量" field="channelOutQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="channelOutSubtotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="其他出库" align="center">
+              <vxe-column title="数量" field="otherOutQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="otherOutSubtotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="盘亏单" align="center">
+              <vxe-column title="数量" field="taskDeficitQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="taskDeficitSubtotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="出库合计" align="center">
+              <vxe-column title="数量" field="outQuantityTotal" align="center" width="100"/>
+              <vxe-column title="成本" field="outSubtotalTotal" align="center" width="100"/>
+            </vxe-colgroup>
+            <vxe-colgroup title="成本调整" align="center">
+              <vxe-column title="数量" field="costQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="costSubtotal" align="center" width="100"/>
             </vxe-colgroup>
             <vxe-colgroup title="结存" align="center">
-              <vxe-column title="基本单位数量" field="currentQuantity" align="center"/>
-              <vxe-column title="单位成本" field="averageCost" align="center"/>
-              <vxe-column title="成本" field="totalCost" align="center"/>
+              <vxe-column title="数量" field="currentQuantity" align="center" width="100"/>
+              <vxe-column title="成本" field="totalCost" align="center" width="100"/>
             </vxe-colgroup>
+
           </vxe-table>
         </div>
       </div>
@@ -330,13 +294,14 @@ export default {
 }
 
 .left {
-  width: 150px; /* 固定宽度 */
+  width: 300px; /* 固定宽度 */
   padding: 20px;
 }
 
 .right {
   flex: 1; /* 占用剩余空间 */
   padding: 20px;
+  width: calc(100% - 380px);
 }
 
 .selected {

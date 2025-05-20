@@ -19,6 +19,7 @@
           <vxe-table row-id="id"
                      ref="table"
                      :data="dataList"
+                     height="auto"
                      highlight-hover-row
                      show-overflow
                      show-footer
@@ -290,7 +291,7 @@ export default {
 
 .parent_container {
   display: flex;
-  height: 50%;
+  height: 100%;
 }
 
 .left {

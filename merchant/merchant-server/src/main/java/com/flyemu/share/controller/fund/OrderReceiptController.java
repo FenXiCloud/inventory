@@ -6,6 +6,7 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.OrderReceipt;
 import com.flyemu.share.service.fund.OrderReceiptService;
+import com.flyemu.share.service.fund.dto.OrderReceiptSaveDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -24,36 +25,39 @@ public class OrderReceiptController {
 
     private final OrderReceiptService orderReceiptService;
 
-    @GetMapping
+    @GetMapping("list")
     public JsonResult list(Page page, OrderReceiptService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(orderReceiptService.query(page, query));
+        return JsonResult.successful(orderReceiptService.query(query, page));
     }
 
-    @PostMapping
-    public JsonResult save(@RequestBody @Valid OrderReceipt orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        orderReceipt.setMerchantId(merchantId);
-        orderReceipt.setAccountBookId(accountBookId);
+    @PostMapping("save")
+    public JsonResult save(@RequestBody OrderReceiptSaveDTO orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        orderReceipt.getOrderReceipt().setMerchantId(merchantId);
+        orderReceipt.getOrderReceipt().setAccountBookId(accountBookId);
         orderReceiptService.save(orderReceipt);
         return JsonResult.successful();
     }
 
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid OrderReceipt orderReceipt) {
-        orderReceiptService.save(orderReceipt);
+    @PostMapping("updateStatus")
+    public JsonResult updateStatus(@RequestBody OrderReceipt orderReceipt) {
+        orderReceiptService.updateStatus(orderReceipt);
         return JsonResult.successful();
     }
 
-    @DeleteMapping("/{orderReceiptId}")
+    @PostMapping("delete")
     public JsonResult delete(@PathVariable Long orderReceiptId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         orderReceiptService.delete(orderReceiptId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(orderReceiptService.select(merchantId, accountBookId));
+    @GetMapping("selectById")
+    public JsonResult selectById(Long id) {
+        return JsonResult.successful(orderReceiptService.selectById(id));
     }
-
+    @GetMapping("getVerificationInfo")
+    public JsonResult getVerificationInfo(Long id) {
+        return JsonResult.successful(orderReceiptService.getVerificationInfo(id));
+    }
 }

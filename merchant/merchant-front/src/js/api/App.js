@@ -6,7 +6,7 @@
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 
-import Ajax from "@common/Request";
+import Ajax from '@common/Request';
 import jsonToFormData from '@ajoelp/json-to-formdata';
 
 /**
@@ -14,27 +14,35 @@ import jsonToFormData from '@ajoelp/json-to-formdata';
  * @constructor
  */
 export const Init = () => {
-  return Ajax.get("/init");
-}
+  return Ajax.get('/init');
+};
 
 export const HomeView = () => {
-  return Ajax.get("/home/view");
-}
+  return Ajax.get('/home/view');
+};
 
 export const Login = (formData) => {
-  return Ajax.post("/login", jsonToFormData(formData));
-}
+  return Ajax.post('/login', jsonToFormData(formData));
+};
+
+export const DDLogin = (param) => {
+  return Ajax.post('/dd/auth', param);
+};
 
 export const Logout = () => {
-  return Ajax.get("/logout");
-}
+  return Ajax.get('/logout');
+};
 
 export const Upload = (type, formData) => {
-  return Ajax.post(`/upload/${type}`, formData, {'Content-Type': 'multipart/form-data', repeatable: true});
-}
-
+  return Ajax.post(`/upload/${type}`, formData, {
+    'Content-Type': 'multipart/form-data',
+    repeatable: true
+  });
+};
 
 export const OssUpload = (type, formData) => {
-  return Ajax.post(`/oss/upload/${type}`, formData, {'Content-Type': 'multipart/form-data', repeatable: true});
-}
-
+  return Ajax.post(`/oss/upload/${type}`, formData, {
+    'Content-Type': 'multipart/form-data',
+    repeatable: true
+  });
+};

@@ -88,6 +88,22 @@ public class FinOpsCloudApi {
         return res.getInteger("data");
     }
 
+    /**
+     * 加载凭证号
+     *
+     * @param finOpsRequest
+     * @param accountSetsId
+     * @param word
+     * @param currentAccountDate
+     * @return
+     * @throws UnsupportedEncodingException
+     */
+    public JSONObject loadCode(FinOpsRequest finOpsRequest, Long accountSetsId, String word, LocalDate currentAccountDate) throws UnsupportedEncodingException {
+        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/voucher/code" + "?word=" + URLEncoder.encode(word, "UTF-8") + "&currentAccountDate=" + currentAccountDate, accountSetsId, finOpsRequest);
+        log.info("凭证号{}", res);
+        return res;
+    }
+
     private JSONObject executeJson(int retry, String url, Long accountSetsId, FinOpsRequest finOpsRequest) {
         HttpRequest request = HttpUtil.createGet(url);
         request.header("cookie", finOpsRequest.getCookie());

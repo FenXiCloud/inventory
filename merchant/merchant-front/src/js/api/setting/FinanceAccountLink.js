@@ -19,6 +19,9 @@ export default {
     loadVoucherWord() {
         return Ajax.get(`/financeAccountLink/loadVoucherWord`)
     },
+    loadCode(param) {
+        return Ajax.get(`/financeAccountLink/loadCode`, param)
+    },
     loadSubject() {
         return Ajax.get(`/financeAccountLink/loadSubject`)
     },

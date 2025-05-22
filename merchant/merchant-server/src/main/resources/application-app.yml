@@ -18,3 +18,9 @@ aliyun:
   accessKeySecret:
   bucketName:
 
+dingtalk:
+  appKey: "ding9glmrjz0zlfvctni"
+  appSecret: "j2RnmlIKJaAyDVj09dAHs2j_r-PG6BZryQBVuG-9HPHcCXJ6lE5D-jUWHejdMNca"
+  corpId: "ding86d8fc474900dab0a39a90f97fcb1e09"
+  agentID: "3866143468"
+

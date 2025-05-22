@@ -73,6 +73,15 @@ public class Admin implements Serializable {
     @Column(nullable = false)
     private Long merchantId;
 
+    @Comment("钉钉ID")
+    private String dingDingUserId;
+
+    @Comment("部门ID")
+    private Long deptId;
+
+    @Comment("邮件")
+    private String email;
+
     public Admin(Long id) {
         this.id = id;
     }

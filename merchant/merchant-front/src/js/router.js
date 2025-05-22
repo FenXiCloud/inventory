@@ -1,201 +1,492 @@
-import {defineAsyncComponent} from "vue";
+import { defineAsyncComponent } from 'vue';
 
 const groupRoutes = [
-    {name: 'DashboardMain', component: defineAsyncComponent(() => import("@views/dashboard/DashboardMain"))},
+  {
+    name: 'DashboardMain',
+    component: defineAsyncComponent(() =>
+      import('@views/dashboard/DashboardMain')
+    )
+  },
 
-    {name: 'AccountBasic', component: defineAsyncComponent(() => import("@views/common/AccountBasic"))},
+  {
+    name: 'AccountBasic',
+    component: defineAsyncComponent(() => import('@views/common/AccountBasic'))
+  },
 
-    {name: 'AccountBookList', component: defineAsyncComponent(() => import('@views/setting/AccountBookList'))},
+  {
+    name: 'AccountBookList',
+    component: defineAsyncComponent(() =>
+      import('@views/setting/AccountBookList')
+    )
+  },
 
-    {name: 'MerchantInfo', component: defineAsyncComponent(() => import('@views/setting/MerchantInfo'))},
+  {
+    name: 'MerchantInfo',
+    component: defineAsyncComponent(() => import('@views/setting/MerchantInfo'))
+  },
 
-    {name: 'AdminList', component: defineAsyncComponent(() => import('@views/setting/AdminList'))},
+  {
+    name: 'AdminList',
+    component: defineAsyncComponent(() => import('@views/setting/AdminList'))
+  },
 
-    {name: 'RoleList', component: defineAsyncComponent(() => import('@views/setting/RoleList'))},
+  {
+    name: 'RoleList',
+    component: defineAsyncComponent(() => import('@views/setting/RoleList'))
+  },
 
-    {name: 'CheckoutList', component: defineAsyncComponent(() => import('@views/setting/CheckoutList'))},
+  {
+    name: 'CheckoutList',
+    component: defineAsyncComponent(() => import('@views/setting/CheckoutList'))
+  },
 
-    {name: 'CodeRuleList', component: defineAsyncComponent(() => import('@views/setting/CodeRuleList.vue'))},
+  {
+    name: 'CodeRuleList',
+    component: defineAsyncComponent(() =>
+      import('@views/setting/CodeRuleList.vue')
+    )
+  },
 
-    {name: 'PrintTemplateList', component: defineAsyncComponent(() => import('@views/setting/PrintTemplateList.vue'))},
+  {
+    name: 'PrintTemplateList',
+    component: defineAsyncComponent(() =>
+      import('@views/setting/PrintTemplateList.vue')
+    )
+  },
 
-    {name: 'SystemLogList', component: defineAsyncComponent(() => import('@views/setting/SystemLogList.vue'))},
+  {
+    name: 'SystemLogList',
+    component: defineAsyncComponent(() =>
+      import('@views/setting/SystemLogList.vue')
+    )
+  },
 
-    {name: 'FinanceRel', component: defineAsyncComponent(() => import('@views/setting/FinanceRel.vue'))},
+  {
+    name: 'FinanceRel',
+    component: defineAsyncComponent(() =>
+      import('@views/setting/FinanceRel.vue')
+    )
+  },
 
-    {name: 'OrderVoucher', component: defineAsyncComponent(() => import('@views/setting/OrderVoucher.vue'))},
+  {
+    name: 'OrderVoucher',
+    component: defineAsyncComponent(() =>
+      import('@views/setting/OrderVoucher.vue')
+    )
+  },
 
-    {name: 'ItemMapping', component: defineAsyncComponent(() => import('@views/setting/ItemMapping.vue'))},
+  {
+    name: 'ItemMapping',
+    component: defineAsyncComponent(() =>
+      import('@views/setting/ItemMapping.vue')
+    )
+  },
 
-    {name: 'ProductCategoryList', component: defineAsyncComponent(() => import('@views/basic/ProductCategoryList'))},
+  {
+    name: 'ProductCategoryList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/ProductCategoryList')
+    )
+  },
 
-    {name: 'ProductPriceList', component: defineAsyncComponent(() => import('@views/basic/ProductPriceList'))},
+  {
+    name: 'ProductPriceList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/ProductPriceList')
+    )
+  },
 
-    {name: 'CustomerList', component: defineAsyncComponent(() => import('@views/basic/CustomerList'))},
+  {
+    name: 'CustomerList',
+    component: defineAsyncComponent(() => import('@views/basic/CustomerList'))
+  },
 
-    {name: 'CustomerLevelList', component: defineAsyncComponent(() => import('@views/basic/CustomerLevelList'))},
+  {
+    name: 'CustomerLevelList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/CustomerLevelList')
+    )
+  },
 
-    {name: 'CustomerCategoryList', component: defineAsyncComponent(() => import('@views/basic/CustomerCategoryList'))},
+  {
+    name: 'CustomerCategoryList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/CustomerCategoryList')
+    )
+  },
 
-    {name: 'SupplierCategoryList', component: defineAsyncComponent(() => import('@views/basic/SupplierCategoryList'))},
+  {
+    name: 'SupplierCategoryList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/SupplierCategoryList')
+    )
+  },
 
-    {name: 'SupplierList', component: defineAsyncComponent(() => import('@views/basic/SupplierList'))},
+  {
+    name: 'SupplierList',
+    component: defineAsyncComponent(() => import('@views/basic/SupplierList'))
+  },
 
-    {name: 'WarehouseList', component: defineAsyncComponent(() => import('@views/basic/WarehouseList'))},
+  {
+    name: 'WarehouseList',
+    component: defineAsyncComponent(() => import('@views/basic/WarehouseList'))
+  },
 
-    {name: 'UnitList', component: defineAsyncComponent(() => import('@views/basic/UnitList'))},
+  {
+    name: 'UnitList',
+    component: defineAsyncComponent(() => import('@views/basic/UnitList'))
+  },
 
-    {name: 'ProductList', component: defineAsyncComponent(() => import('@views/basic/ProductList'))},
+  {
+    name: 'ProductList',
+    component: defineAsyncComponent(() => import('@views/basic/ProductList'))
+  },
 
-    {name: 'AccountList', component: defineAsyncComponent(() => import('@views/basic/AccountList'))},
+  {
+    name: 'AccountList',
+    component: defineAsyncComponent(() => import('@views/fund/AccountList'))
+  },
 
-    {name: 'AccountTypeList', component: defineAsyncComponent(() => import('@views/basic/AccountTypeList'))},
+  {
+    name: 'AccountTypeList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/AccountTypeList')
+    )
+  },
 
-    {name: 'PaymentMethodList', component: defineAsyncComponent(() => import('@views/basic/PaymentMethodList.vue'))},
+  {
+    name: 'PaymentMethodList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/PaymentMethodList.vue')
+    )
+  },
 
-    {name: 'PricingPolicyList', component: defineAsyncComponent(() => import('@views/basic/PricingPolicyList.vue'))},
+  {
+    name: 'PricingPolicyList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/PricingPolicyList.vue')
+    )
+  },
 
-    {
-        name: 'CustomerInitialList',
-        component: defineAsyncComponent(() => import('@views/basic/CustomerInitialList.vue'))
-    },
-    {name: 'CustomerInitialForm', component: defineAsyncComponent(() => import('@views/basic/CustomerInitialForm.vue'))},
+  {
+    name: 'CustomerInitialList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/CustomerInitialList.vue')
+    )
+  },
+  {
+    name: 'CustomerInitialForm',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/CustomerInitialForm.vue')
+    )
+  },
 
-    {
-        name: 'SupplierInitialList',
-        component: defineAsyncComponent(() => import('@views/basic/SupplierInitialList.vue'))
-    },
-    {name: 'SupplierInitialForm', component: defineAsyncComponent(() => import('@views/basic/SupplierInitialForm.vue'))},
+  {
+    name: 'SupplierInitialList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/SupplierInitialList.vue')
+    )
+  },
+  {
+    name: 'SupplierInitialForm',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/SupplierInitialForm.vue')
+    )
+  },
 
-
-    {
-        name: 'InventoryInitialList',
-        component: defineAsyncComponent(() => import('@views/basic/InventoryInitialList.vue'))
-    },
-    {name: 'InventoryInitialForm', component: defineAsyncComponent(() => import('@views/basic/InventoryInitialForm.vue'))},
-    {name: 'PriceRecordList', component: defineAsyncComponent(() => import('@views/basic/PriceRecordList.vue'))},
-    {name: 'SalesOrderList', component: defineAsyncComponent(() => import('@views/sales/SalesOrderList.vue'))},
-    {name: 'SalesOrderForm', component: defineAsyncComponent(() => import('@views/sales/SalesOrderForm.vue'))},
-    {name: 'SalesReturnList', component: defineAsyncComponent(() => import('@views/sales/SalesReturnList.vue'))},
-    {name: 'SalesReturnForm', component: defineAsyncComponent(() => import('@views/sales/SalesReturnForm.vue'))},
-    {name: 'SalesOutboundList', component: defineAsyncComponent(() => import('@views/sales/SalesOutboundList.vue'))},
-    {name: 'SalesOutboundForm', component: defineAsyncComponent(() => import('@views/sales/SalesOutboundForm.vue'))},
-    {name: 'SalesItemReport', component: defineAsyncComponent(() => import('@views/sales/SalesItemReport.vue'))},
-    {name: 'SalesSummaryReport', component: defineAsyncComponent(() => import('@views/sales/SalesSummaryReport.vue'))},
-    {name: 'SalesProfitReport', component: defineAsyncComponent(() => import('@views/sales/SalesProfitReport.vue'))},
-    {name: 'SalesRankingReport', component: defineAsyncComponent(() => import('@views/sales/SalesRankingReport.vue'))},
-    {name: 'PurchaseOrderList', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderList.vue'))},
-    {name: 'PurchaseOrderForm', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderForm.vue'))},
-    {name: 'PurchaseOrderDetail', component: defineAsyncComponent(() => import('@views/purchase/PurchaseOrderDetail.vue'))},
-    {
-        name: 'PurchaseInboundList',
-        component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundList.vue'))
-    },
-    {
-        name: 'PurchaseInboundForm',
-        component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundForm.vue'))
-    },
-    {
-        name: 'PurchaseInboundDetail',
-        component: defineAsyncComponent(() => import('@views/purchase/PurchaseInboundDetail.vue'))
-    },
-    {
-        name: 'PurchaseReturnList',
-        component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnList.vue'))
-    },
-    {
-        name: 'PurchaseReturnForm',
-        component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnForm.vue'))
-    },
-    {
-        name: 'PurchaseReturnDetail',
-        component: defineAsyncComponent(() => import('@views/purchase/PurchaseReturnDetail.vue'))
-    },
-    {
-        name: 'PurchaseItemReport',
-        component: defineAsyncComponent(() => import('@views/purchase/PurchaseItemReport.vue'))
-    },
-    {
-        name: 'PurchaseSummaryReport',
-        component: defineAsyncComponent(() => import('@views/purchase/PurchaseSummaryReport.vue'))
-    },
-    {
-        name: 'CostAdjustmentList',
-        component: defineAsyncComponent(() => import('@views/inventory/CostAdjustmentList.vue'))
-    },
-    {name: 'CostAdjustmentForm', component: defineAsyncComponent(() => import('@views/inventory/CostAdjustmentForm.vue'))},
-    {
-        name: 'InventoryItemReport',
-        component: defineAsyncComponent(() => import('@views/inventory/InventoryItemReport.vue'))
-    },
-    {
-        name: 'InventorySummaryReport',
-        component: defineAsyncComponent(() => import('@views/inventory/InventorySummaryReport.vue'))
-    },
-    {
-        name: 'InventoryReport',
-        component: defineAsyncComponent(() => import('@views/inventory/InventoryReport.vue'))
-    },
-    {
-        name: 'InventoryTransferList',
-        component: defineAsyncComponent(() => import('@views/inventory/InventoryTransferList.vue'))
-    },
-    {name: 'InventoryTransferForm', component: defineAsyncComponent(() => import('@views/inventory/InventoryTransferForm.vue'))},
-    {
-        name: 'StockTakeList',
-        component: defineAsyncComponent(() => import('@views/inventory/StockTakeList.vue'))
-    },
-    {name: 'StockTakeForm', component: defineAsyncComponent(() => import('@views/inventory/StockTakeForm.vue'))},
-    {
-        name: 'OtherInboundList',
-        component: defineAsyncComponent(() => import('@views/inventory/OtherInboundList.vue'))
-    },
-    {name: 'OtherInboundForm', component: defineAsyncComponent(() => import('@views/inventory/OtherInboundForm.vue'))},
-    {
-        name: 'OtherOutboundList',
-        component: defineAsyncComponent(() => import('@views/inventory/OtherOutboundList.vue'))
-    },
-    {name: 'OtherOutboundForm', component: defineAsyncComponent(() => import('@views/inventory/OtherOutboundForm.vue'))},
-    {
-        name: 'OtherIncomeList',
-        component: defineAsyncComponent(() => import('@views/fund/OtherIncomeList.vue'))
-    }, {
-        name: 'OtherExpenseList',
-        component: defineAsyncComponent(() => import('@views/fund/OtherExpenseList.vue'))
-    }, {
-        name: 'OrderReceiptList',
-        component: defineAsyncComponent(() => import('@views/fund/OrderReceiptList.vue'))
-    }, {
-        name: 'OrderPaymentList',
-        component: defineAsyncComponent(() => import('@views/fund/OrderPaymentList.vue'))
-    }, {
-        name: 'VerificationList',
-        component: defineAsyncComponent(() => import('@views/fund/VerificationList.vue'))
-    }, {
-        name: 'AccountTransferList',
-        component: defineAsyncComponent(() => import('@views/fund/AccountTransferList.vue'))
-    }, {
-        name: 'OtherIncomeExpenseReport',
-        component: defineAsyncComponent(() => import('@views/fund/OtherIncomeExpenseReport.vue'))
-    }, {
-        name: 'CustomerFlowReport',
-        component: defineAsyncComponent(() => import('@views/fund/CustomerFlowReport.vue'))
-    }, {
-        name: 'SupplierFlowReport',
-        component: defineAsyncComponent(() => import('@views/fund/SupplierFlowReport.vue'))
-    }, {
-        name: 'AccountFlowList',
-        component: defineAsyncComponent(() => import('@views/fund/AccountFlowList.vue'))
-    },]
-
+  {
+    name: 'InventoryInitialList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/InventoryInitialList.vue')
+    )
+  },
+  {
+    name: 'InventoryInitialForm',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/InventoryInitialForm.vue')
+    )
+  },
+  {
+    name: 'PriceRecordList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/PriceRecordList.vue')
+    )
+  },
+  {
+    name: 'SalesOrderList',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesOrderList.vue')
+    )
+  },
+  {
+    name: 'SalesOrderForm',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesOrderForm.vue')
+    )
+  },
+  {
+    name: 'SalesReturnList',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesReturnList.vue')
+    )
+  },
+  {
+    name: 'SalesReturnForm',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesReturnForm.vue')
+    )
+  },
+  {
+    name: 'SalesOutboundList',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesOutboundList.vue')
+    )
+  },
+  {
+    name: 'SalesOutboundForm',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesOutboundForm.vue')
+    )
+  },
+  {
+    name: 'SalesItemReport',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesItemReport.vue')
+    )
+  },
+  {
+    name: 'SalesSummaryReport',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesSummaryReport.vue')
+    )
+  },
+  {
+    name: 'SalesProfitReport',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesProfitReport.vue')
+    )
+  },
+  {
+    name: 'SalesRankingReport',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesRankingReport.vue')
+    )
+  },
+  {
+    name: 'PurchaseOrderList',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseOrderList.vue')
+    )
+  },
+  {
+    name: 'PurchaseOrderForm',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseOrderForm.vue')
+    )
+  },
+  {
+    name: 'PurchaseOrderDetail',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseOrderDetail.vue')
+    )
+  },
+  {
+    name: 'PurchaseInboundList',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseInboundList.vue')
+    )
+  },
+  {
+    name: 'PurchaseInboundForm',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseInboundForm.vue')
+    )
+  },
+  {
+    name: 'PurchaseInboundDetail',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseInboundDetail.vue')
+    )
+  },
+  {
+    name: 'PurchaseReturnList',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseReturnList.vue')
+    )
+  },
+  {
+    name: 'PurchaseReturnForm',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseReturnForm.vue')
+    )
+  },
+  {
+    name: 'PurchaseReturnDetail',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseReturnDetail.vue')
+    )
+  },
+  {
+    name: 'PurchaseItemReport',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseItemReport.vue')
+    )
+  },
+  {
+    name: 'PurchaseSummaryReport',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseSummaryReport.vue')
+    )
+  },
+  {
+    name: 'CostAdjustmentList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/CostAdjustmentList.vue')
+    )
+  },
+  {
+    name: 'CostAdjustmentForm',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/CostAdjustmentForm.vue')
+    )
+  },
+  {
+    name: 'InventoryItemReport',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/InventoryItemReport.vue')
+    )
+  },
+  {
+    name: 'InventorySummaryReport',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/InventorySummaryReport.vue')
+    )
+  },
+  {
+    name: 'InventoryReport',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/InventoryReport.vue')
+    )
+  },
+  {
+    name: 'InventoryTransferList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/InventoryTransferList.vue')
+    )
+  },
+  {
+    name: 'InventoryTransferForm',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/InventoryTransferForm.vue')
+    )
+  },
+  {
+    name: 'StockTakeList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/StockTakeList.vue')
+    )
+  },
+  {
+    name: 'StockTakeForm',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/StockTakeForm.vue')
+    )
+  },
+  {
+    name: 'OtherInboundList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/OtherInboundList.vue')
+    )
+  },
+  {
+    name: 'OtherInboundForm',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/OtherInboundForm.vue')
+    )
+  },
+  {
+    name: 'OtherOutboundList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/OtherOutboundList.vue')
+    )
+  },
+  {
+    name: 'OtherOutboundForm',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/OtherOutboundForm.vue')
+    )
+  },
+  {
+    name: 'OtherIncomeList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OtherIncomeList.vue')
+    )
+  },
+  {
+    name: 'OtherExpenseList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OtherExpenseList.vue')
+    )
+  },
+  {
+    name: 'OrderReceiptList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OrderReceiptList.vue')
+    )
+  },
+  {
+    name: 'OrderPaymentList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OrderPaymentList.vue')
+    )
+  },
+  {
+    name: 'VerificationList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/VerificationList.vue')
+    )
+  },
+  {
+    name: 'AccountTransferList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/AccountTransferList.vue')
+    )
+  },
+  {
+    name: 'OtherIncomeExpenseReport',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OtherIncomeExpenseReport.vue')
+    )
+  },
+  {
+    name: 'CustomerFlowReport',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/CustomerFlowReport.vue')
+    )
+  },
+  {
+    name: 'SupplierFlowReport',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/SupplierFlowReport.vue')
+    )
+  },
+  {
+    name: 'AccountFlowList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/AccountFlowList.vue')
+    )
+  },
+  {
+    name: 'DDLogin',
+    component: defineAsyncComponent(() => import('@/DDLogin.vue'))
+  }
+];
 
 /**
  * 加载组件
  */
 export default {
-    install: (app) => {
-        groupRoutes.forEach(item => app.component(item.name, item.component))
-    }
-
-}
-
+  install: (app) => {
+    groupRoutes.forEach((item) => app.component(item.name, item.component));
+  }
+};

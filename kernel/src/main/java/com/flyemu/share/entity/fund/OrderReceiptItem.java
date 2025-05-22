@@ -8,6 +8,8 @@ import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Date;
 
 /**
  * @功能描述: 收款单明细
@@ -47,4 +49,24 @@ public class OrderReceiptItem {
 
     @Column(nullable = false)
     private Long merchantId;
+    @Comment("关联销售单ID")
+    private Long salesOrderId;
+    @Comment("关联销售单编号")
+    private String salesOrderNo;
+    @Comment("业务类型")
+    private Integer businessType;
+    @Comment("业务日期")
+    private LocalDate businessDate;
+
+    @Comment("单据金额")
+    private BigDecimal documentAmount;
+
+    @Comment("已核销金额")
+    private BigDecimal verifiedAmount;
+
+    @Comment("未核销金额")
+    private BigDecimal unverifiedAmount;
+
+    @Comment("本次核销金额")
+    private BigDecimal currentVerifyAmount;
 }

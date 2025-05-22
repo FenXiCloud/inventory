@@ -1,24 +1,87 @@
 package com.flyemu.share.service.fund.vo;
 
-import com.flyemu.share.entity.fund.OrderReceipt;
-import com.flyemu.share.entity.fund.OrderReceiptCollection;
-import com.flyemu.share.entity.fund.OrderReceiptItem;
+import com.flyemu.share.enums.OrderStatus;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * @author shuaiqi
  */
-@EqualsAndHashCode(callSuper = true)
 @Data
 @NoArgsConstructor
-public class OrderReceiptDetailsVO extends OrderReceipt {
+public class OrderReceiptDetailsVO {
 
     private String createName;
     private String updateName;
     private String approvedName;
+
+    private Long id;
+
+
+    private Long customerId;
+
+    private String customerName;
+
+    private Integer orderType;
+
+    private LocalDate orderDate;
+
+
+    private String orderNo;
+
+    private String documentSource;
+
+
+    private BigDecimal discountAmount;
+
+
+    private BigDecimal collectionAmount;
+
+
+    private BigDecimal totalAmountsOwed;
+
+
+    private BigDecimal verificationAmount;
+
+    private BigDecimal advanceCollectionsAmount;
+
+    private BigDecimal shouldVerificationAmount;
+
+    private BigDecimal hasVerificationAmount;
+
+    private BigDecimal notVerificationAmount;
+
+    private Integer writeOffStatus;
+
+
+    private OrderStatus orderStatus;
+
+
+    private Long orderStaffId;
+
+    private String orderStatusName;
+
+
+    private Long createdBy;
+
+    private Long updateBy;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updateAt;
+
+
+    private Long approvedBy;
+
+
+    private LocalDateTime approvedAt;
+
+    private Long accountBookId;
+
+    private Long merchantId;
 
 }

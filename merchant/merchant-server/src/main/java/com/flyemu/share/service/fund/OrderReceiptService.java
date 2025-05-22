@@ -9,10 +9,12 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.QCustomer;
 import com.flyemu.share.entity.basic.QPaymentMethod;
 import com.flyemu.share.entity.fund.*;
+import com.flyemu.share.entity.sales.QSalesOrder;
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.fund.dto.OrderReceiptSaveDTO;
@@ -22,6 +24,7 @@ import com.flyemu.share.way.CodeGenerator;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQuery;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -30,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -90,10 +94,10 @@ public class OrderReceiptService extends AbsService {
     @Transactional
     public OrderReceipt save(OrderReceiptSaveDTO dto) {
         if (dto.getOrderReceipt() == null) {
-            throw new RuntimeException("参数错误");
+            throw new ServiceException("参数错误");
         }
         if (dto.getCollectionList() == null) {
-            throw new RuntimeException("参数错误");
+            throw new ServiceException("参数错误");
         }
 
         OrderReceipt orderReceipt = dto.getOrderReceipt();
@@ -108,11 +112,11 @@ public class OrderReceiptService extends AbsService {
 
 
         if (dto.getOrderReceipt().getOrderStatus() == null) {
-            throw new RuntimeException("状态为空");
+            throw new ServiceException("状态为空");
         } else {
             if (OrderStatus.已审核.equals(dto.getOrderReceipt().getOrderStatus())) {
                 if (dto.getOrderReceipt().getApprovedBy() == null) {
-                    throw new RuntimeException("已审核状态,审核人必填");
+                    throw new ServiceException("已审核状态,审核人必填");
                 }
                 dto.getOrderReceipt().setApprovedAt(LocalDateTime.now());
             }
@@ -135,7 +139,7 @@ public class OrderReceiptService extends AbsService {
 
         // 计算收款账户总金额
         BigDecimal totalPaymentAmount = BigDecimal.ZERO;
-        if (collections != null && !collections.isEmpty()) {
+        if (!collections.isEmpty()) {
             for (OrderReceiptCollection collection : collections) {
                 totalPaymentAmount = totalPaymentAmount.add(collection.getAmount() == null ? BigDecimal.ZERO : BigDecimal.valueOf(collection.getAmount()));
             }
@@ -240,7 +244,7 @@ public class OrderReceiptService extends AbsService {
 
     public VerificationInfo getVerificationInfo(Long salesOrderId) {
         // 获取销售单总金额
-        SalesOrder salesOrder = salesOrderRepository.findById(salesOrderId).orElseThrow(() -> new RuntimeException("销售单不存在"));
+        SalesOrder salesOrder = salesOrderRepository.findById(salesOrderId).orElseThrow(() -> new ServiceException("销售单不存在"));
 
         BigDecimal documentAmount = salesOrder.getFinalAmount();
 
@@ -258,10 +262,10 @@ public class OrderReceiptService extends AbsService {
         OrderReceipt orderReceipt = jqf.select(qOrderReceipt).from(qOrderReceipt).where(qOrderReceipt.id.eq(supplierFlowId).and(qOrderReceipt.merchantId.eq(merchantId)).and(qOrderReceipt.accountBookId.eq(accountBookId))).fetchOne();
 
         if (orderReceipt == null) {
-            throw new RuntimeException("单据不存在");
+            throw new ServiceException("单据不存在");
         }
         if (OrderStatus.已审核.equals(orderReceipt.getOrderStatus())) {
-            throw new RuntimeException("已审核的单据无法删除");
+            throw new ServiceException("已审核的单据无法删除");
         }
         jqf.delete(qOrderReceipt).where(qOrderReceipt.id.eq(supplierFlowId).and(qOrderReceipt.merchantId.eq(merchantId)).and(qOrderReceipt.accountBookId.eq(accountBookId))).execute();
     }
@@ -269,16 +273,16 @@ public class OrderReceiptService extends AbsService {
     public OrderReceiptDetails selectById(Long id) {
         QMerchantUser qUpdatedByUser = new QMerchantUser("updatedByUser");
         QMerchantUser approvedNameUser = new QMerchantUser("approvedNameUser");
-        OrderReceiptDetailsVO orderReceipt = jqf.select(Projections.bean(OrderReceiptDetailsVO.class, qOrderReceipt, qMerchantUser.name.as("creatorName"), qUpdatedByUser.name.as("updateName"), approvedNameUser.name.as("approvedName"))).from(qOrderReceipt).leftJoin(qCustomer).on(qCustomer.id.eq(qOrderReceipt.customerId)).leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qOrderReceipt.createdBy)).leftJoin(qUpdatedByUser).on(qMerchantUser.id.eq(qOrderReceipt.updateBy)).leftJoin(approvedNameUser).on(approvedNameUser.id.eq(qOrderReceipt.approvedBy)).where(qOrderReceipt.id.eq(id)).fetchOne();
+        OrderReceiptDetailsVO orderReceipt = jqf.select(Projections.bean(OrderReceiptDetailsVO.class, qOrderReceipt.id, qOrderReceipt.customerId, qOrderReceipt.customerName, qOrderReceipt.orderType, qOrderReceipt.orderDate, qOrderReceipt.orderNo, qOrderReceipt.documentSource, qOrderReceipt.discountAmount, qOrderReceipt.collectionAmount, qOrderReceipt.totalAmountsOwed, qOrderReceipt.verificationAmount, qOrderReceipt.advanceCollectionsAmount, qOrderReceipt.shouldVerificationAmount, qOrderReceipt.hasVerificationAmount, qOrderReceipt.notVerificationAmount, qOrderReceipt.writeOffStatus, qOrderReceipt.orderStatus, qOrderReceipt.orderStaffId, qOrderReceipt.orderStatusName, qOrderReceipt.createdBy, qOrderReceipt.updateBy, qOrderReceipt.createdAt, qOrderReceipt.updateAt, qOrderReceipt.approvedBy, qOrderReceipt.approvedAt, qOrderReceipt.accountBookId, qOrderReceipt.merchantId, qMerchantUser.name.as("creatorName"), qUpdatedByUser.name.as("updateName"), approvedNameUser.name.as("approvedName"))).from(qOrderReceipt).leftJoin(qCustomer).on(qCustomer.id.eq(qOrderReceipt.customerId)).leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qOrderReceipt.createdBy)).leftJoin(qUpdatedByUser).on(qMerchantUser.id.eq(qOrderReceipt.updateBy)).leftJoin(approvedNameUser).on(approvedNameUser.id.eq(qOrderReceipt.approvedBy)).where(qOrderReceipt.id.eq(id)).fetchOne();
         if (orderReceipt == null) {
-            throw new RuntimeException("单据不存在");
+            throw new ServiceException("单据不存在");
         }
 
         OrderReceiptDetails dto = new OrderReceiptDetails();
         dto.setOrderReceipt(orderReceipt);
 
 
-        List<OrderReceiptCollection> collectionList = jqf.select(qOrderReceiptCollection).from(qOrderReceiptCollection).where(qOrderReceiptCollection.receiptId.eq(Math.toIntExact(orderReceipt.getId()))).fetch().stream().distinct().toList();
+        List<OrderReceiptCollection> collectionList = jqf.select(qOrderReceiptCollection).from(qOrderReceiptCollection).where(qOrderReceiptCollection.receiptId.eq(orderReceipt.getId().intValue())).fetch().stream().distinct().toList();
         dto.setCollectionList(collectionList);
 
 
@@ -289,29 +293,102 @@ public class OrderReceiptService extends AbsService {
 
     }
 
+    @Transactional
     public void updateStatus(OrderReceipt orderReceipt) {
         if (orderReceipt.getOrderStatus() == null) {
-            throw new RuntimeException("状态为空");
+            throw new ServiceException("状态为空");
         }
         if (orderReceipt.getApprovedBy() == null) {
-            throw new RuntimeException("已审核状态,审核人必填");
+            throw new ServiceException("已审核状态,审核人必填");
         }
         orderReceipt.setUpdateBy(orderReceipt.getUpdateBy());
         orderReceipt.setApprovedAt(LocalDateTime.now());
-        OrderReceipt existing = jqf.select(qOrderReceipt).from(qOrderReceipt).where(qOrderReceipt.id.eq(orderReceipt.getId()).and(qOrderReceipt.merchantId.eq(orderReceipt.getMerchantId())).and(qOrderReceipt.accountBookId.eq(orderReceipt.getAccountBookId()))).fetchOne();
+        OrderReceipt existing = jqf.select(qOrderReceipt).from(qOrderReceipt).where(qOrderReceipt.id.eq(orderReceipt.getId())).fetchOne();
 
         if (existing == null) {
-            throw new RuntimeException("单据不存在");
+            throw new ServiceException("单据不存在");
         }
 
         if (!OrderStatus.已保存.equals(existing.getOrderStatus())) {
-            throw new RuntimeException("该单据不是已保存状态，无法审核");
+            throw new ServiceException("该单据不是已保存状态，无法审核");
         }
         orderReceipt.setUpdateAt(LocalDateTime.now());
-        jqf.update(qOrderReceipt).set(qOrderReceipt.orderStatus, orderReceipt.getOrderStatus()).set(qOrderReceipt.approvedAt, LocalDateTime.now()).set(qOrderReceipt.approvedBy, orderReceipt.getApprovedBy()).where(qOrderReceipt.id.eq(orderReceipt.getId()).and(qOrderReceipt.merchantId.eq(orderReceipt.getMerchantId())).and(qOrderReceipt.accountBookId.eq(orderReceipt.getAccountBookId()))).execute();
+        jqf.update(qOrderReceipt).set(qOrderReceipt.orderStatus, orderReceipt.getOrderStatus()).set(qOrderReceipt.approvedAt, LocalDateTime.now()).set(qOrderReceipt.approvedBy, orderReceipt.getApprovedBy()).where(qOrderReceipt.id.eq(orderReceipt.getId())).execute();
 
     }
 
+    private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
+
+    public Object aListSalesOrders(Page page, OrderReceiptService.SalesQuery query) {
+        if (query.getCustomerId() == null) {
+            throw new ServiceException("客户ID不能为空");
+        }
+        JPAQuery<SalesOrder> jpaQuery = jqf.select(qSalesOrder).from(qSalesOrder);
+        jpaQuery.where(query.builder);
+        jpaQuery.where(qSalesOrder.orderStatus.eq(OrderStatus.已审核));
+        List<SalesOrder> salesOrders = jpaQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
+
+        List<SalesOrderWithVerification> result = new ArrayList<>();
+        for (SalesOrder salesOrder : salesOrders) {
+            BigDecimal documentAmount = salesOrder.getFinalAmount();
+            BigDecimal verifiedAmount = jqf.select(qItem.currentVerifyAmount.sum()).from(qItem).where(qItem.salesOrderId.eq(salesOrder.getId())).fetchOne();
+            if (verifiedAmount == null) {
+                verifiedAmount = BigDecimal.ZERO;
+            }
+            BigDecimal unverifiedAmount = documentAmount.subtract(verifiedAmount);
+            SalesOrderWithVerification vo = new SalesOrderWithVerification();
+            vo.setSalesOrderId(salesOrder.getId());
+            vo.setSalesOrderNo(salesOrder.getOrderNo());
+            vo.setBusinessDate(salesOrder.getOrderDate());
+            vo.setDocumentAmount(documentAmount);
+            vo.setVerifiedAmount(verifiedAmount);
+            vo.setUnverifiedAmount(unverifiedAmount);
+            result.add(vo);
+        }
+
+        return result;
+    }
+
+    @Data
+    public static class SalesOrderWithVerification {
+        private Long salesOrderId;
+        private String salesOrderNo;
+        private Integer businessType = 1;
+        private LocalDate businessDate;
+        private BigDecimal documentAmount;
+        private BigDecimal verifiedAmount;
+        private BigDecimal unverifiedAmount;
+
+    }
+
+    public static class SalesQuery {
+        Long customerId;
+
+        public Long getCustomerId() {
+            return customerId;
+        }
+
+        public final BooleanBuilder builder = new BooleanBuilder();
+
+        public void setMerchantId(Long merchantId) {
+            if (merchantId != null) {
+                builder.and(qSalesOrder.merchantId.eq(merchantId));
+            }
+        }
+
+        public void setAccountBookId(Long accountBookId) {
+            if (accountBookId != null) {
+                builder.and(qSalesOrder.accountBookId.eq(accountBookId));
+            }
+        }
+
+        public void setCustomerId(Long customerId) {
+            this.customerId = customerId;
+            if (customerId != null) {
+                builder.and(qSalesOrder.customerId.eq(customerId));
+            }
+        }
+    }
 
     public static class Query {
 

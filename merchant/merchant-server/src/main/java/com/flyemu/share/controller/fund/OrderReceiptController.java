@@ -47,8 +47,8 @@ public class OrderReceiptController {
     }
 
     @PostMapping("delete")
-    public JsonResult delete(@PathVariable Long orderReceiptId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        orderReceiptService.delete(orderReceiptId, merchantId, accountBookId);
+    public JsonResult delete(@RequestBody OrderReceipt orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        orderReceiptService.delete(orderReceipt.getId(), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
@@ -59,5 +59,9 @@ public class OrderReceiptController {
     @GetMapping("getVerificationInfo")
     public JsonResult getVerificationInfo(Long id) {
         return JsonResult.successful(orderReceiptService.getVerificationInfo(id));
+    }
+    @GetMapping("aListSalesOrders")
+    public JsonResult aListSalesOrders(Page page, OrderReceiptService.SalesQuery query) {
+        return JsonResult.successful(orderReceiptService.aListSalesOrders(page,query));
     }
 }

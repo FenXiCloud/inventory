@@ -9,6 +9,7 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.service.setting.AdminService;
+import com.flyemu.share.service.setting.DDLoginService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final AdminService adminService;
+    private final DDLoginService ddLoginService;
 
 
     @GetMapping
@@ -73,4 +75,10 @@ public class AdminController {
         adminService.updatePassword(adminId, oldPassword, newPassword, merchantId);
         return JsonResult.successful();
     }
+
+    @GetMapping("/addUserByDingDing")
+    public JsonResult addUserByDingDing() {
+        return JsonResult.successful(ddLoginService.addUserByDingDing());
+    }
+
 }

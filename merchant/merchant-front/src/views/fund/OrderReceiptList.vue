@@ -2,16 +2,41 @@
   <div class="frame-page flex flex-column" style="height: auto !important">
     <vxe-toolbar>
       <template #buttons>
-        <Search
-          v-model.trim="params.filter"
+        <!-- <Search
+          v-model.trim="form.filter"
           search-button-theme="h-btn-default"
           show-search-button
           class="w-360px ml-8px"
-          placeholder="请输入订单号/客户名称"
+          placeholder="请输入客户名称"
           @search="doSearch"
         >
           <i class="h-icon-search" />
-        </Search>
+        </Search> -->
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">
+            <span style="color: red">*</span>客户</span
+          >
+          <div style="position: relative;">
+
+          <Select
+          
+            v-model="form.customerName"
+            class="w-120px z-index-1"
+            :datas="customerDataList"
+            keyName="id"
+            titleName="name"
+            placeholder="选择客户"
+            @change="selectCustomer($event)"
+          >
+            <template #bottom>
+              <Button no-border icon="h-icon-plus" @click="addCustomer()"
+                >新建</Button
+              >
+            </template>
+          </Select>
+        </div>
+
+        </div>
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">总欠款</span>
           <Input type="text" class="w-120px" value="123" disabled />
@@ -19,11 +44,22 @@
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">业务员</span>
           <Select
-            v-model="params.state"
+          ref="selectRef"
+          style="z-index: 1;"
+            v-model="form.orderStaffName"
             class="w-120px"
-            :datas="{ 业务员a: '业务员1', 业务员b: '业务员2' }"
+            :datas="orderStaffList"
+            keyName="id"
+            titleName="name"
             placeholder="选择业务员"
-          />
+            @change="selectOrderStaff($event)"
+          >
+            <template #bottom>
+              <Button no-border icon="h-icon-plus" @click="addOrderStaff()"
+                >新建</Button
+              >
+            </template>
+          </Select>
         </div>
 
         <div class="h-input-group">
@@ -253,12 +289,17 @@
         </template>
       </vxe-pager>
     </div> -->
+    
   </div>
 </template>
 <script>
 import manba from 'manba';
+import {layer} from "@layui/layer-vue";
+import {h} from "vue";
 import OrderReceipt from '@js/api/fund/OrderReceipt';
-import { mapMutations } from 'vuex';
+import Customer from '@js/api/basic/Customer';
+// import { mapMutations } from 'vuex';
+import OrderStaffForm from "./OrderStaffForm.vue";
 
 const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
@@ -302,11 +343,19 @@ export default {
     // };
 
     return {
+      val1: [],
+
       form: {},
-      dataList: [{}],
+      tableData,
+      tableData2,
+      customerDataList: [],
+      orderStaffList: [],
+      // customerData: {},
+      // orderStaffData: {},
+
       loading: false,
       amountTotal: 0,
-      totalParams: {},
+      // totalParams: {},
       pagination: {
         page: 1,
         pageSize: 20,
@@ -324,8 +373,6 @@ export default {
       },
       showFooter: true,
 
-      tableData,
-      tableData2,
       editConfig,
       sexOptions,
       footerMethod,
@@ -341,14 +388,12 @@ export default {
     queryParams() {
       return Object.assign(this.params, {
         page: this.pagination.page,
-        pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end
+        pageSize: this.pagination.pageSize
       });
     }
   },
   methods: {
-    ...mapMutations(['pushTab']),
+    // ...mapMutations(['pushTab']),
     footerMethod({ columns, data }) {
       let sums = [];
       columns.forEach((column) => {
@@ -376,20 +421,81 @@ export default {
     },
     doSearch() {
       this.pagination.page = 1;
-      this.loadList();
+      // this.loadList();
     },
-    loadList(type = true) {
+    addEdit() {
       this.loading = true;
-      OrderReceipt.list(this.queryParams)
+      OrderReceipt.addEdit(this.dataParams)
         .then(({ data: { results, total } }) => {
-          this.dataList = results || [{}];
+          this.dataList = results || [];
           this.pagination.total = total;
         })
         .finally(() => (this.loading = false));
-    }
+    },
+    //加载客户列表
+    loadCustomer() {
+      this.loading = true;
+      Customer.list(this.queryParams)
+        .then(({ data: { results, total } }) => {
+          this.customerDataList = results || [];
+          this.pagination.total = total;
+        })
+        .finally(() => (this.loading = false));
+    },
+    //加载业务员列表
+    loadOrderStaff() {
+      OrderReceipt.orderStaffList()
+        .then(({ data }) => {
+          this.orderStaffList = data || [];
+          // this.pagination.total = total;
+        })
+        .finally();
+    },
+    selectCustomer(e) {
+      this.form.customerId = e.id;
+    },
+    selectOrderStaff(e) {
+      this.form.orderStaffId = e.id;
+    },
+    addOrderStaff(){
+      // this.$refs.selectRef?.close()
+      this.showForm();
+    },
+    showForm(entity) {
+      let type = 0;
+      let layerId = layer.open({
+        title: "新增职员",
+        shadeClose: false,
+        closeBtn: false,
+        area: ['600px', '480px'],
+        content: h(OrderStaffForm, {
+          entity, type,
+          onClose: () => {
+            layer.close(layerId);
+          },
+          onSuccess: () => {
+            this.doSearch();
+            layer.close(layerId);
+          }
+        })
+      });
+    },
   },
   created() {
-    this.loadList();
+    this.loadCustomer();
+    this.loadOrderStaff();
   }
 };
 </script>
+<style lang="less" scoped>
+:deep(.vxe-select > .vxe-input) {
+  width: 100%;
+  height: 100%;
+}
+:deep(.h-dropdown) {
+    z-index: 999 !important;
+}
+// .z-index-1{
+//   z-index: 1;
+// }
+</style>

@@ -24,7 +24,6 @@ import java.io.UnsupportedEncodingException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -195,6 +194,34 @@ public class FinanceAccountLinkService extends AbsService {
         finOpsRequest.setBaseUrl(financeAccountLink.getUrl());
         finOpsRequest.setCookie(finOpsRequest.getCookie());
         return finOpsCloudApi.loadWordCode(finOpsRequest, null, word, currentAccountDate);
+    }
+
+    public Object loadVoucherSelect(AccountDto accountDto) {
+        FinanceAccountLink financeAccountLink = this.loadByAccountBookId(accountDto.getAccountBookId());
+        FinOpsRequest finOpsRequest = new FinOpsRequest();
+        finOpsRequest.setAccount(financeAccountLink.getFinanceAccount());
+        finOpsRequest.setPassword(financeAccountLink.getFinancePassword());
+        finOpsRequest.setCallback(cookie -> {
+            financeAccountLink.setFinanceCookie(cookie);
+            financeAccountLinkRepository.save(financeAccountLink);
+        });
+        finOpsRequest.setBaseUrl(financeAccountLink.getUrl());
+        finOpsRequest.setCookie(finOpsRequest.getCookie());
+        return finOpsCloudApi.loadVoucherSelect(finOpsRequest, null);
+    }
+
+    public Object loadVoucherSummary(AccountDto accountDto) {
+        FinanceAccountLink financeAccountLink = this.loadByAccountBookId(accountDto.getAccountBookId());
+        FinOpsRequest finOpsRequest = new FinOpsRequest();
+        finOpsRequest.setAccount(financeAccountLink.getFinanceAccount());
+        finOpsRequest.setPassword(financeAccountLink.getFinancePassword());
+        finOpsRequest.setCallback(cookie -> {
+            financeAccountLink.setFinanceCookie(cookie);
+            financeAccountLinkRepository.save(financeAccountLink);
+        });
+        finOpsRequest.setBaseUrl(financeAccountLink.getUrl());
+        finOpsRequest.setCookie(finOpsRequest.getCookie());
+        return finOpsCloudApi.loadVoucherSummary(finOpsRequest, null);
     }
 
     public static class Query {

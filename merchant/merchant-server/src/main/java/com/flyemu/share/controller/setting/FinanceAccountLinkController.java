@@ -83,4 +83,14 @@ public class FinanceAccountLinkController {
         return JsonResult.successful(financeAccountLinkService.loadCode(word, currentAccountDate, accountDto));
     }
 
+    @GetMapping("/loadVoucherSelect")
+    public JsonResult loadVoucherSelect(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(financeAccountLinkService.loadVoucherSelect(accountDto));
+    }
+
+    @GetMapping("/loadVoucherSummary")
+    public JsonResult loadVoucherSummary(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(financeAccountLinkService.loadVoucherSummary(accountDto));
+    }
+
 }

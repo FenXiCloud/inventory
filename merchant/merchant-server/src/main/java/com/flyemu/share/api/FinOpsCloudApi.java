@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -88,18 +89,9 @@ public class FinOpsCloudApi {
         return res.getInteger("data");
     }
 
-    /**
-     * 加载凭证号
-     *
-     * @param finOpsRequest
-     * @param accountSetsId
-     * @param word
-     * @param currentAccountDate
-     * @return
-     * @throws UnsupportedEncodingException
-     */
-    public JSONObject loadCode(FinOpsRequest finOpsRequest, Long accountSetsId, String word, LocalDate currentAccountDate) throws UnsupportedEncodingException {
-        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/voucher/code" + "?word=" + URLEncoder.encode(word, "UTF-8") + "&currentAccountDate=" + currentAccountDate, accountSetsId, finOpsRequest);
+
+    public JSONObject loadVoucherSelect(FinOpsRequest finOpsRequest, Long accountSetsId) {
+        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/subject/voucher/select", accountSetsId, finOpsRequest);
         log.info("凭证号{}", res);
         return res;
     }
@@ -235,5 +227,11 @@ public class FinOpsCloudApi {
         HttpRequest post = HttpRequest.put(finOpsRequest.getBaseUrl() + "/api/voucher");
         post.body(objectMapper.writeValueAsString(dto), "application/json");
         return execute(post, 0, accountSetsId, finOpsRequest).getJSONObject("data");
+    }
+
+    public Object loadVoucherSummary(FinOpsRequest finOpsRequest, Long accountSetsId) {
+        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/voucher/summary", accountSetsId, finOpsRequest);
+        log.info("凭证号{}", res);
+        return res;
     }
 }

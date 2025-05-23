@@ -50,6 +50,7 @@ export default {
         inventoryId: null,
         inventoryName: null,
         financeId: null,
+        financeCode: null,
         financeName: null,
       },
       validationRules: {
@@ -118,6 +119,7 @@ export default {
             return item.id === this.model.financeId;
           });
           this.model.financeName = filter[0].name;
+          this.model.financeCode = filter[0].code;
           break;
         }
         case 'inventoryId': {

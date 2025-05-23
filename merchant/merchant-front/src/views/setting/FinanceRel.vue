@@ -109,9 +109,10 @@ export default {
     ...mapMutations(['pushTab']),
     toVoucher() {
       let layerId = layer.open({
+        offset: ['50px', 'auto'],
         title: "订单凭证",
         shadeClose: false,
-        area: ['1200px', '600px'],
+        area: ['100%', '600px'],
         content: h(Voucher, {
           onClose: () => {
             layer.close(layerId);

@@ -33,6 +33,9 @@ public class FinanceItemMap {
     @Comment("财务软件辅助类型id")
     private Long categoryId;
 
+    @Comment("财务软件映射辅助类型code")
+    private String financeCode;
+
     @Comment("财务软件映射辅助类型id")
     private Long financeId;
 

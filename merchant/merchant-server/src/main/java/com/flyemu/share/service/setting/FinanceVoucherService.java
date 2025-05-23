@@ -138,6 +138,9 @@ public class FinanceVoucherService extends AbsService {
                 acDetailsDto.setCategoryId(financeItemMap.getCategoryId());
                 acDetailsDto.setCategoryName(financeItemMap.getCategoryName());
                 acDetailsDto.setCategoryType(financeItemMap.getCategoryType());
+                acDetailsDto.setCode(financeItemMap.getFinanceCode());
+                acDetailsDto.setId(financeItemMap.getFinanceId());
+                acDetailsDto.setAccountSetsId(financeAccountLink.getFinanceAccountId());
                 acDetailsDto.setEnable(true);
                 acDetailsDto.setName(name);
                 acDetailsDto.setCreateTime(LocalDateTime.now());

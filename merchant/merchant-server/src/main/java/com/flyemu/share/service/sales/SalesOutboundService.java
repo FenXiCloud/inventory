@@ -24,8 +24,6 @@ import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.inventory.InventoryService;
-import com.flyemu.share.service.setting.AccountBookParametersService;
-import com.flyemu.share.service.setting.AccountBookService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -46,8 +44,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
-import static com.flyemu.share.entity.sales.QSalesOrder.salesOrder;
 
 /**
  * @功能描述: 销售出库单
@@ -129,10 +125,10 @@ public class SalesOutboundService extends AbsService {
 
             //封装销售订单编号返回
             List<String> orderNoList = new ArrayList<>();
-            for (SalesOutboundItemDTO item : itemDTOs){
-                if (item.getSalesOrderId() != null){
+            for (SalesOutboundItemDTO item : itemDTOs) {
+                if (item.getSalesOrderId() != null) {
                     SalesOrder salesOrder = salesOrderRepository.findById(item.getSalesOrderId()).orElse(null);
-                    if (salesOrder != null){
+                    if (salesOrder != null) {
                         String orderNo = salesOrder.getOrderNo();
                         item.setSalesOrderNo(orderNo);
                         orderNoList.add(orderNo);
@@ -158,8 +154,8 @@ public class SalesOutboundService extends AbsService {
                 .where(Q_ACCOUNT_BOOK_PARAMETERS.accountBookId.eq(Math.toIntExact(salesOutbound.getAccountBookId())))
                 .fetchOne();
         if (accountBookParameters != null && accountBookParameters.getCostAccounting() == 1) {
-            log.info("可用库存允许为负,放行 accountBookParameters:{}",  JSONUtil.toJsonStr(salesOutboundItemList));
-        }else{
+            log.info("可用库存允许为负,放行 accountBookParameters:{}", JSONUtil.toJsonStr(salesOutboundItemList));
+        } else {
             for (SalesOutboundItem item : salesOutboundItemList) {
                 Boolean exist = inventoryService.exist(item.getProductId(), item.getWarehouseId(), salesOutbound.getMerchantId(), salesOutbound.getAccountBookId());
                 if (!exist) {
@@ -234,9 +230,9 @@ public class SalesOutboundService extends AbsService {
 
     private void extractedAdd(List<SalesOutboundItem> salesOutboundItemList) {
         List<Long> orderIdList = new ArrayList<>();
-        for (SalesOutboundItem salesOutboundItem : salesOutboundItemList){
+        for (SalesOutboundItem salesOutboundItem : salesOutboundItemList) {
             Long tempId = salesOutboundItem.getTempId();
-            if (tempId == null){
+            if (tempId == null) {
                 continue;
             }
             SalesOrderItem salesOrderItemDB = salesOrderItemRepository.getReferenceById(tempId);
@@ -248,26 +244,26 @@ public class SalesOutboundService extends AbsService {
             //页面传递过来的出库数量
             Double quantityOut = salesOutboundItem.getQuantity();
             SalesOrder order = salesOrderRepository.getById(salesOrderId);
-            if(quantityOut<(quantity+quantityReturn)){
+            if (quantityOut < (quantity + quantityReturn)) {
                 //部分出库 第一此更新，后续有兜底逻辑
                 order.setStatus(1);
                 salesOrderRepository.save(order);
             }
             //出库数量 出库数量是累加的
-            salesOrderItemDB.setQuantityOut(quantityOut+salesOrderItemDB.getQuantityOut());
+            salesOrderItemDB.setQuantityOut(quantityOut + salesOrderItemDB.getQuantityOut());
             salesOrderItemRepository.save(salesOrderItemDB);
 
             orderIdList.add(salesOrderId);
         }
         //orderIdList 去重
         List<Long> distinct = orderIdList.stream().distinct().toList();
-        for(Long salesOrderId : distinct){
+        for (Long salesOrderId : distinct) {
             //兜底逻辑
             SalesOrder salesOrderUpdate = salesOrderRepository.getById(salesOrderId);
             //如果一个订单里面的所有商品都出库完成，将订单状态改成全部出库
             List<SalesOrderItem> salesOrderItemList = jqf.selectFrom(qSalesOrderItem).select(qSalesOrderItem)
                     .where(qSalesOrderItem.salesOrderId.eq(salesOrderId)).fetch();
-            if(salesOrderItemList.stream().allMatch(item -> (item.getQuantityOut() >= (item.getQuantity() + item.getQuantityReturn())))){
+            if (salesOrderItemList.stream().allMatch(item -> (item.getQuantityOut() >= (item.getQuantity() + item.getQuantityReturn())))) {
                 salesOrderUpdate.setStatus(2);
                 salesOrderRepository.save(salesOrderUpdate);
             }
@@ -276,9 +272,9 @@ public class SalesOutboundService extends AbsService {
 
     private void extractedEdit(List<SalesOutboundItem> salesOutboundItemList) {
         List<Long> orderIdList = new ArrayList<>();
-        for (SalesOutboundItem salesOutboundItem : salesOutboundItemList){
+        for (SalesOutboundItem salesOutboundItem : salesOutboundItemList) {
             Long tempId = salesOutboundItem.getTempId();
-            if (tempId == null){
+            if (tempId == null) {
                 continue;
             }
             SalesOrderItem salesOrderItemDB = salesOrderItemRepository.getReferenceById(tempId);
@@ -287,7 +283,7 @@ public class SalesOutboundService extends AbsService {
         }
 
         List<Long> distinct = orderIdList.stream().distinct().toList();
-        for(Long salesOrderId : distinct){
+        for (Long salesOrderId : distinct) {
             SalesOrder salesOrderUpdate = salesOrderRepository.getById(salesOrderId);
             //查询订单id关联的所有出库单商品
             List<SalesOutboundItem> salesOutboundItemListDB = bqf.selectFrom(qSalesOutboundItem)
@@ -295,8 +291,8 @@ public class SalesOutboundService extends AbsService {
                     .fetch();
             //统计所有的出库单商品数量
             Double totalQuantity = salesOutboundItemListDB.stream().mapToDouble(SalesOutboundItem::getQuantity).sum();
-            log.info("销售出库单商品数量：{}",totalQuantity);
-            if(totalQuantity>0){
+            log.info("销售出库单商品数量：{}", totalQuantity);
+            if (totalQuantity > 0) {
                 salesOrderUpdate.setStatus(1);
             }
 
@@ -306,9 +302,9 @@ public class SalesOutboundService extends AbsService {
                     .fetch();
             Double totalQuantityOrder = salesOrderItemListDB.stream().mapToDouble(SalesOrderItem::getQuantity).sum();
 
-            log.info("销售订单商品数量：{}",totalQuantityOrder);
-            if(totalQuantity>=totalQuantityOrder){
-                log.info("全部出库：salesOrderId:{}",salesOrderId);
+            log.info("销售订单商品数量：{}", totalQuantityOrder);
+            if (totalQuantity >= totalQuantityOrder) {
+                log.info("全部出库：salesOrderId:{}", salesOrderId);
                 salesOrderUpdate.setStatus(2);
             }
             salesOrderRepository.save(salesOrderUpdate);
@@ -382,10 +378,10 @@ public class SalesOutboundService extends AbsService {
             salesOutboundItemDTO.setUnitName(tuple.get(qUnit.name));
 
             Long salesOrderId = salesOutboundItemDTO.getSalesOrderId();
-            if (salesOrderId != null){
+            if (salesOrderId != null) {
                 //返回销售订单编号
                 SalesOrder salesOrder = salesOrderRepository.findById(salesOrderId).orElse(null);
-                if (salesOrder != null){
+                if (salesOrder != null) {
                     String orderNo = salesOrder.getOrderNo();
                     salesOutboundItemDTO.setSalesOrderNo(orderNo);
                 }
@@ -414,7 +410,7 @@ public class SalesOutboundService extends AbsService {
             if (orderStatus.equals(OrderStatus.已保存)) {
                 //已关联销售退货单不能审核
                 Long returnOrderId = order.getReturnOrderId();
-                if (returnOrderId != null){
+                if (returnOrderId != null) {
                     Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
                     salesReturnOptional.ifPresent(salesReturn -> {
                         throw new InvalidContextException("已关联销售退货单不能审核");
@@ -444,7 +440,7 @@ public class SalesOutboundService extends AbsService {
         if (orderStatus.equals(OrderStatus.已保存)) {
             //已关联销售退货单不能反审核
             Long returnOrderId = original.getReturnOrderId();
-            if (returnOrderId != null){
+            if (returnOrderId != null) {
                 Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
                 salesReturnOptional.ifPresent(salesReturn -> {
                     throw new InvalidContextException("已关联销售退货单不能反审核");
@@ -483,9 +479,17 @@ public class SalesOutboundService extends AbsService {
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         outboundItems.forEach(otherOutboundItem -> {
             Double quantity = otherOutboundItem.getQuantity();
-            BigDecimal subtotal = otherOutboundItem.getSubtotal();
+            Long productId = otherOutboundItem.getProductId();
+            // 获取商品单价
+            Product product = productRepository.findById(productId).orElse(null);
+            if (product == null) {
+                return;
+            }
+            BigDecimal price = product.getPurchasePrice();
+            // 金额取数为商品金额加数量
+            BigDecimal subtotal = price.multiply(new BigDecimal(quantity)).setScale(2, RoundingMode.HALF_EVEN);
             inventories.stream()
-                    .filter(item -> item.getProductId().equals(otherOutboundItem.getProductId())
+                    .filter(item -> item.getProductId().equals(productId)
                             && item.getWarehouseId().equals(otherOutboundItem.getWarehouseId()))
                     .findFirst()
                     .ifPresentOrElse(

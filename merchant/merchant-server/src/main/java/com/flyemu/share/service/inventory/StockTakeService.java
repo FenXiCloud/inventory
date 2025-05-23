@@ -104,7 +104,16 @@ public class StockTakeService extends AbsService {
             if (fetched.isEmpty()) {
                 dto.setWarehouseName("全部仓库");
             } else {
-                dto.setWarehouseName(String.join(",", fetched));
+                StringBuilder warehouseName = new StringBuilder();
+                fetched.forEach(name -> {
+                    if (StrUtil.isNotEmpty(name)) {
+                        warehouseName.append(name).append(",");
+                    }
+                });
+                if (!warehouseName.isEmpty()) {
+                    warehouseName.deleteCharAt(warehouseName.length() - 1);
+                }
+                dto.setWarehouseName(warehouseName.toString());
             }
             Admin admin = jqf.selectFrom(qAdmin).where(qAdmin.id.eq(dto.getCreatedBy())).fetchOne();
             if (admin != null) {

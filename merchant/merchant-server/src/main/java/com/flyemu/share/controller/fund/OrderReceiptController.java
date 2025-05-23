@@ -6,6 +6,7 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.OrderReceipt;
 import com.flyemu.share.service.fund.OrderReceiptService;
+import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.service.fund.dto.OrderReceiptSaveDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,13 +42,13 @@ public class OrderReceiptController {
     }
 
     @PostMapping("updateStatus")
-    public JsonResult updateStatus(@RequestBody OrderReceipt orderReceipt) {
+    public JsonResult updateStatus(@RequestBody OrderPaymentUpdateDTO orderReceipt) {
         orderReceiptService.updateStatus(orderReceipt);
         return JsonResult.successful();
     }
 
     @PostMapping("delete")
-    public JsonResult delete(@RequestBody OrderReceipt orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@RequestBody OrderPaymentUpdateDTO orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         orderReceiptService.delete(orderReceipt.getId(), merchantId, accountBookId);
         return JsonResult.successful();
     }
@@ -56,11 +57,8 @@ public class OrderReceiptController {
     public JsonResult selectById(Long id) {
         return JsonResult.successful(orderReceiptService.selectById(id));
     }
-    @GetMapping("getVerificationInfo")
-    public JsonResult getVerificationInfo(Long id) {
-        return JsonResult.successful(orderReceiptService.getVerificationInfo(id));
-    }
-    @GetMapping("aListSalesOrders")
+
+    @GetMapping("writeOffTheOrder")
     public JsonResult aListSalesOrders(Page page, OrderReceiptService.SalesQuery query) {
         return JsonResult.successful(orderReceiptService.aListSalesOrders(page,query));
     }

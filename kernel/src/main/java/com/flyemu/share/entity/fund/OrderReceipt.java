@@ -77,7 +77,7 @@ public class OrderReceipt {
     @Comment("业务员ID")
     private Long orderStaffId;
     @Comment("业务员名称")
-    private String orderStatusName;
+    private String orderStaffName;
 
     @Comment("创建人")
     private Long createdBy;
@@ -99,4 +99,8 @@ public class OrderReceipt {
 
     @Column(nullable = false)
     private Long merchantId;
+
+    @Comment("备注")
+    private String remarks;
+
 }

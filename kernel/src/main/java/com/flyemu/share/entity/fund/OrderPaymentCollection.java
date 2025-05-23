@@ -12,7 +12,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
- * (OrderReceiptCollection)实体类
+ * (OrderPaymentCollection)实体类
  *
  * @author shuaiqi
  * @since 2025-05-20 11:29:36
@@ -23,7 +23,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @Table
 @DynamicUpdate
-public class OrderReceiptCollection implements Serializable {
+public class OrderPaymentCollection implements Serializable {
     @Serial
     private static final long serialVersionUID = -45726432745131115L;
     @Id
@@ -32,10 +32,12 @@ public class OrderReceiptCollection implements Serializable {
     /**
      * 收款单ID
      */
-    private Integer receiptId;
+    @Comment("收款单ID")
+    private Integer paymentId;
     /**
      * 结算账户 cash现金，bank_deposit银行，wechat_pay微信，alipay支付宝
      */
+    @Comment("结算账户 cash现金，bank_deposit银行，wechat_pay微信，alipay支付宝")
     private String settlementAccount;
     /**
      * 结算方式
@@ -46,14 +48,17 @@ public class OrderReceiptCollection implements Serializable {
     /**
      * 收款金额
      */
+    @Comment("金额")
     private BigDecimal amount;
     /**
      * 备注
      */
+    @Comment("备注")
     private String remarks;
     /**
      * 在线交易单号
      */
+    @Comment("结算号")
     private String theOnlineTransactionNumber;
 
 }

@@ -6,12 +6,13 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.Verification;
 import com.flyemu.share.service.fund.VerificationService;
+import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
+import com.flyemu.share.service.fund.dto.VerificationSaveDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * @功能描述: 收款单
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -32,28 +33,29 @@ public class VerificationController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid Verification verification, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        verification.setMerchantId(merchantId);
-        verification.setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody VerificationSaveDTO verification, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        verification.getOrder().setMerchantId(merchantId);
+        verification.getOrder().setAccountBookId(accountBookId);
         verificationService.save(verification);
         return JsonResult.successful();
     }
 
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid Verification verification) {
-        verificationService.save(verification);
+
+    @PostMapping("updateStatus")
+    public JsonResult updateStatus(@RequestBody OrderPaymentUpdateDTO orderReceipt) {
+        verificationService.updateStatus(orderReceipt);
+        return JsonResult.successful();
+    }
+    @PostMapping("delete")
+    public JsonResult delete(@RequestBody OrderPaymentUpdateDTO verification, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        verificationService.delete(verification.getId(), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @DeleteMapping("/{verificationId}")
-    public JsonResult delete(@PathVariable Long verificationId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        verificationService.delete(verificationId, merchantId, accountBookId);
-        return JsonResult.successful();
+    @GetMapping("selectById")
+    public JsonResult selectById(Long id) {
+        return JsonResult.successful(verificationService.selectById(id));
     }
 
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(verificationService.select(merchantId, accountBookId));
-    }
 
 }

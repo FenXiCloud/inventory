@@ -203,7 +203,7 @@ public class InventoryItemService extends AbsService {
                         qInventoryItem.currentQuantity.as("currentQuantity"),
                         qInventoryItem.totalCost.as("totalCost"),
                         qInventoryItem.averageCost.as("averageCost"),
-                        qFinanceVoucher.id.as("voucherId"),
+                        qFinanceVoucher.voucherId.as("voucherId"),
                         qFinanceVoucher.code.as("voucherCode")
                 )
                 .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
@@ -252,7 +252,7 @@ public class InventoryItemService extends AbsService {
             dto.setAverageCost(tuple.get(qInventoryItem.averageCost.as("averageCost")));
             dto.setCurrentQuantity(tuple.get(qInventoryItem.currentQuantity.as("currentQuantity")));
             dto.setQuantity(tuple.get(qInventoryItem.quantity.as("quantity")));
-            dto.setVoucherId(tuple.get(qFinanceVoucher.id.as("voucherId")));
+            dto.setVoucherId(tuple.get(qFinanceVoucher.voucherId.as("voucherId")));
             dto.setVoucherCode(tuple.get(qFinanceVoucher.code.as("voucherCode")));
             dtos.add(dto);
         }

@@ -156,6 +156,7 @@ import jQuery from 'jquery';
 import Decimal from 'decimal.js';
 import Pinyin from 'chinese-to-pinyin';
 import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
+import FinanceVoucher from "@js/api/setting/FinanceVoucher";
 
 const detail = {
   zyEdit: false,
@@ -416,20 +417,21 @@ export default {
         this.summarySelect = JSON.parse(tmp2);
       }
       FinanceAccountLink.loadVoucherSelect().then(({data}) => {
-        this.voucherSelect = data || [];
+        console.log(data);
+        this.voucherSelect = data.data || [];
         localStorage.setItem("voucherSelect", JSON.stringify(data));
       });
 
-      FinanceAccountLink.loadVoucherSummary().then(({data}) => {
-        let newData = data.map(val => {
-          return {
-            name: val,
-            mnemonicCode: ToPy(val)
-          }
-        });
-        this.summarySelect = newData;
-        localStorage.setItem("summarySelect", JSON.stringify(newData));
-      });
+      // FinanceAccountLink.loadVoucherSummary().then(({data}) => {
+      //   let newData = data.map(val => {
+      //     return {
+      //       name: val,
+      //       mnemonicCode: ToPy(val)
+      //     }
+      //   });
+      //   this.summarySelect = newData;
+      //   localStorage.setItem("summarySelect", JSON.stringify(newData));
+      // });
     },
     chooseSummary(d, summary, idx) {
       d.data.summary = summary;
@@ -453,6 +455,7 @@ export default {
       }
       //判断是否有辅助项目
       if (subject.auxiliaryAccounting) {
+        console.info("subject.auxiliaryAccounting:",subject.auxiliaryAccounting);
         this.auxiliaryAccounting[idx] = JSON.parse(subject.auxiliaryAccounting);
         this.loadAuxiliaryAccountingData(idx, subject);
         //开启辅助项输入
@@ -467,11 +470,11 @@ export default {
     },
     loadSubjectBalance(d, subjectId) {
       if (!this.balanceList[subjectId]) {
-        this.$api.setting.subject.balance({subjectId: subjectId}).then(({data}) => {
+        FinanceVoucher.balance({subjectId: subjectId}).then(({data}) => {
           this.balanceList[subjectId] = data;
           this.initBalanceList[subjectId] = data;
           d.balance = data;
-        })
+        });
       } else {
         d.balance = this.balanceList[subjectId];
       }
@@ -480,8 +483,8 @@ export default {
       this.details = initDetails();
     },
     loadAuxiliaryAccountingData(idx, subject) {
-      if (!this.auxiliaryAccountingData[subject.id]) {
-        this.$api.setting.accountingCategoryDetails.loadAuxiliaryAccountingData(this.auxiliaryAccounting[idx]).then(({data}) => {
+      if (this.auxiliaryAccountingData[subject.id]) {
+        FinanceVoucher.loadAuxiliaryAccountingData(this.auxiliaryAccounting[idx]).then(({data}) => {
           this.auxiliaryAccountingData[subject.id] = data;
         });
       }

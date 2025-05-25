@@ -27,7 +27,7 @@ public class VoucherDto implements Serializable {
     private LocalDateTime createDate;
     private BigDecimal debitAmount;
     private BigDecimal creditAmount;
-    private Long accountSetsId;
+    private String accountSetsId;
     private Integer year;
     private Integer month;
     private LocalDate voucherDate;

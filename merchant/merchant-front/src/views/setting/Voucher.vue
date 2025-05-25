@@ -33,7 +33,9 @@
                 <template #default="{row}">
                   <span v-if="!row.voucherCode" class="primary-color  text-hover ml-10px"
                         @click="pushVoucher(row)">推送</span>
-                  <span v-else class="primary-color  text-hover ml-10px" @click="editVoucher(row)">编辑</span>
+                  <span v-else class="primary-color  text-hover ml-10px" @click="editVoucher(row,'edit')">编辑</span>
+                  <span v-if="row.voucherCode" class="primary-color  text-hover ml-10px"
+                        @click="editVoucher(row,'look')">查看</span>
                 </template>
               </vxe-column>
               <vxe-column title="商品编号" field="productCode" align="center" width="130"/>
@@ -212,6 +214,7 @@ export default {
       console.info("showForm:", id)
       let layerId = layer.open({
         title: "选择生成凭证",
+        offset: ['50px', 'auto'],
         shadeClose: false,
         area: ['90%', '600px'],
         content: h(VoucherForm, {
@@ -287,14 +290,15 @@ export default {
         }
       });
     },
-    editVoucher(row) {
-      console.info("<UNK>:", row);
+    editVoucher(row, type) {
       let layerId = layer.open({
         title: "编辑凭证",
+        offset: 't',
         shadeClose: false,
-        area: ['90%', '600px'],
+        area: ['90%', '700px'],
         content: h(VoucherForm, {
-          code: row.voucherCode,
+          voucherId: row.voucherId,
+          type: type,
           onClose: () => {
             this.loadList();
             layer.close(layerId);

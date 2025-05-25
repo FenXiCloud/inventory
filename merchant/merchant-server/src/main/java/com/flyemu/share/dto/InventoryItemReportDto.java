@@ -134,7 +134,7 @@ public class InventoryItemReportDto implements Serializable {
     /**
      * 凭证id
      */
-    private Long voucherId;
+    private String voucherId;
 
     /**
      * 凭证code

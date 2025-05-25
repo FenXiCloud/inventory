@@ -1,14 +1,13 @@
 <template>
   <div class="h-panel" style="width: 1000px;margin: 0 auto;padding-top: 20px;">
     <div class="padding-right-left">
-      <Row type="flex" :space-x="20">
+      <Row type="flex" :space-x="20" v-if="type !== 'look'">
         <Cell>
-          <Button :disabled="!canSave || !!form.auditMemberId" color="primary" @click="save(false)"
-                  :loading="loading">保存
+          <Button color="primary" @click="save(false)" :loading="loading">保存
           </Button>
         </Cell>
       </Row>
-      <Row class="margin-top" type="flex" :space-x="10">
+      <Row class="mt-20px mb-20px margin" type="flex" :space-x="10">
         <Cell>
           <Select @change="loadCode" keyName="word" titleName="word" style="min-width: 70px" :deletable="false"
                   :datas="voucherWords" v-model="form.word" placeholder="记"/>
@@ -38,7 +37,7 @@
       </Row>
     </div>
     <voucher-table ref="voucherTable" v-model="voucherTable"/>
-    <div class="padding-right-left padding-bottom">
+    <div class="padding-right-left padding-bottom mt-20px">
       制单人：{{ user.admin.name }}
     </div>
   </div>
@@ -48,6 +47,8 @@ import VoucherTable from "@/views/common/VoucherTable.vue";
 import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
 import {mapState} from 'vuex';
 import manba from "manba";
+import {message} from "heyui.ext";
+import FinanceVoucher from "@js/api/setting/FinanceVoucher";
 
 export default {
   name: "VoucherForm",
@@ -55,14 +56,15 @@ export default {
   inject: ['reload'],
   props: {
     voucherId: [Number, String],
+    type: String
   },
   computed: {
     ...mapState(["user", "accountBook"]),
     voucherItems() {
-      return this.voucherTable.voucherItems;
+      return this.$refs.voucherTable.voucherItems;
     },
     canSave() {
-      return this.voucherItems.length > 0
+      return this.$refs.voucherTable.voucherItems.length > 0
     },
   },
   data() {
@@ -117,12 +119,12 @@ export default {
     },
     save(next) {
       if (!this.form.code) {
-        this.$Message("亲，请输入编号！");
+        message.warn("亲，请输入编号！");
         return
       }
 
       if (!this.voucherItems.length) {
-        this.$Message("亲，第1行不能为空！");
+        message.warn("亲，第1行不能为空！");
         return
       }
 
@@ -131,34 +133,18 @@ export default {
       }
 
       if (this.voucherTable.jfTotal != this.voucherTable.dfTotal) {
-        this.$Message("亲，借贷不平衡！");
+        message.warn("亲，借贷不平衡！");
         return
       }
 
       this.loading = true;
-      this.$api.voucher[this.voucherId ? 'update' : 'save'](Object.assign({}, this.form, {
+      FinanceVoucher.upVoucher(Object.assign({}, this.form, {
         details: this.voucherItems,
         createMember: this.user.id
       })).then(({success, data}) => {
-        if (success && !this.form.id) {
-          if (next) {
-            if (!this.isCheck) {
-              this.reload();
-            } else {
-              this.$router.back();
-            }
-          } else {
-            this.$router.push({name: 'VoucherForm', params: {voucherId: data.id}});
-          }
-        }
-
         this.loading = false;
-        this.$Message("亲，保存成功！");
-
-        //如果是结转凭证就返回
-        if (this.$route.params.checkData) {
-          this.$router.back();
-        }
+        message.warn("亲，保存成功！");
+        this.$emit('success', data);
       }).catch(() => {
         this.loading = false;
       });
@@ -173,14 +159,18 @@ export default {
       }
 
       if (row > -1) {
-        this.$Message(`亲，第${row}行，请输入${name}！`);
+        message.warn(`亲，第${row}行，请输入${name}！`);
         return true;
       }
     },
     init() {
       if (this.voucherId) {
-        this.$api.voucher.load(this.voucherId).then(({data}) => {
+        FinanceVoucher.loadVoucher({
+          voucherId: this.voucherId,
+        }).then(({data: response}) => {
+          const {data} = response;
           this.$refs.voucherTable.initValue(data.details);
+          console.info(this.$refs.voucherTable.value);
           this.voucher = data;
           this.form = {
             id: data.id,
@@ -191,7 +181,7 @@ export default {
             carryForward: data.carryForward,
             code: data.code
           };
-        })
+        });
       } else {
         this.form.voucherDate = manba(this.accountBook.currentAccountDate).endOf('month').format('YYYY-MM-DD');
       }
@@ -201,7 +191,7 @@ export default {
     },
   },
   mounted() {
-    console.info("this.accountBook:",this.accountBook);
+    console.info("this.accountBook:", this.accountBook);
     this.dpOps["start"] = manba(this.accountBook.enableDate).format("YYYY-MM-DD");
     this.init();
   }
@@ -222,6 +212,11 @@ export default {
   position: absolute;
   z-index: 100;
   right: 100px;
+}
+
+.margin {
+  display: flex;
+  align-items: center;
 }
 </style>
 

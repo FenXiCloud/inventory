@@ -31,13 +31,13 @@ public class FinanceItemMap {
     private String categoryName;
 
     @Comment("财务软件辅助类型id")
-    private Long categoryId;
+    private String categoryId;
 
     @Comment("财务软件映射辅助类型code")
     private String financeCode;
 
     @Comment("财务软件映射辅助类型id")
-    private Long financeId;
+    private String financeId;
 
     @Comment("财务软件映射辅助类型名称")
     private String financeName;

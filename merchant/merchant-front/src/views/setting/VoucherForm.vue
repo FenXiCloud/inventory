@@ -138,16 +138,17 @@ export default {
       }
 
       this.loading = true;
-      FinanceVoucher.upVoucher(Object.assign({}, this.form, {
-        details: this.voucherItems,
-        createMember: this.user.id
-      })).then(({success, data}) => {
-        this.loading = false;
-        message.warn("亲，保存成功！");
-        this.$emit('success', data);
-      }).catch(() => {
-        this.loading = false;
-      });
+      console.info("details",this.voucherItems)
+      // FinanceVoucher.upVoucher(Object.assign({}, this.form, {
+      //   details: this.voucherItems,
+      //   createMember: this.user.id
+      // })).then(({success, data}) => {
+      //   this.loading = false;
+      //   message.warn("亲，保存成功！");
+      //   this.$emit('success', data);
+      // }).catch(() => {
+      //   this.loading = false;
+      // });
     },
     checkItem(name, field) {
       let i = 0, len = this.voucherItems.length, row = -1;

@@ -85,11 +85,11 @@
               <div v-else class="auxiliary padding">
                 <Row v-if="auxiliaryAccounting[i]" v-for="item in auxiliaryAccounting[i]" type="flex" :space="10"
                      :key="item.id">
-                  <Cell :flex="1" class="label">{{ item.name }}</Cell>
+<!--                  <Cell :flex="1" class="label">{{ item.name }}</Cell>-->
                   <Cell v-width="180">
                     <Select v-model="d.data[item.id]" v-if="auxiliaryAccountingData[d.data.subjectId]" type="object"
                             className="auxiliary" keyName="id" titleName="name"
-                            :datas="auxiliaryAccountingData[d.data.subjectId][item.id]" :filterable="true"></Select>
+                            :datas="auxiliaryAccountingData[d.data.subjectId]" :filterable="true"></Select>
                   </Cell>
                 </Row>
                 <div class="text-center margin-top">
@@ -439,6 +439,7 @@ export default {
       this.$refs.zyDropdown[idx].hide();
     },
     chooseSubject(d, subject, idx) {
+      console.log(subject);
       if (d.data.subjectId !== subject.id) {
         d.data = {
           subjectName: `${subject.code}-${subject.name}`,
@@ -455,7 +456,7 @@ export default {
       }
       //判断是否有辅助项目
       if (subject.auxiliaryAccounting) {
-        console.info("subject.auxiliaryAccounting:",subject.auxiliaryAccounting);
+        console.info("subject.auxiliaryAccounting:", subject.auxiliaryAccounting);
         this.auxiliaryAccounting[idx] = JSON.parse(subject.auxiliaryAccounting);
         this.loadAuxiliaryAccountingData(idx, subject);
         //开启辅助项输入
@@ -483,13 +484,14 @@ export default {
       this.details = initDetails();
     },
     loadAuxiliaryAccountingData(idx, subject) {
-      if (this.auxiliaryAccountingData[subject.id]) {
-        FinanceVoucher.loadAuxiliaryAccountingData(this.auxiliaryAccounting[idx]).then(({data}) => {
+      if (!this.auxiliaryAccountingData[subject.id]) {
+        FinanceVoucher.loadAuxiliaryAccountingData({ids: this.auxiliaryAccounting[idx]}).then(({data}) => {
           this.auxiliaryAccountingData[subject.id] = data;
         });
       }
     },
     fillAuxiliary(row, auxiliaryData, idx) {
+      console.info("auxiliary:", auxiliaryData);
       let title = "", rowData = row.data;
       Object.keys(auxiliaryData).forEach(val => {
         if (rowData[val]) {

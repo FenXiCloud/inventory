@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -60,8 +61,9 @@ public class FinanceVoucherController {
         return JsonResult.successful(balance);
     }
 
-    @PostMapping("loadAuxiliaryAccountingData")
-    public JsonResult loadAuxiliaryAccountingData(@RequestBody List<Map<String, Object>> categories, @SaAccountVal AccountDto accountDto) {
+    @GetMapping("loadAuxiliaryAccountingData")
+    public JsonResult loadAuxiliaryAccountingData(String ids, @SaAccountVal AccountDto accountDto) {
+        List<String> categories = Arrays.stream(ids.split(",")).toList();
         Object auxiliaryAccountingData = financeVoucherService.loadAuxiliaryAccountingData(categories, accountDto);
         return JsonResult.successful(auxiliaryAccountingData);
     }

@@ -253,12 +253,12 @@ public class FinOpsCloudApi {
         return execute.getDouble("data");
     }
 
-    public Object loadAuxiliaryAccountingData(FinOpsRequest finOpsRequest, String accountSetsId, List<Map<String, Object>> categories) {
-        HttpRequest post = HttpUtil.createPost(finOpsRequest.getBaseUrl() + "/api/accounting-category-details/loadAuxiliaryAccountingData");
-        post.body(JSON.toJSONString(categories), "application/json");
+    public Object loadAuxiliaryAccountingData(FinOpsRequest finOpsRequest, String accountSetsId, List<String> ids) {
+        HttpRequest post = HttpUtil.createPost(finOpsRequest.getBaseUrl() + "/api/accounting-category/byid");
+        post.body(JSON.toJSONString(ids), "application/json");
         JSONObject execute = execute(post, 0, accountSetsId, finOpsRequest);
         log.info("loadAuxiliaryAccountingData{}", execute);
-        return execute.getDouble("data");
+        return execute.getJSONArray("data");
     }
 
     public Object loadVoucher(FinOpsRequest finOpsRequest, String accountSetsId, String voucherId) {

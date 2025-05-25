@@ -212,12 +212,12 @@ public class FinanceVoucherService extends AbsService {
         return financeAccountLinkService.balance(subjectId, categoryId, categoryDetailsId, accountDto);
     }
 
-    public Object loadAuxiliaryAccountingData(List<Map<String, Object>> categories, AccountDto accountDto) {
+    public Object loadAuxiliaryAccountingData(List<String> ids, AccountDto accountDto) {
         FinanceAccountLink financeAccountLink = financeAccountLinkService.loadByAccountBookId(accountDto.getAccountBookId());
         if (financeAccountLink == null) {
             throw new ServiceException("未配置关联财务云软件～");
         }
-        return financeAccountLinkService.loadAuxiliaryAccountingData(categories, accountDto);
+        return financeAccountLinkService.loadAuxiliaryAccountingData(ids, accountDto);
     }
 
     public Object loadVoucher(String voucherId, AccountDto accountDto) {

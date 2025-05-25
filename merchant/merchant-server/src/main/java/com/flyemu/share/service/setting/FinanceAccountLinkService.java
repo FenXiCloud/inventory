@@ -201,9 +201,9 @@ public class FinanceAccountLinkService extends AbsService {
         return finOpsCloudApi.balance(finOpsRequest, null, subjectId, categoryId, categoryDetailsId);
     }
 
-    public Object loadAuxiliaryAccountingData(List<Map<String, Object>> categories, AccountDto accountDto) {
+    public Object loadAuxiliaryAccountingData(List<String> ids, AccountDto accountDto) {
         FinOpsRequest finOpsRequest = getFinOpsRequest(accountDto.getAccountBookId());
-        return finOpsCloudApi.loadAuxiliaryAccountingData(finOpsRequest, null, categories);
+        return finOpsCloudApi.loadAuxiliaryAccountingData(finOpsRequest, null, ids);
     }
 
     private FinOpsRequest getFinOpsRequest(Long accountBookId) {

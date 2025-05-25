@@ -40,13 +40,37 @@
           </template>
         </vxe-column>
         <vxe-column field="productCode" title="商品编码" width="240"></vxe-column>
-        <vxe-column title="商品信息" width="180" align="center">
+        <vxe-column title="商品信息" align="center" min-width="300">
           <template #default="scope">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
-                      keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false">
+                      keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false"
+                      :dropdown-width="750" :equalWidth="false">
+                <template v-slot:top>
+                  <table class="h-table" style="width: 100%">
+                    <thead class="h-table-header">
+                    <tr>
+                      <td width="150" align="center">商品编号</td>
+                      <td width="150" align="center">商品图片</td>
+                      <td width="150" align="center">商品名称</td>
+                      <td width="150" align="center">商品类别</td>
+                      <td width="150" align="center">商品规格</td>
+                    </tr>
+                    </thead>
+                  </table>
+                </template>
                 <template v-slot:item="{ item }">
-                  <div>{{ item.name }}</div>
+                  <table>
+                    <tbody class="h-table-body-table">
+                    <tr>
+                      <td width="150" align="center">{{ item.code }}</td>
+                      <td width="150" align="center">{{ item.imageUrl }}</td>
+                      <td width="150" align="center">{{ item.name }}</td>
+                      <td width="150" align="center">{{ item.productCategoryName }}</td>
+                      <td width="150" align="center">{{ item.specification }}</td>
+                    </tr>
+                    </tbody>
+                  </table>
                 </template>
               </Select>
             </div>
@@ -789,5 +813,11 @@ export default {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+
+/* 假设下拉面板有 .select-dropdown-panel 这个类名 */
+.select-dropdown-panel {
+  min-width: 750px !important;
+  width: auto !important;
 }
 </style>

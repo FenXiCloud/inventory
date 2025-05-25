@@ -437,6 +437,7 @@ export default {
         customerLevelPriceList.forEach(cp => {
           if(cp.customerLevelId === this.customerLevelId && d.id === cp.productId){
             this.customerPrice = cp.price;
+            return;
           }
         })
       }

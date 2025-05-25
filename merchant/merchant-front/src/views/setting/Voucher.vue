@@ -33,7 +33,7 @@
                 <template #default="{row}">
                   <span v-if="!row.voucherCode" class="primary-color  text-hover ml-10px"
                         @click="pushVoucher(row)">推送</span>
-                  <span v-else class="primary-color  text-hover ml-10px" @click="pushVoucher(row)">重新推送</span>
+<!--                  <span v-else class="primary-color  text-hover ml-10px" @click="pushVoucher(row)">重新推送</span>-->
                   <span v-if="row.voucherCode" class="primary-color  text-hover ml-10px"
                         @click="editVoucher(row,'look')">查看</span>
                 </template>

@@ -45,6 +45,9 @@ public class FinanceItemMap {
     @Comment("进销存映射辅助类型id")
     private Long inventoryId;
 
+    @Comment("进销存映射辅助类型code")
+    private String inventoryCode;
+
     @Comment("进销存映射辅助类型名称")
     private String inventoryName;
 

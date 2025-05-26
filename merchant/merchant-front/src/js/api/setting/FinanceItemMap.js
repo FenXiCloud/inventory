@@ -7,6 +7,9 @@ export default {
     save(param) {
         return Ajax.post('/financeItemMap/save', param)
     },
+    batchSave(param) {
+        return Ajax.post('/financeItemMap/batchSave', param)
+    },
     delete(id) {
         return Ajax.delete("/financeItemMap/" + id);
     },

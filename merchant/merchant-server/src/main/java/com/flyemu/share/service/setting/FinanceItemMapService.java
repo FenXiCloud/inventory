@@ -74,7 +74,7 @@ public class FinanceItemMapService extends AbsService {
         return financeItemMapRepository.findById(id).orElseThrow(RuntimeException::new);
     }
 
-    public FinanceItemMap findByCategoryIdAndInventoryId(Long categoryId, Long inventoryId) {
+    public FinanceItemMap findByCategoryIdAndInventoryId(String categoryId, Long inventoryId) {
         List<FinanceItemMap> byCategoryType = financeItemMapRepository.findByCategoryIdAndInventoryId(categoryId, inventoryId);
         if (byCategoryType.isEmpty()) {
             return null;
@@ -86,7 +86,7 @@ public class FinanceItemMapService extends AbsService {
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
-        private Long categoryId;
+        private String categoryId;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {

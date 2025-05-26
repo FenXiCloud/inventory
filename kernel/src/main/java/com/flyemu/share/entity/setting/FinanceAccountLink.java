@@ -38,7 +38,7 @@ public class FinanceAccountLink {
     private Long accountBookId;
 
     @Comment("财务软件账套ID")
-    private Long financeAccountId;
+    private String financeAccountId;
 
     @Comment("财务软件账套名称")
     private String financeAccountName;

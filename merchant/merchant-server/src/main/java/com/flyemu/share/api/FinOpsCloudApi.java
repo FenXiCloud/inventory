@@ -1,5 +1,6 @@
 package com.flyemu.share.api;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpException;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
@@ -82,29 +83,20 @@ public class FinOpsCloudApi {
      * @return
      * @throws UnsupportedEncodingException
      */
-    public Integer loadWordCode(FinOpsRequest finOpsRequest, Long accountSetsId, String word, LocalDate currentAccountDate) throws UnsupportedEncodingException {
+    public Integer loadWordCode(FinOpsRequest finOpsRequest, String accountSetsId, String word, LocalDate currentAccountDate) throws UnsupportedEncodingException {
         JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/voucher/code" + "?word=" + URLEncoder.encode(word, "UTF-8") + "&currentAccountDate=" + currentAccountDate, accountSetsId, finOpsRequest);
         log.info("凭证号{}", res);
         return res.getInteger("data");
     }
 
-    /**
-     * 加载凭证号
-     *
-     * @param finOpsRequest
-     * @param accountSetsId
-     * @param word
-     * @param currentAccountDate
-     * @return
-     * @throws UnsupportedEncodingException
-     */
-    public JSONObject loadCode(FinOpsRequest finOpsRequest, Long accountSetsId, String word, LocalDate currentAccountDate) throws UnsupportedEncodingException {
-        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/voucher/code" + "?word=" + URLEncoder.encode(word, "UTF-8") + "&currentAccountDate=" + currentAccountDate, accountSetsId, finOpsRequest);
+
+    public JSONObject loadVoucherSelect(FinOpsRequest finOpsRequest, String accountSetsId) {
+        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/subject/voucher/select", accountSetsId, finOpsRequest);
         log.info("凭证号{}", res);
         return res;
     }
 
-    private JSONObject executeJson(int retry, String url, Long accountSetsId, FinOpsRequest finOpsRequest) {
+    private JSONObject executeJson(int retry, String url, String accountSetsId, FinOpsRequest finOpsRequest) {
         HttpRequest request = HttpUtil.createGet(url);
         request.header("cookie", finOpsRequest.getCookie());
         if (accountSetsId != null) {
@@ -134,7 +126,7 @@ public class FinOpsCloudApi {
     }
 
 
-    private JSONObject execute(HttpRequest post, int retry, Long accountSetsId, FinOpsRequest finOpsRequest) {
+    private JSONObject execute(HttpRequest post, int retry, String accountSetsId, FinOpsRequest finOpsRequest) {
         post.header("cookie", finOpsRequest.getCookie());
         if (accountSetsId != null) {
             post.header("accountSetId", accountSetsId.toString());
@@ -169,7 +161,7 @@ public class FinOpsCloudApi {
      * @param accountSetsId
      * @return
      */
-    public JSONArray loadVoucherWord(FinOpsRequest finOpsRequest, Long accountSetsId) {
+    public JSONArray loadVoucherWord(FinOpsRequest finOpsRequest, String accountSetsId) {
         JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/voucher-word", accountSetsId, finOpsRequest);
         log.info("加载凭证字{}", res);
         return res.getJSONArray("data");
@@ -182,7 +174,7 @@ public class FinOpsCloudApi {
      * @param accountSetsId
      * @return
      */
-    public JSONArray loadSubject(FinOpsRequest finOpsRequest, Long accountSetsId) {
+    public JSONArray loadSubject(FinOpsRequest finOpsRequest, String accountSetsId) {
         JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/subject/voucher/select", accountSetsId, finOpsRequest);
         log.info("科目{}", res);
         return res.getJSONArray("data");
@@ -196,7 +188,7 @@ public class FinOpsCloudApi {
      * @param categoryIdSet
      * @return
      */
-    public JSONObject loadAccountingCategory(FinOpsRequest finOpsRequest, Long accountSetsId, List<Long> categoryIdSet) {
+    public JSONObject loadAccountingCategory(FinOpsRequest finOpsRequest, String accountSetsId, List<Long> categoryIdSet) {
         HttpRequest post = HttpUtil.createPost(finOpsRequest.getBaseUrl() + "/api/accounting-category/byid");
         post.body(JSON.toJSONString(categoryIdSet), "application/json");
         return execute(post, 0, accountSetsId, finOpsRequest);
@@ -211,7 +203,7 @@ public class FinOpsCloudApi {
      * @return
      * @throws JsonProcessingException
      */
-    public JSONObject createVoucher(FinOpsRequest finOpsRequest, Long accountSetsId, VoucherDto dto) throws JsonProcessingException {
+    public JSONObject createVoucher(FinOpsRequest finOpsRequest, String accountSetsId, VoucherDto dto) throws JsonProcessingException {
         HttpRequest post = HttpUtil.createPost(finOpsRequest.getBaseUrl() + "/api/voucher");
         post.body(objectMapper.writeValueAsString(dto), "application/json");
         JSONObject execute = execute(post, 0, accountSetsId, finOpsRequest);
@@ -231,9 +223,47 @@ public class FinOpsCloudApi {
      * @return
      * @throws JsonProcessingException
      */
-    public JSONObject upVoucher(FinOpsRequest finOpsRequest, Long accountSetsId, VoucherDto dto) throws JsonProcessingException {
+    public JSONObject upVoucher(FinOpsRequest finOpsRequest, String accountSetsId, VoucherDto dto) throws JsonProcessingException {
         HttpRequest post = HttpRequest.put(finOpsRequest.getBaseUrl() + "/api/voucher");
         post.body(objectMapper.writeValueAsString(dto), "application/json");
         return execute(post, 0, accountSetsId, finOpsRequest).getJSONObject("data");
+    }
+
+    public Object loadVoucherSummary(FinOpsRequest finOpsRequest, String accountSetsId) {
+        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/voucher/summary", accountSetsId, finOpsRequest);
+        log.info("loadVoucherSummary{}", res);
+        return res;
+    }
+
+    public Double balance(FinOpsRequest finOpsRequest, String accountSetsId, String subjectId, String categoryId, String categoryDetailsId) {
+        HttpRequest post = HttpUtil.createPost(finOpsRequest.getBaseUrl() + "/api/subject/balance");
+        post.body(JSON.toJSONString(new HashMap<>() {{
+            if (StrUtil.isNotBlank(subjectId)) {
+                put("subjectId", subjectId);
+            }
+            if (StrUtil.isNotBlank(categoryId)) {
+                put("categoryId", categoryId);
+            }
+            if (StrUtil.isNotBlank(categoryDetailsId)) {
+                put("categoryDetailsId", categoryDetailsId);
+            }
+        }}), "application/json");
+        JSONObject execute = execute(post, 0, accountSetsId, finOpsRequest);
+        log.info("balance{}", execute);
+        return execute.getDouble("data");
+    }
+
+    public Object loadAuxiliaryAccountingData(FinOpsRequest finOpsRequest, String accountSetsId, List<String> ids) {
+        HttpRequest post = HttpUtil.createPost(finOpsRequest.getBaseUrl() + "/api/accounting-category/byid");
+        post.body(JSON.toJSONString(ids), "application/json");
+        JSONObject execute = execute(post, 0, accountSetsId, finOpsRequest);
+        log.info("loadAuxiliaryAccountingData{}", execute);
+        return execute.getJSONArray("data");
+    }
+
+    public Object loadVoucher(FinOpsRequest finOpsRequest, String accountSetsId, String voucherId) {
+        JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/voucher/" + voucherId, accountSetsId, finOpsRequest);
+        log.info("凭证{}", res);
+        return res;
     }
 }

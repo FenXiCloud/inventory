@@ -81,7 +81,6 @@ export default {
         this.model.categoryName = data.data[0].name;
         this.financeItemMappings = data.data[0].details || [];
         this.financeItemMappings.forEach(item => {
-          item.id = Number(item.id);
           item.titleName = `${item.code} - ${item.name}`;
         });
       });

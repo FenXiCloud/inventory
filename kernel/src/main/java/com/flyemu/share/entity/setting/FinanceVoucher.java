@@ -24,6 +24,9 @@ public class FinanceVoucher {
     @Comment("凭证code")
     private String code;
 
+    @Comment("凭证id")
+    private String voucherId;
+
     @Comment("凭证类型")
     private String type;
 

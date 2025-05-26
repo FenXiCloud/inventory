@@ -11,11 +11,11 @@ public interface FinanceItemMapRepository extends JpaRepositoryImplementation<Fi
 
     List<FinanceItemMap> findByInventoryId(Long inventoryId);
 
-    List<FinanceItemMap> findByInventoryIdAndCategoryId(Long inventoryId, Long categoryId);
+    List<FinanceItemMap> findByInventoryIdAndCategoryId(Long inventoryId, String categoryId);
 
     List<FinanceItemMap> findByCategoryType(String categoryType);
 
-    List<FinanceItemMap> findByCategoryId(Long categoryId);
+    List<FinanceItemMap> findByCategoryId(String categoryId);
 
-    List<FinanceItemMap> findByCategoryIdAndInventoryId(Long categoryId, Long inventoryId);
+    List<FinanceItemMap> findByCategoryIdAndInventoryId(String categoryId, Long inventoryId);
 }

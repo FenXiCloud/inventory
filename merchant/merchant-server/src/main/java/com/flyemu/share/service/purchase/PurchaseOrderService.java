@@ -117,7 +117,7 @@ public class PurchaseOrderService extends AbsService {
         QUnit qUnit1 = new QUnit("id");
 
         List<PurchaseInboundItemDto> collect = bqf.selectFrom(qPurchaseOrderItem)
-                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,qProductCategory.name,qProduct.specification,
+                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name, qProductCategory.name, qProduct.specification,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
                 .leftJoin(qPurchaseOrder).on(qPurchaseOrder.id.eq(qPurchaseOrderItem.purchaseOrderId))
@@ -144,7 +144,7 @@ public class PurchaseOrderService extends AbsService {
     }
 
     @Transactional
-    public PurchaseOrder save(PurchaseOrderForm purchaseOrderForm, Long merchantId) {
+    public Long save(PurchaseOrderForm purchaseOrderForm, Long merchantId) {
         PurchaseOrder order = purchaseOrderForm.getPurchaseOrder();
         if (order.getId() != null) {
             PurchaseOrder original = purchaseOrderRepository.getById(order.getId());
@@ -168,7 +168,8 @@ public class PurchaseOrderService extends AbsService {
             }
             original.setSecondarySum(secondarySum);
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
-            return purchaseOrderRepository.save(original);
+            order = purchaseOrderRepository.save(original);
+            return order.getId();
         } else {
             order.setOrderNo(codeSeedService.generateCode(purchaseOrderForm.getPurchaseOrder().getMerchantId(), "采购订单"));
 
@@ -189,7 +190,8 @@ public class PurchaseOrderService extends AbsService {
                 savePrice(d, order);
             }
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
-            return purchaseOrderRepository.save(purchaseOrderForm.getPurchaseOrder());
+            order = purchaseOrderRepository.save(purchaseOrderForm.getPurchaseOrder());
+            return order.getId();
         }
     }
 

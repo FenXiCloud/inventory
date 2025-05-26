@@ -71,8 +71,7 @@ public class PurchaseOrderController {
         purchaseOrderForm.getPurchaseOrder().setMerchantId(merchantId);
         purchaseOrderForm.getPurchaseOrder().setAccountBookId(accountBookId);
         purchaseOrderForm.getPurchaseOrder().setOrderStatus(OrderStatus.已保存);
-        purchaseOrderService.save(purchaseOrderForm, merchantId);
-        return JsonResult.successful();
+        return JsonResult.successful(purchaseOrderService.save(purchaseOrderForm, merchantId));
     }
 
     @PutMapping

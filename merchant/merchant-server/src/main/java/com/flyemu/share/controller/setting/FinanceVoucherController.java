@@ -7,6 +7,7 @@ import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.dto.VoucherDto;
 import com.flyemu.share.form.FinanceVoucherForm;
 import com.flyemu.share.service.setting.FinanceVoucherService;
 import jakarta.validation.Valid;
@@ -14,6 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @功能描述: 云财务凭证
@@ -43,6 +47,32 @@ public class FinanceVoucherController {
         financeVoucherForm.setAccountBookId(accountDto.getAccountBookId());
         financeVoucherService.save(financeVoucherForm);
         return JsonResult.successful();
+    }
+
+    @PostMapping("upVoucher")
+    public JsonResult upVoucher(@RequestBody @Valid VoucherDto voucherDto, @SaAccountVal AccountDto accountDto) throws JsonProcessingException, UnsupportedEncodingException {
+        financeVoucherService.upVoucher(voucherDto, accountDto);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("balance")
+    public JsonResult balance(String subjectId, String categoryId, String categoryDetailsId, @SaAccountVal AccountDto accountDto) {
+        Double balance = financeVoucherService.balance(subjectId, categoryId, categoryDetailsId, accountDto);
+        return JsonResult.successful(balance);
+    }
+
+    @GetMapping("loadAuxiliaryAccountingData")
+    public JsonResult loadAuxiliaryAccountingData(String ids, @SaAccountVal AccountDto accountDto) {
+        List<String> categories = Arrays.stream(ids.split(",")).toList();
+        Object auxiliaryAccountingData = financeVoucherService.loadAuxiliaryAccountingData(categories, accountDto);
+        return JsonResult.successful(auxiliaryAccountingData);
+    }
+
+
+    @GetMapping("loadVoucher")
+    public JsonResult loadVoucher(String voucherId, @SaAccountVal AccountDto accountDto) {
+        Object voucher = financeVoucherService.loadVoucher(voucherId, accountDto);
+        return JsonResult.successful(voucher);
     }
 
     @DeleteMapping("/{id}")

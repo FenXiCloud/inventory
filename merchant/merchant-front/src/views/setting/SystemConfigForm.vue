@@ -7,15 +7,15 @@
         :rules="validationRules"
         :labelWidth="140"
       >
-        <FormItem label="成本核算方法" required prop="accountBookId">
-          <Input
-            placeholder="请输入成本核算方法"
-            v-model="model.accountBookId"
-          />
-        </FormItem>
-        <FormItem label="可用库存允许为负" required prop="costAccounting">
+        <FormItem label="成本核算方法" required prop="costAccounting">
           <Select
             v-model="model.costAccounting"
+            :datas="accSelectParams"
+          ></Select>
+        </FormItem>
+        <FormItem label="可用库存允许为负" required prop="availableInventory">
+          <Select
+            v-model="model.availableInventory"
             :datas="costAccSelectParams"
           ></Select>
         </FormItem>

@@ -50,6 +50,7 @@ export default {
         inventoryId: null,
         inventoryName: null,
         financeId: null,
+        financeCode: null,
         financeName: null,
       },
       validationRules: {
@@ -80,7 +81,6 @@ export default {
         this.model.categoryName = data.data[0].name;
         this.financeItemMappings = data.data[0].details || [];
         this.financeItemMappings.forEach(item => {
-          item.id = Number(item.id);
           item.titleName = `${item.code} - ${item.name}`;
         });
       });
@@ -118,6 +118,7 @@ export default {
             return item.id === this.model.financeId;
           });
           this.model.financeName = filter[0].name;
+          this.model.financeCode = filter[0].code;
           break;
         }
         case 'inventoryId': {

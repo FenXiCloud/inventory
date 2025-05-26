@@ -11,6 +11,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.UnsupportedEncodingException;
+import java.time.LocalDate;
+
 /**
  * @功能描述: 关联云财务
  * @创建时间: 2025年03月11日
@@ -71,6 +74,23 @@ public class FinanceAccountLinkController {
     @GetMapping("/loadAccountingCategory")
     public JsonResult loadAccountingCategory(@RequestParam("ids") String ids, @SaAccountVal AccountDto accountDto) {
         return JsonResult.successful(financeAccountLinkService.loadAccountingCategory(ids, accountDto));
+    }
+
+    @GetMapping("/loadCode")
+    public JsonResult loadCode(@RequestParam("word") String word,
+                               @RequestParam("currentAccountDate") LocalDate currentAccountDate,
+                               @SaAccountVal AccountDto accountDto) throws UnsupportedEncodingException {
+        return JsonResult.successful(financeAccountLinkService.loadCode(word, currentAccountDate, accountDto));
+    }
+
+    @GetMapping("/loadVoucherSelect")
+    public JsonResult loadVoucherSelect(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(financeAccountLinkService.loadVoucherSelect(accountDto));
+    }
+
+    @GetMapping("/loadVoucherSummary")
+    public JsonResult loadVoucherSummary(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(financeAccountLinkService.loadVoucherSummary(accountDto));
     }
 
 }

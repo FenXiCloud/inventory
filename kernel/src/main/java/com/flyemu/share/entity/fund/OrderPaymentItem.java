@@ -8,6 +8,7 @@ import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * @功能描述: 付款单明细
@@ -33,11 +34,6 @@ public class OrderPaymentItem {
     @Comment("账户ID")
     private Long accountId;
 
-    @Comment("收入金额")
-    private BigDecimal amount;
-
-    @Comment("结算方式")
-    private Long paymentMethodId;
 
     @Comment("备注")
     private String remarks;
@@ -47,4 +43,24 @@ public class OrderPaymentItem {
 
     @Column(nullable = false)
     private Long merchantId;
+    @Comment("关联采购ID")
+    private Long businessId;
+    @Comment("关联采购编号")
+    private String businessNo;
+    @Comment("业务类型")
+    private Integer businessType;
+    @Comment("业务日期")
+    private LocalDate businessDate;
+
+    @Comment("单据金额")
+    private BigDecimal documentAmount;
+
+    @Comment("已核销金额")
+    private BigDecimal verifiedAmount;
+
+    @Comment("未核销金额")
+    private BigDecimal unverifiedAmount;
+
+    @Comment("本次核销金额")
+    private BigDecimal currentVerifyAmount;
 }

@@ -49,6 +49,17 @@ public class WarehouseService extends AbsService {
         }
 
         if (warehouse.getId() != null) {
+            if (!warehouse.getSystemDefault()) {
+                Long count = jqf.select(qWarehouse.id.count())
+                        .from(qWarehouse)
+                        .where(qWarehouse.merchantId.eq(warehouse.getMerchantId())
+                                .and(qWarehouse.accountBookId.eq(warehouse.getAccountBookId())))
+                        .fetchOne();
+
+                if (count != null && count == 1L) {
+                    throw new ServiceException("当前只有一个仓库，必须保留为默认仓库");
+                }
+            }
             // 更新
             Warehouse original = warehouseRepository.getById(warehouse.getId());
             BeanUtil.copyProperties(warehouse, original, CopyOptions.create().ignoreNullValue());
@@ -98,8 +109,9 @@ public class WarehouseService extends AbsService {
                         .and(qWarehouse.accountBookId.eq(accountBookId)))
                 .limit(1)
                 .fetchFirst();
-
-        if (!warehouse.getSystemDefault() && !existsOtherWarehouse) {
+        if (existsOtherWarehouse == null) {
+            warehouse.setSystemDefault(true);
+        } else if (!warehouse.getSystemDefault() && !existsOtherWarehouse) {
             warehouse.setSystemDefault(true);
         }
 

@@ -298,7 +298,7 @@ export default {
         throw new Error("请填写操作数据~")
       }
       loading("保存中....");
-      let quantity = filterStockTakeData.filter((c) => this.isEmpty(c.actualQuantity) || Number(c.actualQuantity) === 0);
+      let quantity = filterStockTakeData.filter((c) => this.isEmpty(c.actualQuantity));
       if (quantity.length > 0) {
         loading.close();
         throw new Error("请填写盘点库存~")

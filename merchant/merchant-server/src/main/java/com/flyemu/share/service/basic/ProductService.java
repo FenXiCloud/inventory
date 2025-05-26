@@ -99,6 +99,8 @@ public class ProductService extends AbsService {
     private final InventoryItemRepository inventoryItemRepository;
     private final CodeRuleService codeRuleService;
 
+    private final static QCustomerLevel qCustomerLevel = QCustomerLevel.customerLevel;
+
     public PageResults<ProductDto> query(Page page, Query query) {
         PagedList<Tuple> pagedList = bqf.selectFrom(qProduct).select(qProduct, qUnit.name, qProductCategory.name).leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId)).where(query.builders()).orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         ArrayList<ProductDto> collect = pagedList.stream().collect(ArrayList::new, (list, tuple) -> {
@@ -387,24 +389,26 @@ public class ProductService extends AbsService {
             dto.setProductCategoryName(tuple.get(qProductCategory.name));
             list.add(dto);
             //查询产品QCustomerLevelPrice 的客户等级价格
-            List<CustomerLevelPrice> customerLevelPrices = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(dto.getId())).fetch();
+            List<CustomerLevelPrice> customerLevelPrices = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(dto.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId).and(qCustomerLevelPrice.accountBookId.eq(accountBookId)))).orderBy(qCustomerLevelPrice.id.desc()).fetch();
             dto.setCustomerLevelPriceList(customerLevelPrices);
             //查询产品QPriceRecord 的最近销售价格
             PriceRecord priceRecord = jqf.selectFrom(qPriceRecord).where(qPriceRecord.productId.eq(dto.getId()).and(qPriceRecord.priceSource.eq(PriceSource.最近销售价格)).and(qPriceRecord.priceType.eq(PriceType.最近销售价格)).and(qPriceRecord.accountBookId.eq(accountBookId)).and(qPriceRecord.merchantId.eq(merchantId))
                     //降序排序
-
             ).orderBy(qPriceRecord.id.desc()).fetchFirst();
             if (priceRecord != null) {
                 dto.setLastSalePrice(priceRecord.getUnitPrice());
             }
 
             //获取当前的价格取数规则qPricingPolicy
-            PricingPolicy pricingPolicy = jqf.selectFrom(qPricingPolicy).where(qPricingPolicy.enabled.eq(true)).orderBy(qPricingPolicy.priority.asc()).fetchFirst();
+            PricingPolicy pricingPolicy = jqf.selectFrom(qPricingPolicy).where(qPricingPolicy.enabled.eq(true).and(qPricingPolicy.merchantId.eq(merchantId)).and(qPricingPolicy.accountBookId.eq(accountBookId)))
+                    .orderBy(qPricingPolicy.priority.asc()).fetchFirst();
             if (pricingPolicy != null) {
                 PolicySource policySource = pricingPolicy.getPolicySource();
                 if(policySource == PolicySource.客户等级价格){
+                    Customer customer = jqf.selectFrom(qCustomers).where(qCustomers.merchantId.eq(merchantId).and(qCustomers.accountBookId.eq(accountBookId))).fetchFirst();
+                    Long customerLevelId = customer.getCustomerLevelId();
                     //获取最新的客户等级价格
-                    CustomerLevelPrice customerLevelPrice = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(dto.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).orderBy(qCustomerLevelPrice.id.desc()).fetchFirst();
+                    CustomerLevelPrice customerLevelPrice = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(dto.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).and(qCustomerLevelPrice.customerLevelId.eq(customerLevelId))).orderBy(qCustomerLevelPrice.id.desc()).fetchFirst();
                     if (customerLevelPrice != null) {
                         dto.setLastSalePrice(customerLevelPrice.getPrice());
                     }

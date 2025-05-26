@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.flyemu.share.dto.AcDetailsDto;
+import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.dto.VoucherDetailsDto;
 import com.flyemu.share.dto.VoucherDto;
 import com.flyemu.share.entity.basic.*;
@@ -25,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -100,7 +102,7 @@ public class FinanceVoucherService extends AbsService {
             List<AcDetailsDto> auxiliaryAccountingList = new ArrayList<>();
             AcDetailsDto acDetailsDto;
             for (int j = 0; j < auxiliaryAccounting.size(); j++) {
-                Long categoryId = auxiliaryAccounting.getLong(0);
+                String categoryId = auxiliaryAccounting.getString(0);
                 Long inventoryId = -1L;
                 String msgTips = "";
                 String name = "";
@@ -138,6 +140,9 @@ public class FinanceVoucherService extends AbsService {
                 acDetailsDto.setCategoryId(financeItemMap.getCategoryId());
                 acDetailsDto.setCategoryName(financeItemMap.getCategoryName());
                 acDetailsDto.setCategoryType(financeItemMap.getCategoryType());
+                acDetailsDto.setCode(financeItemMap.getFinanceCode());
+                acDetailsDto.setId(financeItemMap.getFinanceId());
+                acDetailsDto.setAccountSetsId(financeAccountLink.getFinanceAccountId());
                 acDetailsDto.setEnable(true);
                 acDetailsDto.setName(name);
                 acDetailsDto.setCreateTime(LocalDateTime.now());
@@ -145,7 +150,9 @@ public class FinanceVoucherService extends AbsService {
             }
             Long subjectId = jsonObject.getLong("subjectId");
             String subjectName = jsonObject.getString("subjectName");
+            String subjectCode = jsonObject.getString("subjectCode");
             voucherDetailsDto.setSubjectId(subjectId);
+            voucherDetailsDto.setSubjectCode(subjectCode);
             voucherDetailsDto.setSubjectName(subjectName);
             if ((i + 1) % 2 == 0) {
                 voucherDetailsDto.setCreditAmount(amount);
@@ -163,8 +170,10 @@ public class FinanceVoucherService extends AbsService {
         JSONObject jsonObject = financeAccountLinkService.createVoucher(accountBookId, voucherDto);
         log.info(jsonObject.toJSONString());
         String code = jsonObject.getString("code");
+        String voucherId = jsonObject.getString("id");
         FinanceVoucher financeVoucher = new FinanceVoucher();
         financeVoucher.setCode(code);
+        financeVoucher.setVoucherId(voucherId);
         financeVoucher.setAccountBookId(accountBookId);
         financeVoucher.setOrderId(orderId);
         financeVoucher.setParams(JSONObject.toJSONString(voucherDto));
@@ -185,6 +194,38 @@ public class FinanceVoucherService extends AbsService {
 
     public FinanceVoucher load(Long id) {
         return financeVoucherRepository.findById(id).orElseThrow(RuntimeException::new);
+    }
+
+    public void upVoucher(VoucherDto voucherDto, AccountDto accountDto) {
+        FinanceAccountLink financeAccountLink = financeAccountLinkService.loadByAccountBookId(accountDto.getAccountBookId());
+        if (financeAccountLink == null) {
+            throw new ServiceException("未配置关联财务云软件～");
+        }
+        financeAccountLinkService.upVoucher(financeAccountLink, voucherDto);
+    }
+
+    public Double balance(String subjectId, String categoryId, String categoryDetailsId, AccountDto accountDto) {
+        FinanceAccountLink financeAccountLink = financeAccountLinkService.loadByAccountBookId(accountDto.getAccountBookId());
+        if (financeAccountLink == null) {
+            throw new ServiceException("未配置关联财务云软件～");
+        }
+        return financeAccountLinkService.balance(subjectId, categoryId, categoryDetailsId, accountDto);
+    }
+
+    public Object loadAuxiliaryAccountingData(List<String> ids, AccountDto accountDto) {
+        FinanceAccountLink financeAccountLink = financeAccountLinkService.loadByAccountBookId(accountDto.getAccountBookId());
+        if (financeAccountLink == null) {
+            throw new ServiceException("未配置关联财务云软件～");
+        }
+        return financeAccountLinkService.loadAuxiliaryAccountingData(ids, accountDto);
+    }
+
+    public Object loadVoucher(String voucherId, AccountDto accountDto) {
+        FinanceAccountLink financeAccountLink = financeAccountLinkService.loadByAccountBookId(accountDto.getAccountBookId());
+        if (financeAccountLink == null) {
+            throw new ServiceException("未配置关联财务云软件～");
+        }
+        return financeAccountLinkService.loadVoucher(voucherId, accountDto);
     }
 
     @Data

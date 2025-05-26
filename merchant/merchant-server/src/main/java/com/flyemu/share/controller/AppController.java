@@ -6,6 +6,7 @@ import cn.dev33.satoken.stp.SaLoginModel;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.fastjson.JSONObject;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.common.Constants;
@@ -14,12 +15,15 @@ import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.dto.MenuDto;
 import com.flyemu.share.service.setting.AccountBookService;
 import com.flyemu.share.service.setting.AdminService;
+import com.flyemu.share.service.setting.DDLoginService;
 import com.flyemu.share.service.setting.MerchantService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -42,6 +46,8 @@ public class AppController {
     private final AdminService adminService;
 
     private final AccountBookService accountBookService;
+
+    private final DDLoginService loginService;
 
     @GetMapping("/")
     public JsonResult index() {
@@ -87,6 +93,7 @@ public class AppController {
         SaSession session = StpUtil.getTokenSession();
         session.set(Constants.SESSION_ACCOUNT, accountDto);
         response.addHeader("Authorization",  StpUtil.getTokenValue());
+        log.info("token:" + StpUtil.getTokenValue());
           return JsonResult.successful()
                 .data("account", accountDto);
     }
@@ -106,4 +113,34 @@ public class AppController {
         return JsonResult.successful(null);
     }
 
+    /**
+     * 钉钉Code回调
+     * @return 结果
+     */
+    @PostMapping("/dd/auth")
+    public JsonResult getAccessToken(@RequestBody JSONObject jsonObject, HttpServletResponse response) {
+        if (ObjectUtils.isEmpty(jsonObject.getString("corpId"))
+                || ObjectUtils.isEmpty(jsonObject.getString("authCode"))) {
+            throw new RuntimeException("登录失败");
+        }
+        String mobile = loginService.getLoginAuth(jsonObject.getString("authCode"),
+                jsonObject.getString("corpId"));
+        if (ObjectUtils.isEmpty(mobile)) {
+            return JsonResult.failure("登录失败");
+        }
+
+        //获取业务系统的token
+        AccountDto accountDto = adminService.ddLogin(mobile);
+        StpUtil.login(accountDto.getAdminId(), "pc");
+        SaSession session = StpUtil.getTokenSession();
+        session.set(Constants.SESSION_ACCOUNT, accountDto);
+        response.addHeader("Authorization",  StpUtil.getTokenValue());
+        return JsonResult.successful()
+                .data("account", accountDto);
+    }
+
+    @GetMapping("/getToken")
+    public JsonResult getToken(){
+        return JsonResult.successful(loginService.getToken());
+    }
 }

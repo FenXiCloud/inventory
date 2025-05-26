@@ -6,12 +6,14 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.OrderPayment;
 import com.flyemu.share.service.fund.OrderPaymentService;
+import com.flyemu.share.service.fund.dto.OrderPaymentSaveDTO;
+import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * @功能描述: 收款单
+ * @功能描述: 付款单
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -24,36 +26,53 @@ public class OrderPaymentController {
 
     private final OrderPaymentService orderPaymentService;
 
-    @GetMapping
-    public JsonResult list(Page page, OrderPaymentService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+
+    @GetMapping("list")
+    public JsonResult list(Page page, OrderPaymentService.Query query,
+                           @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(orderPaymentService.query(page, query));
+        return JsonResult.successful(orderPaymentService.query(query, page));
     }
 
-    @PostMapping
-    public JsonResult save(@RequestBody @Valid OrderPayment orderPayment, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+
+    @PostMapping("save")
+    public JsonResult save(@RequestBody @Valid OrderPaymentSaveDTO orderPaymentSaveDTO,
+                           @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId) {
+        OrderPayment orderPayment = orderPaymentSaveDTO.getOrderPayment();
         orderPayment.setMerchantId(merchantId);
         orderPayment.setAccountBookId(accountBookId);
-        orderPaymentService.save(orderPayment);
+        orderPaymentService.save(orderPaymentSaveDTO);
         return JsonResult.successful();
     }
 
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid OrderPayment orderPayment) {
-        orderPaymentService.save(orderPayment);
+
+    @PostMapping("updateStatus")
+    public JsonResult updateStatus(@RequestBody OrderPaymentUpdateDTO orderPayment) {
+        orderPaymentService.updateStatus(orderPayment);
         return JsonResult.successful();
     }
 
-    @DeleteMapping("/{orderPaymentId}")
-    public JsonResult delete(@PathVariable Long orderPaymentId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        orderPaymentService.delete(orderPaymentId, merchantId, accountBookId);
+
+    @PostMapping("delete")
+    public JsonResult delete(@RequestBody OrderPaymentUpdateDTO orderPayment,
+                             @SaAccountBookId Long accountBookId,
+                             @SaMerchantId Long merchantId) {
+        orderPaymentService.delete(orderPayment.getId(), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(orderPaymentService.select(merchantId, accountBookId));
+
+    @GetMapping("selectById")
+    public JsonResult selectById(Long id) {
+        return JsonResult.successful(orderPaymentService.selectById(id));
     }
 
+
+    @GetMapping("writeOffTheOrder")
+    public JsonResult aListSalesOrders(Page page, OrderPaymentService.SupplerQuery query) {
+        return JsonResult.successful(orderPaymentService.aListSalesOrders(page, query));
+    }
 }

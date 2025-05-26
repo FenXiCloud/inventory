@@ -12,5 +12,15 @@ export default {
     },
     select(param) {
         return Ajax.get('/orderReceipt/select', param)
+    },
+    addEdit(param) {
+        return Ajax.post('/orderReceipt/save', param)
+    },
+    
+    orderStaffList(param) {
+        return Ajax.get('/orderStaff/list', param)
+    },
+    orderStaffAdd(param) {
+        return Ajax.get('/orderStaff/add', param)
     }
 }

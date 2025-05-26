@@ -7,9 +7,9 @@ import java.time.LocalDateTime;
 
 @Data
 public class AcDetailsDto {
-    private Long id;
-    private Long accountSetsId;
-    private Long categoryId;
+    private String id;
+    private String accountSetsId;
+    private String categoryId;
 
     private String categoryName;
 

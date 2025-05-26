@@ -448,6 +448,7 @@ export default {
                 let outSubtotalTotal = row.outSubtotalTotal;
                 switch (operationType) {
                   case "期初余额":
+                  case "期初库存":
                     row.initialQuantity = data_row.quantity + (initialQuantity || 0);
                     row.initialSubtotal = data_row.subtotal + (initialSubtotal || 0);
                     break;

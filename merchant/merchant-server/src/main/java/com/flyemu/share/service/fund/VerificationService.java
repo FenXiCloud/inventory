@@ -1,22 +1,39 @@
 package com.flyemu.share.service.fund;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.entity.fund.QVerification;
-import com.flyemu.share.entity.fund.Verification;
-import com.flyemu.share.repository.VerificationRepository;
+import com.flyemu.share.entity.basic.Customer;
+import com.flyemu.share.entity.basic.Supplier;
+import com.flyemu.share.entity.fund.*;
+import com.flyemu.share.entity.setting.CodeRule;
+import com.flyemu.share.entity.setting.QMerchantUser;
+import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.exception.ServiceException;
+import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
+import com.flyemu.share.service.fund.dto.VerificationSaveDTO;
+import com.flyemu.share.service.fund.vo.VerificationDetails;
+import com.flyemu.share.service.fund.vo.VerificationQueryVO;
+import com.flyemu.share.service.fund.vo.VerificationVO;
+import com.flyemu.share.service.setting.CodeRuleService;
+import com.flyemu.share.way.CodeGenerator;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.Projections;
+import com.querydsl.jpa.impl.JPAQuery;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.*;
 
 /**
  * @功能描述: 核销单
@@ -27,47 +44,501 @@ import java.util.List;
  */
 @Service
 @Slf4j
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class VerificationService extends AbsService {
 
+
     private final static QVerification qVerification = QVerification.verification;
+    private final static QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
+    private final static QVerificationCollection qVerificationCollection = QVerificationCollection.verificationCollection;
 
     private final VerificationRepository verificationRepository;
-
-    public PageResults<Verification> query(Page page, VerificationService.Query query) {
-        PagedList<Verification> fetchPage = bqf.selectFrom(qVerification).where(query.builder).orderBy(qVerification.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
-
-        List<Verification> dtos = new ArrayList<>();
-        fetchPage.forEach(tuple -> {
-            Verification verification1 = tuple;
-            Verification verification = BeanUtil.toBean(verification1, Verification.class);
-            dtos.add(verification);
-        });
-
-        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
-    }
+    private final VerificationItemRepository verificationItemRepository;
+    private final VerificationCollectionRepository verificationCollectionRepository;
+    private final CustomerRepository customerRepository;
+    private final SupplierRepository supplierRepository;
+    private final OrderReceiptRepository orderReceiptRepository;
+    private final OrderPaymentRepository orderPaymentRepository;
+    private final CodeRuleService codeRuleService;
 
     @Transactional
-    public Verification save(Verification verification) {
-        if (verification.getId() != null) {
-            //更新
-            Verification original = verificationRepository.getById(verification.getId());
-            BeanUtil.copyProperties(verification, original, CopyOptions.create().ignoreNullValue());
-            return verificationRepository.save(original);
+    public Verification save(VerificationSaveDTO dto) {
+        if (dto.getOrder() == null) {
+            throw new ServiceException("核销单主表信息不能为空");
         }
-        return verificationRepository.save(verification);
+        if (dto.getOrder().getOrderStatus() == null) {
+            throw new ServiceException("状态为空");
+        }
+        if (OrderStatus.已审核.equals(dto.getOrder().getOrderStatus())) {
+            if (dto.getOrder().getApprovedBy() == null) {
+                throw new ServiceException("已审核状态,审核人必填");
+            }
+            dto.getOrder().setApprovedAt(LocalDateTime.now());
+        }
+        List<VerificationItem> items = dto.getItemList();
+        List<VerificationCollection> collections = dto.getCollectionList();
+
+        if (items == null || items.isEmpty()) {
+            throw new ServiceException("核销明细不能为空");
+        }
+        validateVerificationItems(dto.getOrder(), dto.getItemList());
+        Verification verification = dto.getOrder();
+
+        if (verification.getId() != null) {
+            Verification original = verificationRepository.findById(verification.getId())
+                    .orElseThrow(() -> new ServiceException("核销单不存在"));
+
+            if (!OrderStatus.已保存.equals(original.getOrderStatus())) {
+                throw new ServiceException("该单据不是【已保存】状态，无法修改");
+            }
+
+            jqf.delete(qVerificationItem)
+                    .where(qVerificationItem.verificationId.eq(verification.getId()))
+                    .execute();
+            jqf.delete(qVerificationCollection)
+                    .where(qVerificationCollection.verificationId.eq(verification.getId()))
+                    .execute();
+        }
+
+        if (verification.getId() == null) {
+            verification.setCreatedAt(LocalDateTime.now());
+            assignOrderNumber(verification);
+        } else {
+            Verification byId = verificationRepository.getById(verification.getId());
+            if (!OrderStatus.已保存.equals(byId.getOrderStatus())) {
+                throw new ServiceException("该单据不是【已保存】状态，无法修改");
+            }
+        }
+
+        verification = verificationRepository.save(verification);
+
+        subtableProcessing(items, verification, collections);
+
+        if (OrderStatus.已审核.equals(verification.getOrderStatus())) {
+            updateBalance(verification, items);
+        }
+
+        return verification;
+    }
+
+    private void subtableProcessing(List<VerificationItem> items, Verification verification, List<VerificationCollection> collections) {
+        // 保存明细项
+        if (!items.isEmpty()) {
+            for (VerificationItem item : items) {
+                item.setVerificationId(verification.getId());
+                item.setMerchantId(verification.getMerchantId());
+                item.setAccountBookId(verification.getAccountBookId());
+                verificationItemRepository.save(item);
+            }
+        }
+
+        // 保存收款账户明细
+        if (collections != null && !collections.isEmpty()) {
+            BigDecimal totalCollectionAmount = BigDecimal.ZERO;
+
+            for (VerificationCollection collection : collections) {
+                collection.setVerificationId(verification.getId());
+                collection.setMerchantId(verification.getMerchantId());
+                collection.setAccountBookId(verification.getAccountBookId());
+
+                if (collection.getCurrentVerifyAmount() != null) {
+                    totalCollectionAmount = totalCollectionAmount.add(collection.getCurrentVerifyAmount());
+                }
+
+                verificationCollectionRepository.save(collection);
+            }
+
+            //收款账户总金额必须等于明细本次核销金额总和
+            BigDecimal totalItemVerifyAmount = items.stream()
+                    .map(VerificationItem::getCurrentVerifyAmount)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (totalCollectionAmount.compareTo(totalItemVerifyAmount) != 0) {
+                throw new ServiceException("收款账户总金额必须等于所选订单的本次核销金额总和");
+            }
+        }
+    }
+
+    /**
+     * 核销单明细校验
+     */
+    private void validateVerificationItems(Verification verification, List<VerificationItem> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+
+
+        Set<Integer> businessIdSet = new HashSet<>();
+
+        for (VerificationItem item : items) {
+            Integer businessId = item.getBusinessId();
+            Integer businessType = item.getBusinessType();
+
+            if (businessIdSet.contains(businessId)) {
+                throw new ServiceException("不能重复引用同一订单：" + businessId);
+            }
+            businessIdSet.add(businessId);
+
+            // 查询该订单的总金额和历史核销金额
+            BigDecimal totalAmount = getOrderTotalAmount(businessType, businessId);
+            BigDecimal verifiedAmount = getTotalVerifiedAmount(businessType, businessId);
+
+            // 剩余未核销金额
+            BigDecimal unverifiedAmount = totalAmount.subtract(verifiedAmount);
+            BigDecimal currentVerifyAmount = item.getCurrentVerifyAmount();
+            if (currentVerifyAmount == null || currentVerifyAmount.compareTo(BigDecimal.ZERO) < 0) {
+                throw new ServiceException("核销金额必须大于0：" + businessId);
+            }
+
+            if (currentVerifyAmount.compareTo(unverifiedAmount) > 0) {
+                throw new ServiceException("核销金额超过订单剩余未核销金额：" + businessId);
+            }
+        }
+    }
+
+    private BigDecimal getTotalVerifiedAmount(Integer businessType, Integer businessId) {
+        if (businessId == null) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal verifiedFromOriginal = BigDecimal.ZERO;
+        BigDecimal verifiedFromVerifications = BigDecimal.ZERO;
+
+        if (businessType == 1) {
+            OrderReceipt receipt = orderReceiptRepository.findById(businessId.longValue())
+                    .orElseThrow(() -> new ServiceException("收款单不存在：" + businessId));
+            verifiedFromOriginal = receipt.getHasVerificationAmount() != null ? receipt.getHasVerificationAmount() : BigDecimal.ZERO;
+
+        } else if (businessType == 2) {
+            OrderPayment payment = orderPaymentRepository.findById(businessId.longValue())
+                    .orElseThrow(() -> new ServiceException("付款单不存在：" + businessId));
+            verifiedFromOriginal = payment.getHasVerificationAmount() != null ? payment.getHasVerificationAmount() : BigDecimal.ZERO;
+        }
+        verifiedFromVerifications = jqf.select(qVerificationItem.currentVerifyAmount.sum())
+                .from(qVerificationItem)
+                .leftJoin(qVerification).on(qVerification.id.eq(qVerificationItem.verificationId))
+                .where(
+                        qVerificationItem.businessId.eq(businessId)
+                                .and(qVerificationItem.businessType.eq(businessType))
+                                .and(qVerification.orderStatus.eq(OrderStatus.已审核))
+                )
+                .fetchOne();
+
+        return verifiedFromOriginal.add(verifiedFromVerifications);
+    }
+
+    private BigDecimal getOrderTotalAmount(Integer businessType, Integer businessId) {
+        if (businessType == 1) {
+            OrderReceipt orderReceipt = orderReceiptRepository.findById(businessId.longValue())
+                    .orElseThrow(() -> new ServiceException("收款单不存在：" + businessId));
+            return orderReceipt.getShouldVerificationAmount();
+        } else if (businessType == 2) {
+            OrderPayment orderPayment = orderPaymentRepository.findById(businessId.longValue())
+                    .orElseThrow(() -> new ServiceException("付款单不存在：" + businessId));
+            return orderPayment.getShouldVerificationAmount();
+        } else {
+            throw new ServiceException("不支持的业务类型");
+        }
+    }
+
+    private void assignOrderNumber(Verification verification) {
+        if (StringUtils.isNotBlank(verification.getOrderNo())) {
+            return;
+        }
+
+        CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
+                CodeRule.DocumentType.核销单,
+                verification.getMerchantId(),
+                verification.getAccountBookId());
+
+        StringBuilder codeBuilder = new StringBuilder();
+
+        if (codeRule != null) {
+            if (StrUtil.isNotBlank(codeRule.getPrefix())) {
+                codeBuilder.append(codeRule.getPrefix());
+            }
+
+            if (StrUtil.isNotBlank(codeRule.getFormat())) {
+                String formattedDate = DateUtil.format(new Date(), codeRule.getFormat());
+                codeBuilder.append(formattedDate);
+            }
+
+            Integer serialLength = codeRule.getSerialNumberLength();
+            if (serialLength != null && serialLength > 0) {
+                Long count = jqf.select(qVerification.id.count())
+                        .from(qVerification)
+                        .where(qVerification.merchantId.eq(verification.getMerchantId())
+                                .and(qVerification.accountBookId.eq(verification.getAccountBookId())))
+                        .fetchOne();
+
+                Integer currentSerial = Math.toIntExact(count != null ? count + 1 : 1L);
+                String serialStr = String.format("%0" + serialLength + "d", currentSerial);
+                codeBuilder.append(serialStr);
+            }
+        } else {
+            codeBuilder.append(CodeGenerator.generateCode());
+        }
+
+        verification.setOrderNo(codeBuilder.toString());
+    }
+
+    /**
+     * 更新客户或供应商余额
+     */
+    private void updateBalance(Verification verification, List<VerificationItem> items) {
+
+        BigDecimal totalVerifyAmount = BigDecimal.ZERO;
+        for (VerificationItem item : items) {
+            if (item.getCurrentVerifyAmount() != null) {
+                totalVerifyAmount = totalVerifyAmount.add(item.getCurrentVerifyAmount());
+            }
+        }
+        if (verification.getType() == 1) { // 预收冲应收
+            Long customerId = verification.getPersonnelId();
+            Customer customer = customerRepository.findById(customerId)
+                    .orElseThrow(() -> new ServiceException("客户不存在"));
+
+            customer.setBalance(customer.getBalance().subtract(totalVerifyAmount));
+            customerRepository.save(customer);
+        } else if (verification.getType() == 2) { // 预付冲应付
+            Long supplierId = verification.getPersonnelId();
+            Supplier supplier = supplierRepository.findById(supplierId)
+                    .orElseThrow(() -> new ServiceException("供应商不存在"));
+
+            supplier.setBalance(supplier.getBalance().subtract(totalVerifyAmount));
+            supplierRepository.save(supplier);
+        }
+    }
+
+    public PageResults<VerificationQueryVO> query(Page page, VerificationService.Query query) {
+        JPAQuery<Verification> mainQuery = jqf.select(qVerification).from(qVerification).where(query.builder);
+        List<Verification> mainList = mainQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
+        long total = mainQuery.fetchCount();
+        List<VerificationQueryVO> voList = new ArrayList<>();
+        for (Verification verification : mainList) {
+            VerificationQueryVO vo = BeanUtil.toBean(verification, VerificationQueryVO.class);
+            List<VerificationCollection> collections = jqf.select(
+                            qVerificationCollection)
+                    .from(qVerificationCollection)
+                    .where(qVerificationCollection.verificationId.eq(verification.getId()))
+                    .fetch();
+            vo.setCollectionList(collections);
+            List<VerificationItem> items = jqf.select(qVerificationItem)
+                    .from(qVerificationItem)
+                    .where(qVerificationItem.verificationId.eq(verification.getId()))
+                    .fetch();
+            vo.setItemList(items);
+            voList.add(vo);
+        }
+        return new PageResults<>(voList, page, total);
+    }
+
+    private BigDecimal getTotalVerifyAmount(Long verificationId) {
+        return jqf.select(qVerificationItem.currentVerifyAmount.sum())
+                .from(qVerificationItem)
+                .where(qVerificationItem.verificationId.eq(verificationId))
+                .fetchOne();
     }
 
     @Transactional
-    public void delete(Long supplierFlowId, Long merchantId, Long accountBookId) {
+    public void updateStatus(OrderPaymentUpdateDTO dto) {
+        String ids = dto.getId();
+        OrderStatus targetStatus = dto.getOrderStatus();
+        if (StringUtils.isBlank(ids)) {
+            throw new ServiceException("请选择要操作的数据");
+        }
+        if (targetStatus == null) {
+            throw new ServiceException("请选择要操作的状态");
+        }
+        if (dto.getApprovedBy() == null) {
+            throw new ServiceException("请选择审核人");
+        }
+        List<Long> idList = Arrays.stream(ids.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
+                .toList();
+
+        if (idList.isEmpty()) {
+            throw new ServiceException("无效的ID列表");
+        }
+
+        List<Verification> verifications = jqf.select(qVerification)
+                .from(qVerification)
+                .where(qVerification.id.in(idList))
+                .fetch();
+
+        if (verifications.isEmpty()) {
+            throw new ServiceException("没有找到可操作的核销单");
+        }
+
+        for (Verification verification : verifications) {
+            if (targetStatus == OrderStatus.已审核 && !OrderStatus.已保存.equals(verification.getOrderStatus())) {
+                throw new ServiceException("只能审核【已保存】状态的单据：" + verification.getOrderNo());
+            }
+            if (targetStatus == OrderStatus.已保存 && !OrderStatus.已审核.equals(verification.getOrderStatus())) {
+                throw new ServiceException("只能反审核【已审核】状态的单据：" + verification.getOrderNo());
+            }
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        jqf.update(qVerification)
+                .set(qVerification.orderStatus, targetStatus)
+                .set(qVerification.approvedAt, targetStatus == OrderStatus.已审核 ? now : null)
+                .set(qVerification.approvedBy, targetStatus == OrderStatus.已审核 ? dto.getApprovedBy().intValue() : null)
+                .where(qVerification.id.in(idList))
+                .execute();
+
+
+        for (Verification verification : verifications) {
+            BigDecimal totalVerifyAmount = getTotalVerifyAmount(verification.getId());
+
+            if (verification.getType() == 1) { // 预收冲应收
+                Customer customer = customerRepository.findById(verification.getPersonnelId())
+                        .orElseThrow(() -> new ServiceException("客户不存在"));
+
+                if (targetStatus == OrderStatus.已审核) {
+                    customer.setBalance(customer.getBalance().subtract(totalVerifyAmount));
+                } else {
+                    customer.setBalance(customer.getBalance().add(totalVerifyAmount));
+                }
+
+                customerRepository.save(customer);
+
+            } else if (verification.getType() == 2) { // 预付冲应付
+                Supplier supplier = supplierRepository.findById(verification.getPersonnelId())
+                        .orElseThrow(() -> new ServiceException("供应商不存在"));
+
+                if (targetStatus == OrderStatus.已审核) {
+                    supplier.setBalance(supplier.getBalance().subtract(totalVerifyAmount));
+                } else {
+                    supplier.setBalance(supplier.getBalance().add(totalVerifyAmount));
+                }
+
+                supplierRepository.save(supplier);
+            }
+        }
+    }
+
+
+    @Transactional
+    public void delete(String ids, Long merchantId, Long accountBookId) {
+        if (StringUtils.isBlank(ids)) {
+            throw new ServiceException("请选择要删除的数据");
+        }
+
+        List<Long> idList = Arrays.stream(ids.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
+                .toList();
+
+        if (idList.isEmpty()) {
+            throw new ServiceException("无效的ID列表");
+        }
+
+        List<Verification> verifications = jqf.select(qVerification)
+                .from(qVerification)
+                .where(qVerification.id.in(idList)
+                        .and(qVerification.merchantId.eq(merchantId))
+                        .and(qVerification.accountBookId.eq(accountBookId)))
+                .fetch();
+
+        if (verifications.isEmpty()) {
+            throw new ServiceException("没有找到可删除的核销单");
+        }
+
+        for (Verification verification : verifications) {
+            if (!OrderStatus.已保存.equals(verification.getOrderStatus())) {
+                throw new ServiceException("只能删除【已保存】状态的核销单：" + verification.getOrderNo());
+            }
+        }
+
+        jqf.delete(qVerificationItem)
+                .where(qVerificationItem.verificationId.in(idList))
+                .execute();
+
+        jqf.delete(qVerificationCollection)
+                .where(qVerificationCollection.verificationId.in(idList))
+                .execute();
+
         jqf.delete(qVerification)
-                .where(qVerification.id.eq(supplierFlowId).and(qVerification.merchantId.eq(merchantId)).and(qVerification.accountBookId.eq(accountBookId)))
+                .where(qVerification.id.in(idList)
+                        .and(qVerification.merchantId.eq(merchantId))
+                        .and(qVerification.accountBookId.eq(accountBookId)))
                 .execute();
     }
 
     public List<Verification> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qVerification).where(qVerification.merchantId.eq(merchantId).and(qVerification.accountBookId.eq(accountBookId))).fetch();
+    }
+
+    public VerificationDetails selectById(Long id) {
+        if (id == null) {
+            throw new ServiceException("ID不能为空");
+        }
+
+        QMerchantUser qCreatedByUser = new QMerchantUser("createdByUser");
+        QMerchantUser qUpdatedByUser = new QMerchantUser("updatedByUser");
+        QMerchantUser qApprovedByUser = new QMerchantUser("approvedByUser");
+
+        VerificationVO orderVO = jqf.select(
+                        Projections.bean(
+                                VerificationVO.class,
+                                qVerification.id,
+                                qVerification.orderNo,
+                                qVerification.orderStatus,
+                                qVerification.createdAt,
+                                qVerification.approvedAt,
+                                qVerification.approvedBy,
+                                qVerification.type,
+                                qVerification.personnelId,
+                                qVerification.personnelName,
+                                qVerification.createdBy,
+                                qVerification.updateBy,
+                                qVerification.remarks,
+                                qVerification.orderDate,
+                                qVerification.orderStaffId,
+                                qVerification.orderStaffName,
+                                qCreatedByUser.name.as("creatorName"),
+                                qUpdatedByUser.name.as("updateName"),
+                                qApprovedByUser.name.as("approvedName"),
+                                qVerification.merchantId,
+                                qVerification.accountBookId
+                        )
+                )
+                .from(qVerification)
+                .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qVerification.createdBy.longValue()))
+                .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qVerification.updateBy.longValue()))
+                .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qVerification.approvedBy.longValue()))
+                .where(qVerification.id.eq(id))
+                .fetchOne();
+
+        if (orderVO == null) {
+            throw new ServiceException("核销单不存在");
+        }
+
+        VerificationDetails details = new VerificationDetails();
+        details.setOrder(orderVO);
+
+        List<VerificationItem> items = jqf.select(qVerificationItem)
+                .from(qVerificationItem)
+                .where(qVerificationItem.verificationId.eq(id))
+                .fetch();
+        details.setItemList(items);
+
+        List<VerificationCollection> collections = jqf.select(
+                        qVerificationCollection
+                )
+                .from(qVerificationCollection)
+                .where(qVerificationCollection.verificationId.eq(id))
+                .fetch();
+
+        details.setCollectionList(collections);
+
+        return details;
     }
 
     public static class Query {

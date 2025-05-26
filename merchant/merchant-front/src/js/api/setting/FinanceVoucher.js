@@ -13,4 +13,16 @@ export default {
     load(id) {
         return Ajax.get("/financeVoucher/load/" + id);
     },
+    balance(param) {
+        return Ajax.get("/financeVoucher/balance", param);
+    },
+    loadAuxiliaryAccountingData(param) {
+        return Ajax['get']('/financeVoucher/loadAuxiliaryAccountingData', param)
+    },
+    upVoucher(param) {
+        return Ajax['postJson']('/financeVoucher/upVoucher', param)
+    },
+    loadVoucher(param) {
+        return Ajax.get("/financeVoucher/loadVoucher", param);
+    },
 }

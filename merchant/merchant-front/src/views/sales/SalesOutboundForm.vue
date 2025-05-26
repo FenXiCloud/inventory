@@ -46,9 +46,32 @@
             <template #default="scope">
               <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
                 <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
-                        keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false">
+                        keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false" :equalWidth="false">
+                  <template v-slot:top>
+                    <table class="h-table" style="width: 100%">
+                      <thead class="h-table-header">
+                      <tr>
+                        <td width="150" align="center">商品编号</td>
+                        <td width="150" align="center">商品图片</td>
+                        <td width="150" align="center">商品名称</td>
+                        <td width="150" align="center">商品类别</td>
+                        <td width="150" align="center">商品规格</td>
+                      </tr>
+                      </thead>
+                    </table>
+                  </template>
                   <template v-slot:item="{ item }">
-                    <div>{{ item.name }}</div>
+                    <table>
+                      <tbody class="h-table-body-table">
+                      <tr>
+                        <td width="150" align="center">{{ item.code }}</td>
+                        <td width="150" align="center">{{ item.imageUrl }}</td>
+                        <td width="150" align="center">{{ item.name }}</td>
+                        <td width="150" align="center">{{ item.productCategoryName }}</td>
+                        <td width="150" align="center">{{ item.specification }}</td>
+                      </tr>
+                      </tbody>
+                    </table>
                   </template>
                 </Select>
               </div>
@@ -414,6 +437,7 @@ export default {
         customerLevelPriceList.forEach(cp => {
           if(cp.customerLevelId === this.customerLevelId && d.id === cp.productId){
             this.customerPrice = cp.price;
+            return;
           }
         })
       }

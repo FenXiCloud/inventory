@@ -4,6 +4,8 @@ dependencies {
     implementation("com.itextpdf:html2pdf:4.0.4")
     implementation("com.itextpdf:font-asian:7.2.4")
     implementation("org.apache.commons:commons-lang3:3.17.0")
+    implementation("com.aliyun:dingtalk:1.1.86")
+    implementation("com.aliyun:alibaba-dingtalk-service-sdk:2.0.0")
 }
 
 bootJar {

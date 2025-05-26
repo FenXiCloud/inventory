@@ -212,6 +212,32 @@ public class AdminService extends AbsService {
         return jqf.selectFrom(qAdmin).where(qAdmin.id.eq(id)).fetchFirst();
     }
 
+    public Admin selectAdminByUserName(String username) {
+        return jqf.selectFrom(qAdmin).where(qAdmin.username.eq(username))
+                .fetchFirst();
+    }
+
+    public AccountDto ddLogin(String mobile) {
+        Admin admin = jqf.selectFrom(qAdmin)
+                .where(qAdmin.mobile.eq(mobile)).fetchFirst();
+        Assert.notNull(admin, "账号错误~");
+
+        Merchant merchant = jqf.selectFrom(qMerchant).where(qMerchant.id.eq(admin.getMerchantId())).fetchFirst();
+
+        Role role = bqf.selectFrom(qRole).where(qRole.id.eq(admin.getRoleId())).fetchFirst();
+
+        AccountBook accountBook = bqf.selectFrom(qAccountBook).where(qAccountBook.merchantId.eq(admin.getMerchantId()).and(qAccountBook.current.isTrue())).fetchFirst();
+
+        return new AccountDto(admin, merchant, role, accountBook);
+    }
+
+    public Admin selectAdminByDingDingUserId(String userId) {
+        return jqf.selectFrom(qAdmin).where(qAdmin.dingDingUserId.eq(userId)).fetchFirst();
+    }
+
+    public int queryNumByUserName(String userName) {
+        return jqf.selectFrom(qAdmin).where(qAdmin.username.like(userName + "%")).fetch().size();
+    }
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

@@ -166,20 +166,16 @@ public class InventoryItemService extends AbsService {
         if (list == null || list.isEmpty()) {
             return;
         }
+        // 明细时间记录为录入时间（排序用）
+        list.forEach(item -> {
+            item.setCreatedAt(LocalDateTime.now());
+        });
         inventoryItemRepository.saveAll(list);
     }
 
     public PageResults<InventoryItemReportDto> report(Page page, Query query) {
         List<Long> ids = this.findPreviousMonthIds(query);
-        Boolean exclusion = query.getExclusion();
-        List<Long> voucherOrderIds = new ArrayList<>();
-        if (Boolean.TRUE.equals(exclusion)) {
-            List<FinanceVoucher> fetch = jqf.selectFrom(qFinanceVoucher).fetch();
-            for (FinanceVoucher financeVoucher : fetch) {
-                voucherOrderIds.add(financeVoucher.getOrderId());
-            }
-        }
-        PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryItem)
+        JPAQuery<Tuple> tupleJPAQuery = jqf.selectFrom(qInventoryItem)
                 .select(
                         qInventoryItem.id,
                         qInventoryItem.firstSort,
@@ -206,7 +202,9 @@ public class InventoryItemService extends AbsService {
                         qInventoryItem.subtotal.as("subtotal"),
                         qInventoryItem.currentQuantity.as("currentQuantity"),
                         qInventoryItem.totalCost.as("totalCost"),
-                        qInventoryItem.averageCost.as("averageCost")
+                        qInventoryItem.averageCost.as("averageCost"),
+                        qFinanceVoucher.voucherId.as("voucherId"),
+                        qFinanceVoucher.code.as("voucherCode")
                 )
                 .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
                 .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
@@ -214,18 +212,22 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
                 .leftJoin(qSupplier).on(qInventoryItem.supplierId.eq(qSupplier.id))
                 .leftJoin(qCustomer).on(qInventoryItem.customerId.eq(qCustomer.id))
+                .leftJoin(qFinanceVoucher).on(qFinanceVoucher.orderId.eq(qInventoryItem.id))
                 .where(query.builders())
-                .where(qInventoryItem.id.notIn(voucherOrderIds))
                 .where(qProduct.id.isNotNull())
                 .where(qInventoryItem.operationType.ne(OperationType.期初余额).or(qInventoryItem.id.in(ids)))
                 .orderBy(qInventoryItem.productId.asc())
                 .orderBy(qInventoryItem.firstSort.desc())
                 .orderBy(qInventoryItem.createdAt.desc())
-                .orderBy(qInventoryItem.id.asc())
-                .fetchPage(page.getOffset(), page.getOffsetEnd());
+                .orderBy(qInventoryItem.id.asc());
+        long size = tupleJPAQuery.fetchCount();
+        List<Tuple> fetch = tupleJPAQuery
+                .offset(page.getOffset())
+                .limit(page.getOffsetEnd())
+                .fetch();
         List<InventoryItemReportDto> dtos = new ArrayList<>();
         InventoryItemReportDto dto;
-        for (Tuple tuple : fetchPage) {
+        for (Tuple tuple : fetch) {
             dto = new InventoryItemReportDto();
             dto.setId(tuple.get(qInventoryItem.id));
             dto.setBatchNumber(tuple.get(qInventoryItem.batchNumber));
@@ -250,9 +252,11 @@ public class InventoryItemService extends AbsService {
             dto.setAverageCost(tuple.get(qInventoryItem.averageCost.as("averageCost")));
             dto.setCurrentQuantity(tuple.get(qInventoryItem.currentQuantity.as("currentQuantity")));
             dto.setQuantity(tuple.get(qInventoryItem.quantity.as("quantity")));
+            dto.setVoucherId(tuple.get(qFinanceVoucher.voucherId.as("voucherId")));
+            dto.setVoucherCode(tuple.get(qFinanceVoucher.code.as("voucherCode")));
             dtos.add(dto);
         }
-        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+        return new PageResults<>(dtos, page, size);
     }
 
     private List<Long> findPreviousMonthIds(Query query) {
@@ -465,7 +469,7 @@ public class InventoryItemService extends AbsService {
                         .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
                         .leftJoin(qWarehouse).on(qInventoryItem.warehouseId.eq(qWarehouse.id))
                         .where(qInventoryItem.operationType.notIn(OperationType.期初余额, OperationType.期初库存))
-                        .where(qProduct.id.isNotNull())
+                        .where(qProduct.id.isNotNull(), qWarehouse.id.isNotNull())
                         .orderBy(qInventoryItem.createdAt.asc())
                         .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId)
         ).and(qInventoryItem.operationType.notIn(OperationType.期初余额, OperationType.期初库存));
@@ -534,7 +538,7 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qWarehouse).on(qInventoryItem.warehouseId.eq(qWarehouse.id))
                 .where(query.balanceBuilders())
                 .where(expression)
-                .where(qProduct.id.isNotNull())
+                .where(qProduct.id.isNotNull(), qWarehouse.id.isNotNull())
                 .orderBy(qInventoryItem.createdAt.asc());
     }
 

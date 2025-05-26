@@ -12,6 +12,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * @功能描述: 财务软件进销存辅助核算映射
  * @创建时间: 2025年03月11日
@@ -39,6 +41,16 @@ public class FinanceItemMapController {
         financeItemMap.setMerchantId(accountDto.getMerchantId());
         financeItemMap.setAccountBookId(accountDto.getAccountBookId());
         financeItemMapService.save(financeItemMap, accountDto);
+        return JsonResult.successful();
+    }
+
+    @PostMapping("batchSave")
+    public JsonResult batchSave(@RequestBody @Valid List<FinanceItemMap> financeItemMap, @SaAccountVal AccountDto accountDto) {
+        for (FinanceItemMap itemMap : financeItemMap) {
+            itemMap.setMerchantId(accountDto.getMerchantId());
+            itemMap.setAccountBookId(accountDto.getAccountBookId());
+            financeItemMapService.save(itemMap, accountDto);
+        }
         return JsonResult.successful();
     }
 

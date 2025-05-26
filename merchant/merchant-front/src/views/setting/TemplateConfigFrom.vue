@@ -121,6 +121,7 @@ export default {
           details.push({
             subjectId: item.subjectId,
             subjectName: item.subjectName,
+            subjectCode: item.subjectCode,
             balanceDirection: item.balanceDirection,
             auxiliaryAccounting: item.auxiliaryAccounting
           });
@@ -159,6 +160,7 @@ export default {
       console.log(filter[0])
       this.templateData[rowIndex].balanceDirection = filter[0].balanceDirection;
       this.templateData[rowIndex].subjectName = filter[0].subjectName;
+      this.templateData[rowIndex].subjectCode = filter[0].code;
       this.templateData[rowIndex].auxiliaryAccounting = filter[0].auxiliaryAccounting;
     },
     load() {

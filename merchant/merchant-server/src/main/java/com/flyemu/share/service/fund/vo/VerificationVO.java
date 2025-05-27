@@ -30,7 +30,7 @@ public class VerificationVO {
     //人员名称
     private String personnelName;
     //单据日期
-    private Date orderDate;
+    private LocalDateTime orderDate;
     //单据编号
     private String orderNo;
     //状态

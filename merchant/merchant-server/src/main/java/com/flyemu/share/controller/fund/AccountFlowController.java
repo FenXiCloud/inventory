@@ -23,6 +23,7 @@ public class AccountFlowController {
 
     private final AccountFlowService accountFlowService;
 
+
     @GetMapping
     public JsonResult list(AccountFlowService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);

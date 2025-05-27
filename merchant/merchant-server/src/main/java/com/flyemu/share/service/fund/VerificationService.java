@@ -69,6 +69,9 @@ public class VerificationService extends AbsService {
         if (dto.getOrder().getOrderStatus() == null) {
             throw new ServiceException("状态为空");
         }
+        if (dto.getOrder().getType() == null) {
+            throw new ServiceException("类型为空");
+        }
         if (OrderStatus.已审核.equals(dto.getOrder().getOrderStatus())) {
             if (dto.getOrder().getApprovedBy() == null) {
                 throw new ServiceException("已审核状态,审核人必填");
@@ -173,7 +176,7 @@ public class VerificationService extends AbsService {
 
         for (VerificationItem item : items) {
             Integer businessId = item.getBusinessId();
-            Integer businessType = item.getBusinessType();
+            Integer businessType = verification.getType();
 
             if (businessIdSet.contains(businessId)) {
                 throw new ServiceException("不能重复引用同一订单：" + businessId);
@@ -225,7 +228,9 @@ public class VerificationService extends AbsService {
                 )
                 .fetchOne();
 
-        return verifiedFromOriginal.add(verifiedFromVerifications);
+        return Optional.of(verifiedFromOriginal).orElse(BigDecimal.ZERO)
+                .add(Optional.ofNullable(verifiedFromVerifications).orElse(BigDecimal.ZERO));
+
     }
 
     private BigDecimal getOrderTotalAmount(Integer businessType, Integer businessId) {

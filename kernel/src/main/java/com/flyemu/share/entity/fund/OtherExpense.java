@@ -26,33 +26,31 @@ import java.time.LocalDateTime;
 @Table
 @DynamicUpdate
 public class OtherExpense {
+
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Comment("供货商ID")
+    @Comment("收支类别名称")
+    private String settlementAccount;
+    @Comment("收支类别ID")
+    private String settlementAccountId;
+    @Comment("供应商ID")
     private Long supplierId;
-
+    @Comment("供应商名称")
+    private String customerName;
     @Comment("单据日期")
     private LocalDate orderDate;
-
     @Comment("单据编号")
     private String orderNo;
-
-    @Comment("金额")
-    private BigDecimal amount;
-
-    @Comment("已核销金额")
-    private BigDecimal verifiedAmount;
-
-    @Comment("付款金额")
-    private BigDecimal paymentAmount;
-
-    @Comment("付款账户ID")
-    private Long accountId;
-
+    @Comment("欠款金额")
+    private BigDecimal arrearsAmount;
+    @Comment("收款到期日")
+    private LocalDate expirationDate;
+    @Comment("收款金额")
+    private BigDecimal collectionAmount;
     @Comment("状态")
-    @Column(nullable = false,length = 32, columnDefinition = "varchar(20) default '已保存'")
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(20) default '已保存'")
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
 
@@ -70,7 +68,10 @@ public class OtherExpense {
 
     @Column(nullable = false)
     private Long accountBookId;
-
+    @Comment("最后修改人")
+    private Long updateBy;
+    @Comment("最后修改时间")
+    private LocalDateTime updateAt;
     @Column(nullable = false)
     private Long merchantId;
 }

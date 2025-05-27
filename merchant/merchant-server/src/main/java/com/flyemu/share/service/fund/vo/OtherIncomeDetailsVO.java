@@ -2,87 +2,45 @@ package com.flyemu.share.service.fund.vo;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.flyemu.share.enums.OrderStatus;
+import jakarta.persistence.*;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * @author shuaiqi
- */@JsonInclude()
+ *@author shuaiqi
+ */
+@JsonInclude()
 @Data
-@NoArgsConstructor
-public class OrderReceiptDetailsVO {
-
+public class OtherIncomeDetailsVO {
     private String createName;
     private String updateName;
     private String approvedName;
-
     private Long id;
-
-
+    private String settlementAccount;
+    private String settlementAccountId;
     private Long customerId;
-
-    private String customerName;
-
-    private Integer orderType;
-
     private LocalDate orderDate;
-
-
     private String orderNo;
-
-    private String documentSource;
-
-
-    private BigDecimal discountAmount;
-
-
+    private String customerName;
+    private BigDecimal arrearsAmount;
+    private LocalDate expirationDate;
     private BigDecimal collectionAmount;
-
-
-    private BigDecimal totalAmountsOwed;
-
-
-    private BigDecimal verificationAmount;
-
-    private BigDecimal advanceCollectionsAmount;
-
-    private BigDecimal shouldVerificationAmount;
-
-    private BigDecimal hasVerificationAmount;
-
-    private BigDecimal notVerificationAmount;
-
-    private Integer writeOffStatus;
-
-
+    @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
-
-
-    private Long orderStaffId;
-
-    private String orderStatusName;
-
 
     private Long createdBy;
 
-    private Long updateBy;
-
     private LocalDateTime createdAt;
 
-    private LocalDateTime updateAt;
-
-
     private Long approvedBy;
-
 
     private LocalDateTime approvedAt;
 
     private Long accountBookId;
 
     private Long merchantId;
-
 }

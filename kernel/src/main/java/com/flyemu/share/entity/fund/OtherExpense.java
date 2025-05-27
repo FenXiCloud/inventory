@@ -38,16 +38,14 @@ public class OtherExpense {
     @Comment("供应商ID")
     private Long supplierId;
     @Comment("供应商名称")
-    private String customerName;
+    private String supplierName;
     @Comment("单据日期")
     private LocalDate orderDate;
     @Comment("单据编号")
     private String orderNo;
     @Comment("欠款金额")
     private BigDecimal arrearsAmount;
-    @Comment("收款到期日")
-    private LocalDate expirationDate;
-    @Comment("收款金额")
+    @Comment("付款金额")
     private BigDecimal collectionAmount;
     @Comment("状态")
     @Column(nullable = false, length = 32, columnDefinition = "varchar(20) default '已保存'")

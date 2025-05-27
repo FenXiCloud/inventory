@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.Customer;
@@ -25,6 +26,8 @@ import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQuery;
 import lombok.Data;
 import lombok.Getter;
@@ -518,6 +521,14 @@ public class OrderReceiptService extends AbsService {
             throw new ServiceException("客户ID不能为空");
         }
         QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
+
+
+        NumberExpression<BigDecimal> verifiedAmountExpr = Expressions.numberTemplate(
+                BigDecimal.class,
+                "coalesce({0}, 0)",
+                qItem.currentVerifyAmount.sum()
+        );
+
         JPAQuery<SalesOrderWithVerification> mainQuery = jqf.select(
                         Projections.fields(
                                 SalesOrderWithVerification.class,
@@ -525,8 +536,8 @@ public class OrderReceiptService extends AbsService {
                                 qSalesOrder.orderNo.as("salesOrderNo"),
                                 qSalesOrder.orderDate.as("businessDate"),
                                 qSalesOrder.finalAmount.as("documentAmount"),
-                                qItem.currentVerifyAmount.sum().as("verifiedAmount"),
-                                qSalesOrder.finalAmount.subtract(qItem.currentVerifyAmount.sum()).as("unverifiedAmount")
+                                verifiedAmountExpr.as("verifiedAmount"),
+                                qSalesOrder.finalAmount.subtract(verifiedAmountExpr).as("unverifiedAmount")
                         )
                 )
                 .from(qSalesOrder)
@@ -534,9 +545,11 @@ public class OrderReceiptService extends AbsService {
                 .where(query.builder.and(qSalesOrder.orderStatus.eq(OrderStatus.已审核)))
                 .groupBy(qSalesOrder.id);
 
-        mainQuery.having(qSalesOrder.finalAmount
-                .subtract(qItem.currentVerifyAmount.sum())
-                .gt(BigDecimal.ZERO));
+        mainQuery.having(
+                qSalesOrder.finalAmount
+                        .subtract(verifiedAmountExpr)
+                        .gt(BigDecimal.ZERO)
+        );
 
         List<SalesOrderWithVerification> result = mainQuery.offset(page.getOffset())
                 .limit(page.getPageSize())
@@ -546,7 +559,7 @@ public class OrderReceiptService extends AbsService {
 
         return new PageResults<>(result, page, total);
     }
-
+    @JsonInclude()
     @Data
     public static class SalesOrderWithVerification {
         private Long salesOrderId;

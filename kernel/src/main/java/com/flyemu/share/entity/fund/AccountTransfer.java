@@ -62,4 +62,8 @@ public class AccountTransfer {
 
     @Column(nullable = false)
     private Long merchantId;
+    @Comment("最后修改人")
+    private Long updateBy;
+    @Comment("最后修改时间")
+    private LocalDateTime updateAt;
 }

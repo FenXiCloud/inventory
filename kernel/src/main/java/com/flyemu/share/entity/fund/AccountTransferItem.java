@@ -29,15 +29,25 @@ public class AccountTransferItem {
 
     @Comment("转出账户ID")
     private Long fromAccountId;
+    @Comment("转出账户名称")
+    private String fromAccountName;
 
     @Comment("转入账户ID")
     private Long toAccountId;
 
+    @Comment("转账单id")
+    private Long accountTransferId;
+    @Comment("转入账户名称")
+    private String toAccountName;
+    @Comment("结算号")
+    private String settlementNumber;
     @Comment("金额")
     private BigDecimal amount;
 
     @Comment("结算方式")
-    private Long paymentMethod;
+    private Long paymentMethodId;
+    @Comment("结算方式名称")
+    private Long paymentMethodName;
 
     @Column(nullable = false)
     private Long accountBookId;

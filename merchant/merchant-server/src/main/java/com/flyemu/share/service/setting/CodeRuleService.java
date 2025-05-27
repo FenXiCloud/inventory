@@ -5,6 +5,7 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QCodeRule;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.CodeRuleRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -77,9 +78,30 @@ public class CodeRuleService extends AbsService {
 
     @Transactional
     public void delete(Long codeRuleId, Long merchantId, Long accountBookId) {
-        jqf.delete(qCodeRule)
-                .where(qCodeRule.id.eq(codeRuleId).and(qCodeRule.merchantId.eq(merchantId)).and(qCodeRule.accountBookId.eq(accountBookId)))
+
+        CodeRule toDelete = codeRuleRepository.findById(codeRuleId)
+                .orElseThrow(() -> new ServiceException("编码规则不存在"));
+
+        Long count = jqf.select(qCodeRule.id.count())
+                .from(qCodeRule)
+                .where(qCodeRule.merchantId.eq(merchantId)
+                        .and(qCodeRule.accountBookId.eq(accountBookId))
+                        .and(qCodeRule.documentType.eq(toDelete.getDocumentType())))
+                .fetchOne();
+
+        if (count != null && count <= 1) {
+            throw new ServiceException("该单据类型下必须至少保留一个编码规则，无法删除");
+        }
+
+        long deleted = jqf.delete(qCodeRule)
+                .where(qCodeRule.id.eq(codeRuleId)
+                        .and(qCodeRule.merchantId.eq(merchantId))
+                        .and(qCodeRule.accountBookId.eq(accountBookId)))
                 .execute();
+
+        if (deleted == 0) {
+            throw new ServiceException("删除失败");
+        }
     }
 
     public List<CodeRule> select(Long merchantId, Long accountBookId) {

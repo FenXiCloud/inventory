@@ -47,7 +47,7 @@ public class AccountTransferItem {
     @Comment("结算方式")
     private Long paymentMethodId;
     @Comment("结算方式名称")
-    private Long paymentMethodName;
+    private String  paymentMethodName;
 
     @Column(nullable = false)
     private Long accountBookId;

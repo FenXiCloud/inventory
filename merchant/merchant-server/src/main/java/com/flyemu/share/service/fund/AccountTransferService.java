@@ -25,6 +25,7 @@ import com.flyemu.share.service.fund.dto.AccountTransferDTO;
 import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.service.fund.vo.AccountTransferDetails;
 import com.flyemu.share.service.fund.vo.AccountTransferDetailsVO;
+import com.flyemu.share.service.fund.vo.AccountTransferQueryVO;
 import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.querydsl.core.BooleanBuilder;
@@ -64,12 +65,12 @@ public class AccountTransferService extends AbsService {
     private final AccountRepository accountRepository;
     private final AccountTransferItemRepository accountTransferItemRepository;
 
-    public PageResults<AccountTransferDetailsVO> query(Page page, AccountTransferService.Query query) {
+    public PageResults<AccountTransferQueryVO> query(Page page, AccountTransferService.Query query) {
         QMerchantUser qCreatedByUser = new QMerchantUser("createdByUser");
         QMerchantUser qApprovedByUser = new QMerchantUser("approvedByUser");
 
-        JPAQuery<AccountTransferDetailsVO> mainQuery = jqf.select(
-                        Projections.bean(AccountTransferDetailsVO.class,
+        JPAQuery<AccountTransferQueryVO> mainQuery = jqf.select(
+                        Projections.bean(AccountTransferQueryVO.class,
                                 qAccountTransfer.id,
                                 qAccountTransfer.orderDate,
                                 qAccountTransfer.orderNo,
@@ -89,12 +90,31 @@ public class AccountTransferService extends AbsService {
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qAccountTransfer.approvedBy))
                 .where(query.builder);
 
-        List<AccountTransferDetailsVO> mainList = mainQuery.offset(page.getOffset())
+        List<AccountTransferQueryVO> mainList = mainQuery.offset(page.getOffset())
                 .limit(page.getPageSize())
                 .fetch();
 
-        long total = mainQuery.fetchCount();
+        List<Long> transferIds = mainList.stream()
+                .map(AccountTransferDetailsVO::getId)
+                .toList();
 
+        Map<Long, List<AccountTransferItem>> itemMap = new HashMap<>();
+        if (!transferIds.isEmpty()) {
+            List<AccountTransferItem> allItems = jqf.select(qAccountTransferItem)
+                    .from(qAccountTransferItem)
+                    .where(qAccountTransferItem.accountTransferId.in(transferIds))
+                    .fetch();
+
+            for (AccountTransferItem item : allItems) {
+                itemMap.computeIfAbsent(item.getAccountTransferId(), k -> new ArrayList<>()).add(item);
+            }
+        }
+
+        for (AccountTransferQueryVO vo : mainList) {
+            vo.setItemList(itemMap.getOrDefault(vo.getId(), Collections.emptyList()));
+        }
+
+        long total = mainQuery.fetchCount();
         return new PageResults<>(mainList, page, total);
     }
 

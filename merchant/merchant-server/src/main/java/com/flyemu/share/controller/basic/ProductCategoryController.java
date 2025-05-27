@@ -8,7 +8,10 @@ import com.flyemu.share.service.basic.ProductCategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
+
+import javax.sql.rowset.serial.SerialException;
 
 /**
  * @功能描述: 商品分类
@@ -33,9 +36,10 @@ public class ProductCategoryController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid ProductCategory productCategory, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+    public JsonResult save(@RequestBody @Valid ProductCategory productCategory, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId){
         productCategory.setMerchantId(merchantId);
         productCategory.setAccountBookId(accountBookId);
+
         productCategoryService.save(productCategory);
         return JsonResult.successful();
     }

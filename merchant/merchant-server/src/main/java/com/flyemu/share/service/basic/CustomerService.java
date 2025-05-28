@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 
@@ -60,13 +61,7 @@ public class CustomerService extends AbsService {
     private final CodeRuleService codeRuleService;
 
     public PageResults<CustomerDto> query(Page page, Query query) {
-        PagedList<Tuple> fetchPage = bqf.selectFrom(qCustomer)
-                .select(qCustomer, qCustomerCategory.name, qCustomerLevel.name)
-                .leftJoin(qCustomerCategory).on(qCustomerCategory.id.eq(qCustomer.customerCategoryId))
-                .leftJoin(qCustomerLevel).on(qCustomerLevel.id.eq(qCustomer.customerLevelId))
-                .where(query.builder)
-                .orderBy(qCustomer.id.desc())
-                .fetchPage(page.getOffset(), page.getOffsetEnd());
+        PagedList<Tuple> fetchPage = bqf.selectFrom(qCustomer).select(qCustomer, qCustomerCategory.name, qCustomerLevel.name).leftJoin(qCustomerCategory).on(qCustomerCategory.id.eq(qCustomer.customerCategoryId)).leftJoin(qCustomerLevel).on(qCustomerLevel.id.eq(qCustomer.customerLevelId)).where(query.builder).orderBy(qCustomer.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
         ArrayList<CustomerDto> collect = fetchPage.stream().collect(ArrayList::new, (list, tuple) -> {
             CustomerDto dto = BeanUtil.toBean(tuple.get(qCustomer), CustomerDto.class);
@@ -91,11 +86,7 @@ public class CustomerService extends AbsService {
             return customerRepository.save(original);
         }
         if (StringUtils.isEmpty(customer.getCode())) {
-            CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
-                    CodeRule.DocumentType.客户,
-                    customer.getMerchantId(),
-                    customer.getAccountBookId()
-            );
+            CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(CodeRule.DocumentType.客户, customer.getMerchantId(), customer.getAccountBookId());
 
             if (codeRule != null) {
                 StringBuilder codeBuilder = new StringBuilder();
@@ -108,12 +99,7 @@ public class CustomerService extends AbsService {
                 }
                 Integer serialLength = codeRule.getSerialNumberLength();
                 if (serialLength != null && serialLength > 0) {
-                    JPAQuery<Long> query = jqf.select(qCustomer.id.count())
-                            .from(qCustomer)
-                            .where(
-                                    qCustomer.merchantId.eq(customer.getMerchantId())
-                                            .and(qCustomer.accountBookId.eq(customer.getAccountBookId()))
-                            );
+                    JPAQuery<Long> query = jqf.select(qCustomer.id.count()).from(qCustomer).where(qCustomer.merchantId.eq(customer.getMerchantId()).and(qCustomer.accountBookId.eq(customer.getAccountBookId())));
                     Long count = query.fetchOne();
                     Integer currentSerial = Math.toIntExact(count + 1);
                     String serialStr = String.format("%0" + serialLength + "d", currentSerial);
@@ -151,8 +137,7 @@ public class CustomerService extends AbsService {
         if (existenceChecker.existsInOtherOutbound(customersId, 2)) {
             throw new ServiceException("该档案已存在其他出库单,不能删除");
         }
-        jqf.delete(qCustomer)
-                .where(qCustomer.id.eq(customersId).and(qCustomer.merchantId.eq(merchantId)).and(qCustomer.accountBookId.eq(accountBookId))).execute();
+        jqf.delete(qCustomer).where(qCustomer.id.eq(customersId).and(qCustomer.merchantId.eq(merchantId)).and(qCustomer.accountBookId.eq(accountBookId))).execute();
     }
 
 
@@ -196,28 +181,37 @@ public class CustomerService extends AbsService {
         }
 
         List<JSONObject> list = new ArrayList<>();
-        bqf.selectFrom(qCustomer)
-                .select(qCustomer, qCustomerCategory.name, qCustomerCategory.id, qCustomerLevel.name, qCustomerLevel.id)
-                .leftJoin(qCustomerCategory).on(qCustomerCategory.id.eq(qCustomer.customerCategoryId).and(qCustomerCategory.merchantId.eq(merchantId)))
-                .leftJoin(qCustomerLevel).on(qCustomerLevel.id.eq(qCustomer.customerCategoryId).and(qCustomer.merchantId.eq(merchantId)))
-                .orderBy(qCustomer.code.desc(), qCustomer.id.desc())
-                .where(qCustomer.merchantId.eq(merchantId).and(builder)).fetch().forEach(tuple -> {
-                    Customer customer = BeanUtil.toBean(tuple.get(qCustomer), Customer.class);
-                    JSONObject jsonObject = new JSONObject();
-                    jsonObject.put("分类编码", tuple.get(qCustomerCategory.id));
-                    jsonObject.put("分类名称", tuple.get(qCustomerCategory.name));
-                    jsonObject.put("客户编码", qCustomer.code);
-                    jsonObject.put("客户名称", qCustomer.name);
-                    jsonObject.put("客户级别ID", tuple.get(qCustomerLevel.id));
-                    jsonObject.put("客户级别名称", tuple.get(qCustomerLevel.name));
-                    jsonObject.put("应收账款", tuple.get(qCustomer.balance));
-                    jsonObject.put("联系人", tuple.get(qCustomer.contact));
-                    jsonObject.put("电话", tuple.get(qCustomer.phone));
-                    jsonObject.put("备注", qCustomer.remarks);
-                    jsonObject.put("状态", qCustomer.enabled);
-                    list.add(jsonObject);
-                });
+        bqf.selectFrom(qCustomer).select(qCustomer, qCustomerCategory.name, qCustomerCategory.id, qCustomerLevel.name, qCustomerLevel.id).leftJoin(qCustomerCategory).on(qCustomerCategory.id.eq(qCustomer.customerCategoryId).and(qCustomerCategory.merchantId.eq(merchantId))).leftJoin(qCustomerLevel).on(qCustomerLevel.id.eq(qCustomer.customerCategoryId).and(qCustomer.merchantId.eq(merchantId))).orderBy(qCustomer.code.desc(), qCustomer.id.desc()).where(qCustomer.merchantId.eq(merchantId).and(builder)).fetch().forEach(tuple -> {
+            Customer customer = BeanUtil.toBean(tuple.get(qCustomer), Customer.class);
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("分类编码", tuple.get(qCustomerCategory.id));
+            jsonObject.put("分类名称", tuple.get(qCustomerCategory.name));
+            jsonObject.put("客户编码", qCustomer.code);
+            jsonObject.put("客户名称", qCustomer.name);
+            jsonObject.put("客户级别ID", tuple.get(qCustomerLevel.id));
+            jsonObject.put("客户级别名称", tuple.get(qCustomerLevel.name));
+            jsonObject.put("应收账款", tuple.get(qCustomer.balance));
+            jsonObject.put("联系人", tuple.get(qCustomer.contact));
+            jsonObject.put("电话", tuple.get(qCustomer.phone));
+            jsonObject.put("备注", qCustomer.remarks);
+            jsonObject.put("状态", qCustomer.enabled);
+            list.add(jsonObject);
+        });
         return list;
+    }
+
+    public Customer findById(Long customerId) {
+        Optional<Customer> optionalAccount = customerRepository.findById(customerId);
+        if (optionalAccount.isEmpty()) {
+            throw new ServiceException("客户不存在");
+        }
+        Customer account = optionalAccount.get();
+        return account;
+
+    }
+
+    public void updateTheBalance(Customer customer) {
+        jqf.update(qCustomer).set(qCustomer.balance, customer.getBalance()).where(qCustomer.id.eq(customer.getId())).execute();
     }
 
     /**

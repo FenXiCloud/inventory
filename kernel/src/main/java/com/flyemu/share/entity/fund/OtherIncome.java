@@ -33,7 +33,7 @@ public class OtherIncome {
     @Comment("收支类别名称")
     private String settlementAccount;
     @Comment("收支类别ID")
-    private String settlementAccountId;
+    private Long settlementAccountId;
     @Comment("客户ID")
     private Long customerId;
     @Comment("客户名称")
@@ -65,6 +65,10 @@ public class OtherIncome {
     @Comment("审核时间")
     private LocalDateTime approvedAt;
 
+    @Comment("业务员ID")
+    private Long orderStaffId;
+    @Comment("业务员名称")
+    private String orderStaffName;
     @Column(nullable = false)
     private Long accountBookId;
     @Comment("最后修改人")

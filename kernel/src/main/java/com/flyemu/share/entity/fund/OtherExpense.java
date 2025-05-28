@@ -34,7 +34,7 @@ public class OtherExpense {
     @Comment("收支类别名称")
     private String settlementAccount;
     @Comment("收支类别ID")
-    private String settlementAccountId;
+    private Long settlementAccountId;
     @Comment("供应商ID")
     private Long supplierId;
     @Comment("供应商名称")
@@ -61,6 +61,10 @@ public class OtherExpense {
     @Comment("审核人")
     private Long approvedBy;
 
+    @Comment("业务员ID")
+    private Long orderStaffId;
+    @Comment("业务员名称")
+    private String orderStaffName;
     @Comment("审核时间")
     private LocalDateTime approvedAt;
 

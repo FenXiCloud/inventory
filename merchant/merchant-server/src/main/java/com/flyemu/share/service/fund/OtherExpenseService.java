@@ -16,6 +16,9 @@ import com.flyemu.share.repository.OtherExpenseItemRepository;
 import com.flyemu.share.repository.OtherExpenseRepository;
 import com.flyemu.share.repository.SupplierRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.AccountService;
+import com.flyemu.share.service.basic.SupplierService;
+import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
 import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.service.fund.vo.OtherExpenseDetails;
 import com.flyemu.share.service.fund.vo.OtherExpenseDetailsVO;
@@ -52,8 +55,10 @@ public class OtherExpenseService extends AbsService {
 
     private final OtherExpenseRepository otherExpenseRepository;
     private final OtherExpenseItemRepository otherExpenseItemRepository;
-    private final SupplierRepository supplierRepository;
+    private final SupplierService supplierService;
     private final CodeRuleService codeRuleService;
+
+    private final AccountService accountService;
 
     public PageResults<OtherExpenseDetailsVO> query(Page page, OtherExpenseService.Query query) {
         QMerchantUser qCreatedByUser = new QMerchantUser("createdByUser");
@@ -63,6 +68,9 @@ public class OtherExpenseService extends AbsService {
                         qOtherExpense.id,
                         qOtherExpense.orderNo,
                         qOtherExpense.orderDate,
+
+                        qOtherExpense.orderStaffId,
+                        qOtherExpense.orderStaffName,
                         qOtherExpense.collectionAmount,
                         qOtherExpense.supplierId,
                         qOtherExpense.supplierName,
@@ -176,43 +184,7 @@ public class OtherExpenseService extends AbsService {
             throw new ServiceException("已审核状态,审核人必填");
         }
         expense.setApprovedAt(LocalDateTime.now());
-
-        Supplier supplier = supplierRepository.findById(expense.getSupplierId())
-                .orElseThrow(() -> new ServiceException("供应商不存在"));
-
-        BigDecimal amount = expense.getCollectionAmount();
-        if (amount == null) {
-            amount = BigDecimal.ZERO;
-        }
-
-        supplier.setBalance(supplier.getBalance().subtract(amount));
-        supplierRepository.save(supplier);
-    }
-
-    private void updateSupplierBalanceWhenApprove(OtherExpense income) {
-        Supplier supplier = supplierRepository.findById(income.getSupplierId())
-                .orElseThrow(() -> new ServiceException("供应商不存在"));
-
-        BigDecimal amount = income.getCollectionAmount();
-        if (amount == null) {
-            amount = BigDecimal.ZERO;
-        }
-
-        supplier.setBalance(supplier.getBalance().subtract(amount));
-        supplierRepository.save(supplier);
-    }
-
-    private void updateSupplierBalanceWhenUnApprove(OtherExpense income) {
-        Supplier supplier = supplierRepository.findById(income.getSupplierId())
-                .orElseThrow(() -> new ServiceException("供应商不存在"));
-
-        BigDecimal amount = income.getCollectionAmount();
-        if (amount == null) {
-            amount = BigDecimal.ZERO;
-        }
-
-        supplier.setBalance(supplier.getBalance().add(amount));
-        supplierRepository.save(supplier);
+        updateSupplierAndAccountBalances(expense, OrderStatus.已审核);
     }
 
 
@@ -276,6 +248,8 @@ public class OtherExpenseService extends AbsService {
                         qOtherExpense.id,
                         qOtherExpense.supplierId,
                         qOtherExpense.supplierName,
+                        qOtherExpense.orderStaffId,
+                        qOtherExpense.orderStaffName,
                         qOtherExpense.orderDate,
                         qOtherExpense.orderNo,
                         qOtherExpense.collectionAmount,
@@ -360,14 +334,12 @@ public class OtherExpenseService extends AbsService {
             if (targetStatus == OrderStatus.已审核) {
                 expense.setApprovedAt(now);
                 expense.setApprovedBy(dto.getApprovedBy());
-                updateSupplierBalanceWhenApprove(expense);
             } else {
                 expense.setApprovedAt(null);
                 expense.setApprovedBy(null);
-                updateSupplierBalanceWhenUnApprove(expense);
             }
-
             otherExpenseRepository.save(expense);
+            updateSupplierAndAccountBalances(expense, targetStatus);
         }
 
         jqf.update(qOtherExpense)
@@ -376,6 +348,54 @@ public class OtherExpenseService extends AbsService {
                 .set(qOtherExpense.approvedBy, targetStatus == OrderStatus.已审核 ? dto.getApprovedBy() : null)
                 .where(qOtherExpense.id.in(idList))
                 .execute();
+    }
+    @Transactional
+    public void updateSupplierAndAccountBalances(OtherExpense expense, OrderStatus targetStatus) {
+        Supplier supplier = supplierService.selectByPrimaryKey(expense.getSupplierId());
+
+        BigDecimal amount = expense.getCollectionAmount();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
+            amount = BigDecimal.ZERO;
+        }
+
+        if (targetStatus == OrderStatus.已审核) {
+            supplier.setBalance(supplier.getBalance().subtract(amount));
+        } else {
+            if (expense.getOrderStatus() != OrderStatus.已审核) {
+                throw new ServiceException("只有已审核的付款单才能反审核");
+            }
+            supplier.setBalance(supplier.getBalance().add(amount));
+        }
+        supplierService.updateTheBalance(supplier);
+
+        Long settlementAccountId = expense.getSettlementAccountId();
+        if (settlementAccountId==null) {
+            throw new ServiceException("结算账户不能为空");
+        }
+
+        BigDecimal paymentAmount = amount;
+        AccountBalanceChangeContext context = AccountBalanceChangeContext.builder()
+                .accountId(settlementAccountId)
+                .merchantId(expense.getMerchantId())
+                .accountBookId(expense.getAccountBookId())
+                .voucherId(expense.getId())
+                .supplierId(expense.getSupplierId())
+                .businessNo(expense.getOrderNo())
+                .flowType(AccountFlow.AccountFlowType.其他支出单)
+                .operatorId(expense.getOrderStaffId())
+                .correspondentsId(expense.getSupplierId())
+                .correspondentsName(expense.getSupplierName())
+                .operatorName(expense.getOrderStaffName())
+                .remarks(targetStatus == OrderStatus.已审核 ? "其他支出单审核通过" : "其他支出单反审核")
+                .build();
+
+        if (targetStatus == OrderStatus.已审核) {
+            context.setAmount(paymentAmount);
+        } else {
+            context.setAmount(paymentAmount.negate());
+        }
+
+        accountService.updateAccountBalanceWithFlow(context);
     }
 
     public static class Query {

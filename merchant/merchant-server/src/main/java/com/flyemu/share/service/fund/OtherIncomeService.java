@@ -18,6 +18,9 @@ import com.flyemu.share.repository.CustomerRepository;
 import com.flyemu.share.repository.OtherIncomeItemRepository;
 import com.flyemu.share.repository.OtherIncomeRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.AccountService;
+import com.flyemu.share.service.basic.CustomerService;
+import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
 import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.service.fund.dto.OtherIncomeDTO;
 import com.flyemu.share.service.fund.vo.OtherIncomeDetails;
@@ -52,9 +55,10 @@ public class OtherIncomeService extends AbsService {
     private final static QOtherIncome qOtherIncome = QOtherIncome.otherIncome;
     private final static QOtherIncomeItem qotherIncomeItem = QOtherIncomeItem.otherIncomeItem;
     private final OtherIncomeItemRepository otherIncomeItemRepository;
-    private final CustomerRepository customerRepository;
+    private final CustomerService customerService;
     private final OtherIncomeRepository otherIncomeRepository;
     private final CodeRuleService codeRuleService;
+    private final AccountService accountService;
 
     public PageResults<OtherIncomeDetailsVO> query(Page page, OtherIncomeService.Query query) {
         QMerchantUser qCreatedByUser = new QMerchantUser("createdByUser");
@@ -68,6 +72,8 @@ public class OtherIncomeService extends AbsService {
                         qOtherIncome.collectionAmount,
                         qOtherIncome.customerId,
                         qOtherIncome.customerName,
+                        qOtherIncome.orderStaffId,
+                        qOtherIncome.orderStaffName,
                         qOtherIncome.expirationDate,
                         qOtherIncome.arrearsAmount,
                         qOtherIncome.orderStatus,
@@ -154,6 +160,7 @@ public class OtherIncomeService extends AbsService {
         }
         return otherIncome;
     }
+
     private void assignOrderNumber(OtherIncome income) {
         if (StringUtils.isNotBlank(income.getOrderNo())) {
             return;
@@ -201,17 +208,7 @@ public class OtherIncomeService extends AbsService {
             throw new ServiceException("已审核状态,审核人必填");
         }
         otherIncome.setApprovedAt(LocalDateTime.now());
-
-        Customer customer = customerRepository.findById(otherIncome.getCustomerId())
-                .orElseThrow(() -> new ServiceException("客户不存在"));
-
-        BigDecimal amount = otherIncome.getCollectionAmount();
-        if (amount == null) {
-            amount = BigDecimal.ZERO;
-        }
-
-        customer.setBalance(customer.getBalance().subtract(amount));
-        customerRepository.save(customer);
+        updateCustomerAndAccountBalances(otherIncome, OrderStatus.已审核);
     }
 
     /**
@@ -278,6 +275,9 @@ public class OtherIncomeService extends AbsService {
                         qOtherIncome.id,
                         qOtherIncome.customerId,
                         qOtherIncome.customerName,
+
+                        qOtherIncome.orderStaffId,
+                        qOtherIncome.orderStaffName,
                         qOtherIncome.orderDate,
                         qOtherIncome.orderNo,
                         qOtherIncome.collectionAmount,
@@ -367,14 +367,12 @@ public class OtherIncomeService extends AbsService {
             if (targetStatus == OrderStatus.已审核) {
                 income.setApprovedAt(now);
                 income.setApprovedBy(dto.getApprovedBy());
-                updateCustomerBalanceWhenApprove(income);
             } else {
                 income.setApprovedAt(null);
                 income.setApprovedBy(null);
-                updateCustomerBalanceWhenUnApprove(income);
             }
-
             otherIncomeRepository.save(income);
+            updateCustomerAndAccountBalances(income, targetStatus);
         }
 
         jqf.update(qOtherIncome)
@@ -385,31 +383,52 @@ public class OtherIncomeService extends AbsService {
                 .execute();
     }
 
-    private void updateCustomerBalanceWhenApprove(OtherIncome income) {
-        Customer customer = customerRepository.findById(income.getCustomerId())
-                .orElseThrow(() -> new ServiceException("客户不存在"));
+    @Transactional
+    public void updateCustomerAndAccountBalances(OtherIncome income, OrderStatus targetStatus) {
+        Customer customer = customerService.findById(income.getCustomerId());
 
         BigDecimal amount = income.getCollectionAmount();
-        if (amount == null) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
             amount = BigDecimal.ZERO;
         }
+        if (targetStatus == OrderStatus.已审核) {
+            customer.setBalance(customer.getBalance().subtract(amount));
+        } else {
+            if (income.getOrderStatus() != OrderStatus.已审核) {
+                throw new ServiceException("只有已审核的付款单才能反审核");
+            }
+            customer.setBalance(customer.getBalance().add(amount));
+        }
+        customerService.updateTheBalance(customer);
 
-        customer.setBalance(customer.getBalance().subtract(amount));
-        customerRepository.save(customer);
-    }
-
-    private void updateCustomerBalanceWhenUnApprove(OtherIncome income) {
-        Customer customer = customerRepository.findById(income.getCustomerId())
-                .orElseThrow(() -> new ServiceException("客户不存在"));
-
-        BigDecimal amount = income.getCollectionAmount();
-        if (amount == null) {
-            amount = BigDecimal.ZERO;
+        if (income.getSettlementAccountId() == null) {
+            throw new ServiceException("结算账户不能为空");
         }
 
-        customer.setBalance(customer.getBalance().add(amount));
-        customerRepository.save(customer);
+        AccountBalanceChangeContext context = AccountBalanceChangeContext.builder()
+                .accountId(income.getSettlementAccountId())
+                .merchantId(income.getMerchantId())
+                .accountBookId(income.getAccountBookId())
+                .voucherId(income.getId())
+                .customerId(income.getCustomerId())
+                .businessNo(income.getOrderNo())
+                .flowType(AccountFlow.AccountFlowType.其他收入单)
+                .operatorId(income.getOrderStaffId())
+                .correspondentsId(income.getCustomerId())
+                .correspondentsName(income.getCustomerName())
+                .operatorName(income.getOrderStaffName())
+                .remarks(targetStatus == OrderStatus.已审核 ? "其他收入单审核通过" : "其他收入单反审核")
+                .build();
+
+        if (targetStatus == OrderStatus.已审核) {
+            context.setAmount(amount);
+        } else {
+            context.setAmount(amount.negate());
+        }
+
+        accountService.updateAccountBalanceWithFlow(context);
     }
+
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

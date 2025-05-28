@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 @JsonInclude()
 @Data
 public class OtherIncomeDetailsVO {
+    private Long orderStaffId;
+    private String orderStaffName;
     private String createName;
     private String updateName;
     private String approvedName;

@@ -9,10 +9,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.Account;
 import com.flyemu.share.entity.basic.QAccount;
-import com.flyemu.share.entity.fund.AccountTransfer;
-import com.flyemu.share.entity.fund.AccountTransferItem;
-import com.flyemu.share.entity.fund.QAccountTransfer;
-import com.flyemu.share.entity.fund.QAccountTransferItem;
+import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
@@ -21,6 +18,8 @@ import com.flyemu.share.repository.AccountRepository;
 import com.flyemu.share.repository.AccountTransferItemRepository;
 import com.flyemu.share.repository.AccountTransferRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.AccountService;
+import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
 import com.flyemu.share.service.fund.dto.AccountTransferDTO;
 import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.service.fund.vo.AccountTransferDetails;
@@ -59,7 +58,7 @@ public class AccountTransferService extends AbsService {
     private final static QAccountTransfer qAccountTransfer = QAccountTransfer.accountTransfer;
     private final static QAccount qAccount = QAccount.account;
     private final static QAccountTransferItem qAccountTransferItem = QAccountTransferItem.accountTransferItem;
-    private final EntityManager entityManager;
+    private final AccountService accountService;
     private final AccountTransferRepository accountTransferRepository;
     private final CodeRuleService codeRuleService;
     private final AccountRepository accountRepository;
@@ -198,7 +197,7 @@ public class AccountTransferService extends AbsService {
             }
             accountTransferItemRepository.saveAll(items);
             if (accountTransfer.getOrderStatus() == OrderStatus.已审核) {
-                updateAccountBalanceWhenApprove(accountTransfer);
+                updateAccountBalancesWithFlow(original, OrderStatus.已审核);
             }
             return accountTransferRepository.save(original);
         }
@@ -379,15 +378,13 @@ public class AccountTransferService extends AbsService {
                 validateTransferItemsBeforeApprove(transfer);
                 transfer.setApprovedAt(now);
                 transfer.setApprovedBy(dto.getApprovedBy());
-                updateAccountBalanceWhenApprove(transfer);
             } else {
                 validateTransferItemsBeforeUnApprove(transfer);
                 transfer.setApprovedAt(null);
                 transfer.setApprovedBy(null);
-                updateAccountBalanceWhenUnApprove(transfer);
             }
-
             accountTransferRepository.save(transfer);
+            updateAccountBalancesWithFlow(transfer, targetStatus);
         }
 
         jqf.update(qAccountTransfer)
@@ -445,45 +442,89 @@ public class AccountTransferService extends AbsService {
         }
     }
 
-    private void updateAccountBalanceWhenApprove(AccountTransfer transfer) {
+    @Transactional
+    public void updateAccountBalancesWithFlow(AccountTransfer transfer, OrderStatus targetStatus) {
         List<AccountTransferItem> items = findItemsByTransferId(transfer.getId());
 
         for (AccountTransferItem item : items) {
             BigDecimal amount = item.getAmount();
+            if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
 
-            // 减少金额
-            new JPAUpdateClause(entityManager, qAccount)
-                    .where(qAccount.id.eq(item.getFromAccountId()))
-                    .set(qAccount.balance, qAccount.balance.subtract(amount))
-                    .execute();
+            Long merchantId = transfer.getMerchantId();
+            Long accountBookId = transfer.getAccountBookId();
+            Long voucherId = transfer.getId();
+            String businessNo = transfer.getOrderNo();
+            Long operatorId =null;
 
-            // 增加
-            new JPAUpdateClause(entityManager, qAccount)
-                    .where(qAccount.id.eq(item.getToAccountId()))
-                    .set(qAccount.balance, qAccount.balance.add(amount))
-                    .execute();
+            Long fromAccountId = item.getFromAccountId();
+            Long toAccountId = item.getToAccountId();
+
+            if (fromAccountId.equals(toAccountId)) {
+                throw new ServiceException("转出账户与转入账户不能相同");
+            }
+
+
+            if (targetStatus == OrderStatus.已审核) {
+                AccountBalanceChangeContext outContext = AccountBalanceChangeContext.builder()
+                        .accountId(fromAccountId)
+                        .merchantId(merchantId)
+                        .accountBookId(accountBookId)
+                        .voucherId(voucherId)
+                        .businessNo(businessNo)
+                        .flowType(AccountFlow.AccountFlowType.资金转账)
+                        .operatorId(operatorId)
+                        .remarks("转账单审核通过 - 转出")
+                        .build();
+                outContext.setAmount(amount.negate());
+                accountService.updateAccountBalanceWithFlow(outContext);
+
+                AccountBalanceChangeContext inContext = AccountBalanceChangeContext.builder()
+                        .accountId(toAccountId)
+                        .merchantId(merchantId)
+                        .accountBookId(accountBookId)
+                        .voucherId(voucherId)
+                        .businessNo(businessNo)
+                        .flowType(AccountFlow.AccountFlowType.资金转账)
+                        .operatorId(operatorId)
+                        .remarks("转账单审核通过 - 转入")
+                        .build();
+                inContext.setAmount(amount);
+                accountService.updateAccountBalanceWithFlow(inContext);
+            } else {
+                if (transfer.getOrderStatus() != OrderStatus.已审核) {
+                    throw new ServiceException("该转账单未审核，无法反审核");
+                }
+                AccountBalanceChangeContext rollbackOutContext = AccountBalanceChangeContext.builder()
+                        .accountId(fromAccountId)
+                        .merchantId(merchantId)
+                        .accountBookId(accountBookId)
+                        .voucherId(voucherId)
+                        .businessNo(businessNo)
+                        .flowType(AccountFlow.AccountFlowType.资金转账)
+                        .operatorId(operatorId)
+                        .remarks("转账单反审核 - 回滚转出")
+                        .build();
+                rollbackOutContext.setAmount(amount);
+                accountService.updateAccountBalanceWithFlow(rollbackOutContext);
+
+                AccountBalanceChangeContext rollbackInContext = AccountBalanceChangeContext.builder()
+                        .accountId(toAccountId)
+                        .merchantId(merchantId)
+                        .accountBookId(accountBookId)
+                        .voucherId(voucherId)
+                        .businessNo(businessNo)
+                        .flowType(AccountFlow.AccountFlowType.资金转账)
+                        .operatorId(operatorId)
+                        .remarks("转账单反审核 - 回滚转入")
+                        .build();
+                rollbackInContext.setAmount(amount.negate());
+                accountService.updateAccountBalanceWithFlow(rollbackInContext);
+            }
         }
     }
 
-    private void updateAccountBalanceWhenUnApprove(AccountTransfer transfer) {
-        List<AccountTransferItem> items = findItemsByTransferId(transfer.getId());
-
-        for (AccountTransferItem item : items) {
-            BigDecimal amount = item.getAmount();
-
-            // 转出账户回滚：加回金额
-            new JPAUpdateClause(entityManager, qAccount)
-                    .where(qAccount.id.eq(item.getFromAccountId()))
-                    .set(qAccount.balance, qAccount.balance.add(amount))
-                    .execute();
-
-            // 转入账户回滚：减去金额
-            new JPAUpdateClause(entityManager, qAccount)
-                    .where(qAccount.id.eq(item.getToAccountId()))
-                    .set(qAccount.balance, qAccount.balance.subtract(amount))
-                    .execute();
-        }
-    }
 
     private List<AccountTransferItem> findItemsByTransferId(Long transferId) {
         return jqf.select(qAccountTransferItem)

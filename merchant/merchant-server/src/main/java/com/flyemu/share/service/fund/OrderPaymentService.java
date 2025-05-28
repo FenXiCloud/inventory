@@ -19,6 +19,9 @@ import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.AccountService;
+import com.flyemu.share.service.basic.SupplierService;
+import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
 import com.flyemu.share.service.fund.dto.OrderPaymentSaveDTO;
 import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.service.fund.vo.OrderPaymentDetails;
@@ -65,7 +68,8 @@ public class OrderPaymentService extends AbsService {
 
     private final static QPaymentMethod qPaymentMethod = QPaymentMethod.paymentMethod;
     private final CodeRuleService codeRuleService;
-    private final SupplierRepository supplierRepository;
+    private final AccountService accountService;
+    private final SupplierService supplierService;
     private final PurchaseOrderRepository quantityRepository;
     private final OrderPaymentItemRepository orderPaymentItemRepository;
     private final OrderPaymentCollectionRepository orderPaymentCollectionRepository;
@@ -79,8 +83,7 @@ public class OrderPaymentService extends AbsService {
 
         List<OrderPayment> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            OrderPayment orderPayment1 = tuple;
-            OrderPayment orderPayment = BeanUtil.toBean(orderPayment1, OrderPayment.class);
+            OrderPayment orderPayment = BeanUtil.toBean(tuple, OrderPayment.class);
             dtos.add(orderPayment);
         });
 
@@ -245,16 +248,14 @@ public class OrderPaymentService extends AbsService {
         }
     }
 
-    private void updateSupplierBalance(OrderPayment orderPayment) {
+    @Transactional
+    public void updateSupplierBalance(OrderPayment orderPayment) {
         if (orderPayment.getId() != null && OrderStatus.已审核.equals(orderPayment.getOrderStatus())) {
             if (orderPayment.getApprovedBy() == null) {
                 throw new ServiceException("已审核状态,审核人必填");
             }
             orderPayment.setApprovedAt(LocalDateTime.now());
-            Supplier supplier = supplierRepository.findById(orderPayment.getSupplierId())
-                    .orElseThrow(() -> new ServiceException("供应商不存在"));
-            supplier.setBalance(supplier.getBalance().subtract(orderPayment.getShouldVerificationAmount()));
-            supplierRepository.save(supplier);
+            updateSupplierAndAccountBalances(orderPayment, OrderStatus.已审核);
         }
     }
 
@@ -352,6 +353,7 @@ public class OrderPaymentService extends AbsService {
 
         return new PageResults<>(voList, page, total);
     }
+
     /**
      * 校验付款单明细是否符合核销规则
      */
@@ -524,10 +526,10 @@ public class OrderPaymentService extends AbsService {
     public void updateStatus(OrderPaymentUpdateDTO orderPayment) {
         String ids = orderPayment.getId();
         OrderStatus targetStatus = orderPayment.getOrderStatus();
-        if (targetStatus == null){
+        if (targetStatus == null) {
             throw new ServiceException("请选择要操作的状态");
         }
-        if (orderPayment.getApprovedBy()==null){
+        if (orderPayment.getApprovedBy() == null) {
             throw new ServiceException("请选择审核人");
         }
         if (StringUtils.isBlank(ids)) {
@@ -568,18 +570,72 @@ public class OrderPaymentService extends AbsService {
                 .execute();
 
         for (OrderPayment payment : payments) {
-            Supplier supplier = supplierRepository.findById(payment.getSupplierId())
-                    .orElseThrow(() -> new ServiceException("供应商不存在"));
-            BigDecimal verifyAmount = payment.getVerificationAmount();
-            if (verifyAmount == null) {
-                verifyAmount = BigDecimal.ZERO;
+            updateSupplierAndAccountBalances(payment, targetStatus);
+        }
+
+    }
+
+    @Transactional
+    public void updateSupplierAndAccountBalances(OrderPayment payment, OrderStatus targetStatus) {
+        Supplier supplier = supplierService.selectByPrimaryKey(payment.getSupplierId());
+
+        BigDecimal shouldVerifyAmount = payment.getShouldVerificationAmount();
+        if (shouldVerifyAmount == null || shouldVerifyAmount.compareTo(BigDecimal.ZERO) < 0) {
+            shouldVerifyAmount = BigDecimal.ZERO;
+        }
+
+        if (targetStatus == OrderStatus.已审核) {
+            supplier.setBalance(supplier.getBalance().subtract(shouldVerifyAmount));
+        } else {
+            if (payment.getOrderStatus() != OrderStatus.已审核) {
+                throw new ServiceException("只有已审核的付款单才能反审核");
             }
+            supplier.setBalance(supplier.getBalance().add(shouldVerifyAmount));
+        }
+        supplierService.updateTheBalance(supplier);
+        List<OrderPaymentCollection> collections = jqf.select(qCollection)
+                .from(qCollection)
+                .where(qCollection.paymentId.eq(Math.toIntExact(payment.getId())))
+                .fetch()
+                .stream()
+                .distinct()
+                .toList();
+        if (collections.isEmpty()) {
+            throw new ServiceException("未找到结算账户信息");
+        }
+
+        for (OrderPaymentCollection collection : collections) {
+            Long accountId = collection.getSettlementAccountId();
+            if (accountId == null) {
+                throw new ServiceException("结算账户不能为空");
+            }
+            BigDecimal amount = collection.getAmount();
+            if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ServiceException("金额必须大于零");
+            }
+
+            AccountBalanceChangeContext context = AccountBalanceChangeContext.builder()
+                    .accountId(accountId)
+                    .merchantId(payment.getMerchantId())
+                    .accountBookId(payment.getAccountBookId())
+                    .voucherId(payment.getId())
+                    .supplierId(payment.getSupplierId())
+                    .correspondentsId(payment.getSupplierId())
+                    .correspondentsName(payment.getSupplierName())
+                    .businessNo(payment.getOrderNo())
+                    .flowType(AccountFlow.AccountFlowType.付款单)
+                    .operatorId(payment.getOrderStaffId())
+                    .operatorName(payment.getOrderStaffName())
+                    .remarks(targetStatus == OrderStatus.已审核 ? "付款单审核通过" : "付款单反审核")
+                    .build();
+
             if (targetStatus == OrderStatus.已审核) {
-                supplier.setBalance(supplier.getBalance().subtract(verifyAmount));
+                context.setAmount(amount);
             } else {
-                supplier.setBalance(supplier.getBalance().add(verifyAmount));
+                context.setAmount(amount.negate());
             }
-            supplierRepository.save(supplier);
+
+            accountService.updateAccountBalanceWithFlow(context);
         }
     }
 

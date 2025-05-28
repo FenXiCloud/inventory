@@ -3,8 +3,10 @@ package com.flyemu.share.controller.fund;
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
+import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.AccountFlow;
 import com.flyemu.share.service.fund.AccountFlowService;
+import com.flyemu.share.service.fund.AccountTransferService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -24,11 +26,13 @@ public class AccountFlowController {
     private final AccountFlowService accountFlowService;
 
 
-    @GetMapping
-    public JsonResult list(AccountFlowService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("list")
+    public JsonResult list(Page page, AccountFlowService.Query query,
+                           @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(accountFlowService.query(query));
+        return JsonResult.successful(accountFlowService.query(page, query));
     }
 
     @PostMapping

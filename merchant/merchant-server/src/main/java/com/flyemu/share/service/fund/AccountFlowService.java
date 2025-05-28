@@ -2,6 +2,9 @@ package com.flyemu.share.service.fund;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import com.blazebit.persistence.PagedList;
+import com.flyemu.share.controller.Page;
+import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.fund.AccountFlow;
 import com.flyemu.share.entity.fund.QAccountFlow;
 import com.flyemu.share.repository.AccountFlowRepository;
@@ -12,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,7 +28,6 @@ import java.util.List;
  */
 @Service
 @Slf4j
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class AccountFlowService extends AbsService {
 
@@ -31,13 +35,7 @@ public class AccountFlowService extends AbsService {
 
     private final AccountFlowRepository accountFlowRepository;
 
-    public List<AccountFlow> query(Query query) {
-        List<AccountFlow> accountFlows = bqf.selectFrom(qAccountFlow)
-                .where(query.builder)
-                .orderBy(qAccountFlow.id.desc())
-                .fetch();
-        return accountFlows;
-    }
+
 
     @Transactional
     public AccountFlow save(AccountFlow accountFlow) {
@@ -61,6 +59,21 @@ public class AccountFlowService extends AbsService {
         return bqf.selectFrom(qAccountFlow).where(qAccountFlow.merchantId.eq(merchantId).and(qAccountFlow.accountBookId.eq(accountFlowBookId))).fetch();
     }
 
+    public PageResults<AccountFlow> query(Page page, AccountFlowService.Query query) {
+        PagedList<AccountFlow> fetchPage = bqf.selectFrom(qAccountFlow)
+                .where(query.builder)
+                .orderBy(qAccountFlow.id.desc())
+                .fetchPage(page.getOffset(), page.getSize());
+
+        List<AccountFlow> dtos = new ArrayList<>();
+        fetchPage.forEach(tuple -> {
+            AccountFlow accountFlow = BeanUtil.toBean(tuple, AccountFlow.class);
+            dtos.add(accountFlow);
+        });
+
+        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
@@ -73,6 +86,17 @@ public class AccountFlowService extends AbsService {
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
                 builder.and(qAccountFlow.accountBookId.eq(accountBookId));
+            }
+        }
+        public void setStartTime(LocalDateTime startTime) {
+            if (startTime != null) {
+                builder.and(qAccountFlow.createdAt.goe(startTime));
+            }
+        }
+
+        public void setEndTime(LocalDateTime endTime) {
+            if (endTime != null) {
+                builder.and(qAccountFlow.createdAt.loe(endTime));
             }
         }
     }

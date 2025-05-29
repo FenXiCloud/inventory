@@ -1,5 +1,6 @@
 package com.flyemu.share.service.fund.vo;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.flyemu.share.enums.OrderStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
@@ -11,7 +12,7 @@ import java.util.Date;
 
 /**
  *@author shuaiqi
- */
+ */@JsonInclude()
 @Data
 public class VerificationVO {
 

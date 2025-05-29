@@ -27,10 +27,12 @@ import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.service.fund.vo.OrderPaymentDetails;
 import com.flyemu.share.service.fund.vo.OrderPaymentDetailsVO;
 import com.flyemu.share.service.fund.vo.OrderPaymentQueryVO;
+import com.flyemu.share.service.fund.vo.report.PayableDetailReportVO;
 import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import lombok.Data;
 import lombok.Getter;
@@ -73,10 +75,47 @@ public class OrderPaymentService extends AbsService {
     private final PurchaseOrderRepository quantityRepository;
     private final OrderPaymentItemRepository orderPaymentItemRepository;
     private final OrderPaymentCollectionRepository orderPaymentCollectionRepository;
-    private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
-
     private final static QOrderPaymentItem QorderPaymentItem = QOrderPaymentItem.orderPaymentItem;
     private final static QOrderPaymentCollection QorderPaymentCollection = QOrderPaymentCollection.orderPaymentCollection;
+
+    public PageResults<PayableDetailReportVO> getPayableDetailReport(Page page,PayableDetailReportQuery query) {
+        List<PayableDetailReportVO> result = jqf.select(
+                        Projections.bean(PayableDetailReportVO.class,
+                                qOrderPayment.supplierName.as("supplierName"),
+                                qOrderPayment.orderStaffName.as("staffName"),
+                                qOrderPayment.orderDate.as("orderDate"),
+                                qOrderPayment.orderNo.as("orderNo"),
+                                Expressions.cases()
+                                        .when(qItem.id.isNull()).then("预付款")
+                                        .otherwise("采购付款")
+                                        .as("businessType"),
+                                qItem.currentVerifyAmount.as("payableAmount"),
+                                Expressions.numberTemplate(BigDecimal.class,
+                                                "CASE WHEN {0} IS NULL THEN {1} ELSE {2} END",
+                                                qItem.id,
+                                                qOrderPayment.advanceCollectionsAmount,
+                                                BigDecimal.ZERO)
+                                        .as("prepaymentAmount"),
+                                qOrderPayment.shouldVerificationAmount.subtract(qOrderPayment.hasVerificationAmount).as("balance"),
+                                qOrderPayment.remarks.as("remarks")
+                        )
+                )
+                .from(qOrderPayment)
+                .leftJoin(qItem).on(qItem.paymentId.eq(qOrderPayment.id))
+                .where(query.builder,qOrderPayment.orderStatus.eq(OrderStatus.已审核))
+                .offset(page.getOffset())
+                .limit(page.getPageSize())
+                .fetch();
+
+        Long total = jqf.select(qOrderPayment.count())
+                .from(qOrderPayment)
+                .leftJoin(qItem).on(qItem.paymentId.eq(qOrderPayment.id))
+                .where(query.builder,qOrderPayment.orderStatus.eq(OrderStatus.已审核))
+                .fetchOne();
+
+        return new PageResults<>(result, page, total == null ? 0 : total);
+    }
+
 
     public PageResults<OrderPayment> query(Page page, OrderPaymentService.Query query) {
         PagedList<OrderPayment> fetchPage = bqf.selectFrom(qOrderPayment).where(query.builder).orderBy(qOrderPayment.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -98,8 +137,11 @@ public class OrderPaymentService extends AbsService {
         if (dto.getCollectionList() == null) {
             throw new ServiceException("参数错误");
         }
-
         OrderPayment orderPayment = dto.getOrderPayment();
+        if (orderPayment.getId()!=null){
+            jqf.delete(QorderPaymentItem).where(QorderPaymentItem.paymentId.eq(orderPayment.getId())).execute();
+            jqf.delete(QorderPaymentCollection).where(QorderPaymentCollection.paymentId.eq(Math.toIntExact(orderPayment.getId()))).execute();
+        }
         List<OrderPaymentItem> items = dto.getItemList();
         List<OrderPaymentCollection> collections = dto.getCollectionList();
         validatePaymentVerificationRules(orderPayment, items);
@@ -188,8 +230,6 @@ public class OrderPaymentService extends AbsService {
                 throw new ServiceException("该单据不是【已保存】状态，无法修改");
             }
             BeanUtil.copyProperties(orderPayment, original, CopyOptions.create().ignoreNullValue());
-            jqf.delete(QorderPaymentItem).where(QorderPaymentItem.paymentId.eq(orderPayment.getId())).execute();
-            jqf.delete(QorderPaymentCollection).where(QorderPaymentCollection.paymentId.eq(Math.toIntExact(orderPayment.getId()))).execute();
             saveItems(orderPayment, items);
             saveCollections(orderPayment, collections);
             return orderPaymentRepository.save(original);
@@ -370,6 +410,9 @@ public class OrderPaymentService extends AbsService {
 
         for (OrderPaymentItem item : items) {
             Long purchaseOrderId = item.getBusinessId();
+            if (purchaseOrderId==null){
+                throw new ServiceException("列ID为空");
+            }
             if (purchaseOrderIdSet.contains(purchaseOrderId)) {
                 throw new ServiceException("不能重复引用采购单：" + purchaseOrderId);
             }
@@ -723,6 +766,48 @@ public class OrderPaymentService extends AbsService {
 
     }
 
+    public class PayableDetailReportQuery {
+        public final BooleanBuilder builder = new BooleanBuilder();
+
+        public void setMerchantId(Long merchantId) {
+            if (merchantId != null) {
+                builder.and(qOrderPayment.merchantId.eq(merchantId));
+            }
+        }
+
+        public void setAccountBookId(Long accountBookId) {
+            if (accountBookId != null) {
+                builder.and(qOrderPayment.accountBookId.eq(accountBookId));
+            }
+        }
+
+        public void setOrderStatus(OrderStatus orderStatus) {
+            if (orderStatus != null) {
+                builder.and(qOrderPayment.orderStatus.eq(orderStatus));
+            }
+        }
+
+        public void setStartTime(LocalDateTime startTime) {
+            if (startTime != null) {
+                builder.and(qOrderPayment.createdAt.goe(startTime));
+            }
+        }
+
+        public void setEndTime(LocalDateTime endTime) {
+            if (endTime != null) {
+                builder.and(qOrderPayment.createdAt.loe(endTime));
+            }
+        }
+
+        public void setKeyword(String keyword) {
+            if (StringUtils.isNotBlank(keyword)) {
+                builder.and(qOrderPayment.orderNo.like("%" + keyword + "%")
+                        .or(qSupplier.name.like("%" + keyword + "%")));
+            }
+        }
+
+    }
+
     public static class SupplerQuery {
         @Getter
         Long supplierId;
@@ -755,4 +840,5 @@ public class OrderPaymentService extends AbsService {
 
         }
     }
+
 }

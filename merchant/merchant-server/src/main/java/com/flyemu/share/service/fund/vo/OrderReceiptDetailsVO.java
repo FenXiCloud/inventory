@@ -19,6 +19,7 @@ public class OrderReceiptDetailsVO {
     private String createName;
     private String updateName;
     private String approvedName;
+    private String orderStaffName;
 
     private Long id;
 

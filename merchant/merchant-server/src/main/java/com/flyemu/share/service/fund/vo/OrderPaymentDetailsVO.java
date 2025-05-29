@@ -16,6 +16,7 @@ public class OrderPaymentDetailsVO {
     private Long id;
     private Long supplierId;
     private String supplierName;
+    private String orderStaffName;
     private Integer orderType;
     private LocalDate orderDate;
     private String orderNo;

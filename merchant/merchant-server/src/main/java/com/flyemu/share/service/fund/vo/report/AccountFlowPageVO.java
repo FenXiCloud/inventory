@@ -1,4 +1,4 @@
-package com.flyemu.share.service.fund.vo;
+package com.flyemu.share.service.fund.vo.report;
 
 import lombok.Data;
 

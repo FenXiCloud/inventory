@@ -7,11 +7,14 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.AccountFlow;
 import com.flyemu.share.service.fund.AccountFlowService;
 import com.flyemu.share.service.fund.AccountTransferService;
+import com.flyemu.share.service.fund.OrderPaymentService;
+import com.flyemu.share.service.fund.OrderReceiptService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
+ * @author shuaiqi
  * @功能描述: 资金明细
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
@@ -24,6 +27,8 @@ import org.springframework.web.bind.annotation.*;
 public class AccountFlowController {
 
     private final AccountFlowService accountFlowService;
+    private final OrderPaymentService orderPaymentService;
+    private final OrderReceiptService orderReceiptService;
 
 
     @GetMapping("list")
@@ -35,29 +40,21 @@ public class AccountFlowController {
         return JsonResult.successful(accountFlowService.query(page, query));
     }
 
-    @PostMapping
-    public JsonResult save(@RequestBody @Valid AccountFlow accountFlow, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        accountFlow.setMerchantId(merchantId);
-        accountFlow.setAccountBookId(accountBookId);
-        accountFlowService.save(accountFlow);
-        return JsonResult.successful();
+    @GetMapping("getPayableDetailReport")
+    public JsonResult getPayableDetailReport(Page page, OrderPaymentService.PayableDetailReportQuery query,
+                                             @SaAccountBookId Long accountBookId,
+                                             @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(orderPaymentService.getPayableDetailReport(page, query));
     }
 
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid AccountFlow accountFlow) {
-        accountFlowService.save(accountFlow);
-        return JsonResult.successful();
+    @GetMapping("getReceivableDetailReport")
+    public JsonResult getReceivableDetailReport(Page page, OrderReceiptService.ReceivableDetailReportQuery query,
+                                                @SaAccountBookId Long accountBookId,
+                                                @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(orderReceiptService.getReceivableDetailReport(page, query));
     }
-
-    @DeleteMapping("/{accountFlowId}")
-    public JsonResult delete(@PathVariable Long accountFlowId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        accountFlowService.delete(accountFlowId, merchantId, accountBookId);
-        return JsonResult.successful();
-    }
-
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(accountFlowService.select(merchantId, accountBookId));
-    }
-
 }

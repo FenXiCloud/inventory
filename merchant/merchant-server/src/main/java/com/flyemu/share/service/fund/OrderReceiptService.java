@@ -25,6 +25,7 @@ import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
 import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.service.fund.dto.OrderReceiptSaveDTO;
 import com.flyemu.share.service.fund.vo.*;
+import com.flyemu.share.service.fund.vo.report.ReceivableDetailReportVO;
 import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.querydsl.core.BooleanBuilder;
@@ -47,6 +48,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
+ * @author shuaiqi
  * @功能描述: 收款单
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
@@ -76,6 +78,47 @@ public class OrderReceiptService extends AbsService {
     private final static QOrderReceiptItem qOrderReceiptItem = QOrderReceiptItem.orderReceiptItem;
     private final static QOrderReceiptCollection qOrderReceiptCollection = QOrderReceiptCollection.orderReceiptCollection;
 
+    public PageResults<ReceivableDetailReportVO> getReceivableDetailReport(Page page, ReceivableDetailReportQuery query) {
+        QOrderReceipt qReceipt = OrderReceiptService.qOrderReceipt;
+        QOrderReceiptItem qItem = OrderReceiptService.qItem;
+
+        List<ReceivableDetailReportVO> result = jqf.select(
+                        Projections.bean(ReceivableDetailReportVO.class,
+                                qReceipt.customerName.as("customerName"),
+                                qReceipt.orderDate.as("orderDate"),
+                                qReceipt.orderNo.as("orderNo"),
+                                Expressions.cases()
+                                        .when(qItem.id.isNull()).then("预收款")
+                                        .otherwise("销售收款")
+                                        .as("businessType"),
+                                qItem.currentVerifyAmount.as("receivableAmount"),
+                                Expressions.numberTemplate(BigDecimal.class,
+                                                "CASE WHEN {0} IS NULL THEN {1} ELSE {2} END",
+                                                qItem.id,
+                                                qReceipt.advanceCollectionsAmount,
+                                                BigDecimal.ZERO)
+                                        .as("prepaymentAmount"),
+                                qReceipt.shouldVerificationAmount.subtract(qReceipt.hasVerificationAmount).as("balance"),
+                                qReceipt.orderStaffName.as("staffName"),
+                                qReceipt.remarks.as("remarks")
+                        )
+                )
+                .from(qReceipt)
+                .leftJoin(qItem).on(qItem.receiptId.eq(qReceipt.id))
+                .where(query.builder, qReceipt.orderStatus.eq(OrderStatus.已审核))
+                .offset(page.getOffset())
+                .limit(page.getPageSize())
+                .fetch();
+
+        Long total = jqf.select(qReceipt.count())
+                .from(qReceipt)
+                .leftJoin(qItem).on(qItem.receiptId.eq(qReceipt.id))
+                .where(query.builder, qReceipt.orderStatus.eq(OrderStatus.已审核))
+                .fetchOne();
+
+        return new PageResults<>(result, page, total == null ? 0 : total);
+    }
+
     public PageResults<OrderReceiptQueryVO> query(OrderReceiptService.Query query, Page page) {
         JPAQuery<OrderReceipt> mainQuery = jqf.select(qOrderReceipt).from(qOrderReceipt).where(query.builder);
 
@@ -104,14 +147,16 @@ public class OrderReceiptService extends AbsService {
     @Transactional
     public OrderReceipt save(OrderReceiptSaveDTO dto) {
         if (dto.getOrderReceipt() == null) {
-            throw new ServiceException("参数错误");
+            throw new ServiceException("主订单参数错误");
         }
         if (dto.getCollectionList() == null) {
-            throw new ServiceException("参数错误");
+            throw new ServiceException("账户参数错误");
         }
-
-
         OrderReceipt orderReceipt = dto.getOrderReceipt();
+        if (orderReceipt.getId()!=null){
+            jqf.delete(qOrderReceiptItem).where(qOrderReceiptItem.receiptId.eq(orderReceipt.getId())).execute();
+            jqf.delete(qOrderReceiptCollection).where(qOrderReceiptCollection.receiptId.eq(Math.toIntExact(orderReceipt.getId()))).execute();
+        }
         List<OrderReceiptItem> items = dto.getItemList();
         List<OrderReceiptCollection> collections = dto.getCollectionList();
         validateReceiptVerificationRules(orderReceipt, items);
@@ -194,9 +239,7 @@ public class OrderReceiptService extends AbsService {
                 throw new ServiceException("该单据不是【已保存】状态，无法修改");
             }
             BeanUtil.copyProperties(orderReceipt, original, CopyOptions.create().ignoreNullValue());
-            jqf.delete(qOrderReceiptItem).where(qOrderReceiptItem.receiptId.eq(orderReceipt.getId())).execute();
-            jqf.delete(qOrderReceiptCollection).where(qOrderReceiptCollection.receiptId.eq(Math.toIntExact(orderReceipt.getId()))).execute();
-            saveItems(orderReceipt, items);
+             saveItems(orderReceipt, items);
             saveCollections(orderReceipt, collections);
             return orderReceiptRepository.save(original);
         }
@@ -218,6 +261,9 @@ public class OrderReceiptService extends AbsService {
 
         for (OrderReceiptItem item : items) {
             Long salesOrderId = item.getSalesOrderId();
+            if (salesOrderId==null){
+                throw new ServiceException("销售单ID为空");
+            }
             if (salesOrderIdSet.contains(salesOrderId)) {
                 throw new ServiceException("不能重复引用销售单：" + salesOrderId);
             }
@@ -661,6 +707,46 @@ public class OrderReceiptService extends AbsService {
     }
 
     public static class Query {
+
+        public final BooleanBuilder builder = new BooleanBuilder();
+
+        public void setMerchantId(Long merchantId) {
+            if (merchantId != null) {
+                builder.and(qOrderReceipt.merchantId.eq(merchantId));
+            }
+        }
+
+        public void setAccountBookId(Long accountBookId) {
+            if (accountBookId != null) {
+                builder.and(qOrderReceipt.accountBookId.eq(accountBookId));
+            }
+        }
+
+        public void setOrderStatus(OrderStatus orderStatus) {
+            if (orderStatus != null) {
+                builder.and(qOrderReceipt.orderStatus.eq(orderStatus));
+            }
+        }
+
+        public void setStartTime(LocalDateTime startTime) {
+            if (startTime != null) {
+                builder.and(qOrderReceipt.createdAt.goe(startTime));
+            }
+        }
+
+        public void setEndTime(LocalDateTime endTime) {
+            if (endTime != null) {
+                builder.and(qOrderReceipt.createdAt.loe(endTime));
+            }
+        }
+
+        public void setKeyword(String keyword) {
+            if (keyword != null && !keyword.isEmpty()) {
+                builder.and(qOrderReceipt.orderNo.like("%" + keyword + "%").or(qOrderReceipt.customerName.like("%" + keyword + "%")));
+            }
+        }
+    }
+    public static class ReceivableDetailReportQuery {
 
         public final BooleanBuilder builder = new BooleanBuilder();
 

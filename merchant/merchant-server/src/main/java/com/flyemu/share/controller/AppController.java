@@ -93,8 +93,7 @@ public class AppController {
         SaSession session = StpUtil.getTokenSession();
         session.set(Constants.SESSION_ACCOUNT, accountDto);
         response.addHeader("Authorization",  StpUtil.getTokenValue());
-        log.info("token:" + StpUtil.getTokenValue());
-          return JsonResult.successful()
+        return JsonResult.successful()
                 .data("account", accountDto);
     }
 

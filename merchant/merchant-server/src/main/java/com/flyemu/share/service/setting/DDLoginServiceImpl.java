@@ -18,6 +18,7 @@ import com.dingtalk.api.response.OapiV2DepartmentListsubResponse;
 import com.dingtalk.api.response.OapiV2UserGetResponse;
 import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.Dept;
+import com.flyemu.share.entity.setting.Role;
 import com.taobao.api.ApiException;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +57,8 @@ public class DDLoginServiceImpl implements DDLoginService{
     private AdminService adminService;
     @Autowired
     private DeptService deptService;
+    @Autowired
+    private RoleService roleService;
 
     /**
      * 登录回调
@@ -164,7 +167,13 @@ public class DDLoginServiceImpl implements DDLoginService{
             OapiV2DepartmentListsubRequest req1 = new OapiV2DepartmentListsubRequest();
             //获取部门id列表
             OapiV2DepartmentListsubResponse rsp1 = client1.execute(req1, accessToken);
-            this.insertUserByDingDing(rsp1, counter, userIds);
+            //查询默认角色
+            Long roleId = null;
+            List<Role> roleList = roleService.systemDefaultRole();
+            if(!ObjectUtils.isEmpty(roleList) && roleList.size() > 0){
+                roleId = roleList.get(0).getId();
+            }
+            this.insertUserByDingDing(rsp1, counter, userIds, roleId);
         } catch (ApiException e) {
             log.error("获取钉钉用户异常：", e);
             e.printStackTrace();
@@ -208,7 +217,7 @@ public class DDLoginServiceImpl implements DDLoginService{
         return accessTokenRsp.getBody().getAccessToken();
     }
 
-    public void insertUserByDingDing(OapiV2DepartmentListsubResponse rsp1, Counter counter, Set<String> userIds) throws ApiException {
+    public void insertUserByDingDing(OapiV2DepartmentListsubResponse rsp1, Counter counter, Set<String> userIds, Long roleId) throws ApiException {
         if (ObjectUtils.isEmpty(rsp1.getResult())) {
             return;
         }
@@ -242,7 +251,7 @@ public class DDLoginServiceImpl implements DDLoginService{
             req1.setDeptId(deptBaseResponse.getDeptId());
             //获取部门id列表
             OapiV2DepartmentListsubResponse rsp11 = client1.execute(req1, accessToken);
-            this.insertUserByDingDing(rsp11, counter, userIds);
+            this.insertUserByDingDing(rsp11, counter, userIds, roleId);
 
             req2.setDeptId(deptBaseResponse.getDeptId());
             //获取部门下的员工列表
@@ -276,14 +285,13 @@ public class DDLoginServiceImpl implements DDLoginService{
                     admin.setDeptId(sysDept.getId());
                     admin.setDingDingUserId(userId);
                     admin.setMerchantId(1L);
-                    admin.setRoleId(5L);
+                    admin.setRoleId(roleId);
                     // 验证是否存在这个用户
                     counter.sumNum++;
 //                    SysUser u = userMapper.selectUserByUserName(sysUser.getUserName());
                     Admin u = adminService.selectAdminByUserName(admin.getUsername());
 
                     if (ObjectUtils.isEmpty(u)) {
-//                        admin.setPassword(SecurityUtils.encryptPassword(password));
                         adminService.save(admin);
                         counter.successNum++;
                     } else if (u.getDeptId().equals(sysDept.getId())) {

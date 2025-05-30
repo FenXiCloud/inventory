@@ -1,20 +1,23 @@
 import Ajax from '@common/Request';
 
 export default {
-  save(param) {
-    return Ajax[param.id ? 'put' : 'post']('/orderReceipt', param);
-  },
   list(param) {
-    return Ajax.get('/orderReceipt', param);
+    return Ajax.get('/orderReceipt/list', param);
+  },
+  details(param) {
+    return Ajax.get('/orderReceipt/selectById', param);
   },
   remove(id) {
-    return Ajax.delete('/orderReceipt/' + id);
+    return Ajax.post('/orderReceipt/delete', id);
   },
-  select(param) {
-    return Ajax.get('/orderReceipt/select', param);
+  batchAudit(param) {
+    return Ajax.post('/orderReceipt/updateStatus', param);
   },
   addEdit(param) {
     return Ajax.post('/orderReceipt/save', param);
+  },
+  writeOffTheOrder(param) {
+    return Ajax.get(`/orderReceipt/writeOffTheOrder`, param);
   },
 
   orderStaffList(param) {
@@ -22,8 +25,5 @@ export default {
   },
   orderStaffAdd(param) {
     return Ajax.post('/orderStaff/add', param);
-  },
-  writeOffTheOrder(param) {
-    return Ajax.get(`/orderReceipt/writeOffTheOrder`, param);
   }
 };

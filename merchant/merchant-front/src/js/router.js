@@ -477,6 +477,18 @@ const groupRoutes = [
     )
   },
   {
+    name: 'OrderReceiptRecord',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OrderReceiptRecord')
+    )
+  },
+  {
+    name: 'OrderVerificationRecord',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OrderVerificationRecord')
+    )
+  },
+  {
     name: 'DDLogin',
     component: defineAsyncComponent(() => import('@/DDLogin.vue'))
   }

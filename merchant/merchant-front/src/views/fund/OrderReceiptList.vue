@@ -2,20 +2,11 @@
   <div class="frame-page flex flex-column" style="height: auto !important">
     <vxe-toolbar>
       <template #buttons>
-        <!-- <Search
-          v-model.trim="form.filter"
-          search-button-theme="h-btn-default"
-          show-search-button
-          class="w-360px ml-8px"
-          placeholder="请输入客户名称"
-          @search="doSearch"
-        >
-          <i class="h-icon-search" />
-        </Search> -->
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">
             <span style="color: red">*</span>客户</span
           >
+
           <div style="position: relative">
             <Select
               v-model="form.customerName"
@@ -26,11 +17,11 @@
               placeholder="选择客户"
               @change="selectCustomer($event)"
             >
-              <template #bottom>
+              <!-- <template #bottom>
                 <Button no-border icon="h-icon-plus" @click="addCustomer()"
                   >新建</Button
                 >
-              </template>
+              </template> -->
             </Select>
           </div>
         </div>
@@ -61,19 +52,34 @@
 
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">订单日期</span>
-          <DatePicker
-            class="w-120px"
-            v-model="form.orderDate"
-            :format="format"
-          ></DatePicker>
+          <DatePicker class="w-120px" v-model="form.orderDate"></DatePicker>
           <!-- <DateRangePicker v-model="dateRange"></DateRangePicker> -->
         </div>
       </template>
 
       <template #tools>
-        <Button @click="addForm()" color="primary">保存并新增</Button>
-        <Button @click="saveForm()" color="primary">保 存</Button>
-        <Button>审 核</Button>
+        <Button
+          v-if="form.orderStatus != '已审核'"
+          @click="saveForm('add')"
+          color="primary"
+          >保存并新增</Button
+        >
+        <Button
+          v-if="form.orderStatus != '已审核'"
+          @click="saveForm('save')"
+          color="primary"
+          >保 存</Button
+        >
+        <Button
+          v-if="form.orderStatus == '已保存'"
+          @click="saveForm('audit', '已审核')"
+          >审 核</Button
+        >
+        <Button
+          v-if="form.orderStatus == '已审核'"
+          @click="batchAudit('已保存')"
+          >反审核</Button
+        >
       </template>
     </vxe-toolbar>
 
@@ -147,6 +153,7 @@
               v-model="row.amount"
               type="number"
               placeholder="请输入数值"
+              min="0"
             ></vxe-input>
           </template>
         </vxe-column>
@@ -197,18 +204,18 @@
         ></vxe-column>
         <vxe-column
           field="theOnlineTransactionNumber"
-          title="在线交易"
-          :edit-render="{ name: 'input' }"
+          title="在线交易单号"
         ></vxe-column>
       </vxe-table>
 
       <vxe-toolbar>
         <template #tools>
           <Button @click="sourceForm()" color="">选择源单</Button>
-          <Button>自动核销</Button>
+          <Button @click="autoMatic()">自动核销</Button>
         </template>
       </vxe-toolbar>
       <vxe-table
+        ref="table"
         border
         :edit-config="editConfig"
         show-overflow
@@ -230,40 +237,16 @@
             ></div>
           </template>
         </vxe-column>
-        <vxe-column
-          field="salesOrderNo"
-          title="源单编号"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column>
-        <vxe-column
-          field="businessType"
-          title="业务类别"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column>
-        <vxe-column
-          field="businessDate"
-          title="单据日期"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column>
+        <vxe-column field="salesOrderNo" title="源单编号"></vxe-column>
+        <vxe-column field="businessType" title="业务类别"></vxe-column>
+        <vxe-column field="businessDate" title="单据日期"></vxe-column>
         <!-- <vxe-column
           title="收款到期日"
           :edit-render="{ name: 'input' }"
         ></vxe-column> -->
-        <vxe-column
-          field="documentAmount"
-          title="单据金额"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column>
-        <vxe-column
-          field="verifiedAmount"
-          title="已核销金额"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column>
-        <vxe-column
-          field="unverifiedAmount"
-          title="未核销金额"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column>
+        <vxe-column field="documentAmount" title="单据金额"></vxe-column>
+        <vxe-column field="verifiedAmount" title="已核销金额"></vxe-column>
+        <vxe-column field="unverifiedAmount" title="未核销金额"></vxe-column>
         <vxe-column
           field="currentVerifyAmount"
           title="本次核销金额"
@@ -280,14 +263,12 @@
               v-model="row.currentVerifyAmount"
               type="number"
               :max="row.documentAmount"
+              @change="changeDiscountRate"
+              min="0"
             ></vxe-input>
           </template>
         </vxe-column>
-        <vxe-column
-          field="remarks"
-          title="单据备注"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column>
+        <vxe-column field="remarks" title="单据备注"></vxe-column>
       </vxe-table>
       <div class="mt-10px"></div>
       <div class="filler-panel">
@@ -311,7 +292,7 @@
               type="number"
               v-model="form.discountRate"
               @blur="changeDiscountRate"
-              min="0.00"
+              min="0"
             />
 
             <label class="ml-10px w-90px">本单预收款:</label>
@@ -321,8 +302,11 @@
       </template>
 
       <template #tools>
-        <Button @click="addForm()" color="">历史单据</Button>
-        <Button>操作日志</Button>
+        <Button @click="historyForm()" color="">历史单据</Button>
+        <!-- <vxe-tooltip theme="light" :content="logContent">
+          <vxe-button> 操作日志</vxe-button>
+        </vxe-tooltip> -->
+        <Button @click="logForm()" :title="logContent">操作日志</Button>
       </template>
     </vxe-toolbar>
 
@@ -360,25 +344,28 @@
 </template>
 <script>
 import manba from 'manba';
+import { confirm, loading, message } from 'heyui.ext';
 import { layer } from '@layui/layer-vue';
 import { h } from 'vue';
 import OrderReceipt from '@js/api/fund/OrderReceipt';
 import Account from '@js/api/fund/Account';
 import PaymentMethod from '@js/api/basic/PaymentMethod';
 import Customer from '@js/api/basic/Customer';
-// import { mapMutations } from 'vuex';
 import OrderStaffForm from './OrderStaffForm';
 import sourceForm from './sourceForm.vue';
-import { mapState } from 'vuex';
-
-const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
-// const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
-
+import { mapState, mapMutations } from 'vuex';
+// import Stamp from '../common/Stamp.vue';
 export default {
   name: 'OrderReceiptList',
+  // components: { Stamp },
+  props: {
+    orderId: [String, Number],
+    type: String,
+    index: Number
+  },
   data() {
-    const tableData = [{}, {}];
-    const tableData2 = [{}, {}];
+    const tableData = [{}];
+    const tableData2 = [{}];
     const editConfig = {
       trigger: 'click',
       mode: 'cell'
@@ -391,9 +378,13 @@ export default {
     ];
 
     return {
+      logContent: null,
       val1: [],
 
-      form: {},
+      form: {
+        customerName: null,
+        orderStaffName: null
+      },
       tableData,
       tableData2,
       customerDataList: [],
@@ -418,10 +409,7 @@ export default {
         sortCol: null,
         sort: null
       },
-      dateRange: {
-        start: manba(startTime).format('YYYY-MM-dd')
-        // end: manba(endTime).format('YYYY-MM-dd')
-      },
+
       showFooter: true,
 
       editConfig,
@@ -429,20 +417,32 @@ export default {
     };
   },
   watch: {
-    calcCollectionAmount(newVal) {
-      this.form.collectionAmount = newVal;
-    },
-    deep: true
+    // currentTabData(newVal) {
+    //   console.log('tab 参数更新:', newVal);
+    //   // 在这里处理参数变化
+    // },
+    // 监听 store 中的 currentTabData
+    // '$store.state.currentTabReceiptRecord': {
+    //   handler(newVal) {
+    //     console.log('currentTabReceiptRecord changed:', newVal);
+    //     if (newVal && newVal.refresh) {
+    //       this.loadList();
+    //       // 重置刷新标志
+    //       this.$store.commit('SET_TAB_DATA_RECEIPTRECORD', null);
+    //     }
+    //   },
+    //   deep: true
+    // }
   },
+
   computed: {
     ...mapState(['user']),
-    calcCollectionAmount() {
-      return (
-        (parseFloat(this.totalTb1) || 0) -
-        (parseFloat(this.totalTb2) || 0) +
-        (parseFloat(this.form.discountRate) || 0)
-      ).toFixed(2);
-    },
+    // currentTabData() {
+    //   const tab = this.$store.state.tabs.find(
+    //     (tab) => tab.key === this.$store.state.currentTab
+    //   );
+    //   return tab ? tab.params : {};
+    // },
 
     queryParams() {
       return Object.assign(this.params, {
@@ -452,30 +452,143 @@ export default {
     }
   },
   methods: {
-    saveForm() {
-      console.log(
-        'saveForm----------------------------------------------------------'
-      );
+    ...mapMutations(['pushTab', 'closeSelfTab']),
+    getLog() {
+      // this.logContent
+      let {
+        createName = this.user.admin.name,
+        updateName,
+        createdAt,
+        updateAt
+      } = this.form;
+      this.logContent = `制单人: ${createName}\n
+      制单时间: ${createdAt}\n
+      最后修改人: ${updateName}\n,
+      最后修改时间: ${updateAt}\n`;
+    },
+    calcCollectionAmount() {
+      return (
+        (parseFloat(this.totalTb1) || 0) -
+        (parseFloat(this.totalTb2) || 0) +
+        (parseFloat(this.form.discountRate) || 0)
+      ).toFixed(2);
+    },
+    batchAudit(orderStatus) {
+      let params = {
+        id: this.form.id,
+        orderStatus: orderStatus,
+        approvedBy: this.$store.state.user.admin.id
+      };
+      confirm({
+        content: `确定审核订单？`,
+        onConfirm: () => {
+          OrderReceipt.batchAudit(params)
+            .then((success) => {
+              if (success) {
+                if (orderStatus === '已审核') {
+                  message.success('审核成功');
+                } else {
+                  message.success('反审核成功');
+                }
+                this.loadList(); // Refresh the list
+              }
+            })
+            .finally(() => loading.close());
+        }
+      });
+    },
+    clerarData() {
+      this.form = {};
+      this.tableData = [{}];
+      this.tableData2 = [{}];
+    },
+
+    updatePage(type = 'add', orderId = null) {
+      this.closeSelfTab(this.index);
+      // this.pushTab({
+      //   keepAlive: false,
+      //   key: 'OrderReceiptRecord',
+      //   title: '收款单记录'
+      // });
+      // 打开当前
+      this.pushTab({
+        keepAlive: false,
+        key: 'OrderReceiptList',
+        params: { type: type, orderId: orderId },
+        title: '收款单'
+      });
+    },
+    loadList() {
+      this.loading = true;
+      // const params = JSON.parse(JSON.stringify(this.queryParams));
+      // params.customerIds = params.customerIds.join(',');
+      OrderReceipt.details({ id: this.orderId })
+        .then(({ data: { orderReceipt, collectionList, itemList } }) => {
+          this.form = orderReceipt;
+          this.tableData = collectionList || [];
+          this.tableData2 = itemList || [];
+          // this.pagination.total = total;
+          this.getLog();
+        })
+        .finally(() => (this.loading = false));
+    },
+    addForm(type = 'add', orderId = null) {
+      // this.form = {};
+      // this.tableData = [{}];
+      // this.tableData2 = [{}];
+      // this.updatePage();
+    },
+    historyForm() {
+      this.pushTab({
+        keepAlive: false,
+        key: 'OrderReceiptRecord',
+        title: '收款单记录'
+      });
+    },
+    saveForm(type = 'add', orderStatus = '已保存') {
+      // this.type = type;
+      // console.log(
+      //   'saveForm----------------------------------------------------------'
+      // );
       let orderReceipt = {
-        ...this.form,
         documentSource: 1,
         createdBy: this.user.admin.id,
         updateBy: this.user.admin.id,
-        orderStatus: '已保存' //||已审核
+        orderStatus: orderStatus, //||已审核
+
+        ...this.form
       };
-      // console.log(this.form);
-      // console.log(this.tableData);
+      if (type === 'audit') {
+        orderReceipt.orderStatus = orderStatus;
+        orderReceipt.approvedBy = this.user.admin.id;
+        orderReceipt.approvedName = this.user.admin.name;
+      }
       // console.log(this.tableData2);
+      const filterEmptyObjects = (arr) =>
+        arr
+          .map(({ _X_ROW_KEY, ...rest }) => rest)
+          .filter((row) => Object.keys(row).length);
 
       let params = {
         orderReceipt,
-        collectionList: this.tableData,
-        itemList: this.tableData2
+        collectionList: filterEmptyObjects(this.tableData),
+        itemList: filterEmptyObjects(this.tableData2)
       };
 
-      this.addEdit(params);
+      if (!this.form.customerId) {
+        return message.error('请选择客户');
+      } else if (
+        !this.tableData.length ||
+        !this.tableData[0].settlementAccountId
+      ) {
+        return message.error('请选择结算账户');
+      } else if (!this.tableData.length || !this.tableData[0].amount) {
+        return message.error('请输入金额');
+      }
+
+      this.addEdit(type, params);
     },
-    // ...mapMutations(['pushTab']),
+
     footerMethodFormat({ columns, data }, list, totalName) {
       // 初始化合计行，默认所有列为空字符串
       const footerRow = new Array(columns.length).fill('');
@@ -499,15 +612,13 @@ export default {
         }
       });
 
-      this.form.collectionAmount = (
-        (parseFloat(this.totalTb1) || 0) -
-        (parseFloat(this.totalTb2) || 0) +
-        (parseFloat(this.form.discountRate) || 0)
-      ).toFixed(2);
+      this.form.collectionAmount = this.calcCollectionAmount();
 
       return [footerRow]; // 返回二维数组用于渲染 footer
     },
-    changeDiscountRate() {},
+    changeDiscountRate() {
+      this.form.collectionAmount = this.calcCollectionAmount();
+    },
     footerMethod({ columns, data }) {
       return this.footerMethodFormat({ columns, data }, ['amount'], 'totalTb1');
     },
@@ -538,12 +649,15 @@ export default {
       this.pagination.page = 1;
       // this.loadList();
     },
-    addEdit(params) {
+    addEdit(type, params) {
       this.loading = true;
       OrderReceipt.addEdit(params)
-        .then(({ data: { results, total } }) => {
-          this.dataList = results || [];
-          this.pagination.total = total;
+        .then(() => {
+          message('提交成功~');
+          this.clerarData();
+          if (type == 'save') {
+            this.historyForm();
+          }
         })
         .finally(() => (this.loading = false));
     },
@@ -613,7 +727,7 @@ export default {
       }
     },
     addOrderStaff() {
-      document.getElementsByClassName('h-dropdown')[0].style.zIndex = 9;
+      document.getElementsByClassName('h-dropdown')[0].style.zIndex = 1;
       this.showForm();
     },
 
@@ -638,9 +752,37 @@ export default {
         })
       });
     },
+    autoMatic() {
+      if (!this.form.customerId) {
+        return message.error('请选择客户');
+      } else if (!this.tableData2[0]?.salesOrderNo) {
+        return message.error('请选择需要核销的单据');
+      }
+
+      this.autoSetVerifyAmount();
+
+      // this.changeDiscountRate();
+    },
+    autoSetVerifyAmount() {
+      let remainingAmount = this.totalTb1; // 剩余可核销金额
+      this.tableData2.forEach((row) => {
+        const { unverifiedAmount = 0 } = row;
+        if (remainingAmount >= unverifiedAmount) {
+          row.currentVerifyAmount = unverifiedAmount;
+          remainingAmount -= unverifiedAmount;
+        } else if (remainingAmount > 0) {
+          row.currentVerifyAmount = remainingAmount; // 取剩余金额作为最大值
+          remainingAmount = 0; // 核销完毕，后续不再处理
+        } else {
+          // 剩余金额为 0，不进行核销
+          row.currentVerifyAmount = 0;
+        }
+      });
+      this.$refs.table.updateFooter();
+    },
     sourceForm() {
       if (!this.form.customerId) {
-        return layer.msg('请先选择客户');
+        return message.error('请选择客户');
       }
       let params = {
         customerId: this.form.customerId
@@ -657,6 +799,7 @@ export default {
             layer.close(layerId);
           },
           onSuccess: (checkList) => {
+            debugger;
             const merged = new Map(
               this.tableData2.map((item) => [item.salesOrderNo, item])
             );
@@ -665,9 +808,12 @@ export default {
                 merged.set(item.salesOrderNo, item);
               }
             });
-            this.tableData2 = Array.from(merged.values()).filter(
-              (item) => item.salesOrderNo
-            );
+            this.tableData2 = Array.from(merged.values())
+              .filter((item) => item.salesOrderNo)
+              .map((item) => {
+                delete item._X_ROW_KEY;
+                return item;
+              });
 
             console.log(this.tableData2, 'tableData2tableData2');
             // this.loadOrderStaff();
@@ -678,10 +824,15 @@ export default {
     }
   },
   created() {
+    console.log(this.orderId, this.type, 'orderIdorderId');
+    if (this.orderId) {
+      this.loadList();
+    }
     this.loadCustomer();
     this.loadOrderStaff();
     this.loadPaymentMethod();
     this.loadAccountMethod();
+    // this.getLog()
   }
 };
 </script>

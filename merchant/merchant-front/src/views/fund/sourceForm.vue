@@ -124,7 +124,11 @@ export default {
         .finally(() => (this.loading = false));
     },
     confirm() {
-      let checkList = this.$refs.table.getCheckboxRecords();
+      let checkList = this.$refs.table.getCheckboxRecords().map((item) => {
+        delete item.id;
+        return item;
+      });
+      console.log(checkList, 'checkListcheckListcheckList');
       this.$emit('success', checkList);
 
       return;

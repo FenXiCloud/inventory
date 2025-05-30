@@ -42,6 +42,7 @@ export default {
       selectAccountBookId:null,
       searchText: '',
       infoMenu: [
+        {key: 'merchantInfo', title: '企业信息', icon: 'h-icon-home'},
         {key: 'info', title: '个人信息', icon: 'h-icon-user'},
         {key: 'logout', title: '退出登录', icon: 'h-icon-outbox'}
       ]
@@ -102,6 +103,8 @@ export default {
             }).finally(() => loading.close())
           }
         });
+      } else if (data === 'merchantInfo') {
+        this.pushTab({key: 'MerchantInfo', title: '企业信息'})
       } else {
         this.pushTab({key:'AccountBasic',title:'个人信息'})
       }

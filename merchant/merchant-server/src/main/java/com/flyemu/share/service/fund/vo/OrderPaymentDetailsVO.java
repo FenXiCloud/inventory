@@ -41,7 +41,7 @@ public class OrderPaymentDetailsVO {
     private LocalDateTime approvedAt;
     private Long accountBookId;
     private Long merchantId;
-    private String creatorName;
+    private String createName;
     private String updateName;
     private String approvedName;
 }

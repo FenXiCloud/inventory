@@ -292,7 +292,7 @@ public class OtherIncomeService extends AbsService {
                         qOtherIncome.updateAt,
                         qOtherIncome.accountBookId,
                         qOtherIncome.merchantId,
-                        qCreatedByUser.name.as("creatorName"),
+                        qCreatedByUser.name.as("createName"),
                         qUpdatedByUser.name.as("updaterName"),
                         qApprovedByUser.name.as("approverName")
                 ))

@@ -263,7 +263,7 @@ public class OtherExpenseService extends AbsService {
                         qOtherExpense.updateAt,
                         qOtherExpense.accountBookId,
                         qOtherExpense.merchantId,
-                        qCreatedByUser.name.as("creatorName"),
+                        qCreatedByUser.name.as("createName"),
                         qUpdatedByUser.name.as("updaterName"),
                         qApprovedByUser.name.as("approverName")
                 ))

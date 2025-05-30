@@ -153,7 +153,7 @@ public class OrderReceiptService extends AbsService {
             throw new ServiceException("账户参数错误");
         }
         OrderReceipt orderReceipt = dto.getOrderReceipt();
-        if (orderReceipt.getId()!=null){
+        if (orderReceipt.getId() != null) {
             jqf.delete(qOrderReceiptItem).where(qOrderReceiptItem.receiptId.eq(orderReceipt.getId())).execute();
             jqf.delete(qOrderReceiptCollection).where(qOrderReceiptCollection.receiptId.eq(Math.toIntExact(orderReceipt.getId()))).execute();
         }
@@ -239,8 +239,11 @@ public class OrderReceiptService extends AbsService {
                 throw new ServiceException("该单据不是【已保存】状态，无法修改");
             }
             BeanUtil.copyProperties(orderReceipt, original, CopyOptions.create().ignoreNullValue());
-             saveItems(orderReceipt, items);
+            saveItems(orderReceipt, items);
             saveCollections(orderReceipt, collections);
+            if (orderReceipt.getId() != null && OrderStatus.已审核.equals(orderReceipt.getOrderStatus())) {
+                calculateTheAmount(orderReceipt, OrderStatus.已审核);
+            }
             return orderReceiptRepository.save(original);
         }
     }
@@ -261,7 +264,7 @@ public class OrderReceiptService extends AbsService {
 
         for (OrderReceiptItem item : items) {
             Long salesOrderId = item.getSalesOrderId();
-            if (salesOrderId==null){
+            if (salesOrderId == null) {
                 throw new ServiceException("销售单ID为空");
             }
             if (salesOrderIdSet.contains(salesOrderId)) {
@@ -354,7 +357,6 @@ public class OrderReceiptService extends AbsService {
                 throw new ServiceException("已审核状态,审核人必填");
             }
             orderReceipt.setApprovedAt(LocalDateTime.now());
-            calculateTheAmount(orderReceipt, OrderStatus.已审核);
         }
     }
 
@@ -467,7 +469,7 @@ public class OrderReceiptService extends AbsService {
                         qOrderReceipt.hasVerificationAmount, qOrderReceipt.notVerificationAmount, qOrderReceipt.writeOffStatus,
                         qOrderReceipt.orderStatus, qOrderReceipt.orderStaffId, qOrderReceipt.orderStaffName, qOrderReceipt.createdBy,
                         qOrderReceipt.updateBy, qOrderReceipt.createdAt, qOrderReceipt.updateAt, qOrderReceipt.approvedBy,
-                        qOrderReceipt.approvedAt, qOrderReceipt.accountBookId, qOrderReceipt.merchantId, qMerchantUser.name.as("creatorName"),
+                        qOrderReceipt.approvedAt, qOrderReceipt.accountBookId, qOrderReceipt.merchantId, qMerchantUser.name.as("createName"),
                         qUpdatedByUser.name.as("updateName"), approvedNameUser.name.as("approvedName")))
                 .from(qOrderReceipt).leftJoin(qCustomer).on(qCustomer.id.eq(qOrderReceipt.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qOrderReceipt.createdBy)).leftJoin(qUpdatedByUser)
@@ -727,6 +729,11 @@ public class OrderReceiptService extends AbsService {
                 builder.and(qOrderReceipt.orderStatus.eq(orderStatus));
             }
         }
+        public void setOrderStatus(Integer orderType) {
+            if (orderType != null) {
+                builder.and(qOrderReceipt.orderType.eq(orderType));
+            }
+        }
 
         public void setStartTime(LocalDateTime startTime) {
             if (startTime != null) {
@@ -746,6 +753,7 @@ public class OrderReceiptService extends AbsService {
             }
         }
     }
+
     public static class ReceivableDetailReportQuery {
 
         public final BooleanBuilder builder = new BooleanBuilder();

@@ -507,7 +507,7 @@ public class VerificationService extends AbsService {
                                 qVerification.orderDate,
                                 qVerification.orderStaffId,
                                 qVerification.orderStaffName,
-                                qCreatedByUser.name.as("creatorName"),
+                                qCreatedByUser.name.as("createName"),
                                 qUpdatedByUser.name.as("updateName"),
                                 qApprovedByUser.name.as("approvedName"),
                                 qVerification.merchantId,

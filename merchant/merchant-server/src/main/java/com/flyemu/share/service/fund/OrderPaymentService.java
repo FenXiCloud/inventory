@@ -7,9 +7,7 @@ import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.entity.basic.QPaymentMethod;
-import com.flyemu.share.entity.basic.QSupplier;
-import com.flyemu.share.entity.basic.Supplier;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.entity.purchase.PurchaseOrder;
 import com.flyemu.share.entity.purchase.QPurchaseOrder;
@@ -28,6 +26,8 @@ import com.flyemu.share.service.fund.vo.OrderPaymentDetails;
 import com.flyemu.share.service.fund.vo.OrderPaymentDetailsVO;
 import com.flyemu.share.service.fund.vo.OrderPaymentQueryVO;
 import com.flyemu.share.service.fund.vo.report.PayableDetailReportVO;
+import com.flyemu.share.service.fund.vo.report.SummaryPayableDetailsPageVO;
+import com.flyemu.share.service.fund.vo.report.SummaryPayableDetailsVO;
 import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.querydsl.core.BooleanBuilder;
@@ -42,11 +42,13 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.util.function.Tuple2;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author q
@@ -67,18 +69,270 @@ public class OrderPaymentService extends AbsService {
     private final static QOrderPaymentItem qItem = QOrderPaymentItem.orderPaymentItem;
     private final QOrderPaymentCollection qCollection = QOrderPaymentCollection.orderPaymentCollection;
     private final QSupplier qSupplier = QSupplier.supplier;
+    private final QOrderStaff qOrderStaff = QOrderStaff.orderStaff;
 
-    private final static QPaymentMethod qPaymentMethod = QPaymentMethod.paymentMethod;
+    private final static QOtherExpense qOtherExpense = QOtherExpense.otherExpense;
     private final CodeRuleService codeRuleService;
     private final AccountService accountService;
     private final SupplierService supplierService;
     private final PurchaseOrderRepository quantityRepository;
+    private final SupplierCategoryRepository supplierCategoryRepository;
     private final OrderPaymentItemRepository orderPaymentItemRepository;
     private final OrderPaymentCollectionRepository orderPaymentCollectionRepository;
     private final static QOrderPaymentItem QorderPaymentItem = QOrderPaymentItem.orderPaymentItem;
     private final static QOrderPaymentCollection QorderPaymentCollection = QOrderPaymentCollection.orderPaymentCollection;
 
-    public PageResults<PayableDetailReportVO> getPayableDetailReport(Page page,PayableDetailReportQuery query) {
+    public SummaryPayableDetailsPageVO summaryPayableDetails(Page page, SummaryPayableDetailsQuery query) {
+        Integer type = query.getType();
+        if (type == null || type < 1 || type > 3) {
+            throw new ServiceException("type 参数必须为 1、2 或 3");
+        }
+        return switch (type) {
+            case 1 -> handleBySupplier(page, query);
+            case 2 -> handleBySupplierCategory(page, query);
+            case 3 -> handleByStaff(page, query);
+            default -> throw new ServiceException("不支持的查询类型");
+        };
+    }
+    private SummaryPayableDetailsPageVO handleBySupplier(Page page, SummaryPayableDetailsQuery query) {
+        QSupplier qSupplier = QSupplier.supplier;
+
+        BooleanBuilder supplierCondition = new BooleanBuilder();
+        if (query.getMerchantId() != null) {
+            supplierCondition.and(qSupplier.merchantId.eq(query.getMerchantId()));
+        }
+        if (query.getAccountBookId() != null) {
+            supplierCondition.and(qSupplier.accountBookId.eq(query.getAccountBookId()));
+        }
+        if (query.getSupplierId() != null) {
+            supplierCondition.and(qSupplier.id.eq(query.getSupplierId()));
+        }
+
+        LocalDateTime startDateTime = query.getStartDate().atStartOfDay();
+
+        JPAQuery<Supplier> supplierQuery = jqf.selectFrom(qSupplier).where(supplierCondition);
+        long total = supplierQuery.fetchCount();
+
+        List<Supplier> suppliers = supplierQuery
+                .offset(page.getOffset())
+                .limit(page.getPageSize())
+                .fetch();
+
+        if (suppliers.isEmpty()) {
+            return new SummaryPayableDetailsPageVO();
+        }
+
+        List<SummaryPayableDetailsVO> voList = new ArrayList<>();
+        SummaryPayableDetailsPageVO totalVO = new SummaryPayableDetailsPageVO();
+        totalVO.setTotalOpeningBalance(BigDecimal.ZERO);
+        totalVO.setTotalCurrentPayable(BigDecimal.ZERO);
+        totalVO.setTotalCurrentPayment(BigDecimal.ZERO);
+        totalVO.setTotalClosingBalance(BigDecimal.ZERO);
+
+        for (Supplier supplier : suppliers) {
+            SummaryPayableDetailsVO vo = new SummaryPayableDetailsVO();
+            SupplierCategory byId = supplierCategoryRepository.getById(supplier.getSupplierCategoryId());
+            vo.setSupplierCategory(byId.getName());
+            vo.setSupplierCode(supplier.getCode());
+            vo.setSupplierName(supplier.getName());
+
+            BigDecimal openingBalance = getOpeningBalance(supplier.getId(), startDateTime);
+            BigDecimal currentPayable = getCurrentPayable(supplier.getId(), query);
+            BigDecimal currentPayment = getCurrentPayment(supplier.getId(), query);
+            BigDecimal closingBalance = openingBalance.add(currentPayable).subtract(currentPayment);
+
+            vo.setOpeningBalance(openingBalance);
+            vo.setCurrentPayable(currentPayable);
+            vo.setCurrentPayment(currentPayment);
+            vo.setClosingBalance(closingBalance);
+
+            voList.add(vo);
+
+            totalVO.setTotalOpeningBalance(totalVO.getTotalOpeningBalance().add(openingBalance));
+            totalVO.setTotalCurrentPayable(totalVO.getTotalCurrentPayable().add(currentPayable));
+            totalVO.setTotalCurrentPayment(totalVO.getTotalCurrentPayment().add(currentPayment));
+            totalVO.setTotalClosingBalance(totalVO.getTotalClosingBalance().add(closingBalance));
+        }
+
+        totalVO.setPayableDetailsList(voList);
+        totalVO.setPayableDetailsListTotal((int) total);
+        return totalVO;
+    }
+    private SummaryPayableDetailsPageVO handleBySupplierCategory(Page page, SummaryPayableDetailsQuery query) {
+        QSupplierCategory qSupplierCategory = QSupplierCategory.supplierCategory;
+
+        BooleanBuilder condition = new BooleanBuilder();
+        if (query.getMerchantId() != null) {
+            condition.and(qSupplierCategory.merchantId.eq(query.getMerchantId()));
+        }
+        if (query.getAccountBookId() != null) {
+            condition.and(qSupplierCategory.accountBookId.eq(query.getAccountBookId()));
+        }
+
+        JPAQuery<SupplierCategory> categoryQuery = jqf.select(qSupplierCategory)
+                .from(qSupplierCategory)
+                .where(condition)
+                .orderBy(qSupplierCategory.id.asc());
+
+        long total = categoryQuery.fetchCount();
+
+        List<SupplierCategory> categories = categoryQuery
+                .offset(page.getOffset())
+                .limit(page.getPageSize())
+                .fetch();
+
+        List<SummaryPayableDetailsVO> voList = new ArrayList<>();
+
+        for (SupplierCategory category : categories) {
+            String categoryName = category.getName();
+
+            List<Long> supplierIds = jqf.select(QSupplier.supplier.id)
+                    .from(QSupplier.supplier)
+                    .where(QSupplier.supplier.supplierCategoryId.eq(category.getId())
+                            .and(QSupplier.supplier.merchantId.eq(query.getMerchantId()))
+                            .and(QSupplier.supplier.accountBookId.eq(query.getAccountBookId())))
+                    .fetch();
+
+            if (supplierIds.isEmpty()) {
+                continue;
+            }
+
+            BigDecimal openingBalance = BigDecimal.ZERO;
+            BigDecimal currentPayable = BigDecimal.ZERO;
+            BigDecimal currentPayment = BigDecimal.ZERO;
+
+            LocalDateTime startDateTime = query.getStartDate().atStartOfDay();
+
+            for (Long supplierId : supplierIds) {
+                openingBalance = openingBalance.add(getOpeningBalance(supplierId, startDateTime));
+                currentPayable = currentPayable.add(getCurrentPayable(supplierId, query));
+                currentPayment = currentPayment.add(getCurrentPayment(supplierId, query));
+            }
+
+            BigDecimal closingBalance = openingBalance.add(currentPayable).subtract(currentPayment);
+
+            SummaryPayableDetailsVO vo = new SummaryPayableDetailsVO();
+            vo.setSupplierCategory(categoryName);
+            vo.setOpeningBalance(openingBalance);
+            vo.setCurrentPayable(currentPayable);
+            vo.setCurrentPayment(currentPayment);
+            vo.setClosingBalance(closingBalance);
+
+            voList.add(vo);
+        }
+
+        SummaryPayableDetailsPageVO result = new SummaryPayableDetailsPageVO();
+        result.setTotalOpeningBalance(BigDecimal.ZERO);
+        result.setTotalCurrentPayable(BigDecimal.ZERO);
+        result.setTotalCurrentPayment(BigDecimal.ZERO);
+        result.setTotalClosingBalance(BigDecimal.ZERO);
+
+        for (SummaryPayableDetailsVO vo : voList) {
+            result.setTotalOpeningBalance(result.getTotalOpeningBalance().add(vo.getOpeningBalance()));
+            result.setTotalCurrentPayable(result.getTotalCurrentPayable().add(vo.getCurrentPayable()));
+            result.setTotalCurrentPayment(result.getTotalCurrentPayment().add(vo.getCurrentPayment()));
+            result.setTotalClosingBalance(result.getTotalClosingBalance().add(vo.getClosingBalance()));
+        }
+        result.setPayableDetailsList(voList);
+        result.setPayableDetailsListTotal(total);
+        return result;
+    }
+
+
+
+    private SummaryPayableDetailsPageVO handleByStaff(Page page, SummaryPayableDetailsQuery query) {
+        QOrderStaff qOrderStaff = QOrderStaff.orderStaff;
+
+        BooleanBuilder condition = new BooleanBuilder();
+        if (query.getMerchantId() != null) {
+            condition.and(qOrderStaff.merchantId.eq(query.getMerchantId()));
+        }
+        if (query.getAccountBookId() != null) {
+            condition.and(qOrderStaff.accountBookId.eq(query.getAccountBookId()));
+        }
+        JPAQuery<OrderStaff> staffQuery = jqf.selectFrom(qOrderStaff).where(condition);
+        long total = staffQuery.fetchCount();
+        List<OrderStaff> staffList = staffQuery
+                .offset(page.getOffset())
+                .limit(page.getPageSize())
+                .fetch();
+
+        List<SummaryPayableDetailsVO> voList = new ArrayList<>();
+
+        for (OrderStaff staff : staffList) {
+            Long staffId = staff.getId().longValue();
+            String staffName = staff.getName();
+
+            List<Long> paymentIds = jqf.select(qOrderPayment.id)
+                    .from(qOrderPayment)
+                    .where(qOrderPayment.orderStaffId.eq(staffId)
+                            .and(qOrderPayment.merchantId.eq(query.getMerchantId()))
+                            .and(qOrderPayment.accountBookId.eq(query.getAccountBookId())))
+                    .fetch();
+
+            if (paymentIds.isEmpty()) {
+                SummaryPayableDetailsVO vo = new SummaryPayableDetailsVO();
+                vo.setSupplierName(staffName);
+                vo.setSupplierCode(String.valueOf(staffId));
+                vo.setOpeningBalance(BigDecimal.ZERO);
+                vo.setCurrentPayable(BigDecimal.ZERO);
+                vo.setCurrentPayment(BigDecimal.ZERO);
+                vo.setClosingBalance(BigDecimal.ZERO);
+                voList.add(vo);
+                continue;
+            }
+
+            BigDecimal openingBalance = BigDecimal.ZERO;
+            BigDecimal currentPayable = BigDecimal.ZERO;
+            BigDecimal currentPayment = BigDecimal.ZERO;
+
+            LocalDateTime startDateTime = query.getStartDate().atStartOfDay();
+            List<Long> supplierIds = jqf.select(qOrderPayment.supplierId)
+                    .from(qOrderPayment)
+                    .where(qOrderPayment.id.in(paymentIds)).groupBy(qOrderPayment.supplierId)
+                    .fetch();
+
+            for (Long supplierId : supplierIds) {
+                openingBalance = openingBalance.add(getOpeningBalance(supplierId, startDateTime));
+                currentPayable = currentPayable.add(getCurrentPayable(supplierId, query));
+                currentPayment = currentPayment.add(getCurrentPayment(supplierId, query));
+            }
+
+            BigDecimal closingBalance = openingBalance.add(currentPayable).subtract(currentPayment);
+
+            SummaryPayableDetailsVO vo = new SummaryPayableDetailsVO();
+            vo.setSupplierName(staffName);
+            vo.setSupplierCode(String.valueOf(staffId));
+            vo.setOpeningBalance(openingBalance);
+            vo.setCurrentPayable(currentPayable);
+            vo.setCurrentPayment(currentPayment);
+            vo.setClosingBalance(closingBalance);
+
+            voList.add(vo);
+        }
+
+        SummaryPayableDetailsPageVO result = new SummaryPayableDetailsPageVO();
+        result.setPayableDetailsList(voList);
+        result.setPayableDetailsListTotal(total);
+        result.setTotalOpeningBalance(voList.stream()
+                .map(SummaryPayableDetailsVO::getOpeningBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        result.setTotalCurrentPayable(voList.stream()
+                .map(SummaryPayableDetailsVO::getCurrentPayable)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        result.setTotalCurrentPayment(voList.stream()
+                .map(SummaryPayableDetailsVO::getCurrentPayment)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        result.setTotalClosingBalance(voList.stream()
+                .map(SummaryPayableDetailsVO::getClosingBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+
+        return result;
+    }
+
+
+
+    public PageResults<PayableDetailReportVO> getPayableDetailReport(Page page, PayableDetailReportQuery query) {
         List<PayableDetailReportVO> result = jqf.select(
                         Projections.bean(PayableDetailReportVO.class,
                                 qOrderPayment.supplierName.as("supplierName"),
@@ -102,7 +356,7 @@ public class OrderPaymentService extends AbsService {
                 )
                 .from(qOrderPayment)
                 .leftJoin(qItem).on(qItem.paymentId.eq(qOrderPayment.id))
-                .where(query.builder,qOrderPayment.orderStatus.eq(OrderStatus.已审核))
+                .where(query.builder, qOrderPayment.orderStatus.eq(OrderStatus.已审核))
                 .offset(page.getOffset())
                 .limit(page.getPageSize())
                 .fetch();
@@ -110,10 +364,120 @@ public class OrderPaymentService extends AbsService {
         Long total = jqf.select(qOrderPayment.count())
                 .from(qOrderPayment)
                 .leftJoin(qItem).on(qItem.paymentId.eq(qOrderPayment.id))
-                .where(query.builder,qOrderPayment.orderStatus.eq(OrderStatus.已审核))
+                .where(query.builder, qOrderPayment.orderStatus.eq(OrderStatus.已审核))
                 .fetchOne();
 
         return new PageResults<>(result, page, total == null ? 0 : total);
+    }
+
+    private BigDecimal getOpeningBalance(Long supplierId, LocalDateTime dateTime) {
+        QOrderPayment qPayment = QOrderPayment.orderPayment;
+        QPurchaseOrder qPurchase = QPurchaseOrder.purchaseOrder;
+        QOrderPaymentItem qItem = QOrderPaymentItem.orderPaymentItem;
+
+        BigDecimal paymentSum = jqf.select(qPayment.collectionAmount.sum())
+                .from(qPayment)
+                .where(qPayment.supplierId.eq(supplierId)
+                        .and(qPayment.approvedAt.lt(dateTime))
+                        .and(qPayment.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        BigDecimal purchaseSum = jqf.select(qPurchase.finalAmount.sum())
+                .from(qPurchase)
+                .where(qPurchase.supplierId.eq(supplierId)
+                        .and(qPurchase.approvedAt.lt(dateTime))
+                        .and(qPurchase.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        paymentSum = paymentSum == null ? BigDecimal.ZERO : paymentSum;
+        purchaseSum = purchaseSum == null ? BigDecimal.ZERO : purchaseSum;
+        return purchaseSum.subtract(paymentSum);
+    }
+
+    private BigDecimal getCurrentPayable(Long supplierId, SummaryPayableDetailsQuery query) {
+        LocalDateTime startTime = query.getStartDate().atStartOfDay();
+        LocalDateTime endTime = query.getEndDate().atStartOfDay();
+        QPurchaseOrder qPurchase = QPurchaseOrder.purchaseOrder;
+        QOrderPayment qPayment = QOrderPayment.orderPayment;
+        QOrderPaymentItem qItem = QOrderPaymentItem.orderPaymentItem;
+        QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
+        QVerification qVerification = QVerification.verification;
+        OtherExpenseService.Query expenseQuery = new OtherExpenseService.Query();
+        expenseQuery.setMerchantId(null);
+        expenseQuery.setAccountBookId(null);
+        // 采购订单应付金额
+        BigDecimal purchaseAmount = jqf.select(qPurchase.finalAmount.sum())
+                .from(qPurchase)
+                .where(qPurchase.supplierId.eq(supplierId).and(expenseQuery.builder)
+                        .and(qPurchase.approvedAt.between(startTime, endTime))
+                        .and(qPurchase.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        //其他支出单金额
+        BigDecimal otherExpenseAmount = BigDecimal.ZERO;
+
+        otherExpenseAmount = jqf.select(qOtherExpense.collectionAmount.sum())
+                .from(qOtherExpense)
+                .where(qOtherExpense.supplierId.eq(supplierId).and(expenseQuery.builder)
+                        .and(qOtherExpense.approvedAt.between(startTime, endTime))
+                        .and(qOtherExpense.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        // 付款单中的折扣金额
+        BigDecimal discountAmount = jqf.select(qPayment.discountAmount.sum())
+                .from(qPayment)
+                .where(qPayment.supplierId.eq(supplierId)
+                        .and(qPayment.approvedAt.between(startTime, endTime))
+                        .and(qPayment.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        purchaseAmount = purchaseAmount == null ? BigDecimal.ZERO : purchaseAmount;
+        otherExpenseAmount = otherExpenseAmount == null ? BigDecimal.ZERO : otherExpenseAmount;
+        discountAmount = discountAmount == null ? BigDecimal.ZERO : discountAmount;
+
+
+        return purchaseAmount
+                .add(otherExpenseAmount)
+                .subtract(discountAmount);
+    }
+
+    private BigDecimal getCurrentPayment(Long supplierId, SummaryPayableDetailsQuery query) {
+        LocalDateTime startTime = query.getStartDate().atStartOfDay();
+        LocalDateTime endTime = query.getEndDate().atStartOfDay();
+        QPurchaseOrder qPurchase = QPurchaseOrder.purchaseOrder;
+        QOrderPayment qPayment = QOrderPayment.orderPayment;
+
+        // 采购订单付款金额
+        BigDecimal purchasePayment = jqf.select(qPurchase.finalAmount.sum())
+                .from(qPurchase)
+                .where(qPurchase.supplierId.eq(supplierId)
+                        .and(qPurchase.approvedAt.between(startTime, endTime))
+                        .and(qPurchase.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        // 付款单付款金额
+        BigDecimal orderPayment = jqf.select(qPayment.collectionAmount.sum())
+                .from(qPayment)
+                .where(qPayment.supplierId.eq(supplierId)
+                        .and(qPayment.approvedAt.between(startTime, endTime))
+                        .and(qPayment.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        // 其他支出付款金额
+        BigDecimal otherExpensePayment = jqf.select(qOtherExpense.collectionAmount.sum())
+                .from(qOtherExpense)
+                .where(qOtherExpense.supplierId.eq(supplierId)
+                        .and(qOtherExpense.approvedAt.between(startTime, endTime))
+                        .and(qOtherExpense.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        purchasePayment = purchasePayment == null ? BigDecimal.ZERO : purchasePayment;
+        orderPayment = orderPayment == null ? BigDecimal.ZERO : orderPayment;
+        otherExpensePayment = otherExpensePayment == null ? BigDecimal.ZERO : otherExpensePayment;
+
+        return purchasePayment
+                .add(orderPayment)
+                .add(otherExpensePayment);
     }
 
 
@@ -138,7 +502,7 @@ public class OrderPaymentService extends AbsService {
             throw new ServiceException("参数错误");
         }
         OrderPayment orderPayment = dto.getOrderPayment();
-        if (orderPayment.getId()!=null){
+        if (orderPayment.getId() != null) {
             jqf.delete(QorderPaymentItem).where(QorderPaymentItem.paymentId.eq(orderPayment.getId())).execute();
             jqf.delete(QorderPaymentCollection).where(QorderPaymentCollection.paymentId.eq(Math.toIntExact(orderPayment.getId()))).execute();
         }
@@ -410,7 +774,7 @@ public class OrderPaymentService extends AbsService {
 
         for (OrderPaymentItem item : items) {
             Long purchaseOrderId = item.getBusinessId();
-            if (purchaseOrderId==null){
+            if (purchaseOrderId == null) {
                 throw new ServiceException("列ID为空");
             }
             if (purchaseOrderIdSet.contains(purchaseOrderId)) {
@@ -524,7 +888,7 @@ public class OrderPaymentService extends AbsService {
                         qOrderPayment.approvedAt,
                         qOrderPayment.accountBookId,
                         qOrderPayment.merchantId,
-                        qCreatedByUser.name.as("creatorName"),
+                        qCreatedByUser.name.as("createName"),
                         qUpdatedByUser.name.as("updateName"),
                         qApprovedByUser.name.as("approvedName")))
                 .from(qOrderPayment)
@@ -805,7 +1169,16 @@ public class OrderPaymentService extends AbsService {
                         .or(qSupplier.name.like("%" + keyword + "%")));
             }
         }
+    }
 
+    @Data
+    public class SummaryPayableDetailsQuery {
+        private Long merchantId;
+        private Long accountBookId;
+        private Long supplierId;
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private Integer type; //1=按供应商，2=按供应商类型，3=按业务员
     }
 
     public static class SupplerQuery {

@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @JsonInclude()
 @Data
 public class AccountTransferDetailsVO {
-    private String creatorName;
+    private String createName;
     private String updateName;
     private String approvedName;
     private Long id;

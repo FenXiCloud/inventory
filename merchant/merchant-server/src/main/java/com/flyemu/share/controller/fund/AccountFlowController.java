@@ -30,7 +30,7 @@ public class AccountFlowController {
     private final OrderPaymentService orderPaymentService;
     private final OrderReceiptService orderReceiptService;
 
-
+    //现金流水
     @GetMapping("list")
     public JsonResult list(Page page, AccountFlowService.Query query,
                            @SaAccountBookId Long accountBookId,
@@ -39,7 +39,7 @@ public class AccountFlowController {
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(accountFlowService.query(page, query));
     }
-
+    // 供应商应付明细
     @GetMapping("getPayableDetailReport")
     public JsonResult getPayableDetailReport(Page page, OrderPaymentService.PayableDetailReportQuery query,
                                              @SaAccountBookId Long accountBookId,
@@ -48,7 +48,7 @@ public class AccountFlowController {
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderPaymentService.getPayableDetailReport(page, query));
     }
-
+    // 客户应收明细
     @GetMapping("getReceivableDetailReport")
     public JsonResult getReceivableDetailReport(Page page, OrderReceiptService.ReceivableDetailReportQuery query,
                                                 @SaAccountBookId Long accountBookId,
@@ -57,4 +57,13 @@ public class AccountFlowController {
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderReceiptService.getReceivableDetailReport(page, query));
     }
+    //应付汇总明细
+//    @GetMapping("getReceivableDetailReport")
+//    public JsonResult getReceivableDetailReport(Page page, OrderPaymentService.SummaryPayableDetailsQuery query,
+//                                                @SaAccountBookId Long accountBookId,
+//                                                @SaMerchantId Long merchantId) {
+//        query.setMerchantId(merchantId);
+//        query.setAccountBookId(accountBookId);
+//        return JsonResult.successful(orderPaymentService.summaryPayableDetails(page, query));
+//    }
 }

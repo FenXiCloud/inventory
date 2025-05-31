@@ -288,6 +288,27 @@ export default {
               this.otherOutboundData[rowIndex].productUnitName = item.unitName;
               this.otherOutboundData[rowIndex].productUnitId = item.unitId;
               this.$forceUpdate();
+              const warehouseId = this.otherOutboundData[rowIndex].warehouseId;
+              if (!warehouseId) {
+                let find = this.warehouseList.find(warehouse => {
+                  return warehouse.systemDefault;
+                });
+                if (find) {
+                  const warehouseId = find.id;
+                  this.otherOutboundData[rowIndex].warehouseId = warehouseId;
+                  // 根据id获取仓库信息
+                  Warehouse.list({id: warehouseId}).then(res => {
+                    console.info("Warehouse res:", res);
+                    const {success, data} = res;
+                    if (success) {
+                      const item = data[0];
+                      this.otherOutboundData[rowIndex].warehouseName = item.name;
+                      this.otherOutboundData[rowIndex].warehouseId = item.id;
+                      this.$forceUpdate();
+                    }
+                  });
+                }
+              }
             }
           });
           break;

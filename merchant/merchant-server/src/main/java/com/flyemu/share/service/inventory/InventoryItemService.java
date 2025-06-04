@@ -153,17 +153,11 @@ public class InventoryItemService extends AbsService {
      *
      * @param orderId 订单id
      */
+    @Transactional
     public void deleteByOrderId(Long orderId, OperationType operationType) {
-        List<InventoryItem> fetch = jqf.select(qInventoryItem).where(qInventoryItem.orderId.eq(orderId).and(qInventoryItem.operationType.eq(operationType))).fetch();
-        List<OperationType> increaseTypeList = getIncreaseTypeList();
-        List<Long> ids = new ArrayList<>();
-        for (InventoryItem inventoryItem : fetch) {
-            ids.add(inventoryItem.getId());
-        }
-        fetch.forEach(item -> {
-            this.synchronizedRecordItem(item, !increaseTypeList.contains(item.getOperationType()), ids);
-        });
-        jqf.delete(qInventoryItem).where(qInventoryItem.orderId.eq(orderId).and(qInventoryItem.operationType.eq(operationType))).execute();
+        List<InventoryItem> fetch = jqf.selectFrom(qInventoryItem).where(qInventoryItem.orderId.eq(orderId).and(qInventoryItem.operationType.eq(operationType))).fetch();
+        inventoryItemRepository.deleteAll(fetch);
+        this.sortedInventoryItem(fetch);
     }
 
     private ArrayList<OperationType> getIncreaseTypeList() {
@@ -186,54 +180,68 @@ public class InventoryItemService extends AbsService {
             return;
         }
         List<InventoryItem> inventoryItems = inventoryItemRepository.saveAll(list);
-        List<OperationType> increaseTypeList = getIncreaseTypeList();
-        List<Long> ids = new ArrayList<>();
-        for (InventoryItem inventoryItem : inventoryItems) {
-            ids.add(inventoryItem.getId());
-        }
-        inventoryItems.forEach(item -> {
-            this.synchronizedRecordItem(item, increaseTypeList.contains(item.getOperationType()), ids);
-        });
+        this.sortedInventoryItem(inventoryItems);
     }
 
-    /**
-     * 同步记录
-     */
-    public void synchronizedRecordItem(InventoryItem item, boolean increase, List<Long> ids) {
-        Date inventoryDate = item.getInventoryDate();
-        Long productId = item.getProductId();
-        Long warehouseId = item.getWarehouseId();
-        Long merchantId = item.getMerchantId();
-        Long accountBookId = item.getAccountBookId();
-        List<InventoryItem> fetch = jqf.select(qInventoryItem).where(
-                qInventoryItem.inventoryDate.goe(inventoryDate)
-                        .and(qInventoryItem.productId.eq(productId))
-                        .and(qInventoryItem.warehouseId.eq(warehouseId))
-                        .and(qInventoryItem.merchantId.eq(merchantId))
-                        .and(qInventoryItem.accountBookId.eq(accountBookId))
-                        .and(qInventoryItem.operationType.notIn(OperationType.期初库存, OperationType.期初余额))
-                        .and(qInventoryItem.id.notIn(ids))
-        ).fetch();
-        fetch.forEach(fetchItem -> {
-            if (increase) {
-                BigDecimal add = fetchItem.getTotalCost().add(item.getSubtotal()).setScale(2, RoundingMode.HALF_EVEN);
-                Integer currentQuantity = fetchItem.getCurrentQuantity() + item.getQuantity();
-                fetchItem.setCurrentQuantity(currentQuantity);
-                fetchItem.setTotalCost(add);
-            } else {
-                BigDecimal subtract = fetchItem.getTotalCost().subtract(item.getSubtotal()).setScale(2, RoundingMode.HALF_EVEN);
-                Integer currentQuantity = fetchItem.getCurrentQuantity() - item.getQuantity();
-                fetchItem.setCurrentQuantity(currentQuantity);
-                fetchItem.setTotalCost(subtract);
+    private void sortedInventoryItem(List<InventoryItem> inventoryItems) {
+        List<Map<String, Long>> sorted = new ArrayList<>();
+        Date inventoryDate = null;
+        for (InventoryItem inventoryItem : inventoryItems) {
+            inventoryDate = inventoryItem.getInventoryDate();
+            Long productId = inventoryItem.getProductId();
+            Long warehouseId = inventoryItem.getWarehouseId();
+            Long id = inventoryItem.getId();
+            sorted.add(Map.of("productId", productId, "warehouseId", warehouseId, "id", id));
+        }
+        List<OperationType> increaseTypeList = getIncreaseTypeList();
+        Date finalInventoryDate = inventoryDate;
+        sorted.forEach(item -> {
+            Long productId = item.get("productId");
+            Long warehouseId = item.get("warehouseId");
+            Long id = item.get("id");
+            // 获取对应数据进行排序
+            List<InventoryItem> goeFetch = jqf.selectFrom(qInventoryItem).where(
+                    qInventoryItem.productId.eq(productId)
+                            .and(qInventoryItem.warehouseId.eq(warehouseId))
+                            .and(qInventoryItem.inventoryDate.goe(finalInventoryDate))
+                            .and(qInventoryItem.operationType.notIn(OperationType.期初库存, OperationType.期初余额))
+            ).orderBy(qInventoryItem.inventoryDate.asc()).fetch();
+            List<InventoryItem> loeFetch = jqf.selectFrom(qInventoryItem).where(
+                    qInventoryItem.productId.eq(productId)
+                            .and(qInventoryItem.warehouseId.eq(warehouseId))
+                            .and(qInventoryItem.inventoryDate.loe(finalInventoryDate))
+                            .and(qInventoryItem.id.ne(id))
+                            .and(qInventoryItem.operationType.notIn(OperationType.期初库存, OperationType.期初余额))
+            ).orderBy(qInventoryItem.inventoryDate.desc()).fetch();
+            Integer currentQuantity = 0;
+            BigDecimal totalCost = BigDecimal.ZERO;
+            if (!loeFetch.isEmpty()) {
+                currentQuantity = loeFetch.get(0).getCurrentQuantity();
+                totalCost = loeFetch.get(0).getTotalCost();
             }
-            OperationType operationType = fetchItem.getOperationType();
-            if (!OperationType.成本调整.equals(operationType)) {
-                Integer currentQuantity = fetchItem.getCurrentQuantity();
-                BigDecimal totalCost = fetchItem.getTotalCost();
-                BigDecimal averageCost = totalCost.divide(new BigDecimal(currentQuantity), 2, RoundingMode.HALF_EVEN);
-                fetchItem.setAverageCost(averageCost);
+            if (currentQuantity == null) {
+                currentQuantity = 0;
             }
-            inventoryItemRepository.save(fetchItem);
+            if (totalCost == null) {
+                totalCost = BigDecimal.ZERO;
+            }
+            for (InventoryItem inventoryItem : goeFetch) {
+                boolean contains = increaseTypeList.contains(inventoryItem.getOperationType());
+                if (contains) {
+                    currentQuantity = currentQuantity + inventoryItem.getQuantity();
+                    totalCost = totalCost.add(inventoryItem.getSubtotal());
+                } else {
+                    currentQuantity = currentQuantity - inventoryItem.getQuantity();
+                    totalCost = totalCost.subtract(inventoryItem.getSubtotal());
+                }
+                inventoryItem.setCurrentQuantity(currentQuantity);
+                inventoryItem.setTotalCost(totalCost);
+                if (!OperationType.成本调整.equals(inventoryItem.getOperationType())) {
+                    BigDecimal averageCost = totalCost.divide(new BigDecimal(currentQuantity), 2, RoundingMode.HALF_UP);
+                    inventoryItem.setAverageCost(averageCost);
+                }
+                inventoryItemRepository.save(inventoryItem);
+            }
         });
     }
 

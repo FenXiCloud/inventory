@@ -137,7 +137,8 @@
                     ) t
                 ORDER BY
                     t.productId ASC,
-                    t.sn DESC
+                    t.sn DESC,
+                    t.inventoryDate ASC
             ]]>
         </value>
     </sql>

@@ -360,7 +360,7 @@ public class InventoryService extends AbsService {
         }
     }
 
-    @Scheduled(cron = "0 0 1 1 * ?") // 每月第一天第一分钟执行
+    //@Scheduled(cron = "0 0 1 1 * ?") // 每月第一天第一分钟执行
     @Transactional
     public void initialInventory() {
         // 1、获取商品前一个月的库存数据

@@ -67,10 +67,10 @@
         <vxe-column title="商品名称" field="productName" width="200"/>
         <vxe-column title="商品类别" field="productCategoryName" width="200"/>
         <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
-        <vxe-column title="单据日期" field="createdAt" width="120">
+        <vxe-column title="单据日期" field="inventoryDate" width="120">
           <template #default="{ row }">
             <div v-if="row.operationType !== '期初余额'">
-              {{ row.createdAt }}
+              {{ row.inventoryDate }}
             </div>
             <div v-else>
             </div>
@@ -181,6 +181,7 @@
       <vxe-pager perfect @page-change="loadList(false)"
                  v-model:current-page="pagination.page"
                  v-model:page-size="pagination.pageSize"
+                 v-model:page-sizes="pagination.pageSizes"
                  :total="pagination.total"
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
@@ -217,7 +218,13 @@ export default {
       totalParams: {},
       pagination: {
         page: 1,
-        pageSize: 20,
+        pageSize: 1000,
+        pageSizes: [
+          {label: "300条/页", value: 300},
+          {label: "500条/页", value: 500},
+          {label: "1000条/页", value: 1000},
+          {label: "2000条/页", value: 2000},
+        ],
         total: 0
       },
       params: {

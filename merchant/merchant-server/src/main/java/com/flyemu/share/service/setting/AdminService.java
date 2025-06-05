@@ -230,10 +230,6 @@ public class AdminService extends AbsService {
         return jqf.selectFrom(qAdmin).where(qAdmin.dingDingUserId.eq(userId)).fetchFirst();
     }
 
-    public int queryNumByUserName(String userName) {
-        return jqf.selectFrom(qAdmin).where(qAdmin.name.eq(userName)).fetch().size();
-    }
-
     public Admin selectAdminByMobile(String mobile) {
         return jqf.selectFrom(qAdmin).where(qAdmin.mobile.eq(mobile)).fetchFirst();
     }

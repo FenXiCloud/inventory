@@ -63,6 +63,13 @@ public class InventoryItemController {
         return JsonResult.successful(inventoryItemService.report(page, query));
     }
 
+    @GetMapping("reportSummary")
+    public JsonResult reportSummary(InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(inventoryItemService.reportSummary(query));
+    }
+
     @GetMapping("summary")
     public JsonResult summary(Page page, InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);

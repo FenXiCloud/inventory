@@ -262,7 +262,9 @@ export default {
         "盘亏出库": "盘亏出库",
         "其他出库": "其他出库",
         "成本调整": "成本调整",
-      }
+      },
+      summaryQuantity: 0,
+      summaryCost: 0
     }
   },
   computed: {
@@ -282,8 +284,6 @@ export default {
       let outQuantity = 0;
       let inTotal = 0;
       let outTotal = 0;
-      let currentQuantity = 0;
-      let totalCost = 0;
       data.forEach((row) => {
         let rd = row['quantity'];
         if (rd) {
@@ -306,19 +306,7 @@ export default {
           }
         }
       });
-      data.forEach((row) => {
-        let rd = row['currentQuantity'];
-        if (rd) {
-          currentQuantity += Number(rd || 0);
-        }
-      });
-      data.forEach((row) => {
-        let rd = row['totalCost'];
-        if (rd) {
-          totalCost += Number(rd || 0);
-        }
-      });
-      return [['合计', '', '', '', '', '', '', '', '', '', '', inQuantity, inQuantity, '', inTotal.toFixed(2), outQuantity, outQuantity, '', outTotal.toFixed(2), currentQuantity, '', totalCost.toFixed(2)]];
+      return [['合计', '', '', '', '', '', '', '', '', '', '', inQuantity, inQuantity, '', inTotal.toFixed(2), outQuantity, outQuantity, '', outTotal.toFixed(2), this.summaryQuantity, '', this.summaryCost.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -346,10 +334,17 @@ export default {
       params.customerIds = params.customerIds.join(",");
       params.operationTypes = params.operationTypes.join(",");
       params.productCategoryIds = params.productCategoryIds.join(",");
-      InventoryItem.report(params).then(({data: {results, total}}) => {
-        this.dataList = results || [];
-        this.pagination.total = total;
-      }).finally(() => this.loading = false);
+      Promise.all([InventoryItem.reportSummary(params)]).then((promiseResults) => {
+        const data = promiseResults[0].data;
+        if (data) {
+          this.summaryQuantity = data.summaryQuantity;
+          this.summaryCost = data.summaryCost;
+        }
+        InventoryItem.report(params).then(({data: {results, total}}) => {
+          this.dataList = results || [];
+          this.pagination.total = total;
+        }).finally(() => this.loading = false);
+      });
     },
     getAbsoluteValue(number) {
       if (number < 0) {

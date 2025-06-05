@@ -577,6 +577,14 @@ public class InventoryItemService extends AbsService {
         return lazyDao.findBySql("inventoryItemSummaryInitList", map, InventoryItemReportDto.class);
     }
 
+    public Object reportSummary(Query query) {
+        Map<String, Object> map = query.toMap();
+        Date end = query.getEnd();
+        map.put("initDate", Objects.requireNonNullElseGet(end, Date::new));
+        List<InventoryItemReportDto> reportSummary = lazyDao.findBySql("inventoryItemReportSummary", map, InventoryItemReportDto.class);
+        return reportSummary.isEmpty() ? null : reportSummary.get(0);
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

@@ -100,6 +100,16 @@ public class InventoryItemReportDto implements Serializable {
     private BigDecimal totalCost;
 
     /**
+     * 结存数量
+     */
+    private Integer summaryQuantity;
+
+    /**
+     * 结存成本
+     */
+    private BigDecimal summaryCost;
+
+    /**
      * 单位数量
      */
     private Integer quantity;
@@ -113,6 +123,11 @@ public class InventoryItemReportDto implements Serializable {
      * 结存单位成本
      */
     private BigDecimal averageCost;
+
+    /**
+     * 结存单位成本
+     */
+    private BigDecimal summaryAverage;
 
     private Long supplierId;
 

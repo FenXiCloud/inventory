@@ -171,9 +171,9 @@
           </vxe-column>
         </vxe-colgroup>
         <vxe-colgroup title="结存" align="center">
-          <vxe-column title="基本单位数量" field="currentQuantity" align="center" width="100"/>
-          <vxe-column title="单位成本" field="averageCost" align="center" width="100"/>
-          <vxe-column title="成本" field="totalCost" align="center" width="100"/>
+          <vxe-column title="基本单位数量" field="summaryQuantity" align="center" width="100"/>
+          <vxe-column title="单位成本" field="summaryAverage" align="center" width="100"/>
+          <vxe-column title="成本" field="summaryCost" align="center" width="100"/>
         </vxe-colgroup>
       </vxe-table>
     </div>
@@ -391,9 +391,9 @@ export default {
           {label: "基本单位数量", key: "outQuantity"},
           {label: "单位成本", key: "outUnitPrice"},
           {label: "成本", key: "outSubtotal"},
-          {label: "基本单位数量", key: "currentQuantity"},
-          {label: "单位成本", key: "averageCost"},
-          {label: "成本", key: "totalCost"},
+          {label: "基本单位数量", key: "summaryQuantity"},
+          {label: "单位成本", key: "summaryAverage"},
+          {label: "成本", key: "summaryCost"},
         ];
         const tHeader = ['商品编号', '商品名称', '商品类别', '规格型号', '单据日期', '业务类型', '单据编号', '往来单位', '仓库', '单位', '商品名称备注', '入库数量', '入库',
           null, null, '出库数量', '出库', null, null, '结存', null, null

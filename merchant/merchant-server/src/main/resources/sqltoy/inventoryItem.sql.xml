@@ -35,7 +35,10 @@
                             null AS subtotal,
                             sum(jii.current_quantity) AS currentQuantity,
                             sum(jii.total_cost) AS totalCost,
+                            sum(jii.current_quantity) AS summaryQuantity,
+                            sum(jii.total_cost) AS summaryCost,
                             jii.average_cost AS averageCost,
+                            jii.summary_average AS summaryAverage,
                             jii.inventory_date AS inventoryDate,
                             null AS voucherId,
                             null AS voucherCode
@@ -108,7 +111,10 @@
                             jii.subtotal AS subtotal,
                             jii.current_quantity AS currentQuantity,
                             jii.total_cost AS totalCost,
+                            jii.summary_quantity AS summaryQuantity,
+                            jii.summary_cost AS summaryCost,
                             jii.average_cost AS averageCost,
+                            jii.summary_average AS summaryAverage,
                             jii.inventory_date AS inventoryDate,
                             jfv.voucher_id AS voucherId,
                             jfv.`code` AS voucherCode

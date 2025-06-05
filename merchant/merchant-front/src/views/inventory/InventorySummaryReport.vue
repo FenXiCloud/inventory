@@ -367,6 +367,7 @@ export default {
               }
             });
           });
+          this.dataList = dataList;
         }).finally(() => this.loading = false);
       });
     },

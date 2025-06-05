@@ -293,7 +293,7 @@ public class DDLoginServiceImpl implements DDLoginService{
                     //如果手机号为空 取钉钉id后6位
                     if(StringUtils.isEmpty(admin.getMobile())){
                         admin.setMobile(admin.getDingDingUserId().substring(admin.getDingDingUserId().length() - 6));
-                        admin.setUsername(admin.getMobile());
+                        admin.setUsername(userId);
                         admin.setPassword(DigestUtil.bcrypt(admin.getDingDingUserId().substring(admin.getDingDingUserId().length() - 6)));
                     }else{
                         admin.setPassword(DigestUtil.bcrypt(admin.getMobile().substring(admin.getMobile().length() - 6)));

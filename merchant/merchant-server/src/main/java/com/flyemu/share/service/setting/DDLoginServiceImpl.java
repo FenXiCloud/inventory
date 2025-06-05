@@ -300,7 +300,6 @@ public class DDLoginServiceImpl implements DDLoginService{
 
                     // 验证是否存在这个用户
                     counter.sumNum++;
-//                    SysUser u = userMapper.selectUserByUserName(sysUser.getUserName());
                     Admin u = adminService.selectAdminByMobile(admin.getMobile());
                     if (ObjectUtils.isEmpty(u)) {
                         //存在名称相同+数字
@@ -327,7 +326,6 @@ public class DDLoginServiceImpl implements DDLoginService{
     private void adminSave(Admin admin) {
         if (admin.getId() != null) {
             Admin original = adminService.selectByPrimaryKey(admin.getId());
-            //判断是否更新了手机号码，更新手机号需要检查重复
             BeanUtil.copyProperties(admin, original, CopyOptions.create().ignoreNullValue());
             adminRepository.save(original);
         }else{

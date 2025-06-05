@@ -707,7 +707,8 @@ export default {
       this.tableData2 = [{}];
     },
     selectOrderStaff(e) {
-      this.form.orderStaffId = e.id;
+      this.form.orderStaffId = e?e.id : null;
+      this.form.orderStaffId = e?e.name : null;
     },
     selectBlur() {
       debugger;
@@ -875,11 +876,7 @@ export default {
 
           availableAmount = parseFloat(new Big(availableAmount).minus(bigVerifyAmount));
         }
-
-        // 如果仍有未完全核销的金额，可以选择提示用户或进行其他处理
-        if (availableAmount > 0) {
-          layer.msg(`第 ${i + 1} 行未完全核销`);
-        }
+      
       }
 
       // 更新原始数据源

@@ -212,11 +212,6 @@ public class AdminService extends AbsService {
         return jqf.selectFrom(qAdmin).where(qAdmin.id.eq(id)).fetchFirst();
     }
 
-    public Admin selectAdminByUserName(String username) {
-        return jqf.selectFrom(qAdmin).where(qAdmin.username.eq(username))
-                .fetchFirst();
-    }
-
     public AccountDto ddLogin(String mobile) {
         Admin admin = jqf.selectFrom(qAdmin)
                 .where(qAdmin.mobile.eq(mobile)).fetchFirst();
@@ -236,7 +231,11 @@ public class AdminService extends AbsService {
     }
 
     public int queryNumByUserName(String userName) {
-        return jqf.selectFrom(qAdmin).where(qAdmin.username.like(userName + "%")).fetch().size();
+        return jqf.selectFrom(qAdmin).where(qAdmin.name.eq(userName)).fetch().size();
+    }
+
+    public Admin selectAdminByMobile(String mobile) {
+        return jqf.selectFrom(qAdmin).where(qAdmin.mobile.eq(mobile)).fetchFirst();
     }
 
     public static class Query {

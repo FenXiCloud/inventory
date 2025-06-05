@@ -1,6 +1,8 @@
 package com.flyemu.share.service.setting;
 
-import cn.hutool.json.JSONUtil;
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.crypto.digest.DigestUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenResponse;
@@ -19,15 +21,15 @@ import com.dingtalk.api.response.OapiV2UserGetResponse;
 import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.Dept;
 import com.flyemu.share.entity.setting.Role;
+import com.flyemu.share.repository.AdminRepository;
 import com.taobao.api.ApiException;
-import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -59,6 +61,8 @@ public class DDLoginServiceImpl implements DDLoginService{
     private DeptService deptService;
     @Autowired
     private RoleService roleService;
+    @Autowired
+    private AdminRepository adminRepository;
 
     /**
      * 登录回调
@@ -286,27 +290,50 @@ public class DDLoginServiceImpl implements DDLoginService{
                     admin.setDingDingUserId(userId);
                     admin.setMerchantId(1L);
                     admin.setRoleId(roleId);
+                    //如果手机号为空 取钉钉id后6位
+                    if(StringUtils.isEmpty(admin.getMobile())){
+                        admin.setMobile(admin.getDingDingUserId().substring(admin.getDingDingUserId().length() - 6));
+                        admin.setPassword(DigestUtil.bcrypt(admin.getDingDingUserId().substring(admin.getDingDingUserId().length() - 6)));
+                    }else{
+                        admin.setPassword(DigestUtil.bcrypt(admin.getMobile().substring(admin.getMobile().length() - 6)));
+                    }
+
                     // 验证是否存在这个用户
                     counter.sumNum++;
-//                    SysUser u = userMapper.selectUserByUserName(sysUser.getUserName());
-                    Admin u = adminService.selectAdminByUserName(admin.getUsername());
-
+                    Admin u = adminService.selectAdminByMobile(admin.getMobile());
                     if (ObjectUtils.isEmpty(u)) {
-                        adminService.save(admin);
+                        //存在名称相同+数字
+                        int num = adminService.queryNumByUserName(admin.getUsername());
+                        if(num > 0){
+                            admin.setUsername(rsp3.getResult().getName() + "_" + (num));
+                        }
+                        this.adminSave(admin);
                         counter.successNum++;
-                    } else if (u.getDeptId().equals(sysDept.getId())) {
+                    } else{
                         u.setDingDingUserId(userId);
-                        adminService.save(u);
+                        this.adminSave(u);
                         counter.failureNum++;
-                    } else {
-                        int num = adminService.queryNumByUserName(admin.getUsername() + "_");
-                        admin.setUsername(rsp3.getResult().getName() + "_" + (num + 1));
-                        adminService.save(admin);
-                        counter.successNum++;
                     }
                 }
             }
         }
+    }
+
+    /**
+     * 添加/更新用户
+     * @param admin 实体
+     */
+    private void adminSave(Admin admin) {
+        if (admin.getId() != null) {
+            Admin original = adminService.selectByPrimaryKey(admin.getId());
+            BeanUtil.copyProperties(admin, original, CopyOptions.create().ignoreNullValue());
+            adminRepository.save(original);
+        }else{
+            admin.setSystemDefault(false);
+            admin.setEnabled(true);
+            adminRepository.save(admin);
+        }
+
     }
 
 }

@@ -27,7 +27,7 @@
           search-button-theme="h-btn-default"
           show-search-button
           class="w-280px ml-8px"
-          placeholder="请输入客户名称或订单编号"
+          placeholder="请输入供应商或订单编号"
           @search="doSearch"
         >
           <i class="h-icon-search" />
@@ -38,7 +38,6 @@
       <template #buttons>
         <Button @click="addForm()" color="primary">新 增</Button>
         <Button @click="batchAudit('已审核')"> 审 核 </Button>
-
         <Button @click="batchAudit('已保存')"> 反审核</Button>
         <Button @click="doRemove()"> 删 除</Button>
       </template>
@@ -90,18 +89,18 @@
           width="130"
         />
         <vxe-column title="单据编号" field="orderNo" width="200" />
-        <vxe-column title="源单编号" field="salesOrderNo" width="200">
+        <vxe-column title="源单编号" field="businessNo" width="200">
           <template #default="{ row }">
             <div
               :key="item.id"
               v-for="item in row.itemList"
               class="primary-color text-hover ml-10px"
             >
-              {{ item.salesOrderNo }}
+              {{ item.businessNo }}
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="客户" field="customerName" min-width="120" />
+        <vxe-column title="供应商" field="SupplierName" min-width="120" />
         <vxe-column title="结算账户" field="settlementAccount" min-width="120">
           <template #default="{ row }">
             <div
@@ -113,7 +112,7 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="收款金额" field="amount" min-width="120">
+        <vxe-column title="付款金额" field="amount" min-width="120">
           <template #default="{ row }">
             <div
               :key="item.id"
@@ -124,7 +123,7 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="收款方式" field="paymentMethodName" min-width="120">
+        <vxe-column title="付款方式" field="paymentMethodName" min-width="120">
           <template #default="{ row }">
             <div
               :key="item.id"
@@ -164,11 +163,11 @@
           </template>
         </vxe-column>
 
-        <!-- <vxe-column title="收款合计" field="collectionAmount" width="120" /> -->
+        <!-- <vxe-column title="付款合计" field="collectionAmount" width="120" /> -->
 
         <vxe-column title="整单折扣" field="discountAmount" width="120" />
-        <vxe-column title="本次预收款" field="collectionAmount" width="120" />
-        <vxe-column title="业务员" field="orderStaffName" width="120" />
+        <vxe-column title="本次预付款" field="collectionAmount" width="120" />
+        <vxe-column title="付款人" field="orderStaffName" width="120" />
         <!-- <vxe-column title="审核人" field="totalQuantity" width="120" /> -->
         <!-- <vxe-column
           title="本次核销金额"
@@ -253,16 +252,16 @@ import SalesOrder from '@js/api/sales/SalesOrder';
 import { mapMutations } from 'vuex';
 import { confirm, loading, message } from 'heyui.ext';
 import PurchaseOrder from '@js/api/purchase/PurchaseOrder';
-import Customer from '@js/api/basic/Customer';
+import Supplier from '@js/api/basic/Supplier';
 import Warehouse from '@js/api/basic/Warehouse';
 import Product from '@js/api/basic/Product';
-import OrderReceipt from '@js/api/fund/OrderReceipt';
+import OrderPayment from '@js/api/fund/OrderPayment';
 
 const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
 
 export default {
-  name: 'OrderReceiptRecord',
+  name: 'OrderPaymentRecord',
   data() {
     return {
       dataList: [],
@@ -279,9 +278,9 @@ export default {
         state: null,
         sortCol: null,
         sort: null,
-        customerId: null
+        SupplierId: null
       },
-      customerList: [],
+      SupplierList: [],
       dateRange: {
         start: manba(startTime).format('YYYY-MM-dd'),
         end: manba(endTime).format('YYYY-MM-dd')
@@ -309,25 +308,25 @@ export default {
 
     addForm(type = 'add', orderId = null) {
       // this.$store.commit('SET_TAB_DATA_RECEIPTRECORD', { type, orderId });
-      this.closeTabKey('OrderReceiptList');
+      this.closeTabKey('OrderPaymentList');
       this.pushTab({
         keepAlive: false,
-        key: 'OrderReceiptList',
+        key: 'OrderPaymentList',
         params: { type: type, orderId: orderId },
-        title: '收款单'
+        title: '付款单'
       });
     },
     loadList(type = true) {
       this.loading = true;
-      OrderReceipt.list(this.queryParams)
+      OrderPayment.list(this.queryParams)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
           this.pagination.total = total;
         })
         .finally(() => (this.loading = false));
-      Promise.all([Customer.select()])
+      Promise.all([Supplier.select()])
         .then((results) => {
-          this.customerList = results[0].data || [];
+          this.SupplierList = results[0].data || [];
         })
         .finally(() => loading.close());
     },
@@ -351,7 +350,7 @@ export default {
         title: '系统提示',
         content: `确认删除?`,
         onConfirm: () => {
-          OrderReceipt.remove({ id: ids }).then(() => {
+          OrderPayment.remove({ id: ids }).then(() => {
             message('删除成功~');
             this.loadList();
           });
@@ -374,7 +373,7 @@ export default {
             orderStatus: orderStatus,
             approvedBy: this.$store.state.user.admin.id
           };
-          OrderReceipt.batchAudit(params)
+          OrderPayment.batchAudit(params)
             .then((success) => {
               if (success) {
                 if (orderStatus === '已审核') {
@@ -394,7 +393,7 @@ export default {
         console.log('this.$store.state.currentTab', this.$store.state.currentTab);
         //this.$store.commit('closeTabKey', this.$store.state.currentTab);
         this.$store.commit('closeTabKey', this.$store.state.currentTab);
-        this.$store.commit('newTab', 'OrderReceiptList');
+        this.$store.commit('newTab', 'OrderPaymentList');
         // 使用 nextTick 确保在 DOM 更新后执行
         this.$nextTick(() => {
           // 通过 eventBus 或 vuex 触发刷新
@@ -464,7 +463,7 @@ export default {
     }
   },
   created() {
-    console.log('created', 'OrderReceiptList');
+    console.log('created', 'OrderPaymentList');
     this.loadList();
   }
 };

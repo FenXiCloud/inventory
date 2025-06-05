@@ -3,6 +3,7 @@
     <vxe-toolbar>
       <template #buttons>
         <Button @click="addForm()" color="primary">新 增</Button>
+        <Button @click="doRemove()"> 删 除</Button>
         <Button @click="batchAudit('已审核')"> 审 核</Button>
         <Button @click="batchAudit('已保存')"> 反审核</Button>
         <!-- <Button @click="doRemove()"> 删 除</Button> -->
@@ -13,7 +14,7 @@
 
           <div style="position: relative">
             <Select
-              v-model="params.type"
+              v-model="params.orderType"
               class="w-120px z-index-1"
               :datas="businessTypeList"
               keyName="type"
@@ -28,7 +29,7 @@
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
         <Search
-          v-model.trim="params.businessNo"
+          v-model.trim="params.orderNo"
           search-button-theme="h-btn-default"
           show-search-button
           class="w-280px ml-8px"
@@ -58,20 +59,28 @@
         <vxe-column title="操作" align="center" width="120">
           <template #default="{ row }">
             <span
+              v-if="row.orderStatus != '已审核'"
               class="primary-color text-hover ml-10px"
               @click="addForm('edit', row.id)"
               >编辑</span
             >
             <span
+              v-if="row.orderStatus != '已审核'"
               class="primary-color text-hover ml-10px"
               @click="doRemove(row)"
               >删除</span
+            >
+            <span
+              v-if="row.orderStatus == '已审核'"
+              class="primary-color text-hover ml-10px"
+              @click="addForm('edit', row.id)"
+              >查看</span
             >
           </template>
         </vxe-column>
         <vxe-column
           title="单据日期"
-          field="businessDate"
+          field="orderDate"
           align="center"
           width="130"
         />
@@ -156,8 +165,8 @@ export default {
         total: 0,
       },
       params: {
-        businessNo: null,
-        type: null,
+        orderNo: null,
+        orderType: null,
       },
       customerList: [],
       dateRange: {
@@ -177,8 +186,8 @@ export default {
       return Object.assign(this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
+        startTime: this.dateRange.start,
+        endTime: this.dateRange.end,
       });
     },
   },
@@ -216,6 +225,9 @@ export default {
         ids = this.getCheckboxRecordsIds();
       } else {
         ids = row.id;
+      }
+      if (!ids) {
+        return message.error('请选择至少一个订单');
       }
       confirm({
         title: "系统提示",

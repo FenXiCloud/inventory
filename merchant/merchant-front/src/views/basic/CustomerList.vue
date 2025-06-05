@@ -50,6 +50,7 @@
           <vxe-column type="seq" width="40" title="#"/>
           <vxe-column title="编码" field="code" width="120"/>
           <vxe-column title="客户名称" field="name" min-width="200"/>
+          <vxe-column title="余额" field="balance" width="120"/>
           <vxe-column title="联系人" field="contact" width="120"/>
           <vxe-column title="电话" field="phone" width="120"/>
           <vxe-column title="分类" field="categoryName" width="120"/>

@@ -1,36 +1,69 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules" mode="twocolumn" :label-width="110">
+      <Form
+        ref="form"
+        :model="model"
+        :rules="validationRules"
+        mode="twocolumn"
+        :label-width="110"
+      >
         <FormItem label="客户编码" prop="code" single>
-          <Input placeholder="编码（不填写系统自动生成）" v-model="model.code"/>
+          <Input
+            placeholder="编码（不填写系统自动生成）"
+            v-model="model.code"
+          />
         </FormItem>
         <FormItem label="客户名称" required prop="name" single>
-          <Input placeholder="请输入客户名称" v-model="model.name"/>
+          <Input placeholder="请输入客户名称" v-model="model.name" />
         </FormItem>
         <FormItem label="客户分类" required prop="customersCategoryId">
-          <Select :datas="customerCategoryList" keyName="id" titleName="name" v-model="model.customerCategoryId"
-                  placeholder="请选择客户分类" :deletable="false"/>
+          <Select
+            :datas="customerCategoryList"
+            keyName="id"
+            titleName="name"
+            v-model="model.customerCategoryId"
+            placeholder="请选择客户分类"
+            :deletable="false"
+          />
         </FormItem>
         <FormItem label="客户等级" required prop="customersLevelId">
-          <Select :datas="customerLevelList" keyName="id" titleName="name" v-model="model.customerLevelId"
-                  placeholder="请选择客户等级" :deletable="false"/>
+          <Select
+            :datas="customerLevelList"
+            keyName="id"
+            titleName="name"
+            v-model="model.customerLevelId"
+            placeholder="请选择客户等级"
+            :deletable="false"
+          />
         </FormItem>
         <FormItem label="联系人" prop="contact">
-          <Input placeholder="联系人" v-model.trim="model.contact"/>
+          <Input placeholder="联系人" v-model.trim="model.contact" />
         </FormItem>
         <FormItem label="电话" prop="phone">
-          <Input placeholder="电话" v-model.trim="model.phone"/>
+          <Input placeholder="电话" v-model.trim="model.phone" />
+        </FormItem>
+        <FormItem label="余额" required prop="balance">
+          <Input
+            placeholder="请输入余额"
+            type="number"
+            step="1"
+            min="1"
+            v-model="model.balance"
+          />
         </FormItem>
         <FormItem label="客户描述" prop="remarks" single>
-          <Textarea v-wordcount="150" rows="3" placeholder="客户描述" v-model="model.remarks"/>
+          <Textarea
+            v-wordcount="150"
+            rows="3"
+            placeholder="客户描述"
+            v-model="model.remarks"
+          />
         </FormItem>
       </Form>
     </div>
     <div class="modal-column-between">
-      <Button @click="$emit('close')" :loading="loading">
-        取消
-      </Button>
+      <Button @click="$emit('close')" :loading="loading"> 取消 </Button>
       <Button color="primary" @click="confirm" :loading="loading">
         保存
       </Button>
@@ -47,8 +80,8 @@
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 import Customer from "@js/api/basic/Customer";
-import {message} from "heyui.ext";
-import {CopyObj} from "@common/utils";
+import { message } from "heyui.ext";
+import { CopyObj } from "@common/utils";
 import CustomerCategory from "@js/api/basic/CustomerCategory";
 import CustomerLevel from "@js/api/basic/CustomerLevel";
 
@@ -71,32 +104,39 @@ export default {
         phone: null,
         customerCategoryId: null,
         customerLevelId: null,
-        remarks: null
+        remarks: null,
       },
-      validationRules: {}
-    }
+      validationRules: {
+        balance: [{ required: true, message: "余额不能为空" }],
+      },
+    };
   },
   methods: {
     confirm() {
       let validResult = this.$refs.form.valid();
+      const num = Number(this.model.balance);
+      if (!Number.isInteger(num) || num < 1) {
+        return message("请输入有效的正整数");
+      }
       if (validResult.result) {
         this.loading = true;
-        Customer.save(this.model).then(() => {
-          message("保存成功~");
-          this.$emit('success');
-        }).finally(() => this.loading = false);
+        Customer.save(this.model)
+          .then(() => {
+            message("保存成功~");
+            this.$emit("success");
+          })
+          .finally(() => (this.loading = false));
       }
     },
   },
   created() {
     CopyObj(this.model, this.entity);
-    Promise.all([
-      CustomerCategory.select(),
-      CustomerLevel.select()
-    ]).then((results) => {
-      this.customerCategoryList = results[0].data || [];
-      this.customerLevelList = results[1].data || [];
-    }).finally(() => this.loading = false);
-  }
-}
+    Promise.all([CustomerCategory.select(), CustomerLevel.select()])
+      .then((results) => {
+        this.customerCategoryList = results[0].data || [];
+        this.customerLevelList = results[1].data || [];
+      })
+      .finally(() => (this.loading = false));
+  },
+};
 </script>

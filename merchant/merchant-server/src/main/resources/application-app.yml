@@ -19,8 +19,9 @@ aliyun:
   bucketName:
 
 dingtalk:
-  appKey: "ding9glmrjz0zlfvctni"
-  appSecret: "j2RnmlIKJaAyDVj09dAHs2j_r-PG6BZryQBVuG-9HPHcCXJ6lE5D-jUWHejdMNca"
-  corpId: "ding86d8fc474900dab0a39a90f97fcb1e09"
-  agentID: "3866143468"
+  appKey: "dingjucsll0kd2608mq1"
+  appSecret: "gK15CdjJSqPWGSTH45Lgw-E-37ExZnGhj6PaH9klGG3mlL3NU3oETh6LJE7OBgme"
+  corpId: "ding56acbc96f008c1f1bc961a6cb783455b"
+  agentID: "3905433915"
+
 

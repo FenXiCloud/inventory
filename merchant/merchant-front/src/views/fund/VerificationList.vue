@@ -422,8 +422,7 @@ export default {
       accountOptions,
     };
   },
-  watch: {
-  },
+  watch: {},
 
   computed: {
     ...mapState(["user"]),
@@ -707,8 +706,8 @@ export default {
       this.tableData2 = [{}];
     },
     selectOrderStaff(e) {
-      this.form.orderStaffId = e?e.id : null;
-      this.form.orderStaffId = e?e.name : null;
+      this.form.orderStaffId = e ? e.id : null;
+      this.form.orderStaffId = e ? e.name : null;
     },
     selectBlur() {
       debugger;
@@ -822,7 +821,7 @@ export default {
                 })
                 .sort((a, b) => b.unverifiedAmount - a.unverifiedAmount);
             }
-            
+
             layer.close(layerId);
           },
         }),
@@ -850,16 +849,18 @@ export default {
 
       for (let i = 0; i < tempTable2.length; i++) {
         const table2Item = tempTable2[i];
-        let availableAmount = parseFloat(table2Item.unverifiedAmount);
+        let availableAmount = new Big(table2Item.unverifiedAmount);
 
         if (availableAmount <= 0) continue;
 
         // 在 table1 中寻找可以核销的项
         for (let j = 0; j < tempTable1.length && availableAmount > 0; j++) {
           const table1Item = tempTable1[j];
-          const remainingUnverified =
-            parseFloat(table1Item.unverifiedAmount) -
-            (table1Item.currentVerifyAmount || 0);
+          const remainingUnverified = parseFloat(
+            new Big(table1Item.unverifiedAmount).minus(
+              table1Item.currentVerifyAmount || 0
+            )
+          );
 
           if (remainingUnverified <= 0) continue;
 
@@ -867,16 +868,17 @@ export default {
           const bigVerifyAmount = new Big(verifyAmount);
 
           // 更新核销金额
-          table1Item.currentVerifyAmount = parseFloat(new Big(
-            table1Item.currentVerifyAmount || 0
-          ).plus(bigVerifyAmount));
-          table2Item.currentVerifyAmount = parseFloat(new Big(
-            table2Item.currentVerifyAmount || 0
-          ).plus(bigVerifyAmount));
+          table1Item.currentVerifyAmount = parseFloat(
+            new Big(table1Item.currentVerifyAmount || 0).plus(bigVerifyAmount)
+          );
+          table2Item.currentVerifyAmount = parseFloat(
+            new Big(table2Item.currentVerifyAmount || 0).plus(bigVerifyAmount)
+          );
 
-          availableAmount = parseFloat(new Big(availableAmount).minus(bigVerifyAmount));
+          availableAmount = parseFloat(
+            new Big(availableAmount).minus(bigVerifyAmount)
+          );
         }
-      
       }
 
       // 更新原始数据源

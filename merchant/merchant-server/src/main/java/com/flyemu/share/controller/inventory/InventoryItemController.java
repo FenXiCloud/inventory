@@ -77,6 +77,13 @@ public class InventoryItemController {
         return JsonResult.successful(inventoryItemService.summaryOperationType(query));
     }
 
+    @GetMapping("summaryInitial")
+    public JsonResult summaryInitial(InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(inventoryItemService.summaryInitial(query));
+    }
+
     @GetMapping("balance")
     public JsonResult balance(Page page, InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);

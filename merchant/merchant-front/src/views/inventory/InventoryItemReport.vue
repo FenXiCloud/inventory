@@ -346,7 +346,6 @@ export default {
       params.customerIds = params.customerIds.join(",");
       params.operationTypes = params.operationTypes.join(",");
       params.productCategoryIds = params.productCategoryIds.join(",");
-      params.isReport = true;
       InventoryItem.report(params).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
@@ -368,7 +367,6 @@ export default {
       params.operationTypes = params.operationTypes.join(",");
       params.page = 1;
       params.pageSize = 99999;
-      params.isReport = true;
       InventoryItem.report(params).then(({data: {results, total}}) => {
         let dataList = results || [];
         let headList = [

@@ -570,6 +570,13 @@ public class InventoryItemService extends AbsService {
                 .orderBy(qInventoryItem.inventoryDate.asc());
     }
 
+    public List<InventoryItemReportDto> summaryInitial(Query query) {
+        Map<String, Object> map = query.toMap();
+        Date start = query.getStart();
+        map.put("initDate", Objects.requireNonNullElseGet(start, Date::new));
+        return lazyDao.findBySql("inventoryItemSummaryInitList", map, InventoryItemReportDto.class);
+    }
+
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
@@ -630,12 +637,6 @@ public class InventoryItemService extends AbsService {
                 builder.and(qInventoryItem.inventoryDate.loe(addTimeOfFinalMoment(end)));
                 builder.and(qInventoryItem.inventoryDate.goe(start));
             }
-            if (start != null && end != null && Boolean.TRUE.equals(isReport)) {
-                builder.and(
-                        qInventoryItem.inventoryDate.loe(addTimeOfFinalMoment(end))).and(qInventoryItem.inventoryDate.goe(start)
-                        .or(qInventoryItem.operationType.eq(OperationType.期初余额))
-                );
-            }
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
                 builder.and(qInventoryItem.batchNumber.contains(filter))
                         .or(qProduct.name.contains(filter));
@@ -691,6 +692,9 @@ public class InventoryItemService extends AbsService {
             }
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
                 map.put("filter", filter);
+            }
+            if (StrUtil.isNotBlank(summaryFilter) && StrUtil.isNotBlank(summaryFilter.trim())) {
+                map.put("summaryFilter", summaryFilter);
             }
             if (warehouseId != null) {
                 map.put("warehouseId", warehouseId);

@@ -45,7 +45,7 @@
                         FROM
                             jxc_product jp
                             LEFT JOIN jxc_inventory_item jii ON (
-                                jp.id = jii.product_id AND
+                                jp.id = jii.product_id AND jii.operation_type <> '期初库存' AND
                                 (jii.product_id,jii.inventory_date) IN (
                                     SELECT jii.product_id,max(jii.inventory_date) FROM jxc_inventory_item jii
                                     LEFT JOIN jxc_product jp ON (jp.id = jii.product_id)
@@ -76,8 +76,6 @@
                         WHERE
                             jp.merchant_id = :merchantId
                             AND jp.account_book_id = :accountBookId
-                            AND jii.operation_type <> '期初库存'
-                            #[AND jii.inventory_date < :initDate]
                             #[AND (jii.batch_number like :filter OR jp.`name` like :filter)]
                             #[AND js.id in (:supplierIds)]
                             #[AND jp.id in (:productIds)]

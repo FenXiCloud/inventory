@@ -372,14 +372,19 @@ export default {
           });
           InventoryItem.summaryInitial(params).then(({data: initialData}) => {
             dataList.forEach((row) => {
-              initialData.forEach((data_row) => {
-                const productId = row.productId;
-                const warehouseId = row.warehouseId;
-                if (data_row.productId === productId && data_row.warehouseId === warehouseId) {
-                  row.initialQuantity = data_row.summaryQuantity;
-                  row.initialSubtotal = data_row.summaryCost;
-                }
-              })
+              if (initialData) {
+                initialData.forEach((data_row) => {
+                  const productId = row.productId;
+                  const warehouseId = row.warehouseId;
+                  if (data_row.productId === productId && data_row.warehouseId === warehouseId) {
+                    row.initialQuantity = data_row.summaryQuantity;
+                    row.initialSubtotal = data_row.summaryCost;
+                  }
+                })
+              } else {
+                row.initialQuantity = undefined;
+                row.initialSubtotal = undefined;
+              }
             });
             this.dataList = dataList;
           });
@@ -531,16 +536,20 @@ export default {
             });
           });
           InventoryItem.summaryInitial(params).then(({data: initialData}) => {
-            const setProducts = [];
             dataList.forEach((row) => {
-              initialData.forEach((data_row) => {
-                const productId = row.productId;
-                const warehouseId = row.warehouseId;
-                if (data_row.productId === productId && data_row.warehouseId === warehouseId) {
-                  row.initialQuantity = data_row.summaryQuantity;
-                  row.initialSubtotal = data_row.summaryCost;
-                }
-              })
+              if (initialData) {
+                initialData.forEach((data_row) => {
+                  const productId = row.productId;
+                  const warehouseId = row.warehouseId;
+                  if (data_row.productId === productId && data_row.warehouseId === warehouseId) {
+                    row.initialQuantity = data_row.summaryQuantity;
+                    row.initialSubtotal = data_row.summaryCost;
+                  }
+                })
+              } else {
+                row.initialQuantity = undefined;
+                row.initialSubtotal = undefined;
+              }
             });
             this.callExcel(dataList);
           });

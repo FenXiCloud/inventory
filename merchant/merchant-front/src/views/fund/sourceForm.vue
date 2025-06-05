@@ -91,12 +91,19 @@
 
 import { message } from 'heyui.ext';
 import OrderReceipt from '@js/api/fund/OrderReceipt';
+import OrderPayment from '@js/api/fund/OrderPayment';
 import { add, objectEach } from 'xe-utils';
 // import {CopyObj} from "@common/utils";
 
 export default {
   name: 'sourceForm',
-  props: { params: Object },
+  props: {
+    params: Object,
+    URL: {
+      type: String,
+      default: 'OrderReceipt'
+    }
+  },
   data() {
     return {
       loading: false,
@@ -111,12 +118,25 @@ export default {
   },
   methods: {
     loadList() {
+      const apiMap = {
+        OrderReceipt,
+        OrderPayment
+      };
+      const apiModule = apiMap[this.URL];
       this.loading = true;
-      OrderReceipt.writeOffTheOrder({
-        customerId: this.params.customerId,
-        page: this.pagination.page,
-        pageSize: this.pagination.pageSize
-      })
+      console.log(apiModule, 'apiModule');
+
+      let params = {};
+      if (this.URL === 'OrderReceipt') {
+        params.customerId = this.params.customerId; // 客户ID
+      } else if (this.URL === 'OrderPayment') {
+        params.supplierId = this.params.supplierId; // 供应商ID
+      }
+      params.page = this.pagination.page;
+      params.pageSize = this.pagination.pageSize;
+
+      apiModule
+        .writeOffTheOrder(params)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
           this.pagination.total = total;
@@ -125,27 +145,22 @@ export default {
     },
     confirm() {
       let checkList = this.$refs.table.getCheckboxRecords().map((item) => {
+        if (this.URL === 'OrderPayment') {
+          item.businessId = item.salesOrderId;
+          item.businessNo = item.salesOrderNo;
+        }
+
         delete item.id;
         return item;
       });
-      console.log(checkList, 'checkListcheckListcheckList');
+      console.log(checkList, 'checkListClonecheckListClonecheckListClone');
       this.$emit('success', checkList);
-
-      return;
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        OrderReceipt.orderStaffAdd(this.model)
-          .then(() => {
-            message('保存成功~');
-            this.$emit('success');
-          })
-          .finally(() => (this.loading = false));
-      }
     }
   },
   created() {
     this.loadList();
+
+    // this.orderPayment
   }
 };
 </script>

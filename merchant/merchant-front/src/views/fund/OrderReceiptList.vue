@@ -1,5 +1,10 @@
 <template>
   <div class="frame-page flex flex-column" style="height: auto !important">
+    <vxe-toolbar class-name="!size--mini">
+      <template #tools>
+        <Stamp v-if="form.orderStatus === '已审核'" />
+      </template>
+    </vxe-toolbar>
     <vxe-toolbar>
       <template #buttons>
         <div class="h-input-group">
@@ -209,7 +214,7 @@
       </vxe-table>
 
       <vxe-toolbar>
-        <template #tools>
+        <template v-if="form.orderStatus != '已审核'" #tools>
           <Button @click="sourceForm()" color="">选择源单</Button>
           <Button @click="autoMatic()">自动核销</Button>
         </template>
@@ -303,10 +308,9 @@
 
       <template #tools>
         <Button @click="historyForm()" color="">历史单据</Button>
-        <!-- <vxe-tooltip theme="light" :content="logContent">
-          <vxe-button> 操作日志</vxe-button>
-        </vxe-tooltip> -->
-        <Button @click="logForm()" :title="logContent">操作日志</Button>
+        <!-- <vxe-tooltip theme="light" :content="logContent"> -->
+        <Button :title="logContent">操作日志</Button>
+        <!-- </vxe-tooltip> -->
       </template>
     </vxe-toolbar>
 
@@ -354,10 +358,10 @@ import Customer from '@js/api/basic/Customer';
 import OrderStaffForm from './OrderStaffForm';
 import sourceForm from './sourceForm.vue';
 import { mapState, mapMutations } from 'vuex';
-// import Stamp from '../common/Stamp.vue';
+import Stamp from '../common/Stamp.vue';
 export default {
   name: 'OrderReceiptList',
-  // components: { Stamp },
+  components: { Stamp },
   props: {
     orderId: [String, Number],
     type: String,
@@ -383,7 +387,8 @@ export default {
 
       form: {
         customerName: null,
-        orderStaffName: null
+        orderStaffName: null,
+        orderDate: manba().format('YYYY-MM-DD')
       },
       tableData,
       tableData2,
@@ -459,12 +464,18 @@ export default {
         createName = this.user.admin.name,
         updateName,
         createdAt,
-        updateAt
+        updateAt,
+        approvedName
       } = this.form;
-      this.logContent = `制单人: ${createName}\n
-      制单时间: ${createdAt}\n
-      最后修改人: ${updateName}\n,
-      最后修改时间: ${updateAt}\n`;
+      const logEntries = [
+        `制单人: ${createName}`,
+        createdAt ? `制单时间: ${createdAt}` : null,
+        updateName ? `最后修改人: ${updateName}` : null,
+        updateAt ? `最后修改时间: ${updateAt}` : null,
+        approvedName ? `审核人: ${approvedName}` : null
+      ].filter((entry) => entry); // 过滤掉 null 的条目
+
+      this.logContent = logEntries.join('\n');
     },
     calcCollectionAmount() {
       return (
@@ -640,7 +651,7 @@ export default {
     },
     adjustRows(type, index, tableData) {
       if (type === 'insert') {
-        tableData.splice(index + 1, 0, { isNew: true });
+        tableData.splice(index + 1, 0, {});
       } else if (type === 'delete' && this.canDelete(tableData)) {
         tableData.splice(index, 1);
       }
@@ -832,6 +843,9 @@ export default {
     this.loadOrderStaff();
     this.loadPaymentMethod();
     this.loadAccountMethod();
+    setTimeout(() => {
+      this.getLog();
+    }, 500);
     // this.getLog()
   }
 };

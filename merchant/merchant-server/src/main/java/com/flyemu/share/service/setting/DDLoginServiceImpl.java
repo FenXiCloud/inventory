@@ -283,7 +283,7 @@ public class DDLoginServiceImpl implements DDLoginService{
 
                     Admin admin = new Admin();
                     admin.setEmail(rsp3.getResult().getEmail());
-                    admin.setUsername(rsp3.getResult().getName());
+                    admin.setUsername(rsp3.getResult().getMobile());
                     admin.setName(rsp3.getResult().getName());
                     admin.setMobile(rsp3.getResult().getMobile());
                     admin.setDeptId(sysDept.getId());
@@ -292,7 +292,8 @@ public class DDLoginServiceImpl implements DDLoginService{
                     admin.setRoleId(roleId);
                     //如果手机号为空 取钉钉id后6位
                     if(StringUtils.isEmpty(admin.getMobile())){
-                        admin.setMobile(admin.getDingDingUserId().substring(admin.getDingDingUserId().length() - 6));
+                        admin.setMobile(admin.getDingDingUserId());
+                        admin.setUsername(userId);
                         admin.setPassword(DigestUtil.bcrypt(admin.getDingDingUserId().substring(admin.getDingDingUserId().length() - 6)));
                     }else{
                         admin.setPassword(DigestUtil.bcrypt(admin.getMobile().substring(admin.getMobile().length() - 6)));
@@ -302,11 +303,6 @@ public class DDLoginServiceImpl implements DDLoginService{
                     counter.sumNum++;
                     Admin u = adminService.selectAdminByMobile(admin.getMobile());
                     if (ObjectUtils.isEmpty(u)) {
-                        //存在名称相同+数字
-                        int num = adminService.queryNumByUserName(admin.getUsername());
-                        if(num > 0){
-                            admin.setUsername(rsp3.getResult().getName() + "_" + (num));
-                        }
                         this.adminSave(admin);
                         counter.successNum++;
                     } else{

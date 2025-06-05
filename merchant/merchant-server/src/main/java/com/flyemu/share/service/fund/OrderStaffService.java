@@ -9,12 +9,14 @@ import com.flyemu.share.entity.fund.OrderReceipt;
 import com.flyemu.share.entity.fund.OrderStaff;
 import com.flyemu.share.entity.fund.QOrderReceipt;
 import com.flyemu.share.entity.fund.QOrderStaff;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.OrderReceiptRepository;
 import com.flyemu.share.repository.OrderStaffRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +57,15 @@ public class OrderStaffService extends AbsService {
     }
 
     public void add(OrderStaff jxcOrderStaff, Long merchantId, Long accountBookId) {
+        if(StringUtils.isEmpty(jxcOrderStaff.getCode())){
+            throw new ServiceException("请输入编号");
+        }
+        if(StringUtils.isEmpty(jxcOrderStaff.getName())){
+            throw new ServiceException("请输入名称");
+        }
+        if(StringUtils.isEmpty(jxcOrderStaff.getPhone())){
+            throw new ServiceException("请输入手机号");
+        }
         jxcOrderStaff.setMerchantId(merchantId);
         jxcOrderStaff.setAccountBookId(accountBookId);
         orderReceiptRepository.save(jxcOrderStaff);

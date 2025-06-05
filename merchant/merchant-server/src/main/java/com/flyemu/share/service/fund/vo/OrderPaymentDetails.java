@@ -12,7 +12,7 @@ import java.util.List;
  */@JsonInclude()
 @Data
 public class OrderPaymentDetails {
-    private OrderPaymentDetailsVO orderReceipt;
+    private OrderPaymentDetailsVO orderPayment;
     private List<OrderPaymentCollection> collectionList;
     private List<OrderPaymentItem> itemList;
 }

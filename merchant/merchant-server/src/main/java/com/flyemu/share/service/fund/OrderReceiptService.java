@@ -32,6 +32,7 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import lombok.Data;
 import lombok.Getter;
@@ -61,6 +62,8 @@ import java.util.*;
 public class OrderReceiptService extends AbsService {
 
     private final static QOrderReceipt qOrderReceipt = QOrderReceipt.orderReceipt;
+    private final static QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
+    private final static QVerification qVerification = QVerification.verification;
     private final static QOrderReceiptItem qItem = QOrderReceiptItem.orderReceiptItem;
     private final QOrderReceiptCollection qCollection = QOrderReceiptCollection.orderReceiptCollection;
     private final QCustomer qCustomer = QCustomer.customer;
@@ -120,7 +123,7 @@ public class OrderReceiptService extends AbsService {
     }
 
     public PageResults<OrderReceiptQueryVO> query(OrderReceiptService.Query query, Page page) {
-        JPAQuery<OrderReceipt> mainQuery = jqf.select(qOrderReceipt).from(qOrderReceipt).where(query.builder);
+        JPAQuery<OrderReceipt> mainQuery = jqf.select(qOrderReceipt).from(qOrderReceipt).where(query.builder).orderBy(qOrderReceipt.orderDate.desc());
 
         List<OrderReceipt> mainList = mainQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
 
@@ -551,7 +554,22 @@ public class OrderReceiptService extends AbsService {
 
     @Transactional
     public void calculateTheAmount(OrderReceipt receipt, OrderStatus targetStatus) {
+        if (targetStatus == OrderStatus.已保存 && receipt.getOrderStatus() == OrderStatus.已审核) {
+            Boolean exists = jqf.select(qVerificationItem.id.isNotNull())
+                    .from(qVerificationItem)
+                    .leftJoin(qVerification).on(qVerification.id.eq(qVerificationItem.verificationId))
+                    .where(
+                            qVerificationItem.businessId.eq(receipt.getId().intValue())
+                                    .and(qVerificationItem.businessType.eq(1))
+                                    .and(qVerification.type.eq(1))
+//                                    .and(qVerification.orderStatus.eq(OrderStatus.已审核))
+                    )
+                    .fetchFirst() != null;
 
+            if (exists) {
+                throw new ServiceException("该收款单已被核销单引用，无法进行反审核");
+            }
+        }
         Customer customer = customerService.findById(receipt.getCustomerId());
         BigDecimal shouldVerifyAmount = receipt.getShouldVerificationAmount();
         if (shouldVerifyAmount == null || shouldVerifyAmount.compareTo(BigDecimal.ZERO) <= 0) {
@@ -623,14 +641,21 @@ public class OrderReceiptService extends AbsService {
         if (query.getCustomerId() == null) {
             throw new ServiceException("客户ID不能为空");
         }
+
         QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
 
+        NumberExpression<BigDecimal> receiptVerifySum = qOrderReceiptItem.currentVerifyAmount.sum()
+                .coalesce(BigDecimal.ZERO);
 
-        NumberExpression<BigDecimal> verifiedAmountExpr = Expressions.numberTemplate(
+        NumberExpression<BigDecimal> verificationVerifySum = Expressions.numberTemplate(
                 BigDecimal.class,
-                "coalesce({0}, 0)",
-                qItem.currentVerifyAmount.sum()
-        );
+                "COALESCE(SUM(CASE WHEN {0} IS NOT NULL THEN {1} ELSE 0 END), 0)",
+                qVerification.id,
+                qVerificationItem.currentVerifyAmount
+        ).coalesce(BigDecimal.ZERO);
+
+        NumberExpression<BigDecimal> totalVerifiedExpr = receiptVerifySum.add(verificationVerifySum);
+        NumberExpression<BigDecimal> unverifiedExpr = qSalesOrder.finalAmount.subtract(totalVerifiedExpr);
 
         JPAQuery<SalesOrderWithVerification> mainQuery = jqf.select(
                         Projections.fields(
@@ -639,20 +664,21 @@ public class OrderReceiptService extends AbsService {
                                 qSalesOrder.orderNo.as("salesOrderNo"),
                                 qSalesOrder.orderDate.as("businessDate"),
                                 qSalesOrder.finalAmount.as("documentAmount"),
-                                verifiedAmountExpr.as("verifiedAmount"),
-                                qSalesOrder.finalAmount.subtract(verifiedAmountExpr).as("unverifiedAmount")
+                                totalVerifiedExpr.as("verifiedAmount"),
+                                unverifiedExpr.as("unverifiedAmount")
                         )
                 )
                 .from(qSalesOrder)
-                .leftJoin(qItem).on(qItem.salesOrderId.eq(qSalesOrder.id))
+                .leftJoin(qOrderReceiptItem).on(qOrderReceiptItem.salesOrderId.eq(qSalesOrder.id))
+                .leftJoin(qVerificationItem).on(
+                        qVerificationItem.businessId.eq(qSalesOrder.id.intValue())
+                                .and(qVerificationItem.businessType.eq(1)))
+                .leftJoin(qVerification).on(
+                        qVerification.id.eq(qVerificationItem.verificationId)
+                                .and(qVerification.orderStatus.eq(OrderStatus.已审核)))
                 .where(query.builder.and(qSalesOrder.orderStatus.eq(OrderStatus.已审核)))
-                .groupBy(qSalesOrder.id);
-
-        mainQuery.having(
-                qSalesOrder.finalAmount
-                        .subtract(verifiedAmountExpr)
-                        .gt(BigDecimal.ZERO)
-        );
+                .groupBy(qSalesOrder.id, qSalesOrder.orderNo, qSalesOrder.orderDate, qSalesOrder.finalAmount)
+                .having(unverifiedExpr.gt(BigDecimal.ZERO));
 
         List<SalesOrderWithVerification> result = mainQuery.offset(page.getOffset())
                 .limit(page.getPageSize())
@@ -711,7 +737,11 @@ public class OrderReceiptService extends AbsService {
     public static class Query {
 
         public final BooleanBuilder builder = new BooleanBuilder();
-
+        public void setCustomerId(Long customerId) {
+            if (customerId != null) {
+                builder.and(qOrderReceipt.customerId.eq(customerId));
+            }
+        }
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qOrderReceipt.merchantId.eq(merchantId));
@@ -729,21 +759,22 @@ public class OrderReceiptService extends AbsService {
                 builder.and(qOrderReceipt.orderStatus.eq(orderStatus));
             }
         }
+
         public void setOrderStatus(Integer orderType) {
             if (orderType != null) {
                 builder.and(qOrderReceipt.orderType.eq(orderType));
             }
         }
 
-        public void setStartTime(LocalDateTime startTime) {
-            if (startTime != null) {
-                builder.and(qOrderReceipt.createdAt.goe(startTime));
+        public void setStartTime(String startTime) {
+            if (StringUtils.isNotEmpty(startTime)) {
+                builder.and(qOrderReceipt.createdAt.goe(LocalDateTime.parse(startTime + "T00:00:00")));
             }
         }
 
-        public void setEndTime(LocalDateTime endTime) {
-            if (endTime != null) {
-                builder.and(qOrderReceipt.createdAt.loe(endTime));
+        public void setEndTime(String endTime) {
+            if (StringUtils.isNotEmpty(endTime)) {
+                builder.and(qOrderReceipt.createdAt.loe(LocalDateTime.parse(endTime + "T23:59:59")));
             }
         }
 
@@ -752,6 +783,12 @@ public class OrderReceiptService extends AbsService {
                 builder.and(qOrderReceipt.orderNo.like("%" + keyword + "%").or(qOrderReceipt.customerName.like("%" + keyword + "%")));
             }
         }
+        public void setWriteOff(Integer  writeOff) {
+            if (writeOff!=null&&writeOff==1) {
+                builder.and(qOrderReceipt.notVerificationAmount.gt(BigDecimal.ZERO));
+            }
+        }
+
     }
 
     public static class ReceivableDetailReportQuery {
@@ -763,7 +800,16 @@ public class OrderReceiptService extends AbsService {
                 builder.and(qOrderReceipt.merchantId.eq(merchantId));
             }
         }
-
+        public void setCustomerId(Long customerId) {
+            if (customerId != null) {
+                builder.and(qOrderReceipt.customerId.eq(customerId));
+            }
+        }
+        public void setWriteOff(Integer  writeOff) {
+            if (writeOff!=null&&writeOff==1) {
+                builder.and(qOrderReceipt.notVerificationAmount.gt(BigDecimal.ZERO));
+            }
+        }
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
                 builder.and(qOrderReceipt.accountBookId.eq(accountBookId));

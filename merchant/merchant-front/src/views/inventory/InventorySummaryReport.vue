@@ -367,20 +367,6 @@ export default {
               }
             });
           });
-          InventoryItem.summaryInitial(params).then(({data: initialData}) => {
-            const setProducts = [];
-            dataList.forEach((row) => {
-              initialData.forEach((data_row) => {
-                const productId = row.productId;
-                if (data_row.productId === productId && !setProducts.includes(productId)) {
-                  setProducts.push(productId);
-                  row.initialQuantity = data_row.quantity;
-                  row.initialSubtotal = data_row.subtotal;
-                }
-              })
-            });
-            this.dataList = dataList;
-          });
         }).finally(() => this.loading = false);
       });
     },
@@ -524,20 +510,6 @@ export default {
                 }
               }
             });
-          });
-          InventoryItem.summaryInitial(params).then(({data: initialData}) => {
-            const setProducts = [];
-            dataList.forEach((row) => {
-              initialData.forEach((data_row) => {
-                const productId = row.productId;
-                if (data_row.productId === productId && !setProducts.includes(productId)) {
-                  setProducts.push(productId);
-                  row.initialQuantity = data_row.quantity;
-                  row.initialSubtotal = data_row.subtotal;
-                }
-              })
-            });
-            this.callExcel(dataList);
           });
         }).finally(() => this.loading = false);
       });

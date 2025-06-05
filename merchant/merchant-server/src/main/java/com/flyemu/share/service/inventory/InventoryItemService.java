@@ -39,6 +39,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -152,8 +153,20 @@ public class InventoryItemService extends AbsService {
      *
      * @param orderId 订单id
      */
+    @Transactional
     public void deleteByOrderId(Long orderId, OperationType operationType) {
-        jqf.delete(qInventoryItem).where(qInventoryItem.orderId.eq(orderId).and(qInventoryItem.operationType.eq(operationType))).execute();
+        List<InventoryItem> fetch = jqf.selectFrom(qInventoryItem).where(qInventoryItem.orderId.eq(orderId).and(qInventoryItem.operationType.eq(operationType))).fetch();
+        inventoryItemRepository.deleteAll(fetch);
+        this.sortedInventoryItem(fetch);
+    }
+
+    private ArrayList<OperationType> getIncreaseTypeList() {
+        return new ArrayList<>() {{
+            add(OperationType.其他入库);
+            add(OperationType.盘盈入库);
+            add(OperationType.调拨入库);
+            add(OperationType.采购入库);
+        }};
     }
 
 
@@ -166,97 +179,79 @@ public class InventoryItemService extends AbsService {
         if (list == null || list.isEmpty()) {
             return;
         }
-        // 明细时间记录为录入时间（排序用）
-        list.forEach(item -> {
-            item.setCreatedAt(LocalDateTime.now());
+        List<InventoryItem> inventoryItems = inventoryItemRepository.saveAll(list);
+        this.sortedInventoryItem(inventoryItems);
+    }
+
+    private void sortedInventoryItem(List<InventoryItem> inventoryItems) {
+        List<Map<String, Long>> sorted = new ArrayList<>();
+        Date inventoryDate = null;
+        for (InventoryItem inventoryItem : inventoryItems) {
+            inventoryDate = inventoryItem.getInventoryDate();
+            Long productId = inventoryItem.getProductId();
+            Long warehouseId = inventoryItem.getWarehouseId();
+            Long id = inventoryItem.getId();
+            sorted.add(Map.of("productId", productId, "warehouseId", warehouseId, "id", id));
+        }
+        List<OperationType> increaseTypeList = getIncreaseTypeList();
+        Date finalInventoryDate = inventoryDate;
+        sorted.forEach(item -> {
+            Long productId = item.get("productId");
+            Long warehouseId = item.get("warehouseId");
+            Long id = item.get("id");
+            // 获取对应数据进行排序
+            List<InventoryItem> goeFetch = jqf.selectFrom(qInventoryItem).where(
+                    qInventoryItem.productId.eq(productId)
+                            .and(qInventoryItem.warehouseId.eq(warehouseId))
+                            .and(qInventoryItem.inventoryDate.goe(finalInventoryDate))
+                            .and(qInventoryItem.operationType.notIn(OperationType.期初库存, OperationType.期初余额))
+            ).orderBy(qInventoryItem.inventoryDate.asc()).fetch();
+            List<InventoryItem> loeFetch = jqf.selectFrom(qInventoryItem).where(
+                    qInventoryItem.productId.eq(productId)
+                            .and(qInventoryItem.warehouseId.eq(warehouseId))
+                            .and(qInventoryItem.inventoryDate.loe(finalInventoryDate))
+                            .and(qInventoryItem.id.ne(id))
+                            .and(qInventoryItem.operationType.notIn(OperationType.期初库存, OperationType.期初余额))
+            ).orderBy(qInventoryItem.inventoryDate.desc()).fetch();
+            Integer currentQuantity = 0;
+            BigDecimal totalCost = BigDecimal.ZERO;
+            if (!loeFetch.isEmpty()) {
+                currentQuantity = loeFetch.get(0).getCurrentQuantity();
+                totalCost = loeFetch.get(0).getTotalCost();
+            }
+            if (currentQuantity == null) {
+                currentQuantity = 0;
+            }
+            if (totalCost == null) {
+                totalCost = BigDecimal.ZERO;
+            }
+            for (InventoryItem inventoryItem : goeFetch) {
+                boolean contains = increaseTypeList.contains(inventoryItem.getOperationType());
+                if (contains) {
+                    currentQuantity = currentQuantity + inventoryItem.getQuantity();
+                    totalCost = totalCost.add(inventoryItem.getSubtotal());
+                } else {
+                    currentQuantity = currentQuantity - inventoryItem.getQuantity();
+                    totalCost = totalCost.subtract(inventoryItem.getSubtotal());
+                }
+                inventoryItem.setCurrentQuantity(currentQuantity);
+                inventoryItem.setTotalCost(totalCost);
+                if (!OperationType.成本调整.equals(inventoryItem.getOperationType())) {
+                    BigDecimal averageCost = totalCost.divide(new BigDecimal(currentQuantity), 2, RoundingMode.HALF_UP);
+                    inventoryItem.setAverageCost(averageCost);
+                }
+                inventoryItemRepository.save(inventoryItem);
+            }
         });
-        inventoryItemRepository.saveAll(list);
     }
 
     public PageResults<InventoryItemReportDto> report(Page page, Query query) {
-        List<Long> ids = this.findPreviousMonthIds(query);
-        JPAQuery<Tuple> tupleJPAQuery = jqf.selectFrom(qInventoryItem)
-                .select(
-                        qInventoryItem.id,
-                        qInventoryItem.firstSort,
-                        qInventoryItem.warehouseId,
-                        qInventoryItem.batchNumber,
-                        qProduct.id.as("productId"),
-                        qProduct.code.as("productCode"),
-                        qProduct.name.as("productName"),
-                        qProduct.productCategoryId.as("productCategoryId"),
-                        qProductCategory.name.as("productCategoryName"),
-                        qProduct.specification.as("productSpecification"),
-                        qInventoryItem.createdAt.as("createdAt"),
-                        qInventoryItem.quantity.as("quantity"),
-                        qInventoryItem.orderId.as("orderId"),
-                        qInventoryItem.operationType.as("operationType"),
-                        qWarehouse.name.as("warehouseName"),
-                        qProduct.remarks.as("productRemarks"),
-                        qUnit.name.as("unitName"),
-                        qSupplier.id.as("supplierId"),
-                        qSupplier.name.as("supplierName"),
-                        qCustomer.id.as("customerId"),
-                        qCustomer.name.as("customerName"),
-                        qInventoryItem.unitPrice.as("unitPrice"),
-                        qInventoryItem.subtotal.as("subtotal"),
-                        qInventoryItem.currentQuantity.as("currentQuantity"),
-                        qInventoryItem.totalCost.as("totalCost"),
-                        qInventoryItem.averageCost.as("averageCost"),
-                        qFinanceVoucher.voucherId.as("voucherId"),
-                        qFinanceVoucher.code.as("voucherCode")
-                )
-                .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
-                .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
-                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
-                .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
-                .leftJoin(qSupplier).on(qInventoryItem.supplierId.eq(qSupplier.id))
-                .leftJoin(qCustomer).on(qInventoryItem.customerId.eq(qCustomer.id))
-                .leftJoin(qFinanceVoucher).on(qFinanceVoucher.orderId.eq(qInventoryItem.id))
-                .where(query.builders())
-                .where(qProduct.id.isNotNull())
-                .where(qInventoryItem.operationType.ne(OperationType.期初余额).or(qInventoryItem.id.in(ids)))
-                .orderBy(qInventoryItem.productId.asc())
-                .orderBy(qInventoryItem.firstSort.desc())
-                .orderBy(qInventoryItem.createdAt.desc())
-                .orderBy(qInventoryItem.id.asc());
-        long size = tupleJPAQuery.fetchCount();
-        List<Tuple> fetch = tupleJPAQuery
-                .offset(page.getOffset())
-                .limit(page.getOffsetEnd())
-                .fetch();
-        List<InventoryItemReportDto> dtos = new ArrayList<>();
-        InventoryItemReportDto dto;
-        for (Tuple tuple : fetch) {
-            dto = new InventoryItemReportDto();
-            dto.setId(tuple.get(qInventoryItem.id));
-            dto.setBatchNumber(tuple.get(qInventoryItem.batchNumber));
-            dto.setProductId(tuple.get(qProduct.id.as("productId")));
-            dto.setProductCategoryId(tuple.get(qProduct.id.as("productCategoryId")));
-            dto.setProductCode(tuple.get(qProduct.code.as("productCode")));
-            dto.setProductName(tuple.get(qProduct.name.as("productName")));
-            dto.setSupplierId(tuple.get(qSupplier.id.as("supplierId")));
-            dto.setSupplierName(tuple.get(qSupplier.name.as("supplierName")));
-            dto.setCustomerId(tuple.get(qCustomer.id.as("customerId")));
-            dto.setCustomerName(tuple.get(qCustomer.name.as("customerName")));
-            dto.setCreatedAt(tuple.get(qInventoryItem.createdAt.as("createdAt")));
-            dto.setProductCategoryName(tuple.get(qProductCategory.name.as("productCategoryName")));
-            dto.setProductSpecification(tuple.get(qProduct.specification.as("productSpecification")));
-            dto.setUnitName(tuple.get(qUnit.name.as("unitName")));
-            dto.setProductRemarks(tuple.get(qProduct.remarks.as("productRemarks")));
-            dto.setOperationType(tuple.get(qInventoryItem.operationType.as("operationType")));
-            dto.setWarehouseName(tuple.get(qWarehouse.name.as("warehouseName")));
-            dto.setUnitPrice(tuple.get(qInventoryItem.unitPrice.as("unitPrice")));
-            dto.setSubtotal(tuple.get(qInventoryItem.subtotal.as("subtotal")));
-            dto.setTotalCost(tuple.get(qInventoryItem.totalCost.as("totalCost")));
-            dto.setAverageCost(tuple.get(qInventoryItem.averageCost.as("averageCost")));
-            dto.setCurrentQuantity(tuple.get(qInventoryItem.currentQuantity.as("currentQuantity")));
-            dto.setQuantity(tuple.get(qInventoryItem.quantity.as("quantity")));
-            dto.setVoucherId(tuple.get(qFinanceVoucher.voucherId.as("voucherId")));
-            dto.setVoucherCode(tuple.get(qFinanceVoucher.code.as("voucherCode")));
-            dtos.add(dto);
-        }
-        return new PageResults<>(dtos, page, size);
+        Map<String, Object> map = query.toMap();
+        Date start = query.getStart();
+        map.put("initDate", Objects.requireNonNullElseGet(start, Date::new));
+        org.sagacity.sqltoy.model.Page sqlPage = new org.sagacity.sqltoy.model.Page(page.getSize(), page.getPage());
+        org.sagacity.sqltoy.model.Page<InventoryItemReportDto> findPage = lazyDao.findPageBySql(sqlPage, "inventoryItemReportList", map, InventoryItemReportDto.class);
+        return new PageResults<>(findPage.getRows(), page, findPage.getRecordCount());
     }
 
     private List<Long> findPreviousMonthIds(Query query) {
@@ -327,7 +322,7 @@ public class InventoryItemService extends AbsService {
             dto.setProductCategoryName(tuple.get(qProductCategory.name.as("productCategoryName")));
             dto.setProductSpecification(tuple.get(qProduct.specification.as("productSpecification")));
             dto.setProductRemarks(tuple.get(qProduct.remarks.as("productRemarks")));
-            dto.setOperationType(tuple.get(qInventoryItem.operationType.as("operationType")));
+            dto.setOperationType(Objects.requireNonNull(tuple.get(qInventoryItem.operationType.as("operationType"))).name());
             dto.setUnitName(tuple.get(qUnit.name.as("unitName")));
             dto.setWarehouseName(tuple.get(qWarehouse.name.as("warehouseName")));
             dto.setWarehouseId(tuple.get(qWarehouse.id.as("warehouseId")));
@@ -370,38 +365,9 @@ public class InventoryItemService extends AbsService {
             dto = new InventoryItemReportDto();
             dto.setProductId(tuple.get(qProduct.id.as("productId")));
             dto.setWarehouseId(tuple.get(qWarehouse.id.as("warehouseId")));
-            dto.setOperationType(tuple.get(qInventoryItem.operationType.as("operationType")));
+            dto.setOperationType(Objects.requireNonNull(tuple.get(qInventoryItem.operationType.as("operationType"))).name());
             dto.setQuantity(tuple.get(qInventoryItem.quantity.sum().as("quantity")));
             dto.setSubtotal(tuple.get(qInventoryItem.subtotal.sum().as("subtotal")));
-            dtos.add(dto);
-        }
-        return dtos;
-    }
-
-    public List<InventoryItemReportDto> summaryInitial(Query query) {
-        List<Long> ids = this.findPreviousMonthIds(query);
-        List<Tuple> fetchPage = bqf.selectFrom(qInventoryItem)
-                .select(
-                        qProduct.id.as("productId"),
-                        qInventoryItem.operationType.as("operationType"),
-                        qInventoryItem.currentQuantity.as("quantity"),
-                        qInventoryItem.totalCost.as("subtotal")
-                )
-                .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
-                .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
-                .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
-                .where(qInventoryItem.operationType.eq(OperationType.期初余额).and(qInventoryItem.id.in(ids)))
-                .groupBy(qInventoryItem.operationType, qProduct.id)
-                .orderBy(qProduct.id.asc())
-                .fetch();
-        List<InventoryItemReportDto> dtos = new ArrayList<>();
-        InventoryItemReportDto dto;
-        for (Tuple tuple : fetchPage) {
-            dto = new InventoryItemReportDto();
-            dto.setProductId(tuple.get(qProduct.id.as("productId")));
-            dto.setOperationType(tuple.get(qInventoryItem.operationType.as("operationType")));
-            dto.setQuantity(tuple.get(qInventoryItem.currentQuantity.as("quantity")));
-            dto.setSubtotal(tuple.get(qInventoryItem.totalCost.as("subtotal")));
             dtos.add(dto);
         }
         return dtos;
@@ -463,14 +429,14 @@ public class InventoryItemService extends AbsService {
     }
 
     public PageResults<InventoryItemBalanceDTO> balance(Page page, Query query) {
-        BooleanExpression expression = qInventoryItem.createdAt.in(
-                JPAExpressions.select(qInventoryItem.createdAt.max().as("createdAt")).from(qInventoryItem)
+        BooleanExpression expression = qInventoryItem.inventoryDate.in(
+                JPAExpressions.select(qInventoryItem.inventoryDate.max().as("inventoryDate")).from(qInventoryItem)
                         .leftJoin(qProduct).on(qInventoryItem.productId.eq(qProduct.id))
                         .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
                         .leftJoin(qWarehouse).on(qInventoryItem.warehouseId.eq(qWarehouse.id))
                         .where(qInventoryItem.operationType.notIn(OperationType.期初余额, OperationType.期初库存))
                         .where(qProduct.id.isNotNull(), qWarehouse.id.isNotNull())
-                        .orderBy(qInventoryItem.createdAt.asc())
+                        .orderBy(qInventoryItem.inventoryDate.asc())
                         .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId)
         ).and(qInventoryItem.operationType.notIn(OperationType.期初余额, OperationType.期初库存));
         JPAQuery<Tuple> timerJpaQuery = getBalanceJpaQuery(query, expression);
@@ -480,8 +446,8 @@ public class InventoryItemService extends AbsService {
         Date start = query.getStart();
         Date end = query.getEnd();
         if (start != null) {
-            timerBuilder.and(qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(addTimeOfFinalMoment(start).toInstant(), ZoneId.systemDefault())));
-            timerBuilder.and(qInventoryItem.createdAt.goe(LocalDateTime.ofInstant(start.toInstant(), ZoneId.systemDefault())));
+            timerBuilder.and(qInventoryItem.inventoryDate.loe(addTimeOfFinalMoment(start)));
+            timerBuilder.and(qInventoryItem.inventoryDate.goe(start));
         }
         timerJpaQuery.where(timerBuilder)
                 .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId);
@@ -490,7 +456,7 @@ public class InventoryItemService extends AbsService {
         List<Tuple> beforeFetch = new ArrayList<>();
         if (start != null && end != null) {
             BooleanBuilder whereBuilder = new BooleanBuilder();
-            whereBuilder.and(qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(start.toInstant(), ZoneId.systemDefault())));
+            whereBuilder.and(qInventoryItem.inventoryDate.loe(start));
             whereBuilder.and(qInventoryItem.productId.notIn(
                     JPAExpressions.select(qInventoryItem.productId).from(qInventoryItem)
                             .where(expression)
@@ -511,6 +477,7 @@ public class InventoryItemService extends AbsService {
             dto.setProductId(tuple.get(qInventoryItem.productId.as("productId")));
             dto.setInventoryItemId(tuple.get(qInventoryItem.id.as("inventoryItemId")));
             dto.setCreatedAt(tuple.get(qInventoryItem.createdAt.as("createdAt")));
+            dto.setInventoryDate(tuple.get(qInventoryItem.inventoryDate.as("inventoryDate")));
             dto.setWarehouseId(tuple.get(qInventoryItem.warehouseId.as("warehouseId")));
             dto.setTotalCost(tuple.get(qInventoryItem.totalCost.as("totalCost")));
             dto.setCurrentQuantity(tuple.get(qInventoryItem.currentQuantity.as("currentQuantity")));
@@ -527,6 +494,7 @@ public class InventoryItemService extends AbsService {
                         qInventoryItem.id.as("inventoryItemId"),
                         qInventoryItem.productId.as("productId"),
                         qInventoryItem.createdAt.as("createdAt"),
+                        qInventoryItem.inventoryDate.as("inventoryDate"),
                         qInventoryItem.warehouseId.as("warehouseId"),
                         qWarehouse.name.as("warehouseName"),
                         qInventoryItem.totalCost.as("totalCost"),
@@ -539,7 +507,7 @@ public class InventoryItemService extends AbsService {
                 .where(query.balanceBuilders())
                 .where(expression)
                 .where(qProduct.id.isNotNull(), qWarehouse.id.isNotNull())
-                .orderBy(qInventoryItem.createdAt.asc());
+                .orderBy(qInventoryItem.inventoryDate.asc());
     }
 
     @Data
@@ -579,28 +547,33 @@ public class InventoryItemService extends AbsService {
 
         private Boolean isReport;
 
+        private Long merchantId;
+
+        private Long accountBookId;
+
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qInventoryItem.merchantId.eq(merchantId));
+                this.merchantId = merchantId;
             }
         }
 
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
                 builder.and(qInventoryItem.accountBookId.eq(accountBookId));
+                this.accountBookId = accountBookId;
             }
         }
 
         public BooleanBuilder builders() {
-            if (start != null && end != null && (isReport == null || Boolean.FALSE.equals(isReport))) {
-                builder.and(qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(addTimeOfFinalMoment(end).toInstant(), ZoneId.systemDefault())));
-                builder.and(qInventoryItem.createdAt.goe(LocalDateTime.ofInstant(start.toInstant(), ZoneId.systemDefault())));
+            if (start != null && end != null && (isReport == null || !isReport)) {
+                builder.and(qInventoryItem.inventoryDate.loe(addTimeOfFinalMoment(end)));
+                builder.and(qInventoryItem.inventoryDate.goe(start));
             }
             if (start != null && end != null && Boolean.TRUE.equals(isReport)) {
                 builder.and(
-                        qInventoryItem.createdAt.loe(LocalDateTime.ofInstant(addTimeOfFinalMoment(end).toInstant(), ZoneId.systemDefault()))
-                                .and(qInventoryItem.createdAt.goe(LocalDateTime.ofInstant(start.toInstant(), ZoneId.systemDefault())))
-                                .or(qInventoryItem.operationType.eq(OperationType.期初余额))
+                        qInventoryItem.inventoryDate.loe(addTimeOfFinalMoment(end))).and(qInventoryItem.inventoryDate.goe(start)
+                        .or(qInventoryItem.operationType.eq(OperationType.期初余额))
                 );
             }
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
@@ -642,6 +615,54 @@ public class InventoryItemService extends AbsService {
                 builder.and(qInventoryItem.operationType.in(Arrays.stream(operationTypes.split(",")).map(OperationType::valueOf).toList()));
             }
             return builder;
+        }
+
+        public Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            if (merchantId != null) {
+                map.put("merchantId", merchantId);
+            }
+            if (accountBookId != null) {
+                map.put("accountBookId", accountBookId);
+            }
+            if (start != null && end != null) {
+                map.put("startDate", start);
+                map.put("endDate", addTimeOfFinalMoment(end));
+            }
+            if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
+                map.put("filter", filter);
+            }
+            if (warehouseId != null) {
+                map.put("warehouseId", warehouseId);
+            }
+            if (StrUtil.isNotBlank(warehouseIds)) {
+                map.put("warehouseIds", warehouseIds);
+            }
+            if (supplierId != null) {
+                map.put("supplierId", supplierId);
+            }
+            if (StrUtil.isNotBlank(supplierIds)) {
+                map.put("supplierIds", supplierIds);
+            }
+            if (StrUtil.isNotBlank(customerIds)) {
+                map.put("customerIds", customerIds);
+            }
+            if (StrUtil.isNotBlank(productCategoryIds)) {
+                map.put("productCategoryIds", productCategoryIds);
+            }
+            if (productId != null) {
+                map.put("productId", productId);
+            }
+            if (StrUtil.isNotBlank(productIds)) {
+                map.put("productIds", productIds);
+            }
+            if (operationType != null) {
+                map.put("operationType", operationType.name());
+            }
+            if (StrUtil.isNotBlank(operationTypes)) {
+                map.put("operationTypes", operationTypes);
+            }
+            return map;
         }
 
         public BooleanBuilder buildersV2() {

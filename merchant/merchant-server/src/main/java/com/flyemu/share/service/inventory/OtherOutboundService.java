@@ -165,7 +165,7 @@ public class OtherOutboundService extends AbsService {
         switch (type) {
             case AUDITS -> {
                 //处理库存
-                this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound.getCustomerId());
+                this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound);
                 inventories.forEach(item -> {
                     // 减库存
                     inventoryService.computedInventory(item, false, id, operationType, inventoryItems);
@@ -177,7 +177,7 @@ public class OtherOutboundService extends AbsService {
             }
             case ANTI_AUDIT -> {
                 //处理库存
-                this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound.getCustomerId());
+                this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound);
                 inventories.forEach(item -> {
                     // 加库存
                     inventoryService.computedInventory(item, true, id, operationType, null);
@@ -204,7 +204,7 @@ public class OtherOutboundService extends AbsService {
                                       List<Inventory> inventories,
                                       OperationType operationType,
                                       List<InventoryItem> inventoryItems,
-                                      Long customerId) {
+                                      OtherOutbound otherOutbound) {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         otherOutboundItems.forEach(otherOutboundItem -> {
@@ -237,7 +237,7 @@ public class OtherOutboundService extends AbsService {
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, customerId, operationType);
+            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, otherOutbound, operationType);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
@@ -249,7 +249,7 @@ public class OtherOutboundService extends AbsService {
      * @param otherOutboundItem 出库明细
      * @return inventoryItem
      */
-    private InventoryItem getInventoryItem(OtherOutboundItem otherOutboundItem, Long customerId,
+    private InventoryItem getInventoryItem(OtherOutboundItem otherOutboundItem, OtherOutbound otherOutbound,
                                            OperationType operationType) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(otherOutboundItem.getProductId());
@@ -263,7 +263,8 @@ public class OtherOutboundService extends AbsService {
         inventoryItem.setMerchantId(otherOutboundItem.getMerchantId());
         inventoryItem.setBatchNumber(otherOutboundItem.getBatchNumber());
         inventoryItem.setAccountBookId(otherOutboundItem.getAccountBookId());
-        inventoryItem.setCustomerId(customerId);
+        inventoryItem.setCustomerId(otherOutbound.getCustomerId());
+        inventoryItem.setInventoryDate(otherOutbound.getInboundDate());
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(otherOutboundItem.getCreatedBy());
         inventoryItem.setUnitPrice(otherOutboundItem.getUnitPrice());

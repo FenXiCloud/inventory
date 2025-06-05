@@ -10,6 +10,7 @@ import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 /**
  * @功能描述: 库存明细表
@@ -73,6 +74,9 @@ public class InventoryItem {
 
     @Comment("创建时间")
     private LocalDateTime createdAt;
+
+    @Comment("库存时间")
+    private Date inventoryDate;
 
     @Comment("更新时间")
     private LocalDateTime updatedAt;

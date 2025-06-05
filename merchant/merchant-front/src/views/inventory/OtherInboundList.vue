@@ -309,7 +309,9 @@ export default {
             this.warehouseList = results[1].data || [];
             this.supplierList = results[2].data || [];
             this.customerList = results[3].data || [];
-            callback();
+            if (callback) {
+              callback();
+            }
           })
           .finally(() => loading.close());
     },

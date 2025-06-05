@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<sqltoy xmlns="http://www.sagframe.com/schema/sqltoy"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sagframe.com/schema/sqltoy http://www.sagframe.com/schema/sqltoy/sqltoy.xsd">
+    <sql id="inventoryItemReportList">
+        <value>
+            <![CDATA[
+                SELECT
+                    *
+                FROM
+                    (
+                        SELECT
+                            null AS id,
+                            1 AS sn,
+                            null AS warehouseId,
+                            null AS batchNumber,
+                            jp.id AS productId,
+                            jp.`code` AS productCode,
+                            jp.`name` AS productName,
+                            jp.product_category_id AS productCategoryId,
+                            jpc.`name` AS productCategoryName,
+                            jp.specification AS productSpecification,
+                            null AS createdAt,
+                            jii.quantity AS quantity,
+                            null AS orderId,
+                            null AS warehouseName,
+                            '期初余额' AS operationType,
+                            jp.remarks AS productRemarks,
+                            ju.`name` AS unitName,
+                            null AS supplierId,
+                            null AS supplierName,
+                            null AS customerId,
+                            null AS customerName,
+                            jii.unit_price AS unitPrice,
+                            null AS subtotal,
+                            sum(jii.current_quantity) AS currentQuantity,
+                            sum(jii.total_cost) AS totalCost,
+                            jii.average_cost AS averageCost,
+                            jii.inventory_date AS inventoryDate,
+                            null AS voucherId,
+                            null AS voucherCode
+                        FROM
+                            jxc_product jp
+                            LEFT JOIN jxc_inventory_item jii ON (
+                                jp.id = jii.product_id AND
+                                (jii.product_id,jii.inventory_date) IN (
+                                    SELECT jii.product_id,max(jii.inventory_date) FROM jxc_inventory_item jii
+                                    LEFT JOIN jxc_product jp ON (jp.id = jii.product_id)
+                                    LEFT JOIN jxc_product_category jpc ON (jpc.id = jp.product_category_id)
+                                    LEFT JOIN jxc_warehouse jw ON (jw.id = jii.warehouse_id)
+                                    LEFT JOIN jxc_unit ju ON (ju.id = jp.unit_id)
+                                    LEFT JOIN jxc_customer jc ON (jc.id = jii.customer_id)
+                                    LEFT JOIN jxc_supplier js ON (js.id = jii.supplier_id)
+                                    LEFT JOIN jxc_finance_voucher jfv ON (jfv.order_id = jii.id)
+                                    WHERE jii.merchant_id = :merchantId AND jii.account_book_id = :accountBookId AND jii.inventory_date < :initDate
+                                    AND jii.operation_type <> '期初库存'
+                                    #[AND js.id in (:supplierIds)]
+                                    #[AND jp.id in (:productIds)]
+                                    #[AND jw.id in (:warehouseIds)]
+                                    #[AND jpc.id in (:productCategoryIds)]
+                                    #[AND jc.id in (:customerIds)]
+                                    #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初入库']
+                                    GROUP BY product_id, warehouse_id
+                                )
+                            )
+                            LEFT JOIN jxc_product_category jpc ON (jpc.id = jp.product_category_id)
+                            LEFT JOIN jxc_warehouse jw ON (jw.id = jii.warehouse_id)
+                            LEFT JOIN jxc_unit ju ON (ju.id = jp.unit_id)
+                            LEFT JOIN jxc_customer jc ON (jc.id = jii.customer_id)
+                            LEFT JOIN jxc_supplier js ON (js.id = jii.supplier_id)
+                            LEFT JOIN jxc_finance_voucher jfv ON (jfv.order_id = jii.id)
+                        WHERE
+                            jp.merchant_id = :merchantId
+                            AND jp.account_book_id = :accountBookId
+                            AND jii.operation_type <> '期初库存'
+                            #[AND jii.inventory_date < :initDate]
+                            #[AND (jii.batch_number like :filter OR jp.`name` like :filter)]
+                            #[AND js.id in (:supplierIds)]
+                            #[AND jp.id in (:productIds)]
+                            #[AND jw.id in (:warehouseIds)]
+                            #[AND jpc.id in (:productCategoryIds)]
+                            #[AND jc.id in (:customerIds)]
+                            #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初入库']
+                            UNION
+                        SELECT
+                            jii.id AS id,
+                            0 AS sn,
+                            jii.warehouse_id AS warehouseId,
+                            jii.batch_number AS batchNumber,
+                            jp.id AS productId,
+                            jp.`code` AS productCode,
+                            jp.`name` AS productName,
+                            jp.product_category_id AS productCategoryId,
+                            jpc.`name` AS productCategoryName,
+                            jp.specification AS productSpecification,
+                            jii.created_at AS createdAt,
+                            jii.quantity AS quantity,
+                            jii.order_id AS orderId,
+                            jw.`name` AS warehouseName,
+                            jii.operation_type AS operationType,
+                            jp.remarks AS productRemarks,
+                            ju.`name` AS unitName,
+                            js.`id` AS supplierId,
+                            js.`name` AS supplierName,
+                            jc.`id` AS customerId,
+                            jc.`name` AS customerName,
+                            jii.unit_price AS unitPrice,
+                            jii.subtotal AS subtotal,
+                            jii.current_quantity AS currentQuantity,
+                            jii.total_cost AS totalCost,
+                            jii.average_cost AS averageCost,
+                            jii.inventory_date AS inventoryDate,
+                            jfv.voucher_id AS voucherId,
+                            jfv.`code` AS voucherCode
+                        FROM
+                            jxc_inventory_item jii
+                            LEFT JOIN jxc_product jp ON (jp.id = jii.product_id)
+                            LEFT JOIN jxc_product_category jpc ON (jpc.id = jp.product_category_id)
+                            LEFT JOIN jxc_warehouse jw ON (jw.id = jii.warehouse_id)
+                            LEFT JOIN jxc_unit ju ON (ju.id = jp.unit_id)
+                            LEFT JOIN jxc_customer jc ON (jc.id = jii.customer_id)
+                            LEFT JOIN jxc_supplier js ON (js.id = jii.supplier_id)
+                            LEFT JOIN jxc_finance_voucher jfv ON (jfv.order_id = jii.id)
+                        WHERE
+                            jii.merchant_id = :merchantId
+                            AND jii.account_book_id = :accountBookId
+                            AND jii.operation_type <> '期初库存'
+                            AND jii.operation_type <> '期初入库'
+		                    #[AND jii.inventory_date BETWEEN :startDate AND :endDate]
+		                    #[AND (jii.batch_number like :filter OR jp.`name` like :filter)]
+		                    #[AND js.id in (:supplierIds)]
+                            #[AND jp.id in (:productIds)]
+                            #[AND jw.id in (:warehouseIds)]
+                            #[AND jpc.id in (:productCategoryIds)]
+                            #[AND jc.id in (:customerIds)]
+                            #[AND jii.operation_type in (:operationTypes)]
+                    ) t
+                ORDER BY
+                    t.productId ASC,
+                    t.sn DESC,
+                    t.inventoryDate ASC
+            ]]>
+        </value>
+    </sql>
+</sqltoy>

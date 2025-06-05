@@ -255,6 +255,7 @@ public class InventoryTransferService extends AbsService {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(inventoryTransferItem.getProductId());
         inventoryItem.setWarehouseId(warehouseId);
+        inventoryItem.setInventoryDate(inventoryTransfer.getTransferDate());
         inventoryItem.setQuantity(isOut ? -inventoryTransferItem.getQuantity().intValue() : inventoryTransferItem.getQuantity().intValue());
         inventoryItem.setOperationType(isOut ? OperationType.调拨出库 : OperationType.调拨入库);
         inventoryItem.setBaseUnitId(inventory.getBaseUnitId());

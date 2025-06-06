@@ -78,6 +78,15 @@ public class InventoryItem {
     @Comment("库存时间")
     private Date inventoryDate;
 
+    @Comment("商品库存数量")
+    private Integer summaryQuantity;
+
+    @Comment("商品平均成本")
+    private BigDecimal summaryAverage;
+
+    @Comment("商品成本总计")
+    private BigDecimal summaryCost;
+
     @Comment("更新时间")
     private LocalDateTime updatedAt;
 

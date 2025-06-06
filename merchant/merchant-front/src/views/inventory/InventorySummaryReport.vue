@@ -257,14 +257,17 @@ export default {
       params.productCategoryIds = params.productCategoryIds.join(",");
       params.productIds = params.productIds.join(",");
       params.warehouseIds = params.warehouseIds.join(",");
+      params.isReport = true;
       InventoryItem.summary(params).then(({data: {results, total}}) => {
         const dataList = results || [];
         this.pagination.total = total;
-        InventoryItem.summaryOperationType(params).then(({data}) => {
-          dataList.forEach((row) => {
+        const operationTypeParams = JSON.parse(JSON.stringify(params));
+        operationTypeParams.isReport = false;
+        InventoryItem.summaryOperationType(operationTypeParams).then(({data}) => {
+          dataList?.forEach((row) => {
             const productId = row.productId;
             const warehouseId = row.warehouseId;
-            data.forEach((data_row) => {
+            data?.forEach((data_row) => {
               //todo 待优化，可处理成后台统计
               if (data_row.warehouseId === warehouseId && data_row.productId === productId) {
                 const operationType = data_row.operationType;
@@ -367,6 +370,24 @@ export default {
               }
             });
           });
+          InventoryItem.summaryInitial(params).then(({data: initialData}) => {
+            dataList.forEach((row) => {
+              if (initialData) {
+                initialData.forEach((data_row) => {
+                  const productId = row.productId;
+                  const warehouseId = row.warehouseId;
+                  if (data_row.productId === productId && data_row.warehouseId === warehouseId) {
+                    row.initialQuantity = data_row.summaryQuantity;
+                    row.initialSubtotal = data_row.summaryCost;
+                  }
+                })
+              } else {
+                row.initialQuantity = undefined;
+                row.initialSubtotal = undefined;
+              }
+            });
+            this.dataList = dataList;
+          });
         }).finally(() => this.loading = false);
       });
     },
@@ -395,14 +416,17 @@ export default {
       params.pageSize = 1199999;
       params.productCategoryIds = params.productCategoryIds.join(",");
       params.productIds = params.productIds.join(",");
+      params.isReport = true;
       params.warehouseIds = params.warehouseIds.join(",");
       InventoryItem.summary(params).then(({data: {results, total}}) => {
         const dataList = results || [];
-        InventoryItem.summaryOperationType(params).then(({data}) => {
-          dataList.forEach((row) => {
+        const operationTypeParams = JSON.parse(JSON.stringify(params));
+        operationTypeParams.isReport = false;
+        InventoryItem.summaryOperationType(operationTypeParams).then(({data}) => {
+          dataList?.forEach((row) => {
             const productId = row.productId;
             const warehouseId = row.warehouseId;
-            data.forEach((data_row) => {
+            data?.forEach((data_row) => {
               if (data_row.warehouseId === warehouseId && data_row.productId === productId) {
                 const operationType = data_row.operationType;
                 let purchaseStockQuantity = row.purchaseStockQuantity;
@@ -510,6 +534,24 @@ export default {
                 }
               }
             });
+          });
+          InventoryItem.summaryInitial(params).then(({data: initialData}) => {
+            dataList.forEach((row) => {
+              if (initialData) {
+                initialData.forEach((data_row) => {
+                  const productId = row.productId;
+                  const warehouseId = row.warehouseId;
+                  if (data_row.productId === productId && data_row.warehouseId === warehouseId) {
+                    row.initialQuantity = data_row.summaryQuantity;
+                    row.initialSubtotal = data_row.summaryCost;
+                  }
+                })
+              } else {
+                row.initialQuantity = undefined;
+                row.initialSubtotal = undefined;
+              }
+            });
+            this.callExcel(dataList);
           });
         }).finally(() => this.loading = false);
       });

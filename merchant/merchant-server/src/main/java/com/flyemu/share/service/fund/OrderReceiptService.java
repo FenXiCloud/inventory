@@ -265,8 +265,13 @@ public class OrderReceiptService extends AbsService {
         Long customerId = orderReceipt.getCustomerId();
 
         Set<Long> salesOrderIdSet = new HashSet<>();
-
+        boolean boo = true;
         for (OrderReceiptItem item : items) {
+            BigDecimal currentVerifyAmount = item.getCurrentVerifyAmount();
+            if (currentVerifyAmount == null || currentVerifyAmount.compareTo(BigDecimal.ZERO) < 0) {
+                throw new ServiceException("核销金额不能为负数或空");
+            }
+
             Long salesOrderId = item.getSalesOrderId();
             if (salesOrderId == null) {
                 throw new ServiceException("销售单ID为空");
@@ -274,72 +279,82 @@ public class OrderReceiptService extends AbsService {
             if (salesOrderIdSet.contains(salesOrderId)) {
                 throw new ServiceException("不能重复引用销售单：" + salesOrderId);
             }
-            salesOrderIdSet.add(salesOrderId);
+            if (salesOrderId == -1) {
+                boo = false;
+                Customer customer = customerService.findById(orderReceipt.getCustomerId());
+                if (customer == null) {
+                    throw new ServiceException("客户不存在");
+                }
+                BigDecimal availableAdvance = customer.getBalance() != null ? customer.getBalance() : BigDecimal.ZERO;
+                if (availableAdvance.compareTo(currentVerifyAmount) < 0) {
+                    throw new ServiceException("客户预收款余额不足，无法进行核销");
+                }
+            } else {
 
-            SalesOrder salesOrder = salesOrderRepository.findById(salesOrderId)
-                    .orElseThrow(() -> new ServiceException("销售单不存在：" + salesOrderId));
-            if (!OrderStatus.已审核.equals(salesOrder.getOrderStatus())) {
-                throw new ServiceException("销售单未审核，无法引用：" + salesOrderId);
-            }
-            if (!salesOrder.getCustomerId().equals(customerId)) {
-                throw new ServiceException("销售单客户不一致，无法引用：" + salesOrderId);
-            }
-            BigDecimal verifiedAmount = jqf.select(qItem.currentVerifyAmount.sum())
-                    .from(qItem)
-                    .where(qItem.salesOrderId.eq(salesOrderId))
-                    .fetchOne();
+                salesOrderIdSet.add(salesOrderId);
 
-            if (verifiedAmount == null) {
-                verifiedAmount = BigDecimal.ZERO;
-            }
+                SalesOrder salesOrder = salesOrderRepository.findById(salesOrderId)
+                        .orElseThrow(() -> new ServiceException("销售单不存在：" + salesOrderId));
+                if (!OrderStatus.已审核.equals(salesOrder.getOrderStatus())) {
+                    throw new ServiceException("销售单未审核，无法引用：" + salesOrderId);
+                }
+                if (!salesOrder.getCustomerId().equals(customerId)) {
+                    throw new ServiceException("销售单客户不一致，无法引用：" + salesOrderId);
+                }
+                BigDecimal verifiedAmount = jqf.select(qItem.currentVerifyAmount.sum())
+                        .from(qItem)
+                        .where(qItem.salesOrderId.eq(salesOrderId))
+                        .fetchOne();
 
-            BigDecimal documentAmount = salesOrder.getFinalAmount();
-            BigDecimal unverifiedAmount = documentAmount.subtract(verifiedAmount);
-            if (unverifiedAmount.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new ServiceException("销售单已全部核销，无法再次引用：" + salesOrderId);
-            }
+                if (verifiedAmount == null) {
+                    verifiedAmount = BigDecimal.ZERO;
+                }
 
-            // 当前核销金额不能大于剩余未核销金额
-            BigDecimal currentVerifyAmount = item.getCurrentVerifyAmount();
-            if (currentVerifyAmount == null || currentVerifyAmount.compareTo(BigDecimal.ZERO) < 0) {
-                throw new ServiceException("核销金额不能为负数或空：" + salesOrderId);
-            }
+                BigDecimal documentAmount = salesOrder.getFinalAmount();
+                BigDecimal unverifiedAmount = documentAmount.subtract(verifiedAmount);
+                if (unverifiedAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new ServiceException("销售单已全部核销，无法再次引用：" + salesOrderId);
+                }
 
-            if (currentVerifyAmount.compareTo(unverifiedAmount) > 0) {
-                throw new ServiceException("核销金额超过销售单剩余未核销金额：" + salesOrderId);
-            }
 
-            // 检查是否有其他单据重复引用
-            BigDecimal totalUsedInOtherReceipts = jqf.select(qItem.currentVerifyAmount.sum())
-                    .from(qItem)
-                    .leftJoin(qOrderReceipt).on(qOrderReceipt.id.eq(qItem.receiptId))
-                    .where(qItem.salesOrderId.eq(salesOrderId)
-                            .and(qOrderReceipt.orderStatus.eq(OrderStatus.已审核))
-                            .and(qOrderReceipt.merchantId.eq(merchantId))
-                            .and(qOrderReceipt.accountBookId.eq(accountBookId)))
-                    .fetchOne();
+                if (currentVerifyAmount.compareTo(unverifiedAmount) > 0) {
+                    throw new ServiceException("核销金额超过销售单剩余未核销金额：" + salesOrderId);
+                }
 
-            if (totalUsedInOtherReceipts == null) {
-                totalUsedInOtherReceipts = BigDecimal.ZERO;
-            }
+                // 检查是否有其他单据重复引用
+                BigDecimal totalUsedInOtherReceipts = jqf.select(qItem.currentVerifyAmount.sum())
+                        .from(qItem)
+                        .leftJoin(qOrderReceipt).on(qOrderReceipt.id.eq(qItem.receiptId))
+                        .where(qItem.salesOrderId.eq(salesOrderId)
+                                .and(qOrderReceipt.orderStatus.eq(OrderStatus.已审核))
+                                .and(qOrderReceipt.merchantId.eq(merchantId))
+                                .and(qOrderReceipt.accountBookId.eq(accountBookId)))
+                        .fetchOne();
 
-            BigDecimal alreadyUsed = totalUsedInOtherReceipts.add(verifiedAmount); // 已被使用的总金额
-            BigDecimal maxAllowed = documentAmount; // 总应收金额
+                if (totalUsedInOtherReceipts == null) {
+                    totalUsedInOtherReceipts = BigDecimal.ZERO;
+                }
 
-            if (alreadyUsed.add(currentVerifyAmount).compareTo(maxAllowed) > 0) {
-                throw new ServiceException("与其他已审核单据冲突，核销金额将超出销售单总额：" + salesOrderId);
+                BigDecimal alreadyUsed = totalUsedInOtherReceipts.add(verifiedAmount); // 已被使用的总金额
+                BigDecimal maxAllowed = documentAmount; // 总应收金额
+
+                if (alreadyUsed.add(currentVerifyAmount).compareTo(maxAllowed) > 0) {
+                    throw new ServiceException("与其他已审核单据冲突，核销金额将超出销售单总额：" + salesOrderId);
+                }
             }
         }
-        BigDecimal totalCurrentVerifyAmount = items.stream()
-                .map(OrderReceiptItem::getCurrentVerifyAmount)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (boo) {
+            BigDecimal totalCurrentVerifyAmount = items.stream()
+                    .map(OrderReceiptItem::getCurrentVerifyAmount)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalDocumentAmount = salesOrderIdSet.stream()
-                .map(salesOrderId -> salesOrderRepository.findById(salesOrderId).get().getFinalAmount())
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        if (totalCurrentVerifyAmount.compareTo(totalDocumentAmount) > 0) {
-            throw new ServiceException("所有引用销售单的核销金额总和不能超过总应收金额");
+            BigDecimal totalDocumentAmount = salesOrderIdSet.stream()
+                    .map(salesOrderId -> salesOrderRepository.findById(salesOrderId).get().getFinalAmount())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (totalCurrentVerifyAmount.compareTo(totalDocumentAmount) > 0) {
+                throw new ServiceException("所有引用销售单的核销金额总和不能超过总应收金额");
+            }
         }
     }
 

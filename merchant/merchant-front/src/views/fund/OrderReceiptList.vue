@@ -399,6 +399,7 @@ export default {
       paymentMethodList: [],
       totalTb1: 0,
       totalTb2: 0,
+
       // customerData: {},
       // orderStaffData: {},
 
@@ -800,7 +801,8 @@ export default {
         return message.error('请选择客户');
       }
       let params = {
-        customerId: this.form.customerId
+        customerId: this.form.customerId,
+        balance: this.form.totalAmountsOwed
       };
       let layerId = layer.open({
         title: '选择源单',

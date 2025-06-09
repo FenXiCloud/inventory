@@ -15,28 +15,16 @@
         :loading="loading"
       >
         <vxe-column type="checkbox" width="40" align="center" />
-        <!--   <vxe-column title="操作" align="center" width="120">
-          <template #default="{ row }">
-            <span
-              class="primary-color text-hover ml-10px"
-              @click="showForm('add', row.id)"
-              >编辑</span
-            >
-            <span
-              class="primary-color text-hover ml-10px"
-              @click="doRemove(row)"
-              >删除</span
-            >
-          </template>
-        </vxe-column> -->
 
         <vxe-column title="订单编号" field="salesOrderNo" width="200" />
         <vxe-column title="业务类别" field="businessType">
           <template v-if="URL == 'OrderReceipt'" #default="{ row }">
-            {{ row.businessType == 1 ? '销售出库单' : '' }}
+            <div v-if="row.businessType == 1">销售出库单</div>
+            <div v-if="row.businessType == 2">期初余额</div>
           </template>
           <template v-else-if="URL == 'OrderPayment'" #default="{ row }">
-            {{ row.businessType == 1 ? '采购入库单' : '' }}
+            <div v-if="row.businessType == 1">采购入库单</div>
+            <div v-if="row.businessType == 2">期初余额</div>
           </template>
         </vxe-column>
 
@@ -108,7 +96,26 @@ export default {
     }
   },
   data() {
+    const now = new Date();
+    const year = now.getFullYear(); // 获取年份
+    const month = now.getMonth() + 1; // 获取月份（0-11，需要+1）
+    const day = now.getDate(); // 获取日期
+
+    // 格式化为 "YYYY-MM-DD"
+    const today = `${year}-${month < 10 ? '0' + month : month}-${
+      day < 10 ? '0' + day : day
+    }`;
     return {
+      dataList: [],
+      openingBalance: {
+        salesOrderId: '-1',
+        salesOrderNo: '期初余额',
+        businessType: 2,
+        businessDate: today,
+        documentAmount: 0,
+        verifiedAmount: 0,
+        unverifiedAmount: 0
+      },
       loading: false,
       model: {},
       validationRules: {},
@@ -130,6 +137,8 @@ export default {
       console.log(apiModule, 'apiModule');
 
       let params = {};
+      this.openingBalance.documentAmount = this.params.balance;
+      this.openingBalance.unverifiedAmount = this.params.balance;
       if (this.URL === 'OrderReceipt') {
         params.customerId = this.params.customerId; // 客户ID
       } else if (this.URL === 'OrderPayment') {
@@ -142,6 +151,8 @@ export default {
         .writeOffTheOrder(params)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
+          this.dataList = [this.openingBalance, ...this.dataList];
+
           this.pagination.total = total;
         })
         .finally(() => (this.loading = false));

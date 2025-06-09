@@ -799,7 +799,8 @@ export default {
         return message.error('请选择供应商');
       }
       let params = {
-        supplierId: this.form.supplierId
+        supplierId: this.form.supplierId,
+        balance: this.form.totalAmountsOwed
       };
       let layerId = layer.open({
         title: '选择源单',

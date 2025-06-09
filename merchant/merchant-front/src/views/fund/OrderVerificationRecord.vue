@@ -86,6 +86,9 @@
         />
         <vxe-column title="单据编号" field="orderNo" width="200" />
         <vxe-column title="业务类型" field="type" width="200">
+          <template #default="{ row }">
+            {{ row.type == "1" ? "预收冲应收" : "预付冲应付" }}
+          </template>
         </vxe-column>
         <vxe-column title="客户1/供应商1" field="personnelName" min-width="120" />
         <vxe-column title="业务员" field="orderStaffName" min-width="120">

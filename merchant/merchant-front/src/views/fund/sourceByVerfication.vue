@@ -25,9 +25,11 @@
             v-if="item.field == 'businessType' || item.field == 'orderType'"
           >
             <span v-if="params.sourceType == '预收'">收款</span>
-            <span v-if="params.sourceType == '应收'">普通销售</span>
+            <span v-if="params.sourceType == '应收'">{{row.businessType != 2 ? "普通销售" : "期初余额"}}</span>
             <span v-if="params.sourceType == '预付'">付款</span>
-            <span v-if="params.sourceType == '应付'">普通采购</span>
+            <span v-if="params.sourceType == '应付'">{{
+              row.businessType != 2 ? "普通采购" : "期初余额"
+            }}</span>
           </template>
         </vxe-column>
       </vxe-table>
@@ -79,6 +81,15 @@ export default {
   name: "sourceForm",
   props: { params: Object },
   data() {
+    const now = new Date();
+    const year = now.getFullYear(); // 获取年份
+    const month = now.getMonth() + 1; // 获取月份（0-11，需要+1）
+    const day = now.getDate(); // 获取日期
+
+    // 格式化为 "YYYY-MM-DD"
+    const today = `${year}-${month < 10 ? "0" + month : month}-${
+      day < 10 ? "0" + day : day
+    }`;
     return {
       loading: false,
       model: {},
@@ -90,6 +101,16 @@ export default {
         total: 0,
       },
       tableJson: [],
+      customBalance:0,
+      openingBalance: {
+        salesOrderId: "-1",
+        salesOrderNo: "期初余额",
+        businessType: 2,
+        businessDate: today,
+        documentAmount: 0,
+        verifiedAmount: 0,
+        unverifiedAmount: 0,
+      },
     };
   },
   computed: {
@@ -100,6 +121,8 @@ export default {
   methods: {
     loadList() {
       this.loading = true;
+      this.openingBalance.documentAmount = this.params.balance;
+      this.openingBalance.unverifiedAmount = this.params.balance;
       if (this.params.sourceType == "预收") {
         this.getAdvanceReceipt();
       } else if (this.params.sourceType == "应收") {
@@ -163,7 +186,7 @@ export default {
         },
       ];
       OrderReceipt.list({
-        writeOff:1,
+        writeOff: 1,
         customerId: this.params.personnelId,
         orderType: 2,
         page: this.pagination.page,
@@ -227,8 +250,9 @@ export default {
         pageSize: this.pagination.pageSize,
       })
         .then(({ data: { results, total } }) => {
-          this.dataList = results || [];
-          this.pagination.total = total;
+          this.dataList = [this.openingBalance]
+          this.dataList = this.dataList.concat(...results || [])
+          this.pagination.total = total + 1;
         })
         .finally(() => (this.loading = false));
     },
@@ -285,7 +309,7 @@ export default {
         },
       ];
       OrderPayment.list({
-        writeOff:1,
+        writeOff: 1,
         orderType: 2,
         supplierId: this.params.personnelId,
         page: this.pagination.page,
@@ -348,8 +372,9 @@ export default {
         pageSize: this.pagination.pageSize,
       })
         .then(({ data: { results, total } }) => {
-          this.dataList = results || [];
-          this.pagination.total = total;
+          this.dataList = [this.openingBalance];
+          this.dataList = this.dataList.concat(...results || [])
+          this.pagination.total = total + 1;
         })
         .finally(() => (this.loading = false));
     },

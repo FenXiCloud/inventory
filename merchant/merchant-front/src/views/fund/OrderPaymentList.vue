@@ -20,6 +20,7 @@
               keyName="name"
               titleName="name"
               placeholder="选择供应商"
+              :filterable="true"
               @change="selectSupplier($event)"
             >
               <!-- <template #bottom>
@@ -45,6 +46,7 @@
             keyName="name"
             titleName="name"
             placeholder="选择付款人"
+            :filterable="true"
             @change="selectOrderStaff($event)"
           >
             <template #bottom>
@@ -405,7 +407,7 @@ export default {
       // totalParams: {},
       pagination: {
         page: 1,
-        pageSize: 20,
+        pageSize: 1000,
         total: 0
       },
       params: {
@@ -675,10 +677,10 @@ export default {
     //加载供应商列表
     loadSupplier() {
       this.loading = true;
-      Supplier.list(this.queryParams)
-        .then(({ data: { results, total } }) => {
-          this.SupplierDataList = results || [];
-          this.pagination.total = total;
+      Supplier.select()
+        .then(({ data }) => {
+          this.SupplierDataList = data || [];
+          // this.pagination.total = total;
         })
         .finally(() => (this.loading = false));
     },
@@ -708,15 +710,15 @@ export default {
         .finally(() => (this.loading = false));
     },
     selectSupplier(e) {
-      this.form.supplierId = e?.id;
-      this.form.totalAmountsOwed = e?.balance;
+      this.form.supplierId = e?.id || null;
+      this.form.totalAmountsOwed = e?.balance || null;
 
       this.form = {
         ...this.form
       };
     },
     selectOrderStaff(e) {
-      this.form.orderStaffId = e.id;
+      this.form.orderStaffId = e?.id || null;
     },
     changeAccount(value, row) {
       const selectedItem = this.settlementAccount.find(
@@ -789,6 +791,7 @@ export default {
           row.currentVerifyAmount = 0;
         }
       });
+      message.success('已核销');
       this.$refs.table.updateFooter();
     },
     sourceForm(URL) {

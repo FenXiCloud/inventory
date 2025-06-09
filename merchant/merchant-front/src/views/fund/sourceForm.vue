@@ -32,8 +32,11 @@
 
         <vxe-column title="订单编号" field="salesOrderNo" width="200" />
         <vxe-column title="业务类别" field="businessType">
-          <template #default="{ row }">
-            {{ row.businessType == 1 ? '普通销售' : '' }}
+          <template v-if="URL == 'OrderReceipt'" #default="{ row }">
+            {{ row.businessType == 1 ? '销售出库单' : '' }}
+          </template>
+          <template v-else-if="URL == 'OrderPayment'" #default="{ row }">
+            {{ row.businessType == 1 ? '采购入库单' : '' }}
           </template>
         </vxe-column>
 

@@ -245,6 +245,7 @@ export default {
 }
 
 .left {
+  min-width: 300px; /* 最小宽度 */
   width: 300px; /* 固定宽度 */
   padding: 20px;
   //background-color: #f8e1e1;
@@ -253,6 +254,7 @@ export default {
 .right {
   flex: 1; /* 占用剩余空间 */
   padding: 20px;
+   min-width: 100px; /* 保证最小宽度 */
   //background-color: #b8b7b7;
 }
 

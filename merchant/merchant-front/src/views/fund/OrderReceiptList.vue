@@ -20,6 +20,7 @@
               keyName="name"
               titleName="name"
               placeholder="选择客户"
+              :filterable="true"
               @change="selectCustomer($event)"
             >
               <!-- <template #bottom>
@@ -45,6 +46,7 @@
             keyName="name"
             titleName="name"
             placeholder="选择业务员"
+            :filterable="true"
             @change="selectOrderStaff($event)"
           >
             <template #bottom>
@@ -405,7 +407,7 @@ export default {
       // totalParams: {},
       pagination: {
         page: 1,
-        pageSize: 20,
+        pageSize: 100,
         total: 0
       },
       params: {
@@ -675,10 +677,10 @@ export default {
     //加载客户列表
     loadCustomer() {
       this.loading = true;
-      Customer.list(this.queryParams)
-        .then(({ data: { results, total } }) => {
-          this.customerDataList = results || [];
-          this.pagination.total = total;
+      Customer.select()
+        .then(({ data }) => {
+          this.customerDataList = data || [];
+          // this.pagination.total = total;
         })
         .finally(() => (this.loading = false));
     },
@@ -707,16 +709,17 @@ export default {
         })
         .finally(() => (this.loading = false));
     },
+
     selectCustomer(e) {
-      this.form.customerId = e?.id;
-      this.form.totalAmountsOwed = e?.balance;
+      this.form.customerId = e?.id || null;
+      this.form.totalAmountsOwed = e?.balance || null;
 
       this.form = {
         ...this.form
       };
     },
     selectOrderStaff(e) {
-      this.form.orderStaffId = e.id;
+      this.form.orderStaffId = e?.id || null;
     },
     changeAccount(value, row) {
       const selectedItem = this.settlementAccount.find(
@@ -789,6 +792,7 @@ export default {
           row.currentVerifyAmount = 0;
         }
       });
+      message.success('已核销');
       this.$refs.table.updateFooter();
     },
     sourceForm() {

@@ -7,6 +7,7 @@
 
           <div style="position: relative">
             <Select
+              :deletable="false"
               v-model="form.type"
               class="w-120px z-index-1"
               :datas="businessTypeList"
@@ -25,6 +26,7 @@
 
           <div style="position: relative">
             <Select
+              :filterable="true"
               v-model="form.personnelName"
               class="w-120px z-index-1"
               :datas="customerDataList"
@@ -48,6 +50,7 @@
 
           <div style="position: relative">
             <Select
+             :filterable="true"
               v-model="form.personnelName"
               class="w-120px z-index-1"
               :datas="supplierDataList"
@@ -67,6 +70,7 @@
         <div class="h-input-group">
           <span class="h-input-addon ml-8px">业务员</span>
           <Select
+            :filterable="true"
             ref="selectRef"
             style="z-index: 1"
             v-model="form.orderStaffName"
@@ -247,9 +251,9 @@
         <vxe-column field="businessNo" title="源单编号"></vxe-column>
         <vxe-column field="businessType" title="业务类别">
           <template #default="{ row }">
-            <span v-if="row.businessType">{{
-              form.type == 1 ? "普通销售" : "普通采购"
-            }}</span>
+            <span v-if="row.businessType == '2'">期初余额</span>
+            <span v-else-if="form.type =='1'">普通销售</span>
+            <span v-else>普通采购</span>
           </template>
         </vxe-column>
         <vxe-column field="businessDate" title="单据日期"></vxe-column>
@@ -305,35 +309,6 @@
     </vxe-toolbar>
 
     <div class="mb-10px"></div>
-    <!-- <div class="flex justify-between items-center pt-5px">
-      <vxe-pager
-        perfect
-        @page-change="loadList(false)"
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :layouts="[
-          'PrevJump',
-          'PrevPage',
-          'Number',
-          'NextPage',
-          'NextJump',
-          'Sizes',
-          'Total'
-        ]"
-      >
-        <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-          <vxe-button
-            @click="loadList(false)"
-            type="text"
-            size="mini"
-            icon="h-icon-refresh"
-            :loading="loading"
-          ></vxe-button>
-        </template>
-      </vxe-pager>
-    </div> -->
   </div>
 </template>
 <script>
@@ -366,12 +341,6 @@ export default {
       trigger: "click",
       mode: "cell",
     };
-    const accountOptions = [
-      // { name: '现金', id: 'cash' },
-      // { name: '银行', id: 'bank_deposit' },
-      // { name: '微信', id: 'wechat_pay' },
-      // { name: '支付宝', id: 'alipay' }
-    ];
 
     return {
       logContent: null,
@@ -394,16 +363,12 @@ export default {
       tableData2,
       customerDataList: [],
       supplierDataList: [], //供应商列表
+      customOrSupplierBalance:0, //客户或供应商余额
       orderStaffList: [],
-      paymentMethodList: [],
       totalTb1: 0,
       totalTb2: 0,
-      // customerData: {},
-      // orderStaffData: {},
 
       loading: false,
-      amountTotal: 0,
-      // totalParams: {},
       pagination: {
         page: 1,
         pageSize: 20,
@@ -419,7 +384,6 @@ export default {
       showFooter: true,
 
       editConfig,
-      accountOptions,
     };
   },
   watch: {},
@@ -496,8 +460,8 @@ export default {
         updateBy: this.user.admin.id,
         orderStatus: "已保存", //||已审核
       };
-      if (this.form.orderDate == "") {
-        return layer.msg("请选择日期");
+      if (!this.form.orderDate || this.form.orderDate == "") {
+        return layer.msg("请选择单据日期");
       }
       if (type === "audit") {
         order.orderStatus = orderStatus;
@@ -519,8 +483,10 @@ export default {
         return message.error("请选择客户");
       } else if (this.form.type == "2" && !this.form.personnelId) {
         return message.error("请选择供应商");
-      } else if (!this.tableData.length || !this.tableData2.length) {
+      } else if (!this.tableData[0].businessId || !this.tableData2[0].businessId) {
         return message.error("请选择核销单据");
+      }else if(this.tableData2[0].currentVerifyAmount&&this.tableData2[0].currentVerifyAmount == 0){
+        return message.error("本次核销金额不可为0");
       }
       const isEqual = this.checkTotalVerificationAmountEqual();
       if (!isEqual) {
@@ -651,10 +617,9 @@ export default {
     //加载客户列表
     loadCustomer() {
       this.loading = true;
-      Customer.list(this.queryParams)
-        .then(({ data: { results, total } }) => {
-          this.customerDataList = results || [];
-          this.pagination.total = total;
+      Customer.select()
+        .then((results) => {
+          this.customerDataList = results.data || [];
         })
         .finally(() => (this.loading = false));
     },
@@ -676,29 +641,13 @@ export default {
         })
         .finally();
     },
-    loadPaymentMethod() {
-      this.loading = true;
-      PaymentMethod.list()
-        .then(({ data }) => {
-          this.paymentMethodList = data;
-        })
-        .finally(() => (this.loading = false));
-    },
-    loadAccountMethod() {
-      this.loading = true;
-      Account.list()
-        .then(({ data }) => {
-          this.settlementAccount = data;
-        })
-        .finally(() => (this.loading = false));
-    },
     selectBusinessType($event) {
       this.clerarData();
-      this.form.type = $event.type;
+      this.form.type = $event?.type;
     },
     selectPerson(e) {
       this.form.personnelId = e?.id;
-
+      this.customOrSupplierBalance = e?.balance;
       this.form = {
         ...this.form,
       };
@@ -707,29 +656,10 @@ export default {
     },
     selectOrderStaff(e) {
       this.form.orderStaffId = e ? e.id : null;
-      this.form.orderStaffId = e ? e.name : null;
+      this.form.orderStaffName = e ? e.name : null;
     },
     selectBlur() {
       debugger;
-    },
-    changeAccount(value, row) {
-      const selectedItem = this.settlementAccount.find(
-        (item) => item.name === value
-      );
-      if (selectedItem) {
-        row.settlementAccountId = selectedItem.id; // 设置 id
-      }
-
-      console.log(row, "changeAccount");
-    },
-    changePaymentMethod(value, row) {
-      console.log(value, "changePaymentMethod");
-      const selectedItem = this.paymentMethodList.find(
-        (item) => item.name === value
-      );
-      if (selectedItem) {
-        row.paymentMethodId = selectedItem.id; // 设置 id
-      }
     },
     addOrderStaff() {
       // this.$refs.selectRef.hidePanel();
@@ -767,6 +697,7 @@ export default {
       }
       this.form.sourceType = sourceType;
       let params = { ...this.form };
+      params.balance = this.customOrSupplierBalance
       let layerId = layer.open({
         title: "选择源单",
         shadeClose: false,
@@ -842,11 +773,14 @@ export default {
       });
     },
     autoReconciliation() {
+      if (!this.tableData[0].businessId || !this.tableData2[0].businessId) {
+        return layer.msg("请先选择需要核销的记录");
+      }
+
       this.initTableData();
 
       const tempTable1 = this.tableData.map((item) => ({ ...item }));
       const tempTable2 = this.tableData2.map((item) => ({ ...item }));
-
       for (let i = 0; i < tempTable2.length; i++) {
         const table2Item = tempTable2[i];
         let availableAmount = new Big(table2Item.unverifiedAmount);
@@ -921,8 +855,6 @@ export default {
     this.loadCustomer();
     this.loadSupplier();
     this.loadOrderStaff();
-    this.loadPaymentMethod();
-    this.loadAccountMethod();
     setTimeout(() => {
       this.getLog();
     }, 500);

@@ -90,6 +90,11 @@
           width="130"
         />
         <vxe-column title="单据编号" field="orderNo" width="200" />
+        <vxe-column title="订单类型" field="orderType" width="200">
+          <template #default="{ row }">
+            {{ row.orderType == 1 ? '收款单' : '预收款单' }}
+          </template>
+        </vxe-column>
         <vxe-column title="源单编号" field="salesOrderNo" width="200">
           <template #default="{ row }">
             <div

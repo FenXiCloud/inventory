@@ -155,9 +155,9 @@ export default {
         title: "系统提示",
         content: `确认要「${enabled ? "启用" : "禁用"}」名称：${row.name}?`,
         onConfirm: () => {
-          Product.save({id: row.id, enabled}).then(() => {
+          Product.update({id: row.id, enabled}).then(() => {
             message("操作成功~");
-            this.loadList();
+            this.loadProduct();
           })
         }
       })

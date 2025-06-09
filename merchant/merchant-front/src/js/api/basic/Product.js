@@ -23,6 +23,9 @@ export default {
 	select(param) {
 		return Ajax.get('/product/select', param)
 	},
+	update(param) {
+		return Ajax.post('/product/updateById', param)
+	},
 	// loadToOrder(param) {
 	// 	return Ajax.get('/product/loadTo/order', param)
 	// },

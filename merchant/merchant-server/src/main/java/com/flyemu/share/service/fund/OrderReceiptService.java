@@ -124,7 +124,7 @@ public class OrderReceiptService extends AbsService {
     }
 
     public PageResults<OrderReceiptQueryVO> query(OrderReceiptService.Query query, Page page) {
-        JPAQuery<OrderReceipt> mainQuery = jqf.select(qOrderReceipt).from(qOrderReceipt).where(query.builder).orderBy(qOrderReceipt.orderDate.desc());
+        JPAQuery<OrderReceipt> mainQuery = jqf.select(qOrderReceipt).from(qOrderReceipt).where(query.builder).orderBy(qOrderReceipt.id.desc());
 
         List<OrderReceipt> mainList = mainQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
 

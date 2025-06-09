@@ -513,9 +513,9 @@ public class OrderPaymentService extends AbsService {
         List<OrderPaymentCollection> collections = dto.getCollectionList();
         validatePaymentVerificationRules(orderPayment, items);
         if (CollectionUtils.isEmpty(items)) {
-            orderPayment.setOrderType(1); // 预付款单
+          orderPayment.setOrderType(2);
         } else {
-            orderPayment.setOrderType(2); // 付款单
+          orderPayment.setOrderType(1);
         }
 
         if (orderPayment.getOrderStatus() == null) {

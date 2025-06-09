@@ -164,9 +164,9 @@ public class OrderReceiptService extends AbsService {
         List<OrderReceiptCollection> collections = dto.getCollectionList();
         validateReceiptVerificationRules(orderReceipt, items);
         if (CollectionUtils.isEmpty(items)) {
-            orderReceipt.setOrderType(1);
-        } else {
             orderReceipt.setOrderType(2);
+        } else {
+            orderReceipt.setOrderType(1);
         }
 
 
@@ -760,7 +760,7 @@ public class OrderReceiptService extends AbsService {
             }
         }
 
-        public void setOrderStatus(Integer orderType) {
+        public void setOrderType(Integer orderType) {
             if (orderType != null) {
                 builder.and(qOrderReceipt.orderType.eq(orderType));
             }

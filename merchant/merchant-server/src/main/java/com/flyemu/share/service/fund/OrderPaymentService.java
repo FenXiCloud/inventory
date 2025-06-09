@@ -10,6 +10,7 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.entity.purchase.PurchaseOrder;
+import com.flyemu.share.entity.purchase.QPurchaseInbound;
 import com.flyemu.share.entity.purchase.QPurchaseOrder;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
@@ -72,7 +73,7 @@ public class OrderPaymentService extends AbsService {
     private final static QOrderPaymentCollection qCollection = QOrderPaymentCollection.orderPaymentCollection;
     private final static QSupplier qSupplier = QSupplier.supplier;
     private final static QOrderStaff qOrderStaff = QOrderStaff.orderStaff;
-    private final static QPurchaseOrder qPurchaseOrder = QPurchaseOrder.purchaseOrder;
+    private final static QPurchaseInbound qPurchaseOrderInbound = QPurchaseInbound.purchaseInbound;
 
     private final static QOtherExpense qOtherExpense = QOtherExpense.otherExpense;
     private final CodeRuleService codeRuleService;
@@ -1073,7 +1074,7 @@ public class OrderPaymentService extends AbsService {
             throw new ServiceException("供应商ID不能为空");
         }
 
-        QPurchaseOrder qPurchaseOrder = QPurchaseOrder.purchaseOrder;
+        QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
 
         NumberExpression<BigDecimal> paymentVerifySum = qOrderPaymentItem.currentVerifyAmount.sum()
                 .coalesce(BigDecimal.ZERO);
@@ -1086,31 +1087,31 @@ public class OrderPaymentService extends AbsService {
         ).coalesce(BigDecimal.ZERO);
 
         NumberExpression<BigDecimal> totalVerifiedExpr = paymentVerifySum.add(verificationVerifySum);
-        NumberExpression<BigDecimal> unverifiedExpr = qPurchaseOrder.finalAmount.subtract(totalVerifiedExpr);
+        NumberExpression<BigDecimal> unverifiedExpr = qPurchaseInbound.finalAmount.subtract(totalVerifiedExpr);
 
         JPAQuery<PurchaseOrderWithVerification> mainQuery = jqf.select(
                         Projections.fields(
                                 PurchaseOrderWithVerification.class,
-                                qPurchaseOrder.id.as("salesOrderId"),
-                                qPurchaseOrder.orderNo.as("salesOrderNo"),
-                                qPurchaseOrder.orderDate.as("businessDate"),
-                                qPurchaseOrder.finalAmount.as("documentAmount"),
+                                qPurchaseInbound.id.as("salesOrderId"),
+                                qPurchaseInbound.orderNo.as("salesOrderNo"),
+                                qPurchaseInbound.inboundDate.as("businessDate"),
+                                qPurchaseInbound.finalAmount.as("documentAmount"),
                                 totalVerifiedExpr.as("verifiedAmount"),
                                 unverifiedExpr.as("unverifiedAmount")
                         )
                 )
-                .from(qPurchaseOrder)
-                .leftJoin(qOrderPaymentItem).on(qOrderPaymentItem.businessId.eq(qPurchaseOrder.id))
+                .from(qPurchaseInbound)
+                .leftJoin(qOrderPaymentItem).on(qOrderPaymentItem.businessId.eq(qPurchaseInbound.id))
                 .leftJoin(qVerificationItem).on(
-                        qVerificationItem.businessId.eq(qPurchaseOrder.id.intValue())
+                        qVerificationItem.businessId.eq(qPurchaseInbound.id.intValue())
                                 .and(qVerificationItem.businessType.eq(2))
                 )
                 .leftJoin(qVerification).on(
                         qVerification.id.eq(qVerificationItem.verificationId)
                                 .and(qVerification.orderStatus.eq(OrderStatus.已审核))
                 )
-                .where(query.builder.and(qPurchaseOrder.orderStatus.eq(OrderStatus.已审核)))
-                .groupBy(qPurchaseOrder.id, qPurchaseOrder.orderNo, qPurchaseOrder.orderDate, qPurchaseOrder.finalAmount)
+                .where(query.builder.and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核)))
+                .groupBy(qPurchaseInbound.id, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qPurchaseInbound.finalAmount)
                 .having(unverifiedExpr.gt(BigDecimal.ZERO));
 
         List<PurchaseOrderWithVerification> result = mainQuery.offset(page.getOffset())
@@ -1260,26 +1261,26 @@ public class OrderPaymentService extends AbsService {
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
-                builder.and(qPurchaseOrder.merchantId.eq(merchantId));
+                builder.and(qPurchaseOrderInbound.merchantId.eq(merchantId));
             }
         }
 
         public void setOrderNo(String orderNo) {
             if (orderNo != null) {
-                builder.and(qPurchaseOrder.orderNo.like("%" + orderNo + "%"));
+                builder.and(qPurchaseOrderInbound.orderNo.like("%" + orderNo + "%"));
             }
         }
 
         public void setAccountBookId(Long accountBookId) {
             if (accountBookId != null) {
-                builder.and(qPurchaseOrder.accountBookId.eq(accountBookId));
+                builder.and(qPurchaseOrderInbound.accountBookId.eq(accountBookId));
             }
         }
 
         public void setSupplierId(Long supplierId) {
             this.supplierId = supplierId;
             if (supplierId != null) {
-                builder.and(qPurchaseOrder.supplierId.eq(supplierId));
+                builder.and(qPurchaseOrderInbound.supplierId.eq(supplierId));
             }
 
         }

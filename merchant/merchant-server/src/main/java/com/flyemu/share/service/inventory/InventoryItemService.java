@@ -122,7 +122,13 @@ public class InventoryItemService extends AbsService {
             //更新
             InventoryItem original = inventoryItemRepository.getById(inventoryItem.getId());
             BeanUtil.copyProperties(inventoryItem, original, CopyOptions.create().ignoreNullValue());
+            if (original.getInventoryDate() == null) {
+                original.setInventoryDate(new Date());
+            }
             return inventoryItemRepository.save(original);
+        }
+        if (inventoryItem.getInventoryDate() == null) {
+            inventoryItem.setInventoryDate(new Date());
         }
         return inventoryItemRepository.save(inventoryItem);
     }
@@ -440,6 +446,7 @@ public class InventoryItemService extends AbsService {
             inventoryItem.setAccountBookId(inventoryInitialForm.getAccountBookId());
             inventoryItem.setMerchantId(inventoryInitialForm.getMerchantId());
             inventoryItem.setCreatedBy(inventoryInitialForm.getCreatedBy());
+            inventoryItem.setInventoryDate(new Date());
             inventoryItem.setCreatedAt(LocalDateTime.now());
             if (inventoryItem.getId() != null) {
                 //更新

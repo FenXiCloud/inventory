@@ -43,7 +43,7 @@ public class VerificationCollection {
     //关联采购单编号
     private String businessNo;
     //业务类型
-    private Integer businessType;
+    private String businessType;
     //业务日期
     private Date businessDate;
     //业务源单据备注

@@ -122,7 +122,7 @@ public class VerificationService extends AbsService {
         subtableProcessing(items, verification, collections);
 
         if (OrderStatus.已审核.equals(verification.getOrderStatus())) {
-            updateBalance(verification, items);
+            updateBalance(verification, items,1);
             int direction = OrderStatus.已审核.equals(verification.getOrderStatus()) ? 1 : -1;
             // 处理预收款单
             handleOrderReceiptOrPayment(verification, direction);
@@ -178,25 +178,42 @@ public class VerificationService extends AbsService {
             return;
         }
 
-
         Set<Integer> businessIdSet = new HashSet<>();
 
         for (VerificationCollection item : items) {
             Integer businessId = item.getBusinessId();
             Integer businessType = verification.getType();
-
+            if (item.getUnverifiedAmount() == null){
+                throw new ServiceException("未核销金额不能为空");
+            }
+            if(item.getUnverifiedAmount().compareTo(BigDecimal.ZERO) < 0){
+                throw new ServiceException("未核销金额不能小于0");
+            }
             if (businessIdSet.contains(businessId)) {
                 throw new ServiceException("不能重复引用同一订单：" + businessId);
             }
             businessIdSet.add(businessId);
 
-            // 查询该订单的总金额和历史核销金额
-            BigDecimal totalAmount = getOrderTotalAmount(businessType, businessId);
-            BigDecimal verifiedAmount = getTotalVerifiedAmount(businessType, businessId);
+            BigDecimal totalAmount;
+            BigDecimal verifiedAmount;
+
+            // 判断是否是虚拟订单
+            if (businessId == -1) {
+                Long personnelId = verification.getPersonnelId();
+                Customer customer = customerRepository.findById(personnelId)
+                        .orElseThrow(() -> new ServiceException("客户不存在"));
+
+                totalAmount = customer.getBalance();
+                verifiedAmount = BigDecimal.ZERO;
+            } else {
+                totalAmount = getOrderTotalAmount(businessType, businessId);
+                verifiedAmount = getTotalVerifiedAmount(businessType, businessId);
+            }
 
             // 剩余未核销金额
             BigDecimal unverifiedAmount = totalAmount.subtract(verifiedAmount);
             BigDecimal currentVerifyAmount = item.getCurrentVerifyAmount();
+
             if (currentVerifyAmount == null || currentVerifyAmount.compareTo(BigDecimal.ZERO) < 0) {
                 throw new ServiceException("核销金额必须大于0：" + businessId);
             }
@@ -206,6 +223,7 @@ public class VerificationService extends AbsService {
             }
         }
     }
+
 
     private BigDecimal getTotalVerifiedAmount(Integer businessType, Integer businessId) {
         if (businessId == null) {
@@ -298,27 +316,39 @@ public class VerificationService extends AbsService {
     /**
      * 更新客户或供应商余额
      */
-    private void updateBalance(Verification verification, List<VerificationItem> items) {
-
+    private void updateBalance(Verification verification, List<VerificationItem> items, int direction) {
         BigDecimal totalVerifyAmount = BigDecimal.ZERO;
         for (VerificationItem item : items) {
             if (item.getCurrentVerifyAmount() != null) {
                 totalVerifyAmount = totalVerifyAmount.add(item.getCurrentVerifyAmount());
             }
         }
-        if (verification.getType() == 1) { // 预收冲应收
+
+        if (totalVerifyAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        if (verification.getType() == 1) {
             Long customerId = verification.getPersonnelId();
             Customer customer = customerRepository.findById(customerId)
                     .orElseThrow(() -> new ServiceException("客户不存在"));
 
-            customer.setBalance(customer.getBalance().subtract(totalVerifyAmount));
+            if (direction == 1) {
+                customer.setBalance(customer.getBalance().subtract(totalVerifyAmount));
+            } else {
+                customer.setBalance(customer.getBalance().add(totalVerifyAmount));
+            }
             customerRepository.save(customer);
-        } else if (verification.getType() == 2) { // 预付冲应付
+        } else if (verification.getType() == 2) {
             Long supplierId = verification.getPersonnelId();
             Supplier supplier = supplierRepository.findById(supplierId)
                     .orElseThrow(() -> new ServiceException("供应商不存在"));
 
-            supplier.setBalance(supplier.getBalance().subtract(totalVerifyAmount));
+            if (direction == 1) {
+                supplier.setBalance(supplier.getBalance().subtract(totalVerifyAmount));
+            } else {
+                supplier.setBalance(supplier.getBalance().add(totalVerifyAmount));
+            }
             supplierRepository.save(supplier);
         }
     }
@@ -410,7 +440,7 @@ public class VerificationService extends AbsService {
             if (items == null || items.isEmpty()) {
                 throw new ServiceException("核销明细不能为空");
             }
-            updateBalance(verification, items);
+            updateBalance(verification, items,direction);
             handleOrderReceiptOrPayment(verification, direction);
         }
     }
@@ -426,6 +456,9 @@ public class VerificationService extends AbsService {
             BigDecimal verifyAmount = collection.getCurrentVerifyAmount();
 
             if (verifyAmount == null || verifyAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            if (businessId == -1) {
                 continue;
             }
             boolean isVerify = direction == 1;

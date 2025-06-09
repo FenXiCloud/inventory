@@ -46,6 +46,7 @@ import com.flyemu.share.way.ProductExistenceChecker;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQuery;
+import com.querydsl.jpa.impl.JPAUpdateClause;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,7 +72,6 @@ import java.util.stream.Collectors;
  */
 @Service
 @Slf4j
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ProductService extends AbsService {
 
@@ -426,6 +426,21 @@ public class ProductService extends AbsService {
 
     public Map<Long, CustomerLevelPrice> customerLevelPrice(Long productId, Long merchantId, Long accountBookId) {
         return jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(productId).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).fetch().stream().collect(Collectors.toMap(c -> c.getCustomerLevelId(), b -> b));
+    }
+
+    public void updateById(Product product, Long merchantId, Long accountBookId) {
+        if (product.getId() == null) {
+            throw new ServiceException("商品ID不能为空");
+        }
+        if (product.getEnabled() == null) {
+            throw new ServiceException("状态不能为空");
+        }
+        Product existing = productRepository.findById(product.getId())
+                .orElseThrow(() -> new ServiceException("商品不存在"));
+
+        existing.setEnabled(product.getEnabled());
+        productRepository.save(existing);
+
     }
 
     @Data

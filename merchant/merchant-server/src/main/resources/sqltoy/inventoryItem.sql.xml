@@ -149,6 +149,78 @@
             ]]>
         </value>
     </sql>
+    <sql id="inventoryItemVoucherList">
+        <value>
+            <![CDATA[
+                SELECT
+                    *
+                FROM
+                    (
+                        SELECT
+                            jii.id AS id,
+                            0 AS sn,
+                            jii.warehouse_id AS warehouseId,
+                            jii.batch_number AS batchNumber,
+                            jp.id AS productId,
+                            jp.`code` AS productCode,
+                            jp.`name` AS productName,
+                            jp.product_category_id AS productCategoryId,
+                            jpc.`name` AS productCategoryName,
+                            jp.specification AS productSpecification,
+                            jii.created_at AS createdAt,
+                            jii.quantity AS quantity,
+                            jii.order_id AS orderId,
+                            jw.`name` AS warehouseName,
+                            jii.operation_type AS operationType,
+                            jp.remarks AS productRemarks,
+                            ju.`name` AS unitName,
+                            js.`id` AS supplierId,
+                            js.`name` AS supplierName,
+                            jc.`id` AS customerId,
+                            jc.`name` AS customerName,
+                            jii.unit_price AS unitPrice,
+                            jii.subtotal AS subtotal,
+                            jii.current_quantity AS currentQuantity,
+                            jii.total_cost AS totalCost,
+                            jii.summary_quantity AS summaryQuantity,
+                            jii.summary_cost AS summaryCost,
+                            jii.average_cost AS averageCost,
+                            jii.summary_average AS summaryAverage,
+                            jii.inventory_date AS inventoryDate,
+                            jfv.voucher_id AS voucherId,
+                            jfv.`code` AS voucherCode
+                        FROM
+                            jxc_inventory_item jii
+                            LEFT JOIN jxc_product jp ON (jp.id = jii.product_id)
+                            LEFT JOIN jxc_product_category jpc ON (jpc.id = jp.product_category_id)
+                            LEFT JOIN jxc_warehouse jw ON (jw.id = jii.warehouse_id)
+                            LEFT JOIN jxc_unit ju ON (ju.id = jp.unit_id)
+                            LEFT JOIN jxc_customer jc ON (jc.id = jii.customer_id)
+                            LEFT JOIN jxc_supplier js ON (js.id = jii.supplier_id)
+                            LEFT JOIN jxc_finance_voucher jfv ON (jfv.order_id = jii.id)
+                        WHERE
+                            jii.merchant_id = :merchantId
+                            AND jp.id IS NOT NULL
+                            AND jii.account_book_id = :accountBookId
+                            AND jii.operation_type <> '期初余额'
+                            AND jii.operation_type <> '期初库存'
+		                    #[AND jii.inventory_date BETWEEN :startDate AND :endDate]
+		                    #[AND (jii.batch_number like :filter OR jp.`name` like :filter)]
+		                    #[AND js.id in (:supplierIds)]
+                            #[AND jp.id in (:productIds)]
+                            #[AND jw.id in (:warehouseIds)]
+                            #[AND jpc.id in (:productCategoryIds)]
+                            #[AND jc.id in (:customerIds)]
+                            #[AND jii.operation_type in (:operationTypes)]
+                    ) t
+                ORDER BY
+                    t.productId ASC,
+                    t.sn DESC,
+                    t.inventoryDate ASC,
+                    t.id ASC
+            ]]>
+        </value>
+    </sql>
     <sql id="inventoryItemSummaryInitList">
         <value>
             <![CDATA[

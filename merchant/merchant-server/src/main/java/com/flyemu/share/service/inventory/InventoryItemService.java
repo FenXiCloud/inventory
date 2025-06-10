@@ -325,7 +325,13 @@ public class InventoryItemService extends AbsService {
         Date start = query.getStart();
         map.put("initDate", Objects.requireNonNullElseGet(start, Date::new));
         org.sagacity.sqltoy.model.Page sqlPage = new org.sagacity.sqltoy.model.Page(page.getSize(), page.getPage());
-        org.sagacity.sqltoy.model.Page<InventoryItemReportDto> findPage = lazyDao.findPageBySql(sqlPage, "inventoryItemReportList", map, InventoryItemReportDto.class);
+        Boolean exclusion = query.getExclusion();
+        org.sagacity.sqltoy.model.Page<InventoryItemReportDto> findPage;
+        if (exclusion != null && exclusion) {
+            findPage = lazyDao.findPageBySql(sqlPage, "inventoryItemVoucherList", map, InventoryItemReportDto.class);
+        } else {
+            findPage = lazyDao.findPageBySql(sqlPage, "inventoryItemReportList", map, InventoryItemReportDto.class);
+        }
         return new PageResults<>(findPage.getRows(), page, findPage.getRecordCount());
     }
 

@@ -245,8 +245,12 @@ public class InventoryItemService extends AbsService {
                 inventoryItem.setCurrentQuantity(currentQuantity);
                 inventoryItem.setTotalCost(totalCost);
                 if (!OperationType.成本调整.equals(inventoryItem.getOperationType())) {
-                    BigDecimal averageCost = totalCost.divide(new BigDecimal(currentQuantity), 2, RoundingMode.HALF_UP);
-                    inventoryItem.setAverageCost(averageCost);
+                    if (currentQuantity == 0) {
+                        inventoryItem.setAverageCost(BigDecimal.ZERO);
+                    } else {
+                        BigDecimal averageCost = totalCost.divide(new BigDecimal(currentQuantity), 2, RoundingMode.HALF_UP);
+                        inventoryItem.setAverageCost(averageCost);
+                    }
                 }
                 inventoryItemRepository.save(inventoryItem);
             }
@@ -302,8 +306,12 @@ public class InventoryItemService extends AbsService {
                 inventoryItem.setSummaryQuantity(summaryQuantity);
                 inventoryItem.setSummaryCost(summaryCost);
                 if (!OperationType.成本调整.equals(inventoryItem.getOperationType())) {
-                    BigDecimal averageCost = summaryCost.divide(new BigDecimal(summaryQuantity), 2, RoundingMode.HALF_UP);
-                    inventoryItem.setSummaryAverage(averageCost);
+                    if (summaryQuantity == 0) {
+                        inventoryItem.setSummaryAverage(BigDecimal.ZERO);
+                    } else {
+                        BigDecimal averageCost = summaryCost.divide(new BigDecimal(summaryQuantity), 2, RoundingMode.HALF_UP);
+                        inventoryItem.setSummaryAverage(averageCost);
+                    }
                 } else {
                     inventoryItem.setSummaryAverage(inventoryItem.getAverageCost());
                 }

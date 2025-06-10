@@ -63,7 +63,7 @@
                                     #[AND jw.id in (:warehouseIds)]
                                     #[AND jpc.id in (:productCategoryIds)]
                                     #[AND jc.id in (:customerIds)]
-                                    #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初入库']
+                                    #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
                                     GROUP BY product_id, warehouse_id
                                 )
                             )
@@ -82,7 +82,7 @@
                             #[AND jw.id in (:warehouseIds)]
                             #[AND jpc.id in (:productCategoryIds)]
                             #[AND jc.id in (:customerIds)]
-                            #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初入库']
+                            #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
                             UNION
                         SELECT
                             jii.id AS id,
@@ -128,9 +128,10 @@
                             LEFT JOIN jxc_finance_voucher jfv ON (jfv.order_id = jii.id)
                         WHERE
                             jii.merchant_id = :merchantId
+                            AND jp.id IS NOT NULL
                             AND jii.account_book_id = :accountBookId
                             AND jii.operation_type <> '期初余额'
-                            AND jii.operation_type <> '期初入库'
+                            AND jii.operation_type <> '期初库存'
 		                    #[AND jii.inventory_date BETWEEN :startDate AND :endDate]
 		                    #[AND (jii.batch_number like :filter OR jp.`name` like :filter)]
 		                    #[AND js.id in (:supplierIds)]
@@ -205,7 +206,7 @@
                         #[AND jw.id in (:warehouseIds)]
                         #[AND jpc.id in (:productCategoryIds)]
                         #[AND jc.id in (:customerIds)]
-                        #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初入库']
+                        #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
                         GROUP BY product_id, warehouse_id
                     )
                 )
@@ -226,7 +227,7 @@
                     #[AND jw.id in (:warehouseIds)]
                     #[AND jpc.id in (:productCategoryIds)]
                     #[AND jc.id in (:customerIds)]
-                    #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初入库']
+                    #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
                 GROUP BY jii.product_id, jii.warehouse_id
             ]]>
         </value>
@@ -258,7 +259,7 @@
                         #[AND jw.id in (:warehouseIds)]
                         #[AND jpc.id in (:productCategoryIds)]
                         #[AND jc.id in (:customerIds)]
-                        #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初入库']
+                        #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
                         GROUP BY product_id, warehouse_id
                     )
                 )
@@ -280,7 +281,7 @@
                     #[AND jw.id in (:warehouseIds)]
                     #[AND jpc.id in (:productCategoryIds)]
                     #[AND jc.id in (:customerIds)]
-                    #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初入库']
+                    #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
             ]]>
         </value>
     </sql>

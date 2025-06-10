@@ -41,6 +41,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -405,7 +406,7 @@ public class PurchaseReturnService extends AbsService {
                 List<InventoryItem> inventoryItems = new ArrayList<>();
                 List<PurchaseReturnItem> returnItems = purchaseReturnItemRepository.findByPurchaseReturnId(id);
                 //处理库存
-                this.getComputedInventory(returnItems, inventories, inventoryItems, purchaseReturn.getSupplierId(), purchaseReturn.getOrderNo());
+                this.getComputedInventory(returnItems, inventories, inventoryItems, purchaseReturn);
                 inventories.forEach(item -> {
                     if (OrderStatus.已审核.equals(state)) {
                         // 减库存
@@ -420,7 +421,7 @@ public class PurchaseReturnService extends AbsService {
     }
 
     private void getComputedInventory(List<PurchaseReturnItem> returnItems, List<Inventory> inventories,
-                                      List<InventoryItem> inventoryItems, Long supplierId, String orderNo) {
+                                      List<InventoryItem> inventoryItems, PurchaseReturn purchaseReturn) {
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         returnItems.forEach(purchaseReturnItem -> {
@@ -453,7 +454,7 @@ public class PurchaseReturnService extends AbsService {
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(purchaseReturnItem, supplierId, orderNo);
+            InventoryItem inventoryItem = getInventoryItem(purchaseReturnItem, purchaseReturn);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
@@ -463,21 +464,21 @@ public class PurchaseReturnService extends AbsService {
      * 获取库存明细列表
      *
      * @param purchaseReturnItem 入库明细
-     * @param supplierId         供应商id
      * @return inventoryItem
      */
-    private InventoryItem getInventoryItem(PurchaseReturnItem purchaseReturnItem, Long supplierId, String orderNo) {
+    private InventoryItem getInventoryItem(PurchaseReturnItem purchaseReturnItem, PurchaseReturn purchaseReturn) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setWarehouseId(purchaseReturnItem.getWarehouseId());
         inventoryItem.setProductId(purchaseReturnItem.getProductId());
         double parsed = Double.parseDouble(purchaseReturnItem.getQuantity().toString());
         inventoryItem.setQuantity((int) parsed);
         inventoryItem.setBaseUnitId(purchaseReturnItem.getBaseUnitId());
-        inventoryItem.setSupplierId(supplierId);
+        inventoryItem.setSupplierId(purchaseReturn.getSupplierId());
         inventoryItem.setOperationType(OperationType.采购退货);
         inventoryItem.setBaseUnitId(purchaseReturnItem.getBaseUnitId());
         inventoryItem.setOrderId(purchaseReturnItem.getPurchaseReturnId());
-        inventoryItem.setBatchNumber(orderNo);
+        inventoryItem.setBatchNumber(purchaseReturn.getOrderNo());
+        inventoryItem.setInventoryDate(Date.from(purchaseReturn.getReturnDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         inventoryItem.setMerchantId(purchaseReturnItem.getMerchantId());
         inventoryItem.setAccountBookId(purchaseReturnItem.getAccountBookId());
         inventoryItem.setCreatedAt(LocalDateTime.now());

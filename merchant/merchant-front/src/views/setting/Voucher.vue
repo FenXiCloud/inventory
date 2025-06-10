@@ -144,7 +144,7 @@ export default {
     return {
       loading: false,
       documentTypeDataList: [
-        {id: 1, documentType: '期初余额', type: 1},
+        // {id: 1, documentType: '期初余额', type: 1},
         {id: 2, documentType: '采购入库', type: 1},
         {id: 3, documentType: '销售退货', type: 1},
         {id: 4, documentType: '其他入库', type: 1},
@@ -159,7 +159,7 @@ export default {
       ],
       dataList: [],
       params: {
-        type: '期初余额',
+        type: '采购入库',
       },
       pagination: {
         page: 1,

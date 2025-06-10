@@ -39,7 +39,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -461,7 +463,7 @@ public class SalesOutboundService extends AbsService {
         List<InventoryItem> inventoryItems = new ArrayList<>();
         List<SalesOutboundItem> outboundItems = jqf.selectFrom(qSalesOutboundItem).where(qSalesOutboundItem.salesOutboundId.eq(original.getId())).fetch();
         //处理库存
-        this.getComputedInventory(outboundItems, inventories, inventoryItems, original.getCustomerId(), original.getOrderNo());
+        this.getComputedInventory(outboundItems, inventories, inventoryItems, original);
         inventories.forEach(item -> {
             if (OrderStatus.已审核.equals(original.getOrderStatus())) {
                 // 减库存
@@ -474,7 +476,7 @@ public class SalesOutboundService extends AbsService {
     }
 
     private void getComputedInventory(List<SalesOutboundItem> outboundItems, List<Inventory> inventories,
-                                      List<InventoryItem> inventoryItems, Long customerId, String orderNo) {
+                                      List<InventoryItem> inventoryItems, SalesOutbound salesOutbound) {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         outboundItems.forEach(otherOutboundItem -> {
@@ -515,13 +517,13 @@ public class SalesOutboundService extends AbsService {
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, customerId, orderNo);
+            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, salesOutbound);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
     }
 
-    private InventoryItem getInventoryItem(SalesOutboundItem otherOutboundItem, Long customerId, String orderNo) {
+    private InventoryItem getInventoryItem(SalesOutboundItem otherOutboundItem, SalesOutbound salesOutbound) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(otherOutboundItem.getProductId());
         inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
@@ -532,9 +534,10 @@ public class SalesOutboundService extends AbsService {
         inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
         inventoryItem.setOrderId(otherOutboundItem.getSalesOutboundId());
         inventoryItem.setMerchantId(otherOutboundItem.getMerchantId());
-        inventoryItem.setBatchNumber(orderNo);
+        inventoryItem.setBatchNumber(salesOutbound.getOrderNo());
         inventoryItem.setAccountBookId(otherOutboundItem.getAccountBookId());
-        inventoryItem.setCustomerId(customerId);
+        inventoryItem.setCustomerId(salesOutbound.getCustomerId());
+        inventoryItem.setInventoryDate(Date.from(salesOutbound.getOutboundDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(otherOutboundItem.getCreatedBy());
         inventoryItem.setUnitPrice(otherOutboundItem.getUnitPrice());

@@ -678,6 +678,20 @@ export default {
         this.$store.commit('SET_TAB_DATA', {refresh: true});
       });
     },
+    loadData() {
+      PurchaseInbound.load(this.orderId).then(({data: {purchaseInbound, purchaseInboundItemList}}) => {
+        if (purchaseInbound) {
+          CopyObj(this.form, purchaseInbound);
+          this.supplierId = purchaseInbound.supplierId
+          if ('copy' === this.type) {
+            this.form.id = null;
+          }
+        }
+        this.loadProductsBySupplier();
+        this.productData = purchaseInboundItemList || [];
+        this.productData.push({isNew: true});
+      })
+    }
   },
   beforeDestroy() {
     confirm({
@@ -701,18 +715,7 @@ export default {
       }
       //订单详情/编辑订单
       if (this.orderId) {
-        PurchaseInbound.load(this.orderId).then(({data: {purchaseInbound, purchaseInboundItemList}}) => {
-          if (purchaseInbound) {
-            CopyObj(this.form, purchaseInbound);
-            this.supplierId = purchaseInbound.supplierId
-            if ('copy' === this.type) {
-              this.form.id = null;
-            }
-          }
-          this.loadProductsBySupplier();
-          this.productData = purchaseInboundItemList || [];
-          this.productData.push({isNew: true});
-        })
+        this.loadData()
       }
     }).finally(() => loading.close());
   },

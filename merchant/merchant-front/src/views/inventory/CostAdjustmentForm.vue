@@ -274,6 +274,27 @@ export default {
               this.costAdjustmentData[rowIndex].productUnitName = item.unitName;
               this.costAdjustmentData[rowIndex].productUnitId = item.unitId;
               this.costAdjustmentData[rowIndex].purchasePrice = item.purchasePrice;
+              const warehouseId = this.costAdjustmentData[rowIndex].warehouseId;
+              if (!warehouseId) {
+                let find = this.warehouseList.find(warehouse => {
+                  return warehouse.systemDefault;
+                });
+                if (find) {
+                  const warehouseId = find.id;
+                  this.costAdjustmentData[rowIndex].warehouseId = warehouseId;
+                  // 根据id获取仓库信息
+                  Warehouse.list({id: warehouseId}).then(res => {
+                    console.info("Warehouse res:", res);
+                    const {success, data} = res;
+                    if (success) {
+                      const item = data[0];
+                      this.costAdjustmentData[rowIndex].warehouseName = item.name;
+                      this.costAdjustmentData[rowIndex].warehouseId = item.id;
+                      this.$forceUpdate();
+                    }
+                  });
+                }
+              }
               this.$forceUpdate();
             }
           });

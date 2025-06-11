@@ -6,6 +6,8 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.OtherIncome;
 import com.flyemu.share.service.fund.OtherIncomeService;
+import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
+import com.flyemu.share.service.fund.dto.OtherIncomeDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -24,36 +26,34 @@ public class OtherIncomeController {
 
     private final OtherIncomeService otherIncomeService;
 
-    @GetMapping
+    @GetMapping("list")
     public JsonResult list(Page page, OtherIncomeService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(otherIncomeService.query(page, query));
     }
 
-    @PostMapping
-    public JsonResult save(@RequestBody @Valid OtherIncome otherIncome, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        otherIncome.setMerchantId(merchantId);
-        otherIncome.setAccountBookId(accountBookId);
+    @PostMapping("save")
+    public JsonResult save(@RequestBody @Valid OtherIncomeDTO otherIncome, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        otherIncome.getOrder().setMerchantId(merchantId);
+        otherIncome.getOrder().setAccountBookId(accountBookId);
         otherIncomeService.save(otherIncome);
         return JsonResult.successful();
     }
-
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid OtherIncome otherIncome) {
-        otherIncomeService.save(otherIncome);
+    @PostMapping("updateStatus")
+    public JsonResult updateStatus(@RequestBody OrderPaymentUpdateDTO orderReceipt) {
+        otherIncomeService.updateStatus(orderReceipt);
+        return JsonResult.successful();
+    }
+    @DeleteMapping("/delete")
+    public JsonResult delete(@RequestBody OrderPaymentUpdateDTO otherIncomeId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        otherIncomeService.delete(otherIncomeId.getId(), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @DeleteMapping("/{otherIncomeId}")
-    public JsonResult delete(@PathVariable Long otherIncomeId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        otherIncomeService.delete(otherIncomeId, merchantId, accountBookId);
-        return JsonResult.successful();
-    }
-
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(otherIncomeService.select(merchantId, accountBookId));
+    @GetMapping("selectById")
+    public JsonResult selectById(Long id) {
+        return JsonResult.successful(otherIncomeService.selectById(id));
     }
 
 }

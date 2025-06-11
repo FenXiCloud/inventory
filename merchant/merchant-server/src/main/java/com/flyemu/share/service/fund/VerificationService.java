@@ -69,6 +69,9 @@ public class VerificationService extends AbsService {
         if (dto.getOrder().getOrderStatus() == null) {
             throw new ServiceException("状态为空");
         }
+        if (dto.getOrder().getType() == null) {
+            throw new ServiceException("类型为空");
+        }
         if (OrderStatus.已审核.equals(dto.getOrder().getOrderStatus())) {
             if (dto.getOrder().getApprovedBy() == null) {
                 throw new ServiceException("已审核状态,审核人必填");
@@ -81,7 +84,10 @@ public class VerificationService extends AbsService {
         if (items == null || items.isEmpty()) {
             throw new ServiceException("核销明细不能为空");
         }
-        validateVerificationItems(dto.getOrder(), dto.getItemList());
+        if (collections == null || collections.isEmpty()) {
+            throw new ServiceException("核销单据不能为空");
+        }
+        validateVerificationItems(dto.getOrder(), dto.getCollectionList());
         Verification verification = dto.getOrder();
 
         if (verification.getId() != null) {
@@ -104,6 +110,7 @@ public class VerificationService extends AbsService {
             verification.setCreatedAt(LocalDateTime.now());
             assignOrderNumber(verification);
         } else {
+            verification.setUpdateAt(LocalDateTime.now());
             Verification byId = verificationRepository.getById(verification.getId());
             if (!OrderStatus.已保存.equals(byId.getOrderStatus())) {
                 throw new ServiceException("该单据不是【已保存】状态，无法修改");
@@ -115,7 +122,10 @@ public class VerificationService extends AbsService {
         subtableProcessing(items, verification, collections);
 
         if (OrderStatus.已审核.equals(verification.getOrderStatus())) {
-            updateBalance(verification, items);
+            updateBalance(verification, items,1);
+            int direction = OrderStatus.已审核.equals(verification.getOrderStatus()) ? 1 : -1;
+            // 处理预收款单
+            handleOrderReceiptOrPayment(verification, direction);
         }
 
         return verification;
@@ -155,7 +165,7 @@ public class VerificationService extends AbsService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             if (totalCollectionAmount.compareTo(totalItemVerifyAmount) != 0) {
-                throw new ServiceException("收款账户总金额必须等于所选订单的本次核销金额总和");
+                throw new ServiceException("核销单总金额必须等于所选订单的本次核销金额总和");
             }
         }
     }
@@ -163,30 +173,47 @@ public class VerificationService extends AbsService {
     /**
      * 核销单明细校验
      */
-    private void validateVerificationItems(Verification verification, List<VerificationItem> items) {
+    private void validateVerificationItems(Verification verification, List<VerificationCollection> items) {
         if (items == null || items.isEmpty()) {
             return;
         }
 
-
         Set<Integer> businessIdSet = new HashSet<>();
 
-        for (VerificationItem item : items) {
+        for (VerificationCollection item : items) {
             Integer businessId = item.getBusinessId();
-            Integer businessType = item.getBusinessType();
-
+            Integer businessType = verification.getType();
+            if (item.getUnverifiedAmount() == null){
+                throw new ServiceException("未核销金额不能为空");
+            }
+            if(item.getUnverifiedAmount().compareTo(BigDecimal.ZERO) < 0){
+                throw new ServiceException("未核销金额不能小于0");
+            }
             if (businessIdSet.contains(businessId)) {
                 throw new ServiceException("不能重复引用同一订单：" + businessId);
             }
             businessIdSet.add(businessId);
 
-            // 查询该订单的总金额和历史核销金额
-            BigDecimal totalAmount = getOrderTotalAmount(businessType, businessId);
-            BigDecimal verifiedAmount = getTotalVerifiedAmount(businessType, businessId);
+            BigDecimal totalAmount;
+            BigDecimal verifiedAmount;
+
+            // 判断是否是虚拟订单
+            if (businessId == -1) {
+                Long personnelId = verification.getPersonnelId();
+                Customer customer = customerRepository.findById(personnelId)
+                        .orElseThrow(() -> new ServiceException("客户不存在"));
+
+                totalAmount = customer.getBalance();
+                verifiedAmount = BigDecimal.ZERO;
+            } else {
+                totalAmount = getOrderTotalAmount(businessType, businessId);
+                verifiedAmount = getTotalVerifiedAmount(businessType, businessId);
+            }
 
             // 剩余未核销金额
             BigDecimal unverifiedAmount = totalAmount.subtract(verifiedAmount);
             BigDecimal currentVerifyAmount = item.getCurrentVerifyAmount();
+
             if (currentVerifyAmount == null || currentVerifyAmount.compareTo(BigDecimal.ZERO) < 0) {
                 throw new ServiceException("核销金额必须大于0：" + businessId);
             }
@@ -196,6 +223,7 @@ public class VerificationService extends AbsService {
             }
         }
     }
+
 
     private BigDecimal getTotalVerifiedAmount(Integer businessType, Integer businessId) {
         if (businessId == null) {
@@ -225,7 +253,9 @@ public class VerificationService extends AbsService {
                 )
                 .fetchOne();
 
-        return verifiedFromOriginal.add(verifiedFromVerifications);
+        return Optional.of(verifiedFromOriginal).orElse(BigDecimal.ZERO)
+                .add(Optional.ofNullable(verifiedFromVerifications).orElse(BigDecimal.ZERO));
+
     }
 
     private BigDecimal getOrderTotalAmount(Integer businessType, Integer businessId) {
@@ -286,33 +316,45 @@ public class VerificationService extends AbsService {
     /**
      * 更新客户或供应商余额
      */
-    private void updateBalance(Verification verification, List<VerificationItem> items) {
-
+    private void updateBalance(Verification verification, List<VerificationItem> items, int direction) {
         BigDecimal totalVerifyAmount = BigDecimal.ZERO;
         for (VerificationItem item : items) {
             if (item.getCurrentVerifyAmount() != null) {
                 totalVerifyAmount = totalVerifyAmount.add(item.getCurrentVerifyAmount());
             }
         }
-        if (verification.getType() == 1) { // 预收冲应收
+
+        if (totalVerifyAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        if (verification.getType() == 1) {
             Long customerId = verification.getPersonnelId();
             Customer customer = customerRepository.findById(customerId)
                     .orElseThrow(() -> new ServiceException("客户不存在"));
 
-            customer.setBalance(customer.getBalance().subtract(totalVerifyAmount));
+            if (direction == 1) {
+                customer.setBalance(customer.getBalance().subtract(totalVerifyAmount));
+            } else {
+                customer.setBalance(customer.getBalance().add(totalVerifyAmount));
+            }
             customerRepository.save(customer);
-        } else if (verification.getType() == 2) { // 预付冲应付
+        } else if (verification.getType() == 2) {
             Long supplierId = verification.getPersonnelId();
             Supplier supplier = supplierRepository.findById(supplierId)
                     .orElseThrow(() -> new ServiceException("供应商不存在"));
 
-            supplier.setBalance(supplier.getBalance().subtract(totalVerifyAmount));
+            if (direction == 1) {
+                supplier.setBalance(supplier.getBalance().subtract(totalVerifyAmount));
+            } else {
+                supplier.setBalance(supplier.getBalance().add(totalVerifyAmount));
+            }
             supplierRepository.save(supplier);
         }
     }
 
     public PageResults<VerificationQueryVO> query(Page page, VerificationService.Query query) {
-        JPAQuery<Verification> mainQuery = jqf.select(qVerification).from(qVerification).where(query.builder);
+        JPAQuery<Verification> mainQuery = jqf.select(qVerification).from(qVerification).where(query.builder).orderBy(qVerification.id.desc());
         List<Verification> mainList = mainQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
         long total = mainQuery.fetchCount();
         List<VerificationQueryVO> voList = new ArrayList<>();
@@ -334,17 +376,11 @@ public class VerificationService extends AbsService {
         return new PageResults<>(voList, page, total);
     }
 
-    private BigDecimal getTotalVerifyAmount(Long verificationId) {
-        return jqf.select(qVerificationItem.currentVerifyAmount.sum())
-                .from(qVerificationItem)
-                .where(qVerificationItem.verificationId.eq(verificationId))
-                .fetchOne();
-    }
-
     @Transactional
     public void updateStatus(OrderPaymentUpdateDTO dto) {
         String ids = dto.getId();
         OrderStatus targetStatus = dto.getOrderStatus();
+
         if (StringUtils.isBlank(ids)) {
             throw new ServiceException("请选择要操作的数据");
         }
@@ -354,6 +390,7 @@ public class VerificationService extends AbsService {
         if (dto.getApprovedBy() == null) {
             throw new ServiceException("请选择审核人");
         }
+
         List<Long> idList = Arrays.stream(ids.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
@@ -391,34 +428,109 @@ public class VerificationService extends AbsService {
                 .where(qVerification.id.in(idList))
                 .execute();
 
+        boolean isAudit = OrderStatus.已审核.equals(targetStatus);
+        int direction = isAudit ? 1 : -1;
 
         for (Verification verification : verifications) {
-            BigDecimal totalVerifyAmount = getTotalVerifyAmount(verification.getId());
+            List<VerificationItem> items = jqf.select(qVerificationItem)
+                    .from(qVerificationItem)
+                    .where(qVerificationItem.verificationId.eq(verification.getId()))
+                    .fetch();
 
-            if (verification.getType() == 1) { // 预收冲应收
-                Customer customer = customerRepository.findById(verification.getPersonnelId())
-                        .orElseThrow(() -> new ServiceException("客户不存在"));
-
-                if (targetStatus == OrderStatus.已审核) {
-                    customer.setBalance(customer.getBalance().subtract(totalVerifyAmount));
-                } else {
-                    customer.setBalance(customer.getBalance().add(totalVerifyAmount));
-                }
-
-                customerRepository.save(customer);
-
-            } else if (verification.getType() == 2) { // 预付冲应付
-                Supplier supplier = supplierRepository.findById(verification.getPersonnelId())
-                        .orElseThrow(() -> new ServiceException("供应商不存在"));
-
-                if (targetStatus == OrderStatus.已审核) {
-                    supplier.setBalance(supplier.getBalance().subtract(totalVerifyAmount));
-                } else {
-                    supplier.setBalance(supplier.getBalance().add(totalVerifyAmount));
-                }
-
-                supplierRepository.save(supplier);
+            if (items == null || items.isEmpty()) {
+                throw new ServiceException("核销明细不能为空");
             }
+            updateBalance(verification, items,direction);
+            handleOrderReceiptOrPayment(verification, direction);
+        }
+    }
+
+    private void handleOrderReceiptOrPayment(Verification verification, int direction) {
+        List<VerificationCollection> collections = jqf.select(qVerificationCollection)
+                .from(qVerificationCollection)
+                .where(qVerificationCollection.verificationId.eq(verification.getId()))
+                .fetch();
+        for (VerificationCollection collection : collections) {
+            Integer businessType = verification.getType();
+            Integer businessId = collection.getBusinessId();
+            BigDecimal verifyAmount = collection.getCurrentVerifyAmount();
+
+            if (verifyAmount == null || verifyAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            if (businessId == -1) {
+                continue;
+            }
+            boolean isVerify = direction == 1;
+            if (businessType == 1) {
+                OrderReceipt receipt = orderReceiptRepository.findById(Long.valueOf(businessId))
+                        .orElseThrow(() -> new ServiceException("收款单不存在"));
+                updateReceiptVerificationStatus(receipt, verifyAmount, isVerify);
+                orderReceiptRepository.save(receipt);
+
+            } else if (businessType == 2) {
+                OrderPayment payment = orderPaymentRepository.findById(Long.valueOf(businessId))
+                        .orElseThrow(() -> new ServiceException("付款单不存在"));
+                updatePaymentVerificationStatus(payment, verifyAmount, isVerify);
+                orderPaymentRepository.save(payment);
+            }
+        }
+    }
+
+
+    private void updateReceiptVerificationStatus(OrderReceipt receipt, BigDecimal verifyAmount, boolean isVerify) {
+        if (receipt.getHasVerificationAmount() == null) {
+            receipt.setHasVerificationAmount(BigDecimal.ZERO);
+        }
+        BigDecimal newVerifiedAmount = isVerify ?
+                receipt.getHasVerificationAmount().add(verifyAmount) :
+                receipt.getHasVerificationAmount().subtract(verifyAmount);
+
+        if (newVerifiedAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ServiceException("收款单【" + receipt.getOrderNo() + "】本单已核销金额不能为负数");
+        }
+
+        if (newVerifiedAmount.compareTo(receipt.getShouldVerificationAmount()) > 0) {
+            throw new ServiceException("收款单【" + receipt.getOrderNo() + "】本单已核销金额不能超过应核销金额");
+        }
+
+        receipt.setHasVerificationAmount(newVerifiedAmount);
+        receipt.setNotVerificationAmount(receipt.getShouldVerificationAmount().subtract(newVerifiedAmount));
+        if (newVerifiedAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            receipt.setWriteOffStatus(0); // 未核销
+        } else if (newVerifiedAmount.compareTo(receipt.getShouldVerificationAmount()) >= 0) {
+            receipt.setWriteOffStatus(2); // 全部核销
+        } else {
+            receipt.setWriteOffStatus(1); // 部分核销
+        }
+    }
+
+
+    private void updatePaymentVerificationStatus(OrderPayment payment, BigDecimal verifyAmount, boolean isVerify) {
+        if (payment.getHasVerificationAmount() == null) {
+            payment.setHasVerificationAmount(BigDecimal.ZERO);
+        }
+
+        BigDecimal newVerifiedAmount = isVerify ?
+                payment.getHasVerificationAmount().add(verifyAmount) :
+                payment.getHasVerificationAmount().subtract(verifyAmount);
+
+        if (newVerifiedAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ServiceException("付款单【" + payment.getOrderNo() + "】本单已核销金额不能为负数");
+        }
+
+        if (newVerifiedAmount.compareTo(payment.getShouldVerificationAmount()) > 0) {
+            throw new ServiceException("付款单【" + payment.getOrderNo() + "】本单已核销金额不能超过应核销金额");
+        }
+        payment.setHasVerificationAmount(newVerifiedAmount);
+        payment.setNotVerificationAmount(payment.getShouldVerificationAmount().subtract(newVerifiedAmount));
+
+        if (newVerifiedAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            payment.setWriteOffStatus(0); // 未核销
+        } else if (newVerifiedAmount.compareTo(payment.getShouldVerificationAmount()) >= 0) {
+            payment.setWriteOffStatus(2); // 全部核销
+        } else {
+            payment.setWriteOffStatus(1); // 部分核销
         }
     }
 
@@ -502,7 +614,7 @@ public class VerificationService extends AbsService {
                                 qVerification.orderDate,
                                 qVerification.orderStaffId,
                                 qVerification.orderStaffName,
-                                qCreatedByUser.name.as("creatorName"),
+                                qCreatedByUser.name.as("createName"),
                                 qUpdatedByUser.name.as("updateName"),
                                 qApprovedByUser.name.as("approvedName"),
                                 qVerification.merchantId,
@@ -547,6 +659,36 @@ public class VerificationService extends AbsService {
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
                 builder.and(qVerification.merchantId.eq(merchantId));
+            }
+        }
+
+        public void setStartTime(String startTime) {
+            if (StringUtils.isNotEmpty(startTime)) {
+                builder.and(qVerification.createdAt.goe(LocalDateTime.parse(startTime + "T00:00:00")));
+            }
+        }
+
+        public void setEndTime(String endTime) {
+            if (StringUtils.isNotEmpty(endTime)) {
+                builder.and(qVerification.createdAt.loe(LocalDateTime.parse(endTime + "T23:59:59")));
+            }
+        }
+
+        public void setOrderStatus(OrderStatus orderStatus) {
+            if (orderStatus != null) {
+                builder.and(qVerification.orderStatus.eq(orderStatus));
+            }
+        }
+
+        public void setOrderType(Integer orderType) {
+            if (orderType != null) {
+                builder.and(qVerification.type.eq(orderType));
+            }
+        }
+
+        public void setOrderNo(String orderNo) {
+            if (StringUtils.isNotEmpty(orderNo)) {
+                builder.and(qVerification.orderNo.like("%" + orderNo + "%"));
             }
         }
 

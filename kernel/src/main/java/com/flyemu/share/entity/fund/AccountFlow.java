@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.fund;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table
 @DynamicUpdate
+@JsonInclude()
 public class AccountFlow implements Serializable {
 
     @Id
@@ -33,10 +35,17 @@ public class AccountFlow implements Serializable {
     @Comment("账户Id")
     @Column(nullable = false)
     private Long accountId;
+    @Comment("账户名称")
+    private String accountName;
+    @Comment("业务编号")
+    private String businessNo;
 
     @Comment("单据Id")
     private Long voucherId;
-
+    @Comment("货商Id")
+    private Long supplierId;
+    @Comment("客户Id")
+    private Long customerId;
     @Comment("操作类型")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -45,6 +54,18 @@ public class AccountFlow implements Serializable {
     @Comment("金额")
     @Column(nullable = false)
     private BigDecimal amount;
+    @Comment("收入")
+    private BigDecimal income;
+    @Comment("支出")
+    private BigDecimal spending;
+    @Comment("交易对方")
+    private Long correspondentsId;
+    @Comment("交易对方名称")
+    private String correspondentsName;
+    @Comment("收付款人Id")
+    private Long amountOperatorId;
+    @Comment("收付款人名称")
+    private String amountOperatorName;
 
     @Comment("交易前余额")
     private BigDecimal balanceBefore;

@@ -45,8 +45,10 @@
         <vxe-column field="productName" title="商品名称" min-width="300">
           <template #default="scope">
             <div class="h-input-group goodsSelect" v-if="!looked">
-              <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable :equalWidth="false"
-                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="changeRow(scope, 'product')">
+              <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable
+                      :equalWidth="false"
+                      placeholder="输入编码/名称" keyName="id" titleName="customName"
+                      @change="changeRow(scope, 'product')">
                 <template v-slot:top>
                   <table class="h-table" style="width: 100%">
                     <thead class="h-table-header">
@@ -190,6 +192,7 @@ import OtherInbound from "@js/api/inventory/OtherInbound";
 import Inventory from "@js/api/inventory/Inventory";
 import {mapMutations, mapState} from "vuex";
 import Stamp from "../common/Stamp.vue";
+import warehouse from "../../js/api/basic/Warehouse";
 
 export default {
   name: "OtherInboundForm",
@@ -296,7 +299,7 @@ export default {
       ];
     },
     // 设置行数据
-    changeRow({rowIndex}, type) {
+    changeRow: function ({rowIndex}, type) {
       switch (type) {
         case 'product': {
           const value = this.otherInboundData[rowIndex].productId;
@@ -316,6 +319,27 @@ export default {
               this.otherInboundData[rowIndex].productCategoryName = item.productCategoryName;
               this.otherInboundData[rowIndex].productUnitName = item.unitName;
               this.otherInboundData[rowIndex].productUnitId = item.unitId;
+              const warehouseId = this.otherInboundData[rowIndex].warehouseId;
+              if (!warehouseId) {
+                let find = this.warehouseList.find(warehouse => {
+                  return warehouse.systemDefault;
+                });
+                if (find) {
+                  const warehouseId = find.id;
+                  this.otherInboundData[rowIndex].warehouseId = warehouseId;
+                  // 根据id获取仓库信息
+                  Warehouse.list({id: warehouseId}).then(res => {
+                    console.info("Warehouse res:", res);
+                    const {success, data} = res;
+                    if (success) {
+                      const item = data[0];
+                      this.otherInboundData[rowIndex].warehouseName = item.name;
+                      this.otherInboundData[rowIndex].warehouseId = item.id;
+                      this.$forceUpdate();
+                    }
+                  });
+                }
+              }
               this.$forceUpdate();
             }
           });

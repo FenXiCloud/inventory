@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.basic;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,12 +17,13 @@ import java.math.BigDecimal;
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
+@JsonInclude
 @Getter
 @Setter
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint( columnNames = {"merchantId","accountBookId","name"})
+        @UniqueConstraint(columnNames = {"merchantId", "accountBookId", "name"})
 })
 public class Supplier {
 

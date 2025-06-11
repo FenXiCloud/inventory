@@ -2,20 +2,14 @@
   <div class="modal-column">
     <div class="modal-column-full-body">
       <Form :label-width="110" ref="form" :model="model" :rules="validationRules" mode="single">
-        <FormItem label="账户类别" required prop="accountType">
-          <Select placeholder="请选择账户类别" v-model="model.accountType" dict="accountTypes"/>
+        <FormItem label="职员编号" required prop="code">
+          <Input placeholder="请输入编号" v-model="model.code"/>
         </FormItem>
-        <FormItem label="账户类别名称" required prop="accountTypeItem">
-          <Select placeholder="请选择账户类别名称" v-model="model.accountTypeItem" dict="accountTypeItems"/>
-        </FormItem>
-        <FormItem label="名称" required prop="name">
+        <FormItem label="职员名称" required prop="name">
           <Input placeholder="请输入名称" maxlength="10" v-model="model.name"/>
         </FormItem>
-        <FormItem label="币别" required prop="currency">
-          <Input placeholder="请输入币别" v-model="model.currency"/>
-        </FormItem>
-        <FormItem label="账户余额" prop="balance">
-          <Input placeholder="账户余额" disabled v-model="model.balance"/>
+        <FormItem label="手机号码" required prop="phone">
+          <Input placeholder="请输入号码"  v-model="model.phone"/>
         </FormItem>
 
       </Form>
@@ -41,23 +35,19 @@
  */
 import Account from "@js/api/fund/Account";
 import {message} from "heyui.ext";
-import {CopyObj} from "@common/utils";
+import OrderReceipt from '@js/api/fund/OrderReceipt';
+import { add } from 'xe-utils';
+// import {CopyObj} from "@common/utils";
 
 export default {
   name: "OrderStaffForm",
   props: {
-    entity: Object,
   },
   data() {
     return {
       loading: false,
       model: {
-        id: null,
-        name: null,
-        currency: 'RMB',
-        accountType: '资产',
-        accountTypeItem: '银行账户',
-        balance: 0.00,
+       
       },
       validationRules: {}
     }
@@ -67,7 +57,7 @@ export default {
       let validResult = this.$refs.form.valid();
       if (validResult.result) {
         this.loading = true;
-        Account.save(this.model).then(() => {
+        OrderReceipt.orderStaffAdd(this.model).then(() => {
           message("保存成功~");
           this.$emit('success');
         }).finally(() => this.loading = false);
@@ -75,7 +65,6 @@ export default {
     }
   },
   created() {
-    CopyObj(this.model, this.entity);
   }
 }
 </script>

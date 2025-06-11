@@ -5,6 +5,7 @@ import lombok.Data;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 /**
  * 库存余额对象
@@ -27,5 +28,7 @@ public class InventoryItemBalanceDTO implements Serializable {
     private BigDecimal averageCost;
 
     private LocalDateTime createdAt;
+
+    private Date inventoryDate;
 
 }

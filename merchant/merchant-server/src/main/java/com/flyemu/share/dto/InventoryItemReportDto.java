@@ -1,14 +1,12 @@
 package com.flyemu.share.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.flyemu.share.enums.OperationType;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Data
 public class InventoryItemReportDto implements Serializable {
@@ -63,8 +61,7 @@ public class InventoryItemReportDto implements Serializable {
     /**
      * 操作类型
      */
-    @Enumerated(EnumType.STRING)
-    private OperationType operationType;
+    private String operationType;
 
     /**
      * 商品单位
@@ -103,6 +100,16 @@ public class InventoryItemReportDto implements Serializable {
     private BigDecimal totalCost;
 
     /**
+     * 结存数量
+     */
+    private Integer summaryQuantity;
+
+    /**
+     * 结存成本
+     */
+    private BigDecimal summaryCost;
+
+    /**
      * 单位数量
      */
     private Integer quantity;
@@ -116,6 +123,11 @@ public class InventoryItemReportDto implements Serializable {
      * 结存单位成本
      */
     private BigDecimal averageCost;
+
+    /**
+     * 结存单位成本
+     */
+    private BigDecimal summaryAverage;
 
     private Long supplierId;
 
@@ -140,5 +152,11 @@ public class InventoryItemReportDto implements Serializable {
      * 凭证code
      */
     private String voucherCode;
+
+    /**
+     * 单据日期
+     */
+    @JsonFormat(locale = "zh", timezone = "GMT+8", pattern = "yyyy-MM-dd")
+    private Date inventoryDate;
 
 }

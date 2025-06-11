@@ -149,7 +149,6 @@ public class AccountBookService extends AbsService {
             codeRuleService.save(rule);
         }
     }
-
     /**
      * 获取每个单据类型的默认前缀
      */

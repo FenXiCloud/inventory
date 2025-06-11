@@ -1,6 +1,8 @@
 package com.flyemu.share.service.setting;
 
-import cn.hutool.json.JSONUtil;
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.crypto.digest.DigestUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenResponse;
@@ -18,15 +20,16 @@ import com.dingtalk.api.response.OapiV2DepartmentListsubResponse;
 import com.dingtalk.api.response.OapiV2UserGetResponse;
 import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.Dept;
+import com.flyemu.share.entity.setting.Role;
+import com.flyemu.share.repository.AdminRepository;
 import com.taobao.api.ApiException;
-import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -56,6 +59,10 @@ public class DDLoginServiceImpl implements DDLoginService{
     private AdminService adminService;
     @Autowired
     private DeptService deptService;
+    @Autowired
+    private RoleService roleService;
+    @Autowired
+    private AdminRepository adminRepository;
 
     /**
      * 登录回调
@@ -164,7 +171,13 @@ public class DDLoginServiceImpl implements DDLoginService{
             OapiV2DepartmentListsubRequest req1 = new OapiV2DepartmentListsubRequest();
             //获取部门id列表
             OapiV2DepartmentListsubResponse rsp1 = client1.execute(req1, accessToken);
-            this.insertUserByDingDing(rsp1, counter, userIds);
+            //查询默认角色
+            Long roleId = null;
+            List<Role> roleList = roleService.systemDefaultRole();
+            if(!ObjectUtils.isEmpty(roleList) && roleList.size() > 0){
+                roleId = roleList.get(0).getId();
+            }
+            this.insertUserByDingDing(rsp1, counter, userIds, roleId);
         } catch (ApiException e) {
             log.error("获取钉钉用户异常：", e);
             e.printStackTrace();
@@ -208,7 +221,7 @@ public class DDLoginServiceImpl implements DDLoginService{
         return accessTokenRsp.getBody().getAccessToken();
     }
 
-    public void insertUserByDingDing(OapiV2DepartmentListsubResponse rsp1, Counter counter, Set<String> userIds) throws ApiException {
+    public void insertUserByDingDing(OapiV2DepartmentListsubResponse rsp1, Counter counter, Set<String> userIds, Long roleId) throws ApiException {
         if (ObjectUtils.isEmpty(rsp1.getResult())) {
             return;
         }
@@ -242,7 +255,7 @@ public class DDLoginServiceImpl implements DDLoginService{
             req1.setDeptId(deptBaseResponse.getDeptId());
             //获取部门id列表
             OapiV2DepartmentListsubResponse rsp11 = client1.execute(req1, accessToken);
-            this.insertUserByDingDing(rsp11, counter, userIds);
+            this.insertUserByDingDing(rsp11, counter, userIds, roleId);
 
             req2.setDeptId(deptBaseResponse.getDeptId());
             //获取部门下的员工列表
@@ -270,35 +283,53 @@ public class DDLoginServiceImpl implements DDLoginService{
 
                     Admin admin = new Admin();
                     admin.setEmail(rsp3.getResult().getEmail());
-                    admin.setUsername(rsp3.getResult().getName());
+                    admin.setUsername(rsp3.getResult().getMobile());
                     admin.setName(rsp3.getResult().getName());
                     admin.setMobile(rsp3.getResult().getMobile());
                     admin.setDeptId(sysDept.getId());
                     admin.setDingDingUserId(userId);
                     admin.setMerchantId(1L);
-                    admin.setRoleId(5L);
+                    admin.setRoleId(roleId);
+                    //如果手机号为空 取钉钉id后6位
+                    if(StringUtils.isEmpty(admin.getMobile())){
+                        admin.setMobile(admin.getDingDingUserId());
+                        admin.setUsername(userId);
+                        admin.setPassword(DigestUtil.bcrypt(admin.getDingDingUserId().substring(admin.getDingDingUserId().length() - 6)));
+                    }else{
+                        admin.setPassword(DigestUtil.bcrypt(admin.getMobile().substring(admin.getMobile().length() - 6)));
+                    }
+
                     // 验证是否存在这个用户
                     counter.sumNum++;
-//                    SysUser u = userMapper.selectUserByUserName(sysUser.getUserName());
-                    Admin u = adminService.selectAdminByUserName(admin.getUsername());
-
+                    Admin u = adminService.selectAdminByMobile(admin.getMobile());
                     if (ObjectUtils.isEmpty(u)) {
-//                        admin.setPassword(SecurityUtils.encryptPassword(password));
-                        adminService.save(admin);
+                        this.adminSave(admin);
                         counter.successNum++;
-                    } else if (u.getDeptId().equals(sysDept.getId())) {
+                    } else{
                         u.setDingDingUserId(userId);
-                        adminService.save(u);
+                        this.adminSave(u);
                         counter.failureNum++;
-                    } else {
-                        int num = adminService.queryNumByUserName(admin.getUsername() + "_");
-                        admin.setUsername(rsp3.getResult().getName() + "_" + (num + 1));
-                        adminService.save(admin);
-                        counter.successNum++;
                     }
                 }
             }
         }
+    }
+
+    /**
+     * 添加/更新用户
+     * @param admin 实体
+     */
+    private void adminSave(Admin admin) {
+        if (admin.getId() != null) {
+            Admin original = adminService.selectByPrimaryKey(admin.getId());
+            BeanUtil.copyProperties(admin, original, CopyOptions.create().ignoreNullValue());
+            adminRepository.save(original);
+        }else{
+            admin.setSystemDefault(false);
+            admin.setEnabled(true);
+            adminRepository.save(admin);
+        }
+
     }
 
 }

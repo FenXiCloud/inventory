@@ -6,12 +6,14 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.AccountTransfer;
 import com.flyemu.share.service.fund.AccountTransferService;
+import com.flyemu.share.service.fund.dto.AccountTransferDTO;
+import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * @功能描述: 收款单
+ * @功能描述: 转账单管理
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -24,36 +26,44 @@ public class AccountTransferController {
 
     private final AccountTransferService accountTransferService;
 
-    @GetMapping
-    public JsonResult list(Page page, AccountTransferService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("list")
+    public JsonResult list(Page page, AccountTransferService.Query query,
+                           @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(accountTransferService.query(page, query));
     }
 
-    @PostMapping
-    public JsonResult save(@RequestBody @Valid AccountTransfer accountTransfer, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        accountTransfer.setMerchantId(merchantId);
-        accountTransfer.setAccountBookId(accountBookId);
-        accountTransferService.save(accountTransfer);
+
+    @PostMapping("save")
+    public JsonResult save(@RequestBody @Valid AccountTransferDTO dto,
+                           @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId) {
+        dto.getOrder().setMerchantId(merchantId);
+        dto.getOrder().setAccountBookId(accountBookId);
+        accountTransferService.save(dto);
         return JsonResult.successful();
     }
 
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid AccountTransfer accountTransfer) {
-        accountTransferService.save(accountTransfer);
+
+    @DeleteMapping("delete")
+    public JsonResult delete(@RequestBody OrderPaymentUpdateDTO dto,
+                             @SaAccountBookId Long accountBookId,
+                             @SaMerchantId Long merchantId) {
+        accountTransferService.delete(dto.getId(), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @DeleteMapping("/{accountTransferId}")
-    public JsonResult delete(@PathVariable Long accountTransferId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        accountTransferService.delete(accountTransferId, merchantId, accountBookId);
+
+    @PostMapping("updateStatus")
+    public JsonResult updateStatus(@RequestBody OrderPaymentUpdateDTO dto) {
+        accountTransferService.updateStatus(dto);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(accountTransferService.select(merchantId, accountBookId));
+    @GetMapping("selectById")
+    public JsonResult selectById(Long id) {
+        return JsonResult.successful(accountTransferService.selectById(id));
     }
-
 }

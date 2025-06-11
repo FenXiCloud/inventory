@@ -35,4 +35,7 @@ export default {
     balance(param) {
         return Ajax.get('/inventoryItem/balance', param)
     },
+    reportSummary(param) {
+        return Ajax.get('/inventoryItem/reportSummary', param)
+    },
 }

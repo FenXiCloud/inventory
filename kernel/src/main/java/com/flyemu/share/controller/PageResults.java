@@ -3,8 +3,10 @@ package com.flyemu.share.controller;
 import com.blazebit.persistence.PagedList;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.Collection;
+import java.util.Collections;
 
 /**
  * @功能描述: 分页
@@ -34,7 +36,7 @@ public class PageResults<T> extends Page {
 
     public PageResults(Collection<T> results, Page page, long total) {
         this.setPage(page.getPage());
-        this.results = results;
+        this.results = results == null || CollectionUtils.isEmpty(results) ? Collections.emptyList() : results;
         this.setTotal(total);
         this.setPageSize(page.getPageSize());
         this.setTotalPage((int) Math.ceil(total / (double) page.getPageSize()));

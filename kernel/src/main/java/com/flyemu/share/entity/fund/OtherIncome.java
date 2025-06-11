@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.fund;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.flyemu.share.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -18,7 +19,7 @@ import java.time.LocalDateTime;
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
+ */@JsonInclude()
 @Getter
 @Setter
 @Entity
@@ -29,30 +30,26 @@ public class OtherIncome {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    @Comment("收支类别名称")
+    private String settlementAccount;
+    @Comment("收支类别ID")
+    private Long settlementAccountId;
     @Comment("客户ID")
     private Long customerId;
-
+    @Comment("客户名称")
+    private String customerName;
     @Comment("单据日期")
     private LocalDate orderDate;
-
     @Comment("单据编号")
     private String orderNo;
-
-    @Comment("金额")
-    private BigDecimal amount;
-
-    @Comment("已核销金额")
-    private BigDecimal verifiedAmount;
-
+    @Comment("欠款金额")
+    private BigDecimal arrearsAmount;
+    @Comment("收款到期日")
+    private LocalDate expirationDate;
     @Comment("收款金额")
     private BigDecimal collectionAmount;
-
-    @Comment("收款账户ID")
-    private Long accountId;
-
     @Comment("状态")
-    @Column(nullable = false,length = 32, columnDefinition = "varchar(20) default '已保存'")
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(20) default '已保存'")
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
 
@@ -68,9 +65,16 @@ public class OtherIncome {
     @Comment("审核时间")
     private LocalDateTime approvedAt;
 
+    @Comment("业务员ID")
+    private Long orderStaffId;
+    @Comment("业务员名称")
+    private String orderStaffName;
     @Column(nullable = false)
     private Long accountBookId;
-
+    @Comment("最后修改人")
+    private Long updateBy;
+    @Comment("最后修改时间")
+    private LocalDateTime updateAt;
     @Column(nullable = false)
     private Long merchantId;
 }

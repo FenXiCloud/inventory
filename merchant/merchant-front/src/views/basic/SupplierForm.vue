@@ -24,6 +24,16 @@
         <FormItem label="电话" prop="phone">
           <Input placeholder="电话" v-model="model.phone" />
         </FormItem>
+
+        <FormItem label="余额" required prop="balance">
+          <Input
+            placeholder="请输入余额"
+            type="number"
+            step="1"
+            min="1"
+            v-model="model.balance"
+          />
+        </FormItem>
         <FormItem label="货商分类" required prop="supplierCategoryId" single>
           <Select
             :datas="supplierCategoryList"
@@ -58,15 +68,16 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import Supplier from '@js/api/basic/Supplier';
-import { message } from 'heyui.ext';
-import { CopyObj } from '@common/utils';
-import SupplierCategory from '@js/api/basic/SupplierCategory';
+import Supplier from "@js/api/basic/Supplier";
+import { message } from "heyui.ext";
+import { CopyObj } from "@common/utils";
+import SupplierCategory from "@js/api/basic/SupplierCategory";
+import { layer } from "@layui/layer-vue";
 
 export default {
-  name: 'SupplierForm',
+  name: "SupplierForm",
   props: {
-    entity: Object
+    entity: Object,
   },
   data() {
     return {
@@ -80,24 +91,30 @@ export default {
         phone: null,
         supplierCategoryId: null,
         address: null,
-        enabled: true
+        enabled: true,
       },
-      validationRules: {}
+      validationRules: {
+        balance: [{ required: true, message: "余额不能为空" }],
+      },
     };
   },
   methods: {
     confirm() {
       let validResult = this.$refs.form.valid();
+      const num = Number(this.model.balance);
+      if (!Number.isInteger(num) || num < 1) {
+        return message("请输入有效的正整数");
+      }
       if (validResult.result) {
         this.loading = true;
         Supplier.save(this.model)
           .then(() => {
-            message('保存成功~');
-            this.$emit('success');
+            message("保存成功~");
+            this.$emit("success");
           })
           .finally(() => (this.loading = false));
       }
-    }
+    },
   },
   created() {
     CopyObj(this.model, this.entity);
@@ -106,6 +123,6 @@ export default {
         this.supplierCategoryList = results[0].data;
       })
       .finally(() => (this.loading = false));
-  }
+  },
 };
 </script>

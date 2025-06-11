@@ -5,6 +5,7 @@ import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
+import com.flyemu.share.entity.basic.Product;
 import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.service.basic.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +38,11 @@ public class ProductController {
         productService.save(productForm, merchantId,accountBookId);
         return JsonResult.successful();
     }
-
+    @PostMapping("updateById")
+    public JsonResult updateById(@RequestBody Product product, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        productService.updateById(product, merchantId,accountBookId);
+        return JsonResult.successful();
+    }
     @GetMapping("/get/{productId}")
     public JsonResult loadProduct(@PathVariable Long productId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(productService.loadById(productId, merchantId));

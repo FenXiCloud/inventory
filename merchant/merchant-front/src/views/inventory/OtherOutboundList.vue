@@ -298,7 +298,9 @@ export default {
             this.productList = results[0].data || [];
             this.warehouseList = results[1].data || [];
             this.customerList = results[2].data || [];
-            callback();
+            if (callback) {
+              callback();
+            }
           })
           .finally(() => loading.close());
     },

@@ -25,14 +25,14 @@ public class VerificationController {
 
     private final VerificationService verificationService;
 
-    @GetMapping
+    @GetMapping("list")
     public JsonResult list(Page page, VerificationService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(verificationService.query(page, query));
     }
 
-    @PostMapping
+    @PostMapping("save")
     public JsonResult save(@RequestBody VerificationSaveDTO verification, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         verification.getOrder().setMerchantId(merchantId);
         verification.getOrder().setAccountBookId(accountBookId);

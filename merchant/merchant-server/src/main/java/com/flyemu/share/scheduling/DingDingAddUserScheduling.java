@@ -18,8 +18,7 @@ public class DingDingAddUserScheduling {
     @Autowired
     private DDLoginService loginService;
 
-    //    @Scheduled(cron = "10 * * * * ?")
-    @Scheduled(cron = "0 0 23 * * ?")
+//    @Scheduled(cron = "0 0 23 * * ?")
     public void scheduledMethod() {
         loginService.addUserByDingDing();
     }

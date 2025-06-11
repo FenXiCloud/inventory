@@ -67,10 +67,10 @@
         <vxe-column title="商品名称" field="productName" width="200"/>
         <vxe-column title="商品类别" field="productCategoryName" width="200"/>
         <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
-        <vxe-column title="单据日期" field="createdAt" width="120">
+        <vxe-column title="单据日期" field="inventoryDate" width="120">
           <template #default="{ row }">
             <div v-if="row.operationType !== '期初余额'">
-              {{ row.createdAt }}
+              {{ row.inventoryDate }}
             </div>
             <div v-else>
             </div>
@@ -171,9 +171,9 @@
           </vxe-column>
         </vxe-colgroup>
         <vxe-colgroup title="结存" align="center">
-          <vxe-column title="基本单位数量" field="currentQuantity" align="center" width="100"/>
-          <vxe-column title="单位成本" field="averageCost" align="center" width="100"/>
-          <vxe-column title="成本" field="totalCost" align="center" width="100"/>
+          <vxe-column title="基本单位数量" field="summaryQuantity" align="center" width="100"/>
+          <vxe-column title="单位成本" field="summaryAverage" align="center" width="100"/>
+          <vxe-column title="成本" field="summaryCost" align="center" width="100"/>
         </vxe-colgroup>
       </vxe-table>
     </div>
@@ -181,6 +181,7 @@
       <vxe-pager perfect @page-change="loadList(false)"
                  v-model:current-page="pagination.page"
                  v-model:page-size="pagination.pageSize"
+                 v-model:page-sizes="pagination.pageSizes"
                  :total="pagination.total"
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
@@ -217,7 +218,13 @@ export default {
       totalParams: {},
       pagination: {
         page: 1,
-        pageSize: 20,
+        pageSize: 1000,
+        pageSizes: [
+          {label: "300条/页", value: 300},
+          {label: "500条/页", value: 500},
+          {label: "1000条/页", value: 1000},
+          {label: "2000条/页", value: 2000},
+        ],
         total: 0
       },
       params: {
@@ -255,7 +262,9 @@ export default {
         "盘亏出库": "盘亏出库",
         "其他出库": "其他出库",
         "成本调整": "成本调整",
-      }
+      },
+      summaryQuantity: 0,
+      summaryCost: 0
     }
   },
   computed: {
@@ -275,8 +284,6 @@ export default {
       let outQuantity = 0;
       let inTotal = 0;
       let outTotal = 0;
-      let currentQuantity = 0;
-      let totalCost = 0;
       data.forEach((row) => {
         let rd = row['quantity'];
         if (rd) {
@@ -299,19 +306,7 @@ export default {
           }
         }
       });
-      data.forEach((row) => {
-        let rd = row['currentQuantity'];
-        if (rd) {
-          currentQuantity += Number(rd || 0);
-        }
-      });
-      data.forEach((row) => {
-        let rd = row['totalCost'];
-        if (rd) {
-          totalCost += Number(rd || 0);
-        }
-      });
-      return [['合计', '', '', '', '', '', '', '', '', '', '', inQuantity, inQuantity, '', inTotal.toFixed(2), outQuantity, outQuantity, '', outTotal.toFixed(2), currentQuantity, '', totalCost.toFixed(2)]];
+      return [['合计', '', '', '', '', '', '', '', '', '', '', inQuantity, inQuantity, '', inTotal.toFixed(2), outQuantity, outQuantity, '', outTotal.toFixed(2), this.summaryQuantity, '', this.summaryCost.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -339,11 +334,17 @@ export default {
       params.customerIds = params.customerIds.join(",");
       params.operationTypes = params.operationTypes.join(",");
       params.productCategoryIds = params.productCategoryIds.join(",");
-      params.isReport = true;
-      InventoryItem.report(params).then(({data: {results, total}}) => {
-        this.dataList = results || [];
-        this.pagination.total = total;
-      }).finally(() => this.loading = false);
+      Promise.all([InventoryItem.reportSummary(params)]).then((promiseResults) => {
+        const data = promiseResults[0].data;
+        if (data) {
+          this.summaryQuantity = data.summaryQuantity || 0;
+          this.summaryCost = data.summaryCost || 0;
+        }
+        InventoryItem.report(params).then(({data: {results, total}}) => {
+          this.dataList = results || [];
+          this.pagination.total = total;
+        }).finally(() => this.loading = false);
+      });
     },
     getAbsoluteValue(number) {
       if (number < 0) {
@@ -361,7 +362,6 @@ export default {
       params.operationTypes = params.operationTypes.join(",");
       params.page = 1;
       params.pageSize = 99999;
-      params.isReport = true;
       InventoryItem.report(params).then(({data: {results, total}}) => {
         let dataList = results || [];
         let headList = [
@@ -384,9 +384,9 @@ export default {
           {label: "基本单位数量", key: "outQuantity"},
           {label: "单位成本", key: "outUnitPrice"},
           {label: "成本", key: "outSubtotal"},
-          {label: "基本单位数量", key: "currentQuantity"},
-          {label: "单位成本", key: "averageCost"},
-          {label: "成本", key: "totalCost"},
+          {label: "基本单位数量", key: "summaryQuantity"},
+          {label: "单位成本", key: "summaryAverage"},
+          {label: "成本", key: "summaryCost"},
         ];
         const tHeader = ['商品编号', '商品名称', '商品类别', '规格型号', '单据日期', '业务类型', '单据编号', '往来单位', '仓库', '单位', '商品名称备注', '入库数量', '入库',
           null, null, '出库数量', '出库', null, null, '结存', null, null

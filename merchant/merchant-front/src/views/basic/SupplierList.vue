@@ -47,6 +47,7 @@
             <vxe-column type="seq" width="40" title="#"/>
             <vxe-column title="编码" field="code" width="120"/>
             <vxe-column title="供货商名称" field="name" min-width="200"/>
+            <vxe-column title="余额" field="balance" min-width="120"/>
             <vxe-column title="联系人" field="contact" width="120"/>
             <vxe-column title="电话" field="phone" width="120"/>
             <vxe-column title="分类" field="categoryName" width="120"/>
@@ -244,6 +245,7 @@ export default {
 }
 
 .left {
+  min-width: 300px; /* 最小宽度 */
   width: 300px; /* 固定宽度 */
   padding: 20px;
   //background-color: #f8e1e1;
@@ -252,6 +254,7 @@ export default {
 .right {
   flex: 1; /* 占用剩余空间 */
   padding: 20px;
+   min-width: 100px; /* 保证最小宽度 */
   //background-color: #b8b7b7;
 }
 

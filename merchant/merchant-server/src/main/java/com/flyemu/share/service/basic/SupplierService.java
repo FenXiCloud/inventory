@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static com.flyemu.share.enums.PolicySource.最近采购单价;
 import static com.flyemu.share.enums.PolicyType.采购价格取数;
@@ -254,8 +255,19 @@ public class SupplierService extends AbsService {
      * @return supplier
      */
     public Supplier selectByPrimaryKey(Long id) {
-        return jqf.selectFrom(qSupplier).where(qSupplier.id.eq(id)).fetchOne();
+        Supplier supplier = jqf.selectFrom(qSupplier).where(qSupplier.id.eq(id)).fetchOne();
+        if (supplier ==null){
+            throw new ServiceException("供应商不存在");
+        }
+        return supplier;
     }
+
+    public void updateTheBalance(Supplier supplier) {
+        jqf.update(qSupplier).set(qSupplier.balance, supplier.getBalance()).where(qSupplier.id.eq(supplier.getId())).execute();
+
+
+    }
+
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

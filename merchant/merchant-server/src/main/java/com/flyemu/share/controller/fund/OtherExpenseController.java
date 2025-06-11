@@ -6,12 +6,14 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.OtherExpense;
 import com.flyemu.share.service.fund.OtherExpenseService;
+import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
+import com.flyemu.share.service.fund.dto.OtherExpenseSaveDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * @功能描述: 收款单
+ * @功能描述: 其他支出单
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -24,36 +26,47 @@ public class OtherExpenseController {
 
     private final OtherExpenseService otherExpenseService;
 
-    @GetMapping
-    public JsonResult list(Page page, OtherExpenseService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+
+    @GetMapping("list")
+    public JsonResult list(Page page, OtherExpenseService.Query query,
+                           @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(otherExpenseService.query(page, query));
     }
 
-    @PostMapping
-    public JsonResult save(@RequestBody @Valid OtherExpense otherExpense, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        otherExpense.setMerchantId(merchantId);
-        otherExpense.setAccountBookId(accountBookId);
-        otherExpenseService.save(otherExpense);
+
+    @PostMapping("save")
+    public JsonResult save(@RequestBody @Valid OtherExpenseSaveDTO dto,
+                           @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId) {
+        dto.getOrder().setMerchantId(merchantId);
+        dto.getOrder().setAccountBookId(accountBookId);
+        otherExpenseService.save(dto.getOrder(), dto.getItemList());
         return JsonResult.successful();
     }
 
-    @PutMapping
-    public JsonResult update(@RequestBody @Valid OtherExpense otherExpense) {
-        otherExpenseService.save(otherExpense);
+
+    @PostMapping("updateStatus")
+    public JsonResult updateStatus(@RequestBody OrderPaymentUpdateDTO dto) {
+        otherExpenseService.updateStatus(dto);
         return JsonResult.successful();
     }
 
-    @DeleteMapping("/{otherExpenseId}")
-    public JsonResult delete(@PathVariable Long otherExpenseId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        otherExpenseService.delete(otherExpenseId, merchantId, accountBookId);
+
+    @DeleteMapping("delete")
+    public JsonResult delete(@RequestBody OrderPaymentUpdateDTO dto,
+                             @SaAccountBookId Long accountBookId,
+                             @SaMerchantId Long merchantId) {
+        otherExpenseService.delete(dto.getId(), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(otherExpenseService.select(merchantId, accountBookId));
+
+    @GetMapping("selectById")
+    public JsonResult selectById(Long id) {
+        return JsonResult.successful(otherExpenseService.selectById(id));
     }
 
 }

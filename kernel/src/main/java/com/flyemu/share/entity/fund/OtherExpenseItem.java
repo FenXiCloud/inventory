@@ -33,8 +33,10 @@ public class OtherExpenseItem {
 
     @Comment("收支类别ID")
     private Long accountTypeId;
+    @Comment("收支类别名称")
+    private Long accountTypeName;
 
-    @Comment("金额")
+    @Comment("收入金额")
     private BigDecimal amount;
 
     @Comment("备注")

@@ -45,6 +45,7 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
     serialization:
+      write-empty-json-arrays: true
       WRITE_DATES_AS_TIMESTAMPS: false
   servlet:
     multipart:

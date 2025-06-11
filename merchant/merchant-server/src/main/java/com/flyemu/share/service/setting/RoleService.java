@@ -117,6 +117,10 @@ public class RoleService extends AbsService {
         }
     }
 
+    public List<Role> systemDefaultRole() {
+        return bqf.selectFrom(qRole).where(qRole.systemDefault.eq(true)).fetch();
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 

@@ -1,5 +1,6 @@
 package com.flyemu.share.service.fund.vo;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.flyemu.share.enums.OrderStatus;
 import lombok.Data;
 
@@ -9,12 +10,13 @@ import java.time.LocalDateTime;
 
 /**
  *@author shuaiqi
- */
+ */@JsonInclude()
 @Data
 public class OrderPaymentDetailsVO {
     private Long id;
     private Long supplierId;
     private String supplierName;
+    private String orderStaffName;
     private Integer orderType;
     private LocalDate orderDate;
     private String orderNo;
@@ -39,7 +41,7 @@ public class OrderPaymentDetailsVO {
     private LocalDateTime approvedAt;
     private Long accountBookId;
     private Long merchantId;
-    private String creatorName;
+    private String createName;
     private String updateName;
     private String approvedName;
 }

@@ -263,6 +263,7 @@ public class CostAdjustmentService extends AbsService {
         inventoryItem.setProductId(costAdjustmentItem.getProductId());
         inventoryItem.setWarehouseId(costAdjustmentItem.getWarehouseId());
         inventoryItem.setQuantity(0);
+        inventoryItem.setInventoryDate(costAdjustment.getDjustmentDate());
         inventoryItem.setOperationType(OperationType.成本调整);
         inventoryItem.setBaseUnitId(inventory.getBaseUnitId());
         inventoryItem.setBatchNumber(costAdjustment.getOrderNo());

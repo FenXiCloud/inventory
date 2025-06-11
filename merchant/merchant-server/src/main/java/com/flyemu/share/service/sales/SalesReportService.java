@@ -57,6 +57,10 @@ public class SalesReportService extends AbsService {
 
     public PageResults<SalesReportItemDTO> salesItem(Page page, SalesReportForm form) {
 
+
+        Long accountBookId = form.getAccountBookId();
+        Long merchantId = form.getMerchantId();
+
         PageResults<SalesReportItemDTO> results = new PageResults<>(new ArrayList<>(),page,0);
         String salesType = form.getSalesType();
         if (StringUtils.isBlank(salesType)) {
@@ -90,6 +94,8 @@ public class SalesReportService extends AbsService {
                 predicates.add(cb.equal(root.get("customerId"), customerRoot.get("id")));
                 predicates.add(cb.in(customerRoot.get("customerCategoryId")).value(customerCategoryIds));
             }
+            predicates.add( cb.equal(root.get("accountBookId"), accountBookId));
+            predicates.add( cb.equal(root.get("merchantId"), merchantId));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         //销售出库单列表
@@ -131,6 +137,8 @@ public class SalesReportService extends AbsService {
                 predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
                 predicates.add(cb.in(productRoot.get("productCategoryId")).value(productCategoryIds));
             }
+            predicates.add( cb.equal(root.get("accountBookId"), accountBookId));
+            predicates.add( cb.equal(root.get("merchantId"), merchantId));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         //销售出库单商品详情list
@@ -179,6 +187,8 @@ public class SalesReportService extends AbsService {
                     predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
                     predicates.add(cb.in(productRoot.get("productCategoryId")).value(productCategoryIds));
                 }
+                predicates.add( cb.equal(root.get("accountBookId"), accountBookId));
+                predicates.add( cb.equal(root.get("merchantId"), merchantId));
                 return cb.and(predicates.toArray(new Predicate[0]));
             };
             //销售退货单商品详情
@@ -316,6 +326,8 @@ public class SalesReportService extends AbsService {
 
     public PageResults<SalesReportItemDTO> salesSummary(Page page, SalesReportForm form) {
 
+        Long accountBookId = form.getAccountBookId();
+        Long merchantId = form.getMerchantId();
         PageResults<SalesReportItemDTO> results = new PageResults<>(new ArrayList<>(),page,0);
         //销售出库单查询条件
         Specification<SalesOutbound> salesOutboundSpecification = (root, query, cb) -> {
@@ -344,6 +356,8 @@ public class SalesReportService extends AbsService {
                 predicates.add(cb.equal(root.get("customerId"), customerRoot.get("id")));
                 predicates.add(cb.in(customerRoot.get("customerCategoryId")).value(customerCategoryIds));
             }
+            predicates.add( cb.equal(root.get("accountBookId"), accountBookId));
+            predicates.add( cb.equal(root.get("merchantId"), merchantId));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         //销售出库单列表
@@ -382,7 +396,8 @@ public class SalesReportService extends AbsService {
                 predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
                 predicates.add(cb.in(productRoot.get("productCategoryId")).value(productCategoryIds));
             }
-            
+            predicates.add( cb.equal(root.get("accountBookId"), accountBookId));
+            predicates.add( cb.equal(root.get("merchantId"), merchantId));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         //销售出库单商品列表
@@ -432,6 +447,8 @@ public class SalesReportService extends AbsService {
                     predicates.add(cb.equal(root.get("productId"), productRoot.get("id")));
                     predicates.add(cb.in(productRoot.get("productCategoryId")).value(productCategoryIds));
                 }
+                predicates.add( cb.equal(root.get("accountBookId"), accountBookId));
+                predicates.add( cb.equal(root.get("merchantId"), merchantId));
                 return cb.and(predicates.toArray(new Predicate[0]));
             };
             //销售退货单商品列表

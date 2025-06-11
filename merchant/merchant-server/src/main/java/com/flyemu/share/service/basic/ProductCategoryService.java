@@ -13,9 +13,11 @@ import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.rowset.serial.SerialException;
 import java.util.List;
 
 /**
@@ -43,7 +45,11 @@ public class ProductCategoryService extends AbsService {
 
     @Transactional
     public ProductCategory save(ProductCategory productCategory) {
+
         try {
+            if (StringUtils.isEmpty(productCategory.getCode())){
+                throw new SerialException("编码不能为空");
+            }
             String path = "";
             if (productCategory.getPid() != null) {
                 ProductCategory parent = productCategoryRepository.getReferenceById(productCategory.getPid());
@@ -66,6 +72,7 @@ public class ProductCategoryService extends AbsService {
             productCategory.setLeaf(true);
             productCategoryRepository.save(productCategory);
             return productCategory;
+
         } catch (Exception e) {
             log.error("ProductCategory", e);
             throw new ServiceException(e.getMessage());

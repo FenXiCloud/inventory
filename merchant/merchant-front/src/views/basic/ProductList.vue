@@ -155,9 +155,9 @@ export default {
         title: "系统提示",
         content: `确认要「${enabled ? "启用" : "禁用"}」名称：${row.name}?`,
         onConfirm: () => {
-          Product.save({id: row.id, enabled}).then(() => {
+          Product.update({id: row.id, enabled}).then(() => {
             message("操作成功~");
-            this.loadList();
+            this.loadProduct();
           })
         }
       })
@@ -273,6 +273,7 @@ export default {
 }
 
 .left {
+  min-width: 300px; /* 最小宽度 */
   width: 300px; /* 固定宽度 */
   padding: 20px;
   //background-color: #f8e1e1;
@@ -281,6 +282,7 @@ export default {
 .right {
   flex: 1; /* 占用剩余空间 */
   padding: 20px;
+   min-width: 100px; /* 保证最小宽度 */
   //background-color: #b8b7b7;
 }
 

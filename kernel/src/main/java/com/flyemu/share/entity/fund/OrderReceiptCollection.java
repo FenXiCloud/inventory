@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.fund;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,7 +17,7 @@ import java.math.BigDecimal;
  *
  * @author shuaiqi
  * @since 2025-05-20 11:29:36
- */
+ */@JsonInclude()
 @Getter
 @Setter
 @Entity
@@ -37,6 +38,7 @@ public class OrderReceiptCollection implements Serializable {
      * 结算账户 cash现金，bank_deposit银行，wechat_pay微信，alipay支付宝
      */
     private String settlementAccount;
+    private Long settlementAccountId;
     /**
      * 结算方式
      */

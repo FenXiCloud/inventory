@@ -7,9 +7,7 @@ import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.entity.basic.Customer;
-import com.flyemu.share.entity.basic.QCustomer;
-import com.flyemu.share.entity.basic.QPaymentMethod;
+import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.entity.sales.QSalesOrder;
 import com.flyemu.share.entity.sales.QSalesOutbound;
@@ -27,6 +25,9 @@ import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.service.fund.dto.OrderReceiptSaveDTO;
 import com.flyemu.share.service.fund.vo.*;
 import com.flyemu.share.service.fund.vo.report.ReceivableDetailReportVO;
+import com.flyemu.share.service.fund.vo.report.SummaryReceivableDetailsPageVO;
+import com.flyemu.share.service.fund.vo.report.SummaryReceivableDetailsQuery;
+import com.flyemu.share.service.fund.vo.report.SummaryReceivableDetailsVO;
 import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.querydsl.core.BooleanBuilder;
@@ -68,6 +69,7 @@ public class OrderReceiptService extends AbsService {
     private final static QOrderReceiptItem qItem = QOrderReceiptItem.orderReceiptItem;
     private final QOrderReceiptCollection qCollection = QOrderReceiptCollection.orderReceiptCollection;
     private final QCustomer qCustomer = QCustomer.customer;
+    private final QCustomerCategory qCustomerCategory = QCustomerCategory.customerCategory;
 
     private final static QPaymentMethod qPaymentMethod = QPaymentMethod.paymentMethod;
     private final OrderReceiptRepository orderReceiptRepository;
@@ -81,6 +83,350 @@ public class OrderReceiptService extends AbsService {
 
     private final static QOrderReceiptItem qOrderReceiptItem = QOrderReceiptItem.orderReceiptItem;
     private final static QOrderReceiptCollection qOrderReceiptCollection = QOrderReceiptCollection.orderReceiptCollection;
+
+    public SummaryReceivableDetailsPageVO summaryReceivableDetails(Page page, SummaryReceivableDetailsQuery query) {
+        Integer type = query.getType();
+        if (type == null || type < 1 || type > 3) {
+            throw new ServiceException("type 参数必须为 1、2 或 3");
+        }
+        return switch (type) {
+            case 1 -> handleByCustomer(page, query);
+            case 2 -> handleByCustomerCategory(page, query);
+            case 3 -> handleByStaff(page, query);
+            default -> throw new ServiceException("不支持的查询类型");
+        };
+    }
+
+    private SummaryReceivableDetailsPageVO handleByCustomer(Page page, SummaryReceivableDetailsQuery query) {
+        QCustomer qCustomer = QCustomer.customer;
+
+        BooleanBuilder customerCondition = new BooleanBuilder();
+        if (query.getMerchantId() != null) {
+            customerCondition.and(qCustomer.merchantId.eq(query.getMerchantId()));
+        }
+        if (query.getAccountBookId() != null) {
+            customerCondition.and(qCustomer.accountBookId.eq(query.getAccountBookId()));
+        }
+        if (query.getCustomerId() != null) {
+            customerCondition.and(qCustomer.id.eq(query.getCustomerId()));
+        }
+
+        LocalDateTime startDateTime = query.getStartDate().atStartOfDay();
+
+        JPAQuery<Customer> customerQuery = jqf.selectFrom(qCustomer).where(customerCondition);
+        long total = customerQuery.fetchCount();
+
+        List<Customer> customers = customerQuery
+                .offset(page.getOffset())
+                .limit(page.getPageSize())
+                .fetch();
+
+        if (customers.isEmpty()) {
+            return new SummaryReceivableDetailsPageVO();
+        }
+
+        List<SummaryReceivableDetailsVO> voList = new ArrayList<>();
+        SummaryReceivableDetailsPageVO totalVO = new SummaryReceivableDetailsPageVO();
+        totalVO.setTotalOpeningBalance(BigDecimal.ZERO);
+        totalVO.setTotalCurrentReceivable(BigDecimal.ZERO);
+        totalVO.setTotalCurrentReceipt(BigDecimal.ZERO);
+        totalVO.setTotalClosingBalance(BigDecimal.ZERO);
+
+        for (Customer customer : customers) {
+            SummaryReceivableDetailsVO vo = new SummaryReceivableDetailsVO();
+            CustomerCategory byId = jqf.select(qCustomerCategory)
+                    .from(qCustomerCategory)
+                    .where(qCustomerCategory.id.eq(customer.getCustomerCategoryId()))
+                    .fetchFirst();
+            if (byId != null) {
+                vo.setCustomerCategory(byId.getName());
+            }
+            vo.setCustomerCode(customer.getCode());
+            vo.setCustomerName(customer.getName());
+
+            BigDecimal openingBalance = getOpeningBalance(customer.getId(), startDateTime);
+            BigDecimal currentReceivable = getCurrentReceivable(customer.getId(), query);
+            BigDecimal currentReceipt = getCurrentReceipt(customer.getId(), query);
+            BigDecimal closingBalance = openingBalance.add(currentReceivable).subtract(currentReceipt);
+
+            vo.setOpeningBalance(openingBalance);
+            vo.setCurrentReceivable(currentReceivable);
+            vo.setCurrentReceipt(currentReceipt);
+            vo.setClosingBalance(closingBalance);
+
+            voList.add(vo);
+
+            totalVO.setTotalOpeningBalance(totalVO.getTotalOpeningBalance().add(openingBalance));
+            totalVO.setTotalCurrentReceivable(totalVO.getTotalCurrentReceivable().add(currentReceivable));
+            totalVO.setTotalCurrentReceipt(totalVO.getTotalCurrentReceipt().add(currentReceipt));
+            totalVO.setTotalClosingBalance(totalVO.getTotalClosingBalance().add(closingBalance));
+        }
+
+        totalVO.setReceivableDetailsList(voList);
+        totalVO.setReceivableDetailsListTotal((int) total);
+        return totalVO;
+    }
+
+    private SummaryReceivableDetailsPageVO handleByCustomerCategory(Page page, SummaryReceivableDetailsQuery query) {
+        QCustomerCategory qCustomerCategory = QCustomerCategory.customerCategory;
+
+        BooleanBuilder condition = new BooleanBuilder();
+        if (query.getMerchantId() != null) {
+            condition.and(qCustomerCategory.merchantId.eq(query.getMerchantId()));
+        }
+        if (query.getAccountBookId() != null) {
+            condition.and(qCustomerCategory.accountBookId.eq(query.getAccountBookId()));
+        }
+
+        JPAQuery<CustomerCategory> categoryQuery = jqf.select(qCustomerCategory)
+                .from(qCustomerCategory)
+                .where(condition)
+                .orderBy(qCustomerCategory.id.asc());
+
+        long total = categoryQuery.fetchCount();
+
+        List<CustomerCategory> categories = categoryQuery
+                .offset(page.getOffset())
+                .limit(page.getPageSize())
+                .fetch();
+
+        List<SummaryReceivableDetailsVO> voList = new ArrayList<>();
+
+        for (CustomerCategory category : categories) {
+            String categoryName = category.getName();
+
+            List<Long> customerIds = jqf.select(QCustomer.customer.id)
+                    .from(QCustomer.customer)
+                    .where(QCustomer.customer.customerCategoryId.eq(category.getId())
+                            .and(QCustomer.customer.merchantId.eq(query.getMerchantId()))
+                            .and(QCustomer.customer.accountBookId.eq(query.getAccountBookId())))
+                    .fetch();
+
+            if (customerIds.isEmpty()) {
+                continue;
+            }
+
+            BigDecimal openingBalance = BigDecimal.ZERO;
+            BigDecimal currentReceivable = BigDecimal.ZERO;
+            BigDecimal currentReceipt = BigDecimal.ZERO;
+
+            LocalDateTime startDateTime = query.getStartDate().atStartOfDay();
+
+            for (Long customerId : customerIds) {
+                openingBalance = openingBalance.add(getOpeningBalance(customerId, startDateTime));
+                currentReceivable = currentReceivable.add(getCurrentReceivable(customerId, query));
+                currentReceipt = currentReceipt.add(getCurrentReceipt(customerId, query));
+            }
+
+            BigDecimal closingBalance = openingBalance.add(currentReceivable).subtract(currentReceipt);
+
+            SummaryReceivableDetailsVO vo = new SummaryReceivableDetailsVO();
+            vo.setCustomerCategory(categoryName);
+            vo.setOpeningBalance(openingBalance);
+            vo.setCurrentReceivable(currentReceivable);
+            vo.setCurrentReceipt(currentReceipt);
+            vo.setClosingBalance(closingBalance);
+
+            voList.add(vo);
+        }
+
+        SummaryReceivableDetailsPageVO result = new SummaryReceivableDetailsPageVO();
+        result.setTotalOpeningBalance(BigDecimal.ZERO);
+        result.setTotalCurrentReceivable(BigDecimal.ZERO);
+        result.setTotalCurrentReceipt(BigDecimal.ZERO);
+        result.setTotalClosingBalance(BigDecimal.ZERO);
+
+        for (SummaryReceivableDetailsVO vo : voList) {
+            result.setTotalOpeningBalance(result.getTotalOpeningBalance().add(vo.getOpeningBalance()));
+            result.setTotalCurrentReceivable(result.getTotalCurrentReceivable().add(vo.getCurrentReceivable()));
+            result.setTotalCurrentReceipt(result.getTotalCurrentReceipt().add(vo.getCurrentReceipt()));
+            result.setTotalClosingBalance(result.getTotalClosingBalance().add(vo.getClosingBalance()));
+        }
+        result.setReceivableDetailsList(voList);
+        result.setReceivableDetailsListTotal(total);
+        return result;
+    }
+
+    private SummaryReceivableDetailsPageVO handleByStaff(Page page, SummaryReceivableDetailsQuery query) {
+        QOrderStaff qOrderStaff = QOrderStaff.orderStaff;
+
+        BooleanBuilder condition = new BooleanBuilder();
+        if (query.getMerchantId() != null) {
+            condition.and(qOrderStaff.merchantId.eq(query.getMerchantId()));
+        }
+        if (query.getAccountBookId() != null) {
+            condition.and(qOrderStaff.accountBookId.eq(query.getAccountBookId()));
+        }
+        JPAQuery<OrderStaff> staffQuery = jqf.selectFrom(qOrderStaff).where(condition);
+        long total = staffQuery.fetchCount();
+        List<OrderStaff> staffList = staffQuery
+                .offset(page.getOffset())
+                .limit(page.getPageSize())
+                .fetch();
+
+        List<SummaryReceivableDetailsVO> voList = new ArrayList<>();
+
+        for (OrderStaff staff : staffList) {
+            Long staffId = staff.getId().longValue();
+            String staffName = staff.getName();
+
+            List<Long> receiptIds = jqf.select(qOrderReceipt.id)
+                    .from(qOrderReceipt)
+                    .where(qOrderReceipt.orderStaffId.eq(staffId)
+                            .and(qOrderReceipt.merchantId.eq(query.getMerchantId()))
+                            .and(qOrderReceipt.accountBookId.eq(query.getAccountBookId())))
+                    .fetch();
+
+            if (receiptIds.isEmpty()) {
+                SummaryReceivableDetailsVO vo = new SummaryReceivableDetailsVO();
+                vo.setCustomerName(staffName);
+                vo.setCustomerCode(String.valueOf(staffId));
+                vo.setOpeningBalance(BigDecimal.ZERO);
+                vo.setCurrentReceivable(BigDecimal.ZERO);
+                vo.setCurrentReceipt(BigDecimal.ZERO);
+                vo.setClosingBalance(BigDecimal.ZERO);
+                voList.add(vo);
+                continue;
+            }
+
+            BigDecimal openingBalance = BigDecimal.ZERO;
+            BigDecimal currentReceivable = BigDecimal.ZERO;
+            BigDecimal currentReceipt = BigDecimal.ZERO;
+
+            LocalDateTime startDateTime = query.getStartDate().atStartOfDay();
+            List<Long> customerIds = jqf.select(qOrderReceipt.customerId)
+                    .from(qOrderReceipt)
+                    .where(qOrderReceipt.id.in(receiptIds)).groupBy(qOrderReceipt.customerId)
+                    .fetch();
+
+            for (Long customerId : customerIds) {
+                openingBalance = openingBalance.add(getOpeningBalance(customerId, startDateTime));
+                currentReceivable = currentReceivable.add(getCurrentReceivable(customerId, query));
+                currentReceipt = currentReceipt.add(getCurrentReceipt(customerId, query));
+            }
+
+            BigDecimal closingBalance = openingBalance.add(currentReceivable).subtract(currentReceipt);
+
+            SummaryReceivableDetailsVO vo = new SummaryReceivableDetailsVO();
+            vo.setCustomerName(staffName);
+            vo.setCustomerCode(String.valueOf(staffId));
+            vo.setOpeningBalance(openingBalance);
+            vo.setCurrentReceivable(currentReceivable);
+            vo.setCurrentReceipt(currentReceipt);
+            vo.setClosingBalance(closingBalance);
+
+            voList.add(vo);
+        }
+
+        SummaryReceivableDetailsPageVO result = new SummaryReceivableDetailsPageVO();
+        result.setReceivableDetailsList(voList);
+        result.setReceivableDetailsListTotal(total);
+        result.setTotalOpeningBalance(voList.stream()
+                .map(SummaryReceivableDetailsVO::getOpeningBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        result.setTotalCurrentReceivable(voList.stream()
+                .map(SummaryReceivableDetailsVO::getCurrentReceivable)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        result.setTotalCurrentReceipt(voList.stream()
+                .map(SummaryReceivableDetailsVO::getCurrentReceipt)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        result.setTotalClosingBalance(voList.stream()
+                .map(SummaryReceivableDetailsVO::getClosingBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+
+        return result;
+    }
+
+    private BigDecimal getOpeningBalance(Long customerId, LocalDateTime dateTime) {
+        QOrderReceipt qReceipt = QOrderReceipt.orderReceipt;
+        QSalesOutbound qSales = QSalesOutbound.salesOutbound;
+
+        BigDecimal receiptSum = jqf.select(qReceipt.collectionAmount.sum())
+                .from(qReceipt)
+                .where(qReceipt.customerId.eq(customerId)
+                        .and(qReceipt.approvedAt.lt(dateTime))
+                        .and(qReceipt.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        BigDecimal salesSum = jqf.select(qSales.finalAmount.sum())
+                .from(qSales)
+                .where(qSales.customerId.eq(customerId)
+                        .and(qSales.approvedAt.lt(dateTime))
+                        .and(qSales.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        receiptSum = receiptSum == null ? BigDecimal.ZERO : receiptSum;
+        salesSum = salesSum == null ? BigDecimal.ZERO : salesSum;
+        return salesSum.subtract(receiptSum);
+    }
+
+    private BigDecimal getCurrentReceivable(Long customerId, SummaryReceivableDetailsQuery query) {
+        LocalDateTime startTime = query.getStartDate().atStartOfDay();
+        LocalDateTime endTime = query.getEndDate().atStartOfDay();
+        QSalesOutbound qSales = QSalesOutbound.salesOutbound;
+        QOrderReceipt qReceipt = QOrderReceipt.orderReceipt;
+
+        // 销售订单应收金额
+        BigDecimal salesAmount = jqf.select(qSales.finalAmount.sum())
+                .from(qSales)
+                .where(qSales.customerId.eq(customerId)
+                        .and(qSales.approvedAt.between(startTime, endTime))
+                        .and(qSales.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        // 其他收入金额
+        BigDecimal otherIncomeAmount = BigDecimal.ZERO;
+
+        // 收款单中的折扣金额
+        BigDecimal discountAmount = jqf.select(qReceipt.discountAmount.sum())
+                .from(qReceipt)
+                .where(qReceipt.customerId.eq(customerId)
+                        .and(qReceipt.approvedAt.between(startTime, endTime))
+                        .and(qReceipt.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        salesAmount = salesAmount == null ? BigDecimal.ZERO : salesAmount;
+        otherIncomeAmount = otherIncomeAmount == null ? BigDecimal.ZERO : otherIncomeAmount;
+        discountAmount = discountAmount == null ? BigDecimal.ZERO : discountAmount;
+
+        return salesAmount
+                .add(otherIncomeAmount)
+                .subtract(discountAmount);
+    }
+
+    private BigDecimal getCurrentReceipt(Long customerId, SummaryReceivableDetailsQuery query) {
+        LocalDateTime startTime = query.getStartDate().atStartOfDay();
+        LocalDateTime endTime = query.getEndDate().atStartOfDay();
+        QSalesOutbound qSales = QSalesOutbound.salesOutbound;
+        QOrderReceipt qReceipt = QOrderReceipt.orderReceipt;
+
+        // 销售订单收款金额
+        BigDecimal salesPayment = jqf.select(qSales.finalAmount.sum())
+                .from(qSales)
+                .where(qSales.customerId.eq(customerId)
+                        .and(qSales.approvedAt.between(startTime, endTime))
+                        .and(qSales.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        // 收款单收款金额
+        BigDecimal orderPayment = jqf.select(qReceipt.collectionAmount.sum())
+                .from(qReceipt)
+                .where(qReceipt.customerId.eq(customerId)
+                        .and(qReceipt.approvedAt.between(startTime, endTime))
+                        .and(qReceipt.orderStatus.eq(OrderStatus.已审核)))
+                .fetchOne();
+
+        // 其他收入收款金额
+        BigDecimal otherIncomePayment = BigDecimal.ZERO;
+
+        salesPayment = salesPayment == null ? BigDecimal.ZERO : salesPayment;
+        orderPayment = orderPayment == null ? BigDecimal.ZERO : orderPayment;
+        otherIncomePayment = otherIncomePayment == null ? BigDecimal.ZERO : otherIncomePayment;
+
+        return salesPayment
+                .add(orderPayment)
+                .add(otherIncomePayment);
+    }
 
     public PageResults<ReceivableDetailReportVO> getReceivableDetailReport(Page page, ReceivableDetailReportQuery query) {
         QOrderReceipt qReceipt = OrderReceiptService.qOrderReceipt;

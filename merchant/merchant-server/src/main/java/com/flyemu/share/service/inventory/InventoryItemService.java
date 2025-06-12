@@ -122,7 +122,13 @@ public class InventoryItemService extends AbsService {
             //更新
             InventoryItem original = inventoryItemRepository.getById(inventoryItem.getId());
             BeanUtil.copyProperties(inventoryItem, original, CopyOptions.create().ignoreNullValue());
+            if (original.getInventoryDate() == null) {
+                original.setInventoryDate(new Date());
+            }
             return inventoryItemRepository.save(original);
+        }
+        if (inventoryItem.getInventoryDate() == null) {
+            inventoryItem.setInventoryDate(new Date());
         }
         return inventoryItemRepository.save(inventoryItem);
     }
@@ -239,8 +245,12 @@ public class InventoryItemService extends AbsService {
                 inventoryItem.setCurrentQuantity(currentQuantity);
                 inventoryItem.setTotalCost(totalCost);
                 if (!OperationType.成本调整.equals(inventoryItem.getOperationType())) {
-                    BigDecimal averageCost = totalCost.divide(new BigDecimal(currentQuantity), 2, RoundingMode.HALF_UP);
-                    inventoryItem.setAverageCost(averageCost);
+                    if (currentQuantity == 0) {
+                        inventoryItem.setAverageCost(BigDecimal.ZERO);
+                    } else {
+                        BigDecimal averageCost = totalCost.divide(new BigDecimal(currentQuantity), 2, RoundingMode.HALF_UP);
+                        inventoryItem.setAverageCost(averageCost);
+                    }
                 }
                 inventoryItemRepository.save(inventoryItem);
             }
@@ -296,8 +306,12 @@ public class InventoryItemService extends AbsService {
                 inventoryItem.setSummaryQuantity(summaryQuantity);
                 inventoryItem.setSummaryCost(summaryCost);
                 if (!OperationType.成本调整.equals(inventoryItem.getOperationType())) {
-                    BigDecimal averageCost = summaryCost.divide(new BigDecimal(summaryQuantity), 2, RoundingMode.HALF_UP);
-                    inventoryItem.setSummaryAverage(averageCost);
+                    if (summaryQuantity == 0) {
+                        inventoryItem.setSummaryAverage(BigDecimal.ZERO);
+                    } else {
+                        BigDecimal averageCost = summaryCost.divide(new BigDecimal(summaryQuantity), 2, RoundingMode.HALF_UP);
+                        inventoryItem.setSummaryAverage(averageCost);
+                    }
                 } else {
                     inventoryItem.setSummaryAverage(inventoryItem.getAverageCost());
                 }
@@ -311,7 +325,13 @@ public class InventoryItemService extends AbsService {
         Date start = query.getStart();
         map.put("initDate", Objects.requireNonNullElseGet(start, Date::new));
         org.sagacity.sqltoy.model.Page sqlPage = new org.sagacity.sqltoy.model.Page(page.getSize(), page.getPage());
-        org.sagacity.sqltoy.model.Page<InventoryItemReportDto> findPage = lazyDao.findPageBySql(sqlPage, "inventoryItemReportList", map, InventoryItemReportDto.class);
+        Boolean exclusion = query.getExclusion();
+        org.sagacity.sqltoy.model.Page<InventoryItemReportDto> findPage;
+        if (exclusion != null && exclusion) {
+            findPage = lazyDao.findPageBySql(sqlPage, "inventoryItemVoucherList", map, InventoryItemReportDto.class);
+        } else {
+            findPage = lazyDao.findPageBySql(sqlPage, "inventoryItemReportList", map, InventoryItemReportDto.class);
+        }
         return new PageResults<>(findPage.getRows(), page, findPage.getRecordCount());
     }
 
@@ -440,6 +460,7 @@ public class InventoryItemService extends AbsService {
             inventoryItem.setAccountBookId(inventoryInitialForm.getAccountBookId());
             inventoryItem.setMerchantId(inventoryInitialForm.getMerchantId());
             inventoryItem.setCreatedBy(inventoryInitialForm.getCreatedBy());
+            inventoryItem.setInventoryDate(new Date());
             inventoryItem.setCreatedAt(LocalDateTime.now());
             if (inventoryItem.getId() != null) {
                 //更新

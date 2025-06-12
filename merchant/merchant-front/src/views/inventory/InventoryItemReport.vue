@@ -337,8 +337,8 @@ export default {
       Promise.all([InventoryItem.reportSummary(params)]).then((promiseResults) => {
         const data = promiseResults[0].data;
         if (data) {
-          this.summaryQuantity = data.summaryQuantity;
-          this.summaryCost = data.summaryCost;
+          this.summaryQuantity = data.summaryQuantity || 0;
+          this.summaryCost = data.summaryCost || 0;
         }
         InventoryItem.report(params).then(({data: {results, total}}) => {
           this.dataList = results || [];

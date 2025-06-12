@@ -38,7 +38,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -185,7 +187,7 @@ public class SalesReturnService extends AbsService {
             if (!CollectionUtils.isEmpty(selectSalesOutboundIdList)) {
 
                 List<SalesReturnItem> salesReturnItemListTemp = salesReturnForm.getSalesReturnItemList();
-                for (SalesReturnItem item : salesReturnItemListTemp){
+                for (SalesReturnItem item : salesReturnItemListTemp) {
                     //出库单id
                     Long outItemId = item.getOutItemId();
                     //出库单
@@ -290,10 +292,10 @@ public class SalesReturnService extends AbsService {
             salesReturnItemDTO.setUnitName(tuple.get(qUnit.name));
             //关联查询销售出库单编号
             Long salesOutboundId = salesReturnItemDTO.getSalesOutboundId();
-            if (salesOutboundId != null){
+            if (salesOutboundId != null) {
                 //返回销售出库单编号
                 SalesOutbound salesOutbound = salesOutboundRepository.findById(salesOutboundId).orElse(null);
-                if (salesOutbound != null){
+                if (salesOutbound != null) {
                     String orderNo = salesOutbound.getOrderNo();
                     salesReturnItemDTO.setSalesOutboundNo(orderNo);
                 }
@@ -349,7 +351,7 @@ public class SalesReturnService extends AbsService {
         List<InventoryItem> inventoryItems = new ArrayList<>();
         List<SalesReturnItem> returnItems = jqf.selectFrom(qsalesReturnItem).where(qsalesReturnItem.salesReturnId.eq(original.getId())).fetch();
         //处理库存
-        this.getComputedInventory(returnItems, inventories, inventoryItems, original.getCustomerId(), original.getOrderNo());
+        this.getComputedInventory(returnItems, inventories, inventoryItems, original);
         inventories.forEach(item -> {
             if (OrderStatus.已审核.equals(original.getOrderStatus())) {
                 // 加库存
@@ -361,7 +363,7 @@ public class SalesReturnService extends AbsService {
         });
     }
 
-    private void getComputedInventory(List<SalesReturnItem> returnItems, List<Inventory> inventories, List<InventoryItem> inventoryItems, Long customerId, String orderNo) {
+    private void getComputedInventory(List<SalesReturnItem> returnItems, List<Inventory> inventories, List<InventoryItem> inventoryItems, SalesReturn salesReturn) {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         returnItems.forEach(otherOutboundItem -> {
@@ -394,13 +396,13 @@ public class SalesReturnService extends AbsService {
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, customerId, orderNo);
+            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, salesReturn);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
     }
 
-    private InventoryItem getInventoryItem(SalesReturnItem otherOutboundItem, Long customerId, String orderNo) {
+    private InventoryItem getInventoryItem(SalesReturnItem otherOutboundItem, SalesReturn salesReturn) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(otherOutboundItem.getProductId());
         inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
@@ -411,9 +413,10 @@ public class SalesReturnService extends AbsService {
         inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
         inventoryItem.setOrderId(otherOutboundItem.getSalesReturnId());
         inventoryItem.setMerchantId(otherOutboundItem.getMerchantId());
-        inventoryItem.setBatchNumber(orderNo);
+        inventoryItem.setBatchNumber(salesReturn.getOrderNo());
         inventoryItem.setAccountBookId(otherOutboundItem.getAccountBookId());
-        inventoryItem.setCustomerId(customerId);
+        inventoryItem.setCustomerId(salesReturn.getCustomerId());
+        inventoryItem.setInventoryDate(Date.from(salesReturn.getReturnDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(otherOutboundItem.getCreatedBy());
         inventoryItem.setUnitPrice(otherOutboundItem.getUnitPrice());

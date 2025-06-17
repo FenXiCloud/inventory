@@ -68,7 +68,11 @@ public class SupplierFlow implements Serializable {
     private Long merchantId;
 
     public enum SupplierFlowType {
-        期初, 入库, 出库
+        期初,      手动调账,
+        付款单,
+        预付款单,
+        核销单,
+        退款单
     }
 
 }

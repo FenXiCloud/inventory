@@ -7,6 +7,7 @@ import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * @功能描述: 其他支出单明细
@@ -47,4 +48,10 @@ public class OtherExpenseItem {
 
     @Column(nullable = false)
     private Long merchantId;
+    @Comment("源单号")
+    private String sourceDocNo;
+    @Comment("源单往来单位")
+    private String sourceBusinessName;
+    @Comment("源单日期")
+    private LocalDate sourceDate;
 }

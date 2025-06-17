@@ -72,6 +72,7 @@ public class OrderPaymentService extends AbsService {
     private final static QOrderPaymentItem qItem = QOrderPaymentItem.orderPaymentItem;
     private final static QOrderPaymentCollection qCollection = QOrderPaymentCollection.orderPaymentCollection;
     private final static QSupplier qSupplier = QSupplier.supplier;
+    private final static QSupplierCategory qSupplierCategory = QSupplierCategory.supplierCategory;
     private final static QOrderStaff qOrderStaff = QOrderStaff.orderStaff;
     private final static QPurchaseInbound qPurchaseOrderInbound = QPurchaseInbound.purchaseInbound;
 
@@ -80,7 +81,6 @@ public class OrderPaymentService extends AbsService {
     private final AccountService accountService;
     private final SupplierService supplierService;
     private final PurchaseOrderRepository quantityRepository;
-    private final SupplierCategoryRepository supplierCategoryRepository;
     private final OrderPaymentItemRepository orderPaymentItemRepository;
     private final OrderPaymentCollectionRepository orderPaymentCollectionRepository;
     private final static QOrderPaymentItem QorderPaymentItem = QOrderPaymentItem.orderPaymentItem;
@@ -90,6 +90,9 @@ public class OrderPaymentService extends AbsService {
         Integer type = query.getType();
         if (type == null || type < 1 || type > 3) {
             throw new ServiceException("type 参数必须为 1、2 或 3");
+        }
+        if (query.getStartDate() == null || query.getEndDate() == null) {
+            throw new ServiceException("startDate 和 endDate 参数不能为空");
         }
         return switch (type) {
             case 1 -> handleBySupplier(page, query);
@@ -136,8 +139,13 @@ public class OrderPaymentService extends AbsService {
 
         for (Supplier supplier : suppliers) {
             SummaryPayableDetailsVO vo = new SummaryPayableDetailsVO();
-            SupplierCategory byId = supplierCategoryRepository.getById(supplier.getSupplierCategoryId());
-            vo.setSupplierCategory(byId.getName());
+            SupplierCategory byId = jqf.select(qSupplierCategory)
+                    .from(qSupplierCategory)
+                    .where(qSupplierCategory.id.eq(supplier.getSupplierCategoryId()))
+                    .fetchFirst();
+            if (byId!=null){
+                vo.setSupplierCategory(byId.getName());
+            }
             vo.setSupplierCode(supplier.getCode());
             vo.setSupplierName(supplier.getName());
 

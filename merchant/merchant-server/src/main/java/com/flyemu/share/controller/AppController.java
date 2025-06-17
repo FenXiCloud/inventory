@@ -21,10 +21,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -126,6 +123,26 @@ public class AppController {
                 jsonObject.getString("corpId"));
         if (ObjectUtils.isEmpty(mobile)) {
             return JsonResult.failure("登录失败");
+        }
+
+        //获取业务系统的token
+        AccountDto accountDto = adminService.ddLogin(mobile);
+        StpUtil.login(accountDto.getAdminId(), "pc");
+        SaSession session = StpUtil.getTokenSession();
+        session.set(Constants.SESSION_ACCOUNT, accountDto);
+        response.addHeader("Authorization",  StpUtil.getTokenValue());
+        return JsonResult.successful()
+                .data("account", accountDto);
+    }
+
+    /**
+     * financial财务系统登录
+     * @return 结果
+     */
+    @PostMapping("/financial/login")
+    public JsonResult getFinancialToken(String mobile, HttpServletResponse response) {
+        if (ObjectUtils.isEmpty(mobile)) {
+            throw new RuntimeException("登录失败");
         }
 
         //获取业务系统的token

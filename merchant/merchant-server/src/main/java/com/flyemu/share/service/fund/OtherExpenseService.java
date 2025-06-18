@@ -358,15 +358,35 @@ public class OtherExpenseService extends AbsService {
             amount = BigDecimal.ZERO;
         }
 
+
+        SupplierFlow.SupplierFlowType flowType;
         if (targetStatus == OrderStatus.已审核) {
+            flowType = SupplierFlow.SupplierFlowType.其他支出单;
             supplier.setBalance(supplier.getBalance().subtract(amount));
         } else {
             if (expense.getOrderStatus() != OrderStatus.已审核) {
-                throw new ServiceException("只有已审核的付款单才能反审核");
+                throw new ServiceException("只有已审核的单据才能反审核");
             }
+            flowType = SupplierFlow.SupplierFlowType.反审核_其他支出单;
             supplier.setBalance(supplier.getBalance().add(amount));
         }
-        supplierService.updateTheBalance(supplier);
+
+        SupplierFlow supplierFlow = new SupplierFlow();
+        supplierFlow.setSupplierId(supplier.getId());
+        supplierFlow.setBusinessId(expense.getId());
+        supplierFlow.setBusinessNo(expense.getOrderNo());
+        supplierFlow.setSupplierFlowType(flowType);
+        supplierFlow.setPurchaseAmount(amount);
+        supplierFlow.setCopeWithAmount(amount);
+        supplierFlow.setActualPaymentAmount(targetStatus == OrderStatus.已审核 ? amount : amount.negate());
+        supplierFlow.setBalancePayable(supplier.getBalance());
+        supplierFlow.setAccountBookId(expense.getAccountBookId());
+        supplierFlow.setMerchantId(expense.getMerchantId());
+        supplierFlow.setCreatedBy(expense.getApprovedBy());
+        supplierFlow.setCreatedAt(LocalDateTime.now());
+        supplierFlow.setRemarks(targetStatus == OrderStatus.已审核 ? "其他支出单审核通过" : "其他支出单反审核");
+
+        supplierService.updateTheBalance(supplier,supplierFlow);
 
         Long settlementAccountId = expense.getSettlementAccountId();
         if (settlementAccountId==null) {

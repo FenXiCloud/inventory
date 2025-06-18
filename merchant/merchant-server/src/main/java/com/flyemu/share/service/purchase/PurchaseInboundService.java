@@ -16,6 +16,9 @@ import com.flyemu.share.dto.purchase.PurchaseOrderDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.basic.PriceRecord;
 import com.flyemu.share.entity.basic.QSupplier;
+import com.flyemu.share.entity.fund.QOrderPaymentItem;
+import com.flyemu.share.entity.fund.QVerificationItem;
+import com.flyemu.share.entity.fund.SupplierFlow;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.purchase.*;
@@ -24,11 +27,13 @@ import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.PurchaseInboundForm;
 import com.flyemu.share.repository.PurchaseInboundItemRepository;
 import com.flyemu.share.repository.PurchaseInboundRepository;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.basic.SupplierService;
 import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -76,6 +81,7 @@ public class PurchaseInboundService extends AbsService {
 
     private final PriceRecordService priceRecordService;
     private final CodeSeedService codeSeedService;
+    private final SupplierService supplierService;
 
     private final InventoryService inventoryService;
 
@@ -147,6 +153,9 @@ public class PurchaseInboundService extends AbsService {
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
             original.setSecondarySum(secondarySum);
             original.setReturnSum(secondarySum);
+            if (original.getOrderStatus().equals(OrderStatus.已审核)){
+                inboundSupplierFlows(original.getCreatedBy(), original);
+            }
             return purchaseInboundRepository.save(original);
         } else {
 
@@ -275,38 +284,111 @@ public class PurchaseInboundService extends AbsService {
 
     @Transactional
     public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
-        List<PurchaseInbound> orders = bqf.selectFrom(qPurchaseInbound).where(qPurchaseInbound.merchantId.eq(merchantId).and(qPurchaseInbound.id.in(ids))).fetch();
+        List<PurchaseInbound> orders = bqf.selectFrom(qPurchaseInbound)
+                .where(qPurchaseInbound.merchantId.eq(merchantId).and(qPurchaseInbound.id.in(ids)))
+                .fetch();
+
         Assert.isFalse(CollUtil.isEmpty(orders), "未找到数据~");
         List<Long> setIds = new ArrayList<>();
+
         if (OrderStatus.已审核.equals(state)) {
             for (PurchaseInbound order : orders) {
-                if (OrderStatus.已保存.equals(order.getOrderStatus())) {
-                    setIds.add(order.getId());
-                } else {
+                if (!OrderStatus.已保存.equals(order.getOrderStatus())) {
                     log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
+                    continue;
                 }
+
+                inboundSupplierFlows(adminId, order);
+                setIds.add(order.getId());
             }
         } else if (OrderStatus.已保存.equals(state)) {
             for (PurchaseInbound order : orders) {
-                if (OrderStatus.已审核.equals(order.getOrderStatus()) && bqf.selectFrom(qConnection)
-                        .where(qConnection.purchaseInboundId.eq(order.getId()))
-                        .fetchCount() == 0) {
-                    setIds.add(order.getId());
-                } else {
+                if (!OrderStatus.已审核.equals(order.getOrderStatus())) {
                     log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
+                    continue;
                 }
+
+                if (bqf.selectFrom(qConnection).where(qConnection.purchaseInboundId.eq(order.getId())).fetchCount() > 0) {
+                    continue;
+                }
+
+                boolean hasPaymentOrVerification = checkHasPaymentOrVerification(order.getId());
+                if (hasPaymentOrVerification) {
+                    log.error("存在付款单或核销单，无法反审核-----orderId:{}", order.getId());
+                    throw new ServiceException("存在付款单或核销单，无法反审核");
+                }
+
+                Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
+                BigDecimal finalAmount = order.getFinalAmount();
+                SupplierFlow flow = new SupplierFlow();
+                flow.setSupplierId(order.getSupplierId());
+                flow.setBusinessId(order.getId());
+                flow.setBusinessNo(order.getOrderNo());
+                flow.setSupplierFlowType(SupplierFlow.SupplierFlowType.反审核_采购入库单);
+                flow.setPurchaseAmount(finalAmount.negate());
+                flow.setCopeWithAmount(finalAmount.negate());
+                flow.setBalancePayable(supplier.getBalance());
+                flow.setAccountBookId(order.getAccountBookId());
+                flow.setMerchantId(order.getMerchantId());
+                flow.setCreatedBy(adminId);
+                flow.setCreatedAt(LocalDateTime.now());
+                flow.setRemarks("采购入库单反审核");
+                supplier.setBalance(supplier.getBalance().subtract(finalAmount));
+                supplierService.updateTheBalance(supplier,flow);
+                setIds.add(order.getId());
             }
         }
+
         if (CollUtil.isNotEmpty(setIds)) {
             jqf.update(qPurchaseInbound)
                     .set(qPurchaseInbound.orderStatus, state)
-                    .set(qPurchaseInbound.approvedAt, LocalDateTime.now()).
-                    set(qPurchaseInbound.approvedBy, adminId)
+                    .set(qPurchaseInbound.approvedAt, LocalDateTime.now())
+                    .set(qPurchaseInbound.approvedBy, adminId)
                     .where(qPurchaseInbound.id.in(setIds))
                     .execute();
-            // 设置入库明细数据
+
             this.purchaseInboundToInventory(state, setIds);
         }
+    }
+
+    private void inboundSupplierFlows(Long adminId, PurchaseInbound order) {
+        Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
+        BigDecimal finalAmount = order.getFinalAmount();
+        supplier.setBalance(supplier.getBalance().add(finalAmount));
+        SupplierFlow flow = new SupplierFlow();
+        flow.setSupplierId(order.getSupplierId());
+        flow.setBusinessId(order.getId());
+        flow.setBusinessNo(order.getOrderNo());
+        flow.setSupplierFlowType(SupplierFlow.SupplierFlowType.采购入库单);
+        flow.setPurchaseAmount(finalAmount);
+        flow.setCopeWithAmount(finalAmount);
+        flow.setBalancePayable(supplier.getBalance());
+        flow.setAccountBookId(order.getAccountBookId());
+        flow.setMerchantId(order.getMerchantId());
+        flow.setCreatedBy(adminId);
+        flow.setCreatedAt(LocalDateTime.now());
+        flow.setRemarks("采购入库单审核通过");
+        supplierService.updateTheBalance(supplier, flow);
+    }
+
+    private boolean checkHasPaymentOrVerification(Long inboundId) {
+        QOrderPaymentItem qOrderPaymentItem = QOrderPaymentItem.orderPaymentItem;
+        QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
+
+        long paymentCount = jqf.select(qOrderPaymentItem.id.count())
+                .from(qOrderPaymentItem)
+                .where(qOrderPaymentItem.businessId.eq(inboundId)
+                        .and(qOrderPaymentItem.businessType.eq(1)))
+                .fetchOne();
+
+        long verificationCount = jqf.select(qVerificationItem.id.count())
+                .from(qVerificationItem)
+                .where(qVerificationItem.businessId.eq(inboundId.intValue())
+                        .and(qVerificationItem.businessType.eq(1)))
+                .fetchOne();
+        long paymentTotal = Optional.ofNullable(paymentCount).orElse(0L);
+        long verificationTotal = Optional.ofNullable(verificationCount).orElse(0L);
+        return paymentTotal > 0 || verificationTotal > 0;
     }
 
     private void purchaseInboundToInventory(OrderStatus state, List<Long> setIds) {

@@ -2,37 +2,60 @@
   <div class="login">
     <div class="body-wrapper">
       <div class="login-header">
-        <div class="login-logo"></div>&nbsp;
-        <div class="login-title">纷析云进销存管理系统
+        <div class="login-logo"></div>
+        &nbsp;
+        <div class="login-title">
+          纷析云进销存管理系统
           <div class="login-title-bot">FinXi MART Management System</div>
         </div>
       </div>
       <div class="section login-bg">
         <div class="login-form">
-          <Form ref="loginForm" :model="form"  :labelWidth="70" :rules="rules">
-            <div class="wel"> &nbsp;<span></span>
-            </div>
+          <Form ref="loginForm" :model="form" :labelWidth="70" :rules="rules">
+            <div class="wel">&nbsp;<span></span></div>
             <FormItem>
               <template v-slot:label>
                 <span class="white-color">账 号:</span>
               </template>
-              <Input type="text" style="border-radius: 3px;" v-model="form.username" autocomplete="off" placeholder="请输入登录账号"/>
+              <Input
+                type="text"
+                style="border-radius: 3px"
+                v-model="form.username"
+                autocomplete="off"
+                placeholder="请输入登录账号"
+              />
             </FormItem>
-            <FormItem >
+            <FormItem>
               <template v-slot:label>
                 <span class="white-color">密 码:</span>
               </template>
-              <Input type="password" style="border-radius: 3px;"  v-model="form.password" autocomplete="off" @keyup.enter="submitForm" placeholder="请输入密码"/>
+              <Input
+                type="password"
+                style="border-radius: 3px"
+                v-model="form.password"
+                autocomplete="off"
+                @keyup.enter="submitForm"
+                placeholder="请输入密码"
+              />
             </FormItem>
-            <FormItem >
-              <Button :loading="loading" class="login-form-btn" color="primary" @click="submitForm">登 录</Button>
+            <FormItem>
+              <Button
+                :loading="loading"
+                class="login-form-btn"
+                color="primary"
+                @click="submitForm"
+                >登 录</Button
+              >
             </FormItem>
           </Form>
         </div>
       </div>
       <div class="login-footer">
         <p>开启智慧之旅，获取虚拟学习的无尽宝库.</p>
-        <p>Start a journey of wisdom and gain an endless treasure trove of virtual learning.</p>
+        <p>
+          Start a journey of wisdom and gain an endless treasure trove of
+          virtual learning.
+        </p>
       </div>
     </div>
     <div class="footerWrap">
@@ -44,12 +67,11 @@
 </template>
 
 <script>
-
-import {Login} from "@js/api/App";
-import {message} from "heyui.ext";
+import { Login, loginByBumer } from '@js/api/App';
+import { message } from 'heyui.ext';
 
 export default {
-  name: "Login",
+  name: 'Login',
   data() {
     return {
       loading: false,
@@ -62,33 +84,52 @@ export default {
       rules: {
         required: ['username', 'password']
       }
-    }
+    };
   },
 
   methods: {
+    loginByMobile() {
+      // 获取当前页面的 URL 查询参数
+      const search = window.location.search;
+
+      // 创建 URLSearchParams 对象
+      const params = new URLSearchParams(search);
+
+      // 获取特定键的值
+      const mobile = params.get('mobile');
+
+      if (!mobile) return;
+      loginByBumer({ mobile }).then(({ success, data: { account } }) => {
+        message('登录成功~');
+        window.location.replace('/');
+      });
+    },
     submitForm() {
       let validResult = this.$refs.loginForm.valid();
       if (validResult.result) {
         this.loading = true;
-        Login(this.form).then(({success, data: {account}}) => {
-          if (success) {
-            message("登录成功~");
-            localStorage.setItem("m_cache_username", this.form.username)
-            window.location.replace("/");
-          }
-        }).finally(() => {
-          this.loading = false;
-        });
+        Login(this.form)
+          .then(({ success, data: { account } }) => {
+            if (success) {
+              message('登录成功~');
+              localStorage.setItem('m_cache_username', this.form.username);
+              window.location.replace('/');
+            }
+          })
+          .finally(() => {
+            this.loading = false;
+          });
       }
-    },
+    }
   },
   created() {
-    let username = localStorage.getItem("m_cache_username");
+    let username = localStorage.getItem('m_cache_username');
     if (username) {
       this.form.username = username;
     }
+    this.loginByMobile();
   }
-}
+};
 </script>
 <style scoped lang="less">
 .login {
@@ -137,7 +178,6 @@ export default {
       background: url(@/assets/logo_login.png) no-repeat;
       background-size: 99%;
       padding-right: 12px;
-
     }
 
     .login-title {
@@ -161,7 +201,6 @@ export default {
     }
   }
 
-
   .login-bg {
     width: 900px;
     height: 398px;
@@ -175,7 +214,7 @@ export default {
     height: 398px;
     background: #a7bcde;
     padding: 0 30px;
-    .login-form-btn{
+    .login-form-btn {
       width: 100%;
       background-color: #3d74ff;
       border-radius: 3px;
@@ -211,7 +250,7 @@ export default {
       font-size: 12px;
       color: #fff;
       padding-left: 10px;
-      opacity: .8;
+      opacity: 0.8;
     }
   }
 }

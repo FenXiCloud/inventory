@@ -24,6 +24,9 @@ export const HomeView = () => {
 export const Login = (formData) => {
   return Ajax.post('/login', jsonToFormData(formData));
 };
+export const loginByBumer = (number) => {
+  return Ajax.post('/financial/login', jsonToFormData(number));
+};
 
 export const DDLogin = (param) => {
   return Ajax.post('/dd/auth', param);

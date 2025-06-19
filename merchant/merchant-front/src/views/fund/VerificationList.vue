@@ -54,7 +54,7 @@
               v-model="form.personnelName"
               class="w-120px z-index-1"
               :datas="supplierDataList"
-              keyName="id"
+              keyName="name"
               titleName="name"
               placeholder="选择供应商"
               @change="selectPerson($event)"
@@ -251,9 +251,11 @@
         <vxe-column field="businessNo" title="源单编号"></vxe-column>
         <vxe-column field="businessType" title="业务类别">
           <template #default="{ row }">
-            <span v-if="row.businessType == '2'">期初余额</span>
-            <span v-else-if="form.type =='1'">普通销售</span>
-            <span v-else>普通采购</span>
+            <span v-if="row.businessType">
+              <span v-if="row.businessType == '2'">期初余额</span>
+              <span v-else-if="form.type =='1'">普通销售</span>
+              <span v-else>普通采购</span>
+            </span>
           </template>
         </vxe-column>
         <vxe-column field="businessDate" title="单据日期"></vxe-column>
@@ -325,6 +327,7 @@ import OrderStaffForm from "./OrderStaffForm";
 import sourceForm from "./sourceByVerfication.vue";
 import { mapState, mapMutations } from "vuex";
 const Big = require("big.js");
+import manba from 'manba';
 // import Stamp from '../common/Stamp.vue';
 export default {
   name: "VerificationList",
@@ -358,6 +361,7 @@ export default {
       form: {
         type: "1",
         orderStaffName: null,
+        orderDate: manba().format('YYYY-MM-DD')
       },
       tableData,
       tableData2,
@@ -408,7 +412,9 @@ export default {
   methods: {
     ...mapMutations(["pushTab", "closeSelfTab"]),
     clerarData() {
-      this.form = {};
+      this.form = {
+        orderDate: manba().format('YYYY-MM-DD')
+      };
       this.tableData = [{}];
       this.tableData2 = [{}];
     },
@@ -783,7 +789,7 @@ export default {
       const tempTable2 = this.tableData2.map((item) => ({ ...item }));
       for (let i = 0; i < tempTable2.length; i++) {
         const table2Item = tempTable2[i];
-        let availableAmount = new Big(table2Item.unverifiedAmount);
+        let availableAmount = new Big(table2Item.unverifiedAmount || 0);
 
         if (availableAmount <= 0) continue;
 
@@ -791,7 +797,7 @@ export default {
         for (let j = 0; j < tempTable1.length && availableAmount > 0; j++) {
           const table1Item = tempTable1[j];
           const remainingUnverified = parseFloat(
-            new Big(table1Item.unverifiedAmount).minus(
+            new Big(table1Item.unverifiedAmount || 0).minus(
               table1Item.currentVerifyAmount || 0
             )
           );

@@ -36,6 +36,7 @@ import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -177,6 +178,9 @@ public class OrderReceiptService extends AbsService {
         if (query.getAccountBookId() != null) {
             condition.and(qCustomerCategory.accountBookId.eq(query.getAccountBookId()));
         }
+        if (query.getCustomerTypeId() != null) {
+            condition.and(qCustomerCategory.id.eq(query.getCustomerTypeId()));
+        }
 
         JPAQuery<CustomerCategory> categoryQuery = jqf.select(qCustomerCategory)
                 .from(qCustomerCategory)
@@ -256,6 +260,9 @@ public class OrderReceiptService extends AbsService {
         }
         if (query.getAccountBookId() != null) {
             condition.and(qOrderStaff.accountBookId.eq(query.getAccountBookId()));
+        }
+        if (query.getSalesmanId() != null) {
+            condition.and(qOrderStaff.id.eq(query.getSalesmanId()));
         }
         JPAQuery<OrderStaff> staffQuery = jqf.selectFrom(qOrderStaff).where(condition);
         long total = staffQuery.fetchCount();
@@ -958,7 +965,8 @@ public class OrderReceiptService extends AbsService {
             }
             customer.setBalance(customer.getBalance().add(shouldVerifyAmount));
         }
-        customerService.updateTheBalance(customer);
+        CustomerFlow customerFlow = getCustomerFlow(receipt, targetStatus, customer);
+        customerService.updateTheBalance(customer,customerFlow);
         for (OrderReceiptCollection collection : collections) {
             Long accountId = collection.getSettlementAccountId();
             if (accountId == null) {
@@ -994,6 +1002,33 @@ public class OrderReceiptService extends AbsService {
         }
 
 
+    }
+    private static @NotNull CustomerFlow getCustomerFlow(OrderReceipt receipt, OrderStatus targetStatus, Customer customer) {
+        CustomerFlow.CustomerFlowType flowType;
+        CustomerFlow customerFlow = new CustomerFlow();
+        customerFlow.setCustomerId(customer.getId());
+        customerFlow.setBusinessId(receipt.getId());
+        customerFlow.setBusinessNo(receipt.getOrderNo());
+        customerFlow.setBusinessDate(receipt.getOrderDate());
+
+        BigDecimal collectionAmount = receipt.getCollectionAmount();
+        if (targetStatus == OrderStatus.已审核) {
+            flowType = CustomerFlow.CustomerFlowType.收款单;
+            customerFlow.setSalesAmount(collectionAmount);
+        } else {
+            flowType = CustomerFlow.CustomerFlowType.反审核_收款单;
+            customerFlow.setSalesAmount(collectionAmount != null ? collectionAmount.negate() : BigDecimal.ZERO);
+        }
+        customerFlow.setCustomerFlowType(flowType);
+
+        customerFlow.setBalanceReceivables(customer.getBalance());
+        customerFlow.setAccountBookId(receipt.getAccountBookId());
+        customerFlow.setMerchantId(receipt.getMerchantId());
+        customerFlow.setCreatedBy(receipt.getApprovedBy());
+        customerFlow.setCreatedAt(LocalDateTime.now());
+        customerFlow.setRemarks(targetStatus == OrderStatus.已审核 ? "收款单审核通过" : "收款单反审核");
+
+        return customerFlow;
     }
 
 

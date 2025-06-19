@@ -223,7 +223,7 @@ public class PurchaseReturnService extends AbsService {
                                 .set(qPurchaseInbound.returnSum, tuple.get(qPurchaseInboundItem.returnQuantity.sum()))
                                 .where(qPurchaseInbound.id.eq(tuple.get(qPurchaseInboundItem.purchaseInboundId))).execute();
                     });
-            if (original.getOrderStatus().equals(OrderStatus.已审核)){
+            if (original.getOrderStatus().equals(OrderStatus.已审核)) {
                 outboundSupplierFlows(original.getCreatedBy(), original);
             }
             return purchaseReturnRepository.save(original);
@@ -410,7 +410,10 @@ public class PurchaseReturnService extends AbsService {
                 flow.setCreatedBy(adminId);
                 flow.setCreatedAt(LocalDateTime.now());
                 flow.setRemarks("采购退货单反审核");
-
+                if (order.getDiscountAmount() != null) {
+                    flow.setPreferentialAmount(order.getDiscountAmount().negate());
+                }
+                flow.setBusinessDate(order.getReturnDate());
                 supplier.setBalance(supplier.getBalance().add(refundAmount));
                 supplierService.updateTheBalance(supplier, flow);
 
@@ -437,11 +440,14 @@ public class PurchaseReturnService extends AbsService {
         supplier.setBalance(supplier.getBalance().subtract(refundAmount));
 
         SupplierFlow flow = new SupplierFlow();
+        if (order.getDiscountAmount() != null) {
+            flow.setPreferentialAmount(order.getDiscountAmount());
+        }
         flow.setSupplierId(order.getSupplierId());
         flow.setBusinessId(order.getId());
         flow.setBusinessNo(order.getOrderNo());
         flow.setSupplierFlowType(SupplierFlow.SupplierFlowType.采购退货单);
-        flow.setPurchaseAmount(refundAmount.negate()); // 流水金额为负数表示支出/退款
+        flow.setPurchaseAmount(refundAmount.negate());
         flow.setCopeWithAmount(refundAmount.negate());
         flow.setBalancePayable(supplier.getBalance());
         flow.setAccountBookId(order.getAccountBookId());
@@ -449,7 +455,7 @@ public class PurchaseReturnService extends AbsService {
         flow.setCreatedBy(adminId);
         flow.setCreatedAt(LocalDateTime.now());
         flow.setRemarks("采购退货单审核通过");
-
+        flow.setBusinessDate(order.getReturnDate());
         supplierService.updateTheBalance(supplier, flow);
     }
 

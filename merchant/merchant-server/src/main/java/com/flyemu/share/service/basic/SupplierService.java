@@ -21,6 +21,7 @@ import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.SupplierFlowRepository;
 import com.flyemu.share.repository.SupplierRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.fund.SupplierFlowService;
 import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.flyemu.share.way.ProductExistenceChecker;
@@ -68,7 +69,7 @@ public class SupplierService extends AbsService {
 
     private final SupplierRepository supplierRepository;
     private final CodeRuleService codeRuleService;
-    private final SupplierFlowRepository supplierFlowRepository;
+    private final SupplierFlowService supplierFlowService;
 
     public PageResults query(Page page, Query query) {
         PagedList<Tuple> pagedList = bqf.selectFrom(qSupplier).select(qSupplier, qSupplierCategory.name).leftJoin(qSupplierCategory).on(qSupplier.supplierCategoryId.eq(qSupplierCategory.id)).where(query.builder).orderBy(qSupplier.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -86,10 +87,13 @@ public class SupplierService extends AbsService {
             if (supplier.getId() != null) {
                 //更新
                 Supplier original = supplierRepository.getById(supplier.getId());
+                if (original.getBalance()!=null&&original.getBalance().compareTo(supplier.getBalance())!=0){
+                    throw new ServiceException("余额不允许修改");
+                }
                 BeanUtil.copyProperties(supplier, original, CopyOptions.create().ignoreNullValue());
                 return supplierRepository.save(original);
             }
-            
+
             if (io.micrometer.common.util.StringUtils.isEmpty(supplier.getCode())) {
                 CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
                         CodeRule.DocumentType.供货商,
@@ -126,7 +130,16 @@ public class SupplierService extends AbsService {
                     supplier.setCode(CodeGenerator.generateCode());
                 }
             }
-            return supplierRepository.save(supplier);
+            Supplier save = supplierRepository.save(supplier);
+            SupplierFlow supplierFlow=new SupplierFlow();
+            supplierFlow.setSupplierId(save.getId());
+            supplierFlow.setBalancePayable(save.getBalance());
+            supplierFlow.setSupplierFlowType(SupplierFlow.SupplierFlowType.期初);
+            supplierFlow.setAccountBookId(supplier.getAccountBookId());
+            supplierFlow.setMerchantId(supplier.getMerchantId());
+            supplierFlow.setCreatedAt(LocalDateTime.now());
+            supplierFlowService.insert(supplierFlow);
+            return save;
         } catch (Exception e) {
             log.error("supplier save", e);
             throw new ServiceException(e.getMessage());
@@ -264,11 +277,11 @@ public class SupplierService extends AbsService {
         }
         return supplier;
     }
-
+    @Transactional
     public void updateTheBalance(Supplier supplier, SupplierFlow flow) {
         validateSupplierFlow(flow);
         jqf.update(qSupplier).set(qSupplier.balance, supplier.getBalance()).where(qSupplier.id.eq(supplier.getId())).execute();
-            supplierFlowRepository.save(flow);
+        supplierFlowService.insert(flow);
     }
     public void validateSupplierFlow(SupplierFlow flow) {
         if (flow.getBusinessId() == null) {

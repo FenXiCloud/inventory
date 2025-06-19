@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.fund;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,6 +10,7 @@ import org.hibernate.annotations.DynamicUpdate;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -24,6 +26,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table
 @DynamicUpdate
+@JsonInclude ()
 public class SupplierFlow implements Serializable {
 
     @Id
@@ -36,12 +39,13 @@ public class SupplierFlow implements Serializable {
     private Long businessId;
     @Comment("单据编号")
     private String businessNo;
+    @Comment("单据日期")
+    private LocalDate businessDate;
     @Comment("操作类型")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private SupplierFlowType supplierFlowType;
     @Comment("采购金额")
-    @Column(nullable = false)
     private BigDecimal purchaseAmount;
     @Comment("优惠金额")
     private BigDecimal preferentialAmount;

@@ -177,7 +177,9 @@ public class OrderPaymentService extends AbsService {
         if (query.getAccountBookId() != null) {
             condition.and(qSupplierCategory.accountBookId.eq(query.getAccountBookId()));
         }
-
+        if (query.getSupplierTypeId() != null) {
+            condition.and(qSupplierCategory.id.eq(query.getSupplierTypeId()));
+        }
         JPAQuery<SupplierCategory> categoryQuery = jqf.select(qSupplierCategory).from(qSupplierCategory).where(condition).orderBy(qSupplierCategory.id.asc());
 
         long total = categoryQuery.fetchCount();
@@ -246,6 +248,9 @@ public class OrderPaymentService extends AbsService {
         }
         if (query.getAccountBookId() != null) {
             condition.and(qOrderStaff.accountBookId.eq(query.getAccountBookId()));
+        }
+        if (query.getSalesmanId() != null) {
+            condition.and(qOrderStaff.id.eq(query.getSalesmanId()));
         }
         JPAQuery<OrderStaff> staffQuery = jqf.selectFrom(qOrderStaff).where(condition);
         long total = staffQuery.fetchCount();
@@ -851,6 +856,7 @@ public class OrderPaymentService extends AbsService {
         supplierFlow.setSupplierId(supplier.getId());
         supplierFlow.setBusinessId(payment.getId());
         supplierFlow.setBusinessNo(payment.getOrderNo());
+        supplierFlow.setBusinessDate(payment.getOrderDate());
         // 实付金额
         if (targetStatus == OrderStatus.已审核) {
             flowType = SupplierFlow.SupplierFlowType.付款单;
@@ -1016,6 +1022,8 @@ public class OrderPaymentService extends AbsService {
         private Long merchantId;
         private Long accountBookId;
         private Long supplierId;
+        private Long supplierTypeId;
+        private Integer salesmanId;
         private LocalDate startDate;
         private LocalDate endDate;
         private Integer type; //1=按供应商，2=按供应商类型，3=按业务员

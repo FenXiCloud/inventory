@@ -24,6 +24,7 @@ import com.flyemu.share.repository.CustomerRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.Expressions;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.criteria.Predicate;
@@ -31,6 +32,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,6 +59,50 @@ public class CustomerFlowService extends AbsService {
 
     private final CustomerFlowRepository customerFlowRepository;
     private final CustomerRepository customerRepository;
+
+    public PageResults<CustomerFlow> getFlowsByCustomerBill(Page page, CustomerBillQueryDTO queryDTO) {
+        BooleanBuilder builder = new BooleanBuilder();
+        builder.and(queryDTO.builder);
+
+        PagedList<CustomerFlow> fetchPage = bqf.selectFrom(qCustomerFlow)
+                .where(builder)
+                .orderBy(
+                        Expressions.booleanTemplate("case when {0} = '期初' then true else false end", qCustomerFlow.customerFlowType).desc(),
+                        qCustomerFlow.id.desc()
+                )
+                .fetchPage(page.getOffset(), page.getPageSize());
+
+        return new PageResults<>(fetchPage, page);
+    }
+
+    @Data
+    public static class CustomerBillQueryDTO {
+        public final BooleanBuilder builder = new BooleanBuilder();
+
+        public void setMerchantId(Long merchantId) {
+            if (merchantId != null) {
+                builder.and(qCustomerFlow.merchantId.eq(merchantId));
+            }
+        }
+
+        public void setCustomerId(Long customerId) {
+            builder.and(qCustomerFlow.customerId.eq(customerId));
+        }
+
+        public void setAccountBookId(Long accountBookId) {
+            if (accountBookId != null) {
+                builder.and(qCustomerFlow.accountBookId.eq(accountBookId));
+            }
+        }
+
+        public void setStartTime(LocalDateTime startTime) {
+            builder.and(qCustomerFlow.createdAt.goe(startTime));
+        }
+
+        public void setEndTime(LocalDateTime endTime) {
+            builder.and(qCustomerFlow.createdAt.loe(endTime));
+        }
+    }
 
     public List<CustomerFlow> query(Query query) {
         List<CustomerFlow> customerFlows = bqf.selectFrom(qCustomerFlow)
@@ -90,7 +136,7 @@ public class CustomerFlowService extends AbsService {
 
     public PageResults<CustomerFlowDTO> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qCustomerFlow)
-                .select(qCustomerFlow, qCustomer.name,qCustomer.code)
+                .select(qCustomerFlow, qCustomer.name, qCustomer.code)
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qCustomerFlow.customerId))
                 .where(query.buildersV2())
                 .orderBy(qCustomerFlow.id.desc())
@@ -102,7 +148,7 @@ public class CustomerFlowService extends AbsService {
             dto.setCustomerCode(tuple.get(qCustomer.code));
             list.add(dto);
         }, List::addAll);
-        
+
         return new PageResults<>(collect, page, fetchPage.getTotalSize());
     }
 
@@ -119,7 +165,7 @@ public class CustomerFlowService extends AbsService {
                 CustomerFlow original = customerFlowRepository.getById(item.getId());
                 BeanUtil.copyProperties(item, original, CopyOptions.create().ignoreNullValue());
                 customerFlowRepository.save(original);
-            }else{
+            } else {
                 //按照商品id和仓库id 查询数据是否存在，组装查询条件
                 Specification<CustomerFlow> query = (root, criteriaQuery, criteriaBuilder) -> {
                     List<Predicate> predicates = new ArrayList<>();
@@ -133,7 +179,7 @@ public class CustomerFlowService extends AbsService {
                 if (customerFlowRepository.exists(query)) {
                     //根据商品id查询客户
                     Customer customer = customerRepository.getById(item.getCustomerId());
-                    throw new InvalidContextException("客户：" + customer.getName() +"，期初余额数据已存在");
+                    throw new InvalidContextException("客户：" + customer.getName() + "，期初余额数据已存在");
                 }
                 //新增
                 customerFlowRepository.save(item);
@@ -154,6 +200,25 @@ public class CustomerFlowService extends AbsService {
             return;
         }
         customerFlowRepository.deleteAllByIdInBatch(ids);
+    }
+
+    public void insert(CustomerFlow form) {
+        if (form.getMerchantId() == null) {
+            throw new InvalidContextException("商户ID不能为空");
+        }
+        if (form.getAccountBookId() == null) {
+            throw new InvalidContextException("账簿ID不能为空");
+        }
+        if (form.getCustomerId() == null) {
+            throw new InvalidContextException("客户ID不能为空");
+        }
+        if (form.getCustomerFlowType() == null) {
+            throw new InvalidContextException("单据类型不能为空");
+        }
+        if (form.getBalanceReceivables() == null) {
+            throw new InvalidContextException("应付余额不能为空");
+        }
+        customerFlowRepository.save(form);
     }
 
 

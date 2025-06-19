@@ -17,6 +17,7 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.basic.PriceRecord;
 import com.flyemu.share.entity.basic.QSupplier;
 import com.flyemu.share.entity.fund.QOrderPaymentItem;
+import com.flyemu.share.entity.fund.QVerification;
 import com.flyemu.share.entity.fund.QVerificationItem;
 import com.flyemu.share.entity.fund.SupplierFlow;
 import com.flyemu.share.entity.inventory.Inventory;
@@ -153,9 +154,6 @@ public class PurchaseInboundService extends AbsService {
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
             original.setSecondarySum(secondarySum);
             original.setReturnSum(secondarySum);
-            if (original.getOrderStatus().equals(OrderStatus.已审核)){
-                inboundSupplierFlows(original.getCreatedBy(), original);
-            }
             return purchaseInboundRepository.save(original);
         } else {
 
@@ -317,9 +315,9 @@ public class PurchaseInboundService extends AbsService {
                     log.error("存在付款单或核销单，无法反审核-----orderId:{}", order.getId());
                     throw new ServiceException("存在付款单或核销单，无法反审核");
                 }
-
-                Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
                 BigDecimal finalAmount = order.getFinalAmount();
+                Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
+                supplier.setBalance(supplier.getBalance().subtract(finalAmount));
                 SupplierFlow flow = new SupplierFlow();
                 flow.setSupplierId(order.getSupplierId());
                 flow.setBusinessId(order.getId());
@@ -327,14 +325,17 @@ public class PurchaseInboundService extends AbsService {
                 flow.setSupplierFlowType(SupplierFlow.SupplierFlowType.反审核_采购入库单);
                 flow.setPurchaseAmount(finalAmount.negate());
                 flow.setCopeWithAmount(finalAmount.negate());
+                if (order.getDiscountAmount() != null) {
+                    flow.setPreferentialAmount(order.getDiscountAmount().negate());
+                }
                 flow.setBalancePayable(supplier.getBalance());
                 flow.setAccountBookId(order.getAccountBookId());
                 flow.setMerchantId(order.getMerchantId());
                 flow.setCreatedBy(adminId);
                 flow.setCreatedAt(LocalDateTime.now());
                 flow.setRemarks("采购入库单反审核");
-                supplier.setBalance(supplier.getBalance().subtract(finalAmount));
-                supplierService.updateTheBalance(supplier,flow);
+                flow.setBusinessDate(order.getInboundDate());
+                supplierService.updateTheBalance(supplier, flow);
                 setIds.add(order.getId());
             }
         }
@@ -361,6 +362,9 @@ public class PurchaseInboundService extends AbsService {
         flow.setBusinessNo(order.getOrderNo());
         flow.setSupplierFlowType(SupplierFlow.SupplierFlowType.采购入库单);
         flow.setPurchaseAmount(finalAmount);
+        if (order.getDiscountAmount() != null) {
+            flow.setPreferentialAmount(order.getDiscountAmount().negate());
+        }
         flow.setCopeWithAmount(finalAmount);
         flow.setBalancePayable(supplier.getBalance());
         flow.setAccountBookId(order.getAccountBookId());
@@ -368,12 +372,14 @@ public class PurchaseInboundService extends AbsService {
         flow.setCreatedBy(adminId);
         flow.setCreatedAt(LocalDateTime.now());
         flow.setRemarks("采购入库单审核通过");
+        flow.setBusinessDate(order.getInboundDate());
         supplierService.updateTheBalance(supplier, flow);
     }
 
     private boolean checkHasPaymentOrVerification(Long inboundId) {
         QOrderPaymentItem qOrderPaymentItem = QOrderPaymentItem.orderPaymentItem;
         QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
+        QVerification qVerification = QVerification.verification;
 
         long paymentCount = jqf.select(qOrderPaymentItem.id.count())
                 .from(qOrderPaymentItem)
@@ -383,11 +389,12 @@ public class PurchaseInboundService extends AbsService {
 
         long verificationCount = jqf.select(qVerificationItem.id.count())
                 .from(qVerificationItem)
-                .where(qVerificationItem.businessId.eq(inboundId.intValue())
+                .leftJoin(qVerification).on(qVerification.id.eq(qVerificationItem.verificationId))
+                .where(qVerificationItem.businessId.eq(inboundId.intValue()).and(qVerification.type.eq(2))
                         .and(qVerificationItem.businessType.eq(1)))
                 .fetchOne();
-        long paymentTotal = Optional.ofNullable(paymentCount).orElse(0L);
-        long verificationTotal = Optional.ofNullable(verificationCount).orElse(0L);
+        long paymentTotal = Optional.of(paymentCount).orElse(0L);
+        long verificationTotal = Optional.of(verificationCount).orElse(0L);
         return paymentTotal > 0 || verificationTotal > 0;
     }
 

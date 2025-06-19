@@ -1,23 +1,17 @@
 package com.flyemu.share.service.setting;
 
 
-import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.bean.copier.CopyOptions;
-import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.lang.Assert;
-import com.blazebit.persistence.querydsl.BlazeJPAQuery;
 import com.flyemu.share.entity.setting.AccountBookParameters;
 import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.repository.AccountBookParametersRepository;
 import com.flyemu.share.service.AbsService;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
-import java.util.List;
 
 
 /**
@@ -34,32 +28,27 @@ public class AccountBookParametersService extends AbsService {
 
     private final AccountBookParametersRepository accountBookParametersRepository;
 
-    @Transactional
+
     public AccountBookParameters list(Integer id) {
         Assert.notNull(id, "id不能为空");
-        AccountBookParameters accountBookParameters = bqf
+        AccountBookParameters params = bqf
                 .selectFrom(Q_ACCOUNT_BOOK_PARAMETERS)
                 .where(Q_ACCOUNT_BOOK_PARAMETERS.accountBookId.eq(id))
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
                 .fetchFirst();
-
-        if (accountBookParameters == null) {
-            accountBookParameters = new AccountBookParameters();
-            accountBookParameters.setAccountBookId(id);
-            accountBookParameters.setCostAccounting(1);
-            accountBookParameters.setAvailableInventory(1);
-            accountBookParameters.setQuantityDecimal(0);
-            accountBookParameters.setPriceDecimal(0);
-            accountBookParametersRepository.save(accountBookParameters);
-
-            // 重新查询以确保返回最新数据
-            accountBookParameters = bqf
-                    .selectFrom(Q_ACCOUNT_BOOK_PARAMETERS)
-                    .where(Q_ACCOUNT_BOOK_PARAMETERS.accountBookId.eq(id))
-                    .fetchFirst();
+        if (params == null) {
+            params = new AccountBookParameters();
+            params.setAccountBookId(id);
+            params.setCostAccounting(1);
+            params.setAvailableInventory(1);
+            params.setQuantityDecimal(0);
+            params.setPriceDecimal(0);
+            accountBookParametersRepository.save(params);
         }
 
-        return accountBookParameters;
+        return params;
     }
+
 
     public void update(AccountBookParameters accountBookParameters) {
         Assert.notNull(accountBookParameters.getId(), "id不能为空");

@@ -385,7 +385,7 @@ public class OtherExpenseService extends AbsService {
         supplierFlow.setCreatedBy(expense.getApprovedBy());
         supplierFlow.setCreatedAt(LocalDateTime.now());
         supplierFlow.setRemarks(targetStatus == OrderStatus.已审核 ? "其他支出单审核通过" : "其他支出单反审核");
-
+        supplierFlow.setBusinessDate(expense.getOrderDate());
         supplierService.updateTheBalance(supplier,supplierFlow);
 
         Long settlementAccountId = expense.getSettlementAccountId();

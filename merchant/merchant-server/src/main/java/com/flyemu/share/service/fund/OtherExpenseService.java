@@ -329,7 +329,7 @@ public class OtherExpenseService extends AbsService {
             if (targetStatus == OrderStatus.已保存 && !OrderStatus.已审核.equals(expense.getOrderStatus())) {
                 throw new ServiceException("只能反审核【已审核】状态的单据：" + expense.getOrderNo());
             }
-
+            updateSupplierAndAccountBalances(expense, targetStatus);
             expense.setOrderStatus(targetStatus);
             if (targetStatus == OrderStatus.已审核) {
                 expense.setApprovedAt(now);
@@ -339,7 +339,7 @@ public class OtherExpenseService extends AbsService {
                 expense.setApprovedBy(null);
             }
             otherExpenseRepository.save(expense);
-            updateSupplierAndAccountBalances(expense, targetStatus);
+
         }
 
         jqf.update(qOtherExpense)

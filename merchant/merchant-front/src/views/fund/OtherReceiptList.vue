@@ -188,7 +188,9 @@
       <template #buttons>
         <div class="filler-panel">
           <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
-            <label class="mr-16px w-80px">结算账户:</label>
+            <label class="mr-16px w-80px">
+              <span style="color: red">*</span>结算账户:</label
+            >
             <!-- <Input
               type="number"
               v-model="form.discountRate"
@@ -207,7 +209,10 @@
             </Select>
 
             <label class="ml-10px w-90px">收款金额:</label>
-            <Input v-model="form.collectionAmount" />
+            <Input
+              @change="form.arrearsAmount = calcArrearsAmount()"
+              v-model="form.collectionAmount"
+            />
 
             <label class="ml-10px w-90px">本次欠款:</label>
             <Input disabled v-model="form.arrearsAmount" />
@@ -231,12 +236,14 @@ import manba from 'manba';
 import { confirm, loading, message } from 'heyui.ext';
 import { layer } from '@layui/layer-vue';
 import { h } from 'vue';
-import OrderReceipt from '@js/api/fund/OrderReceipt';
+import OtherReceipt from '@js/api/fund/OtherReceipt';
 import Account from '@js/api/fund/Account';
 import PaymentMethod from '@js/api/basic/PaymentMethod';
 import Customer from '@js/api/basic/Customer';
+import OrderStaff from '@js/api/basic/OrderStaff';
+import AccountType from '@js/api/basic/AccountType';
+
 import OrderStaffForm from './OrderStaffForm';
-import sourceForm from './sourceForm.vue';
 import { mapState, mapMutations } from 'vuex';
 import Stamp from '../common/Stamp.vue';
 export default {
@@ -276,6 +283,7 @@ export default {
       orderStaffList: [],
       paymentMethodList: [],
       accountTypeList: [],
+      settlementAccount: [],
 
       totalTb1: 0,
       totalTb2: 0,
@@ -341,6 +349,11 @@ export default {
   },
   methods: {
     ...mapMutations(['pushTab', 'closeSelfTab']),
+    loadAccountType() {
+      AccountType.list().then((res) => {
+        this.accountTypeList = res.data;
+      });
+    },
     getLog() {
       // this.logContent
       let {
@@ -367,6 +380,14 @@ export default {
         (parseFloat(this.form.discountRate) || 0)
       ).toFixed(2);
     },
+    calcArrearsAmount() {
+      return (
+        (parseFloat(this.totalTb1) || 0) -
+        (parseFloat(this.totalTb2) || 0) -
+        (parseFloat(this.form.collectionAmount) || 0)
+      ).toFixed(2);
+    },
+
     batchAudit(orderStatus) {
       let params = {
         id: this.form.id,
@@ -376,7 +397,7 @@ export default {
       confirm({
         content: `确定审核订单？`,
         onConfirm: () => {
-          OrderReceipt.batchAudit(params)
+          OtherReceipt.batchAudit(params)
             .then((success) => {
               if (success) {
                 if (orderStatus === '已审核') {
@@ -399,28 +420,22 @@ export default {
 
     updatePage(type = 'add', orderId = null) {
       this.closeSelfTab(this.index);
-      // this.pushTab({
-      //   keepAlive: false,
-      //   key: 'OrderReceiptRecord',
-      //   title: '收款单记录'
-      // });
       // 打开当前
       this.pushTab({
         keepAlive: false,
-        key: 'OrderReceiptList',
+        key: 'OtherReceiptList',
         params: { type: type, orderId: orderId },
-        title: '收款单'
+        title: '其他收入单'
       });
     },
     loadList() {
       this.loading = true;
       // const params = JSON.parse(JSON.stringify(this.queryParams));
       // params.customerIds = params.customerIds.join(',');
-      OrderReceipt.details({ id: this.orderId })
-        .then(({ data: { orderReceipt, collectionList, itemList } }) => {
-          this.form = orderReceipt;
-          this.tableData = collectionList || [];
-          this.tableData2 = itemList || [];
+      OtherReceipt.details({ id: this.orderId })
+        .then(({ data: { order, itemList } }) => {
+          this.form = order;
+          this.tableData = itemList || [];
           // this.pagination.total = total;
           this.getLog();
         })
@@ -435,8 +450,8 @@ export default {
     historyForm() {
       this.pushTab({
         keepAlive: false,
-        key: 'OrderReceiptRecord',
-        title: '收款单记录'
+        key: 'OtherReceiptRecord',
+        title: '其他收入单记录'
       });
     },
     saveForm(type = 'add', orderStatus = '已保存') {
@@ -445,7 +460,7 @@ export default {
       //   'saveForm----------------------------------------------------------'
       // );
       let orderReceipt = {
-        documentSource: 1,
+        // documentSource: 1,
         createdBy: this.user.admin.id,
         updateBy: this.user.admin.id,
         orderStatus: orderStatus, //||已审核
@@ -464,18 +479,16 @@ export default {
           .filter((row) => Object.keys(row).length);
 
       let params = {
-        orderReceipt,
-        collectionList: filterEmptyObjects(this.tableData),
-        itemList: filterEmptyObjects(this.tableData2)
+        order: orderReceipt,
+        itemList: filterEmptyObjects(this.tableData)
       };
 
       if (!this.form.customerId) {
         return message.error('请选择客户');
-      } else if (
-        !this.tableData.length ||
-        !this.tableData[0].settlementAccountId
-      ) {
+      } else if (!this.form.settlementAccountId) {
         return message.error('请选择结算账户');
+      } else if (!this.tableData.length || !this.tableData[0].accountTypeId) {
+        return message.error('请选择收入类别');
       } else if (!this.tableData.length || !this.tableData[0].amount) {
         return message.error('请输入金额');
       }
@@ -507,26 +520,13 @@ export default {
       });
 
       this.form.collectionAmount = this.calcCollectionAmount();
+      this.form.arrearsAmount = this.calcArrearsAmount();
 
       return [footerRow]; // 返回二维数组用于渲染 footer
     },
-    changeDiscountRate() {
-      this.form.collectionAmount = this.calcCollectionAmount();
-    },
+
     footerMethod({ columns, data }) {
       return this.footerMethodFormat({ columns, data }, ['amount'], 'totalTb1');
-    },
-    footerMethod2({ columns, data }) {
-      return this.footerMethodFormat(
-        { columns, data },
-        [
-          'documentAmount',
-          'verifiedAmount',
-          'unverifiedAmount',
-          'currentVerifyAmount'
-        ],
-        'totalTb2'
-      );
     },
 
     canDelete(tableData) {
@@ -539,13 +539,10 @@ export default {
         tableData.splice(index, 1);
       }
     },
-    doSearch() {
-      this.pagination.page = 1;
-      // this.loadList();
-    },
+
     addEdit(type, params) {
       this.loading = true;
-      OrderReceipt.addEdit(params)
+      OtherReceipt.addEdit(params)
         .then(() => {
           message('提交成功~');
           this.clerarData();
@@ -567,7 +564,7 @@ export default {
     },
     //加载业务员列表
     loadOrderStaff() {
-      OrderReceipt.orderStaffList()
+      OrderStaff.orderStaffList()
         .then(({ data }) => {
           this.orderStaffList = data || [];
           // this.pagination.total = total;
@@ -593,7 +590,7 @@ export default {
 
     selectCustomer(e) {
       this.form.customerId = e?.id || null;
-      this.form.totalAmountsOwed = e?.balance || null;
+      // this.form.totalAmountsOwed = e?.balance || null;
 
       this.form = {
         ...this.form
@@ -611,11 +608,11 @@ export default {
       this.form.orderStaffId = e?.id || null;
     },
     changeAccount(value, row) {
-      const selectedItem = this.settlementAccount.find(
+      const selectedItem = this.accountTypeList.find(
         (item) => item.name === value
       );
       if (selectedItem) {
-        row.settlementAccountId = selectedItem.id; // 设置 id
+        row.accountTypeId = selectedItem.id; // 设置 id
       }
 
       console.log(row, 'changeAccount');
@@ -654,78 +651,6 @@ export default {
           }
         })
       });
-    },
-    autoMatic() {
-      if (!this.form.customerId) {
-        return message.error('请选择客户');
-      } else if (!this.tableData2[0]?.salesOrderNo) {
-        return message.error('请选择需要核销的单据');
-      }
-
-      this.autoSetVerifyAmount();
-
-      // this.changeDiscountRate();
-    },
-    autoSetVerifyAmount() {
-      let remainingAmount = this.totalTb1; // 剩余可核销金额
-      this.tableData2.forEach((row) => {
-        const { unverifiedAmount = 0 } = row;
-        if (remainingAmount >= unverifiedAmount) {
-          row.currentVerifyAmount = unverifiedAmount;
-          remainingAmount -= unverifiedAmount;
-        } else if (remainingAmount > 0) {
-          row.currentVerifyAmount = remainingAmount; // 取剩余金额作为最大值
-          remainingAmount = 0; // 核销完毕，后续不再处理
-        } else {
-          // 剩余金额为 0，不进行核销
-          row.currentVerifyAmount = 0;
-        }
-      });
-      message.success('已核销');
-      this.$refs.table.updateFooter();
-    },
-    sourceForm() {
-      if (!this.form.customerId) {
-        return message.error('请选择客户');
-      }
-      let params = {
-        customerId: this.form.customerId,
-        balance: this.form.totalAmountsOwed
-      };
-      let layerId = layer.open({
-        title: '选择源单',
-        shadeClose: false,
-        closeBtn: false,
-        area: ['900px', '580px'],
-        content: h(sourceForm, {
-          params,
-          onClose: () => {
-            console.log(this.$refs.selectRef);
-            layer.close(layerId);
-          },
-          onSuccess: (checkList) => {
-            debugger;
-            const merged = new Map(
-              this.tableData2.map((item) => [item.salesOrderNo, item])
-            );
-            checkList.forEach((item) => {
-              if (!merged.has(item.salesOrderNo)) {
-                merged.set(item.salesOrderNo, item);
-              }
-            });
-            this.tableData2 = Array.from(merged.values())
-              .filter((item) => item.salesOrderNo)
-              .map((item) => {
-                delete item._X_ROW_KEY;
-                return item;
-              });
-
-            console.log(this.tableData2, 'tableData2tableData2');
-            // this.loadOrderStaff();
-            layer.close(layerId);
-          }
-        })
-      });
     }
   },
   created() {
@@ -737,6 +662,7 @@ export default {
     this.loadOrderStaff();
     this.loadPaymentMethod();
     this.loadAccountMethod();
+    this.loadAccountType();
     setTimeout(() => {
       this.getLog();
     }, 500);

@@ -428,12 +428,7 @@ const groupRoutes = [
       import('@views/fund/OtherExpenseList.vue')
     )
   },
-  {
-    name: 'OtherReceiptList',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/OtherReceiptList.vue')
-    )
-  },
+
   {
     name: 'OrderReceiptList',
     component: defineAsyncComponent(() =>
@@ -503,6 +498,18 @@ const groupRoutes = [
   {
     name: 'DDLogin',
     component: defineAsyncComponent(() => import('@/DDLogin.vue'))
+  },
+  {
+    name: 'OtherReceiptList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OtherReceiptList.vue')
+    )
+  },
+  {
+    name: 'OtherReceiptRecord',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OtherReceiptRecord')
+    )
   }
 ];
 

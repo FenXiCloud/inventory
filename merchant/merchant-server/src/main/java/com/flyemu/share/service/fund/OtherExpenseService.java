@@ -69,6 +69,8 @@ public class OtherExpenseService extends AbsService {
                         qOtherExpense.orderNo,
                         qOtherExpense.orderDate,
 
+                        qOtherExpense.settlementAccount,
+                        qOtherExpense.settlementAccountId,
                         qOtherExpense.orderStaffId,
                         qOtherExpense.orderStaffName,
                         qOtherExpense.collectionAmount,
@@ -246,6 +248,9 @@ public class OtherExpenseService extends AbsService {
 
         OtherExpenseDetailsVO otherExpenseVO = jqf.select(Projections.bean(OtherExpenseDetailsVO.class,
                         qOtherExpense.id,
+                        qOtherExpense.supplierId,
+                        qOtherExpense.settlementAccount,
+                        qOtherExpense.settlementAccountId,
                         qOtherExpense.supplierId,
                         qOtherExpense.supplierName,
                         qOtherExpense.orderStaffId,

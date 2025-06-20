@@ -122,8 +122,9 @@ public class VerificationService extends AbsService {
         subtableProcessing(items, verification, collections);
 
         if (OrderStatus.已审核.equals(verification.getOrderStatus())) {
-            updateBalance(verification, items,1);
-            int direction = OrderStatus.已审核.equals(verification.getOrderStatus()) ? 1 : -1;
+//            updateBalance(verification, items,1);
+//            int direction = OrderStatus.已审核.equals(verification.getOrderStatus()) ? 1 : -1;
+            int direction = 1;
             // 处理预收款单
             handleOrderReceiptOrPayment(verification, direction);
         }
@@ -440,7 +441,7 @@ public class VerificationService extends AbsService {
             if (items == null || items.isEmpty()) {
                 throw new ServiceException("核销明细不能为空");
             }
-            updateBalance(verification, items,direction);
+//            updateBalance(verification, items,direction);
             handleOrderReceiptOrPayment(verification, direction);
         }
     }

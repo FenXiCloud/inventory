@@ -5,6 +5,7 @@ import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
+import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.CustomerFlowDTO;
 import com.flyemu.share.dto.SupplierFlowDTO;
 import com.flyemu.share.entity.fund.SupplierFlow;
@@ -14,6 +15,7 @@ import com.flyemu.share.form.SupplierInitialForm;
 import com.flyemu.share.service.fund.SupplierFlowService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -34,8 +36,11 @@ public class SupplierInitialController {
     public JsonResult list(Page page, SupplierFlowService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(supplierFlowService.query(page,query));
+        return JsonResult.successful(supplierFlowService.query(page, query));
     }
+
+
+
 
     @PostMapping
     public JsonResult save(@RequestBody @Valid SupplierFlow supplierFlow, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {

@@ -7,22 +7,22 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.blazebit.persistence.PagedList;
-import com.blazebit.persistence.querydsl.BlazeJPAQuery;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.CustomerDto;
 import com.flyemu.share.dto.CustomerImportVo;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.fund.CustomerFlow;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.CustomerRepository;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.fund.CustomerFlowService;
 import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.flyemu.share.way.ProductExistenceChecker;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQuery;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
@@ -59,6 +59,7 @@ public class CustomerService extends AbsService {
 
     private final CustomerRepository customerRepository;
     private final CodeRuleService codeRuleService;
+    private final CustomerFlowService customerFlowService;
 
     public PageResults<CustomerDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qCustomer).select(qCustomer, qCustomerCategory.name, qCustomerLevel.name).leftJoin(qCustomerCategory).on(qCustomerCategory.id.eq(qCustomer.customerCategoryId)).leftJoin(qCustomerLevel).on(qCustomerLevel.id.eq(qCustomer.customerLevelId)).where(query.builder).orderBy(qCustomer.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -77,6 +78,9 @@ public class CustomerService extends AbsService {
         if (customer.getId() != null) {
             //更新
             Customer original = customerRepository.getById(customer.getId());
+            if (original.getBalance()!=null&&original.getBalance().compareTo(customer.getBalance())!=0){
+                throw new ServiceException("余额不允许修改");
+            }
             if (!original.getCode().equals(customer.getCode())) {
                 if (StrUtil.isEmpty(customer.getCode())) {
                     customer.setCode(original.getCode());
@@ -112,7 +116,14 @@ public class CustomerService extends AbsService {
             }
         }
         Customer m = customerRepository.save(customer);
-
+        CustomerFlow customerFlow=new CustomerFlow();
+        customerFlow.setCustomerId(m.getId());
+        customerFlow.setBalanceReceivables(customer.getBalance());
+        customerFlow.setCustomerFlowType(CustomerFlow.CustomerFlowType.期初);
+        customerFlow.setAccountBookId(customer.getAccountBookId());
+        customerFlow.setMerchantId(customer.getMerchantId());
+        customerFlow.setCreatedAt(LocalDateTime.now());
+        customerFlowService.insert(customerFlow);
         return m;
 
     }
@@ -210,8 +221,25 @@ public class CustomerService extends AbsService {
 
     }
 
-    public void updateTheBalance(Customer customer) {
+    public void updateTheBalance(Customer customer, CustomerFlow flow) {
+        validateCustomerFlow(flow);
         jqf.update(qCustomer).set(qCustomer.balance, customer.getBalance()).where(qCustomer.id.eq(customer.getId())).execute();
+        customerFlowService.insert(flow);
+    }
+
+    public void validateCustomerFlow(CustomerFlow flow) {
+        if (flow.getBusinessId() == null) {
+            throw new ServiceException("单据ID不能为空");
+        }
+        if (flow.getBusinessNo() == null || flow.getBusinessNo().trim().isEmpty()) {
+            throw new ServiceException("单据编号不能为空");
+        }
+        if (flow.getCustomerFlowType() == null) {
+            throw new ServiceException("操作类型不能为空");
+        }
+        if (flow.getBalanceReceivables() == null) {
+            throw new ServiceException("应收余额不能为空");
+        }
     }
 
     /**

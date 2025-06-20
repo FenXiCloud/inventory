@@ -39,6 +39,7 @@ public class AccountService extends AbsService {
 
     @Transactional
     public void updateAccountBalanceWithFlow(AccountBalanceChangeContext context) {
+
         if (context.getAccountId() == null || context.getMerchantId() == null || context.getAccountBookId() == null || context.getAmount() == null) {
             throw new ServiceException("参数不能为空");
         }
@@ -96,7 +97,6 @@ public class AccountService extends AbsService {
                 .fetch();
         return accounts;
     }
-
     @Transactional
     public Account save(Account account) {
         if (account.getId() != null) {

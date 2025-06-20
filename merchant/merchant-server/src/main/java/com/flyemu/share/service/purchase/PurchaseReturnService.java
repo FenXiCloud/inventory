@@ -13,6 +13,7 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.PurchaseReturnDto;
 import com.flyemu.share.dto.purchase.PurchaseReturnItemDto;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.fund.SupplierFlow;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.purchase.*;
@@ -28,6 +29,7 @@ import com.flyemu.share.repository.PurchaseReturnItemRepository;
 import com.flyemu.share.repository.PurchaseReturnRepository;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.basic.SupplierService;
 import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -76,6 +78,7 @@ public class PurchaseReturnService extends AbsService {
     private final CodeSeedService codeSeedService;
     private final PriceRecordService priceRecordService;
     private final InventoryService inventoryService;
+    private final SupplierService supplierService;
 
     public PageResults<PurchaseReturnDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseReturn)
@@ -220,7 +223,9 @@ public class PurchaseReturnService extends AbsService {
                                 .set(qPurchaseInbound.returnSum, tuple.get(qPurchaseInboundItem.returnQuantity.sum()))
                                 .where(qPurchaseInbound.id.eq(tuple.get(qPurchaseInboundItem.purchaseInboundId))).execute();
                     });
-
+            if (original.getOrderStatus().equals(OrderStatus.已审核)) {
+                outboundSupplierFlows(original.getCreatedBy(), original);
+            }
             return purchaseReturnRepository.save(original);
         } else {
             String code = codeSeedService.generateCode(order.getMerchantId(), "采购退货单");
@@ -367,36 +372,91 @@ public class PurchaseReturnService extends AbsService {
 
     @Transactional
     public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
-        List<PurchaseReturn> orders = bqf.selectFrom(qPurchaseReturn).where(qPurchaseReturn.merchantId.eq(merchantId).and(qPurchaseReturn.id.in(ids))).fetch();
+        List<PurchaseReturn> orders = bqf.selectFrom(qPurchaseReturn)
+                .where(qPurchaseReturn.merchantId.eq(merchantId).and(qPurchaseReturn.id.in(ids)))
+                .fetch();
+
         Assert.isFalse(CollUtil.isEmpty(orders), "未找到数据~");
         List<Long> setIds = new ArrayList<>();
+
         if (OrderStatus.已审核.equals(state)) {
             for (PurchaseReturn order : orders) {
-                if (OrderStatus.已保存.equals(order.getOrderStatus())) {
-                    setIds.add(order.getId());
-                } else {
+                if (!OrderStatus.已保存.equals(order.getOrderStatus())) {
                     log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
+                    continue;
                 }
+
+                outboundSupplierFlows(adminId, order);
+                setIds.add(order.getId());
             }
         } else if (OrderStatus.已保存.equals(state)) {
             for (PurchaseReturn order : orders) {
-                if (OrderStatus.已审核.equals(order.getOrderStatus())) {
-                    setIds.add(order.getId());
-                } else {
+                if (!OrderStatus.已审核.equals(order.getOrderStatus())) {
                     log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
+                    continue;
                 }
+                Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
+                BigDecimal refundAmount = order.getRefundAmount();
+                SupplierFlow flow = new SupplierFlow();
+                flow.setSupplierId(order.getSupplierId());
+                flow.setBusinessId(order.getId());
+                flow.setBusinessNo(order.getOrderNo());
+                flow.setSupplierFlowType(SupplierFlow.SupplierFlowType.反审核_采购退货单);
+                flow.setPurchaseAmount(refundAmount);
+                flow.setCopeWithAmount(refundAmount);
+                flow.setBalancePayable(supplier.getBalance().add(refundAmount));
+                flow.setAccountBookId(order.getAccountBookId());
+                flow.setMerchantId(order.getMerchantId());
+                flow.setCreatedBy(adminId);
+                flow.setCreatedAt(LocalDateTime.now());
+                flow.setRemarks("采购退货单反审核");
+                if (order.getDiscountAmount() != null) {
+                    flow.setPreferentialAmount(order.getDiscountAmount().negate());
+                }
+                flow.setBusinessDate(order.getReturnDate());
+                supplier.setBalance(supplier.getBalance().add(refundAmount));
+                supplierService.updateTheBalance(supplier, flow);
+
+                setIds.add(order.getId());
             }
         }
+
         if (CollUtil.isNotEmpty(setIds)) {
             jqf.update(qPurchaseReturn)
                     .set(qPurchaseReturn.orderStatus, state)
-                    .set(qPurchaseReturn.approvedAt, LocalDateTime.now()).
-                    set(qPurchaseReturn.approvedBy, adminId)
+                    .set(qPurchaseReturn.approvedAt, LocalDateTime.now())
+                    .set(qPurchaseReturn.approvedBy, adminId)
                     .where(qPurchaseReturn.id.in(setIds))
                     .execute();
-            // 设置入库明细数据
+
             this.purchaseReturnToInventory(state, setIds);
         }
+    }
+
+    private void outboundSupplierFlows(Long adminId, PurchaseReturn order) {
+        Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
+        BigDecimal refundAmount = order.getRefundAmount();
+
+        supplier.setBalance(supplier.getBalance().subtract(refundAmount));
+
+        SupplierFlow flow = new SupplierFlow();
+        if (order.getDiscountAmount() != null) {
+            flow.setPreferentialAmount(order.getDiscountAmount());
+        }
+        flow.setSupplierId(order.getSupplierId());
+        flow.setBusinessId(order.getId());
+        flow.setBusinessNo(order.getOrderNo());
+        flow.setSupplierFlowType(SupplierFlow.SupplierFlowType.采购退货单);
+        flow.setPurchaseAmount(refundAmount.negate());
+        flow.setCopeWithAmount(refundAmount.negate());
+        flow.setBalancePayable(supplier.getBalance());
+        flow.setAccountBookId(order.getAccountBookId());
+        flow.setMerchantId(order.getMerchantId());
+        flow.setCreatedBy(adminId);
+        flow.setCreatedAt(LocalDateTime.now());
+        flow.setRemarks("采购退货单审核通过");
+        flow.setBusinessDate(order.getReturnDate());
+        supplierService.updateTheBalance(supplier, flow);
     }
 
     private void purchaseReturnToInventory(OrderStatus state, List<Long> setIds) {

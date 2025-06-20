@@ -12,6 +12,7 @@ import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.entity.sales.QSalesOrder;
 import com.flyemu.share.entity.sales.QSalesOutbound;
 import com.flyemu.share.entity.sales.SalesOrder;
+import com.flyemu.share.entity.sales.SalesOutbound;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
@@ -36,6 +37,7 @@ import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -76,7 +78,7 @@ public class OrderReceiptService extends AbsService {
     private final CodeRuleService codeRuleService;
     private final CustomerService customerService;
     private final AccountService accountService;
-    private final SalesOrderRepository salesOrderRepository;
+    private final SalesOutboundRepository salesOrderRepository;
     private final OrderReceiptItemRepository orderReceiptItemRepository;
     private final OrderReceiptCollectionRepository orderReceiptCollectionRepository;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
@@ -177,6 +179,9 @@ public class OrderReceiptService extends AbsService {
         if (query.getAccountBookId() != null) {
             condition.and(qCustomerCategory.accountBookId.eq(query.getAccountBookId()));
         }
+        if (query.getCustomerTypeId() != null) {
+            condition.and(qCustomerCategory.id.eq(query.getCustomerTypeId()));
+        }
 
         JPAQuery<CustomerCategory> categoryQuery = jqf.select(qCustomerCategory)
                 .from(qCustomerCategory)
@@ -256,6 +261,9 @@ public class OrderReceiptService extends AbsService {
         }
         if (query.getAccountBookId() != null) {
             condition.and(qOrderStaff.accountBookId.eq(query.getAccountBookId()));
+        }
+        if (query.getSalesmanId() != null) {
+            condition.and(qOrderStaff.id.eq(query.getSalesmanId()));
         }
         JPAQuery<OrderStaff> staffQuery = jqf.selectFrom(qOrderStaff).where(condition);
         long total = staffQuery.fetchCount();
@@ -639,7 +647,7 @@ public class OrderReceiptService extends AbsService {
 
                 salesOrderIdSet.add(salesOrderId);
 
-                SalesOrder salesOrder = salesOrderRepository.findById(salesOrderId)
+                SalesOutbound salesOrder = salesOrderRepository.findById(salesOrderId)
                         .orElseThrow(() -> new ServiceException("销售单不存在：" + salesOrderId));
                 if (!OrderStatus.已审核.equals(salesOrder.getOrderStatus())) {
                     throw new ServiceException("销售单未审核，无法引用：" + salesOrderId);
@@ -958,7 +966,8 @@ public class OrderReceiptService extends AbsService {
             }
             customer.setBalance(customer.getBalance().add(shouldVerifyAmount));
         }
-        customerService.updateTheBalance(customer);
+        CustomerFlow customerFlow = getCustomerFlow(receipt, targetStatus, customer);
+        customerService.updateTheBalance(customer,customerFlow);
         for (OrderReceiptCollection collection : collections) {
             Long accountId = collection.getSettlementAccountId();
             if (accountId == null) {
@@ -995,6 +1004,33 @@ public class OrderReceiptService extends AbsService {
 
 
     }
+    private static @NotNull CustomerFlow getCustomerFlow(OrderReceipt receipt, OrderStatus targetStatus, Customer customer) {
+        CustomerFlow.CustomerFlowType flowType;
+        CustomerFlow customerFlow = new CustomerFlow();
+        customerFlow.setCustomerId(customer.getId());
+        customerFlow.setBusinessId(receipt.getId());
+        customerFlow.setBusinessNo(receipt.getOrderNo());
+        customerFlow.setBusinessDate(receipt.getOrderDate());
+
+        BigDecimal collectionAmount = receipt.getCollectionAmount();
+        if (targetStatus == OrderStatus.已审核) {
+            flowType = CustomerFlow.CustomerFlowType.收款单;
+            customerFlow.setSalesAmount(collectionAmount);
+        } else {
+            flowType = CustomerFlow.CustomerFlowType.反审核_收款单;
+            customerFlow.setSalesAmount(collectionAmount != null ? collectionAmount.negate() : BigDecimal.ZERO);
+        }
+        customerFlow.setCustomerFlowType(flowType);
+
+        customerFlow.setBalanceReceivables(customer.getBalance());
+        customerFlow.setAccountBookId(receipt.getAccountBookId());
+        customerFlow.setMerchantId(receipt.getMerchantId());
+        customerFlow.setCreatedBy(receipt.getApprovedBy());
+        customerFlow.setCreatedAt(LocalDateTime.now());
+        customerFlow.setRemarks(targetStatus == OrderStatus.已审核 ? "收款单审核通过" : "收款单反审核");
+
+        return customerFlow;
+    }
 
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
@@ -1004,7 +1040,7 @@ public class OrderReceiptService extends AbsService {
         if (query.getCustomerId() == null) {
             throw new ServiceException("客户ID不能为空");
         }
-        Customer customer = customerService.findById(query.getCustomerId());
+
         QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
 
         NumberExpression<BigDecimal> receiptVerifySum = qOrderReceiptItem.currentVerifyAmount.sum()

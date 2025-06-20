@@ -9,6 +9,7 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesOutboundDTO;
 import com.flyemu.share.dto.SalesOutboundItemDTO;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.sales.*;
@@ -19,9 +20,11 @@ import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.SalesOutboundForm;
 import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
@@ -84,6 +87,7 @@ public class SalesOutboundService extends AbsService {
     @Autowired
     private InventoryService inventoryService;
     private final PriceRecordService priceRecordService;
+    private final CustomerService customerService;
 
     private static final QAccountBookParameters Q_ACCOUNT_BOOK_PARAMETERS = QAccountBookParameters.accountBookParameters;
 
@@ -410,6 +414,11 @@ public class SalesOutboundService extends AbsService {
         salesOutboundList.forEach(order -> {
             OrderStatus orderStatus = salesOutboundForm.getOrderStatus();
             if (orderStatus.equals(OrderStatus.已保存)) {
+                boolean hasPaymentOrVerification = checkHasPaymentOrVerification(order.getId());
+                if (hasPaymentOrVerification) {
+                    log.error("存在付款单或核销单，无法反审核-----orderId:{}",order.getId());
+                    throw new ServiceException("存在付款单或核销单，无法反审核");
+                }
                 //已关联销售退货单不能审核
                 Long returnOrderId = order.getReturnOrderId();
                 if (returnOrderId != null) {
@@ -419,14 +428,38 @@ public class SalesOutboundService extends AbsService {
                     });
                 }
             }
+            this.updateCustomerBalanceAndRecordFlow(order, orderStatus);
             order.setOrderStatus(orderStatus);
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(salesOutbound.getApprovedBy());
+
         });
 
         salesOutboundRepository.saveAll(salesOutboundList);
         // 设置明细
         salesOutboundList.forEach(this::salesOutboundToInventory);
+    }
+
+    private boolean checkHasPaymentOrVerification(Long inboundId) {
+        QOrderReceiptItem orderReceiptItem = QOrderReceiptItem.orderReceiptItem;
+        QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
+        QVerification qVerification = QVerification.verification;
+
+        long paymentCount = jqf.select(orderReceiptItem.id.count())
+                .from(orderReceiptItem)
+                .where(orderReceiptItem.salesOrderId.eq(inboundId)
+                        .and(orderReceiptItem.businessType.eq(1)))
+                .fetchOne();
+
+        long verificationCount = jqf.select(qVerificationItem.id.count())
+                .from(qVerificationItem)
+                .leftJoin(qVerification).on(qVerification.id.eq(qVerificationItem.verificationId))
+                .where(qVerificationItem.businessId.eq(inboundId.intValue()).and(qVerification.type.eq(1))
+                        .and(qVerificationItem.businessType.eq(1)))
+                .fetchOne();
+        long paymentTotal = Optional.of(paymentCount).orElse(0L);
+        long verificationTotal = Optional.of(verificationCount).orElse(0L);
+        return paymentTotal > 0 || verificationTotal > 0;
     }
 
     @Transactional
@@ -440,6 +473,11 @@ public class SalesOutboundService extends AbsService {
         //反审核
         OrderStatus orderStatus = salesOutbound.getOrderStatus();
         if (orderStatus.equals(OrderStatus.已保存)) {
+            boolean hasPaymentOrVerification = checkHasPaymentOrVerification(id);
+            if (hasPaymentOrVerification) {
+                log.error("存在付款单或核销单，无法反审核-----orderId:{}",id);
+                throw new ServiceException("存在付款单或核销单，无法反审核");
+            }
             //已关联销售退货单不能反审核
             Long returnOrderId = original.getReturnOrderId();
             if (returnOrderId != null) {
@@ -449,6 +487,7 @@ public class SalesOutboundService extends AbsService {
                 });
             }
         }
+        this.updateCustomerBalanceAndRecordFlow(original, orderStatus);
         original.setApprovedAt(LocalDateTime.now());
         original.setApprovedBy(salesOutbound.getApprovedBy());
         original.setOrderStatus(salesOutbound.getOrderStatus());
@@ -456,6 +495,60 @@ public class SalesOutboundService extends AbsService {
         salesOutboundRepository.save(original);
         // 设置明细
         this.salesOutboundToInventory(original);
+    }
+    private void updateCustomerBalanceAndRecordFlow(SalesOutbound salesOutbound, OrderStatus targetStatus) {
+        Customer customer = customerService.findById(salesOutbound.getCustomerId());
+        BigDecimal amount = salesOutbound.getFinalAmount();
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
+            amount = BigDecimal.ZERO;
+        }
+
+        CustomerFlow flow = getCustomerFlow(salesOutbound, targetStatus);
+
+        if (targetStatus == OrderStatus.已审核) {
+            customer.setBalance(customer.getBalance().subtract(amount));
+        } else {
+            if (!OrderStatus.已审核.equals(salesOutbound.getOrderStatus())) {
+                throw new ServiceException("只有已审核的单据才能反审核");
+            }
+            customer.setBalance(customer.getBalance().add(amount));
+        }
+
+        flow.setBalanceReceivables(customer.getBalance());
+        customerService.updateTheBalance(customer, flow);
+    }
+
+    private CustomerFlow getCustomerFlow(SalesOutbound salesOutbound, OrderStatus targetStatus) {
+        CustomerFlow flow = new CustomerFlow();
+        flow.setCustomerId(salesOutbound.getCustomerId());
+        flow.setBusinessId(salesOutbound.getId());
+        flow.setBusinessNo(salesOutbound.getOrderNo());
+        flow.setBusinessDate(salesOutbound.getOutboundDate());
+
+        BigDecimal finalAmount = salesOutbound.getFinalAmount();
+
+        flow.setRemarks(targetStatus == OrderStatus.已审核 ? "销售出库单审核通过" : "销售出库单反审核");
+
+        if (targetStatus == OrderStatus.已审核) {
+            flow.setCustomerFlowType(CustomerFlow.CustomerFlowType.销售出库单);
+            flow.setSalesAmount(finalAmount);
+            flow.setReceivableAmount(finalAmount);
+            flow.setPreferentialAmount(salesOutbound.getDiscountAmount());
+        } else {
+            flow.setCustomerFlowType(CustomerFlow.CustomerFlowType.反审核_销售出库单);
+            flow.setSalesAmount(finalAmount.negate());
+            flow.setReceivableAmount(finalAmount.negate());
+            if (salesOutbound.getDiscountAmount()!=null){
+                flow.setPreferentialAmount(salesOutbound.getDiscountAmount().negate());
+            }
+        }
+        flow.setBalanceReceivables(BigDecimal.ZERO);
+        flow.setAccountBookId(salesOutbound.getAccountBookId());
+        flow.setMerchantId(salesOutbound.getMerchantId());
+        flow.setCreatedBy(salesOutbound.getApprovedBy());
+        flow.setCreatedAt(LocalDateTime.now());
+        return flow;
     }
 
     private void salesOutboundToInventory(SalesOutbound original) {

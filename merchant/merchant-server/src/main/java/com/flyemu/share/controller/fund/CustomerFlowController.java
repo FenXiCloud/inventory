@@ -3,11 +3,19 @@ package com.flyemu.share.controller.fund;
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
+import com.flyemu.share.controller.Page;
+import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.fund.CustomerFlow;
 import com.flyemu.share.service.fund.CustomerFlowService;
+import com.flyemu.share.service.fund.SupplierFlowService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
  * @功能描述: 应收账款明细
@@ -22,6 +30,25 @@ import org.springframework.web.bind.annotation.*;
 public class CustomerFlowController {
 
     private final CustomerFlowService customerFlowService;
+
+    @GetMapping("/getCustomerBillFlows")
+    public PageResults<CustomerFlow> getCustomerBillFlows(
+            Page page,
+            @RequestParam Long customerId,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startTime,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endTime,
+            @SaMerchantId Long merchantId,
+            @SaAccountBookId Long accountBookId) {
+        LocalDateTime startDateTime = startTime.atStartOfDay();
+        LocalDateTime endDateTime = endTime.atTime(LocalTime.MAX);
+        CustomerFlowService.CustomerBillQueryDTO queryDTO = new CustomerFlowService.CustomerBillQueryDTO();
+        queryDTO.setMerchantId(merchantId);
+        queryDTO.setAccountBookId(accountBookId);
+        queryDTO.setCustomerId(customerId);
+        queryDTO.setStartTime(startDateTime);
+        queryDTO.setEndTime(endDateTime);
+        return customerFlowService.getFlowsByCustomerBill(page, queryDTO);
+    }
 
     @GetMapping
     public JsonResult list(CustomerFlowService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {

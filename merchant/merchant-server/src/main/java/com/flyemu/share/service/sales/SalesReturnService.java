@@ -7,10 +7,8 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesReturnDTO;
 import com.flyemu.share.dto.SalesReturnItemDTO;
-import com.flyemu.share.entity.basic.PriceRecord;
-import com.flyemu.share.entity.basic.QCustomer;
-import com.flyemu.share.entity.basic.QProduct;
-import com.flyemu.share.entity.basic.QUnit;
+import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.fund.CustomerFlow;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.sales.*;
@@ -22,6 +20,7 @@ import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.SalesReturnForm;
 import com.flyemu.share.repository.*;
 import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
@@ -81,6 +80,7 @@ public class SalesReturnService extends AbsService {
     private final PriceRecordService priceRecordService;
 
     private final InventoryService inventoryService;
+    private final CustomerService customerService;
 
     public PageResults<SalesReturnDTO> query(Page page, SalesReturnService.Query query) {
         long totalSize = bqf.selectFrom(qSalesReturn)
@@ -318,6 +318,7 @@ public class SalesReturnService extends AbsService {
         if (salesReturnList.size() != orderIds.size()) {
             throw new IllegalArgumentException("Some salesOutboundList could not be found");
         }
+        OrderStatus targetStatus = salesReturnForm.getOrderStatus();
         SalesReturn salesReturn = salesReturnForm.getSalesReturn();
         salesReturnList.forEach(order -> {
             order.setOrderStatus(salesReturnForm.getOrderStatus());
@@ -325,6 +326,8 @@ public class SalesReturnService extends AbsService {
             order.setApprovedBy(salesReturn.getApprovedBy());
         });
         salesReturnRepository.saveAll(salesReturnList);
+        salesReturnList.forEach(order -> this.updateCustomerBalanceAndRecordFlow(order, targetStatus));
+
         // 设置明细
         salesReturnList.forEach(this::salesReturnToInventory);
     }
@@ -333,6 +336,8 @@ public class SalesReturnService extends AbsService {
     public void audit(SalesReturnForm salesReturnForm) {
         SalesReturn salesReturn = salesReturnForm.getSalesReturn();
         Long id = salesReturn.getId();
+
+        OrderStatus orderStatus = salesReturn.getOrderStatus();
         SalesReturn original = salesReturnRepository.getById(id);
         if (original.getId() == null) {
             throw new IllegalArgumentException("单据不存在");
@@ -342,8 +347,60 @@ public class SalesReturnService extends AbsService {
         original.setOrderStatus(salesReturn.getOrderStatus());
         //审核单据
         salesReturnRepository.save(original);
+        // 更新客户余额 + 记录流水
+        this.updateCustomerBalanceAndRecordFlow(original, orderStatus);
         // 设置明细
         this.salesReturnToInventory(original);
+    }
+    private void updateCustomerBalanceAndRecordFlow(SalesReturn salesReturn, OrderStatus targetStatus) {
+        Customer customer = customerService.selectByPrimaryKey(salesReturn.getCustomerId());
+        if (customer == null) {
+            throw new IllegalArgumentException("客户不存在");
+        }
+        BigDecimal amount = salesReturn.getFinalAmount();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
+            amount = BigDecimal.ZERO;
+        }
+
+        CustomerFlow flow = getCustomerFlow(salesReturn, targetStatus);
+        if (targetStatus == OrderStatus.已审核) {
+            customer.setBalance(customer.getBalance().add(amount));
+        } else {
+            customer.setBalance(customer.getBalance().subtract(amount));
+        }
+
+        flow.setBalanceReceivables(customer.getBalance());
+        customerService.updateTheBalance(customer,flow);
+    }
+    private CustomerFlow getCustomerFlow(SalesReturn salesReturn, OrderStatus targetStatus) {
+        CustomerFlow flow = new CustomerFlow();
+        flow.setCustomerId(salesReturn.getCustomerId());
+        flow.setBusinessId(salesReturn.getId());
+        flow.setBusinessNo(salesReturn.getOrderNo());
+        flow.setBusinessDate(salesReturn.getReturnDate());
+
+        BigDecimal finalAmount = salesReturn.getFinalAmount();
+
+        flow.setRemarks(targetStatus == OrderStatus.已审核 ? "销售退货单审核通过" : "销售退货单反审核");
+
+        if (targetStatus == OrderStatus.已审核) {
+            flow.setCustomerFlowType(CustomerFlow.CustomerFlowType.销售退货单);
+            flow.setSalesAmount(finalAmount.negate());
+            flow.setReceivableAmount(finalAmount.negate());
+            flow.setPreferentialAmount(salesReturn.getDiscountAmount() != null ? salesReturn.getDiscountAmount().negate() : BigDecimal.ZERO);
+        } else {
+            flow.setCustomerFlowType(CustomerFlow.CustomerFlowType.反审核_销售退货单);
+            flow.setSalesAmount(finalAmount);
+            flow.setReceivableAmount(finalAmount);
+            flow.setPreferentialAmount(salesReturn.getDiscountAmount() != null ? salesReturn.getDiscountAmount() : BigDecimal.ZERO);
+        }
+
+        flow.setAccountBookId(salesReturn.getAccountBookId());
+        flow.setMerchantId(salesReturn.getMerchantId());
+        flow.setCreatedBy(salesReturn.getApprovedBy());
+        flow.setCreatedAt(LocalDateTime.now());
+
+        return flow;
     }
 
     private void salesReturnToInventory(SalesReturn original) {

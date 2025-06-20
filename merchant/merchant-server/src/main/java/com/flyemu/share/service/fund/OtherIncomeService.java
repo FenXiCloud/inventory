@@ -30,6 +30,7 @@ import com.flyemu.share.way.CodeGenerator;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQuery;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -399,8 +400,8 @@ public class OtherIncomeService extends AbsService {
             }
             customer.setBalance(customer.getBalance().add(amount));
         }
-        customerService.updateTheBalance(customer);
-
+        CustomerFlow customerFlow = getCustomerFlow(income, targetStatus, customer);
+        customerService.updateTheBalance(customer, customerFlow);
         if (income.getSettlementAccountId() == null) {
             throw new ServiceException("结算账户不能为空");
         }
@@ -429,6 +430,30 @@ public class OtherIncomeService extends AbsService {
         accountService.updateAccountBalanceWithFlow(context);
     }
 
+    private static @NotNull CustomerFlow getCustomerFlow(OtherIncome income, OrderStatus targetStatus, Customer customer) {
+        CustomerFlow.CustomerFlowType flowType;
+        CustomerFlow customerFlow = new CustomerFlow();
+        customerFlow.setCustomerId(customer.getId());
+        customerFlow.setBusinessId(income.getId());
+        customerFlow.setBusinessNo(income.getOrderNo());
+        customerFlow.setBusinessDate(income.getOrderDate());
+        BigDecimal amount = income.getCollectionAmount();
+        if (targetStatus == OrderStatus.已审核) {
+            flowType = CustomerFlow.CustomerFlowType.其他收入单;
+            customerFlow.setPaidUpAmount(amount);
+        } else {
+            flowType = CustomerFlow.CustomerFlowType.反审核_其他收入单;
+            customerFlow.setPaidUpAmount(amount != null ? amount.negate() : BigDecimal.ZERO);
+        }
+        customerFlow.setCustomerFlowType(flowType);
+        customerFlow.setBalanceReceivables(customer.getBalance());
+        customerFlow.setAccountBookId(income.getAccountBookId());
+        customerFlow.setMerchantId(income.getMerchantId());
+        customerFlow.setCreatedBy(income.getApprovedBy());
+        customerFlow.setCreatedAt(LocalDateTime.now());
+        customerFlow.setRemarks(targetStatus == OrderStatus.已审核 ? "其他收入单审核通过" : "其他收入单反审核");
+        return customerFlow;
+    }
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

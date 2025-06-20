@@ -18,7 +18,7 @@
             v-model="params.orderType"
             class="w-180px"
             :datas="{ 1: '收款单', 2: '预收款单' }"
-            placeholder="选择订单状态"
+            placeholder="选择单据类型"
           />
         </div>
 

@@ -429,6 +429,12 @@ const groupRoutes = [
     )
   },
   {
+    name: 'OtherReceiptList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OtherReceiptList.vue')
+    )
+  },
+  {
     name: 'OrderReceiptList',
     component: defineAsyncComponent(() =>
       import('@views/fund/OrderReceiptList.vue')

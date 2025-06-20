@@ -228,7 +228,7 @@ export default {
             layer.close(layerId);
           },
           onSuccess: () => {
-            this.doSearch();
+            this.searchProduct();
             layer.close(layerId);
           }
         })

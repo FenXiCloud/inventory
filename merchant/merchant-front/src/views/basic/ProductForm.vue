@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-column" style="background: #f5f5f5">
+  <div class="modal-column">
     <div class="modal-column-full-body">
       <Row>
         <Cell width="16">
@@ -98,7 +98,7 @@
         </Cell>
       </Row>
     </div>
-    <div class="flex justify-between py-5px px-5px bg-white-color">
+    <div class="modal-column-between">
       <Button class="ml-10px" @click="$emit('close')" :loading="loading">
         取 消
       </Button>
@@ -283,7 +283,7 @@ export default {
       this.loading = true;
       Product.save({product: this.model, customerLevelPriceList: this.customerLevelPriceList}).then(() => {
         message("保存成功~");
-        this.$emit('success');
+        this.$emit("success");
       }).finally(() => this.loading = false);
     },
     auxiliaryUnitPricesChange(data) {

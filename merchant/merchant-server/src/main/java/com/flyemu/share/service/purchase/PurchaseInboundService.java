@@ -151,6 +151,9 @@ public class PurchaseInboundService extends AbsService {
                 //保存更新购货商品价格
                 savePrice(d, purchaseInbound);
             }
+            // 删除原有的订单明细
+            jqf.delete(qPurchaseInboundItem)
+                    .where(qPurchaseInboundItem.purchaseInboundId.eq(purchaseInbound.getId())).execute();
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
             original.setSecondarySum(secondarySum);
             original.setReturnSum(secondarySum);

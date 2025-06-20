@@ -2,28 +2,28 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Button color="primary">导出</Button>
-        <Button >打 印</Button>
+        <Button color="primary" class="mt-5px">导出</Button>
+        <Button class=" mt-5px">打 印</Button>
       </template>
       <template #tools>
-        <div class="h-input-group">
+        <div class="h-input-group mt-5px">
           <Select v-model="params.orderType" class="w-120px" :datas="{in:'入库单',out:'退货单',all:'全部'}"
                   placeholder="订单类型：" :deletable="false"/>
-          <span class="h-input-addon ml-8px">订单日期：</span>
+          <span class="h-input-addon ml-8px ">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <Select class="ml-8px" required :datas="warehouseList" keyName="id" titleName="name"
+        <Select class="ml-8px mt-5px" required :datas="warehouseList" keyName="id" titleName="name"
                 v-model="warehouseIds" placeholder="请选择仓库" :multiple="true"/>
-        <Select class="ml-8px" required :datas="supplierList" keyName="id" titleName="name"
+        <Select class="ml-8px mt-5px" required :datas="supplierList" keyName="id" titleName="name"
                 v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
-        <Select class="ml-8px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
+        <Select class="ml-8px mt-5px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
                 v-model="supplierCategoryIds" placeholder="请选择供货商类别"/>
-        <Select class="ml-8px" required :datas="productList" keyName="id" titleName="name"
-                 v-model="productIds" placeholder="请选择商品" :multiple="true"/>
-        <Select class="ml-8px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
+        <Select class="ml-8px mt-5px" required :datas="productList" keyName="id" titleName="name"
+                v-model="productIds" placeholder="请选择商品" :multiple="true"/>
+        <Select class="ml-8px mt-5px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
                 v-model="productCategoryIds" placeholder="请选择商品类别"/>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-260px ml-8px"
+                show-search-button class="w-260px ml-8px mt-5px"
                 placeholder="请输入订单号/供货商名称" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
@@ -151,7 +151,7 @@ export default {
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {
-        if (column.property && ['secondaryQuantity','secondaryPrice','subtotal'].includes(column.property)) {
+        if (column.property && ['secondaryQuantity', 'secondaryPrice', 'subtotal'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             let rd = row[column.property];
@@ -162,7 +162,7 @@ export default {
           sums.push(total.toFixed(2));
         }
       })
-      return [["", "", "", "", "","","","", "","","", ""].concat(sums)];
+      return [["", "", "", "", "", "", "", "", "", "", "", ""].concat(sums)];
     },
     doSearch() {
       this.pagination.page = 1;

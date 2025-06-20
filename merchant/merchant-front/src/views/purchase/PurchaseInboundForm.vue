@@ -383,7 +383,7 @@ export default {
         }
       })
       this.allFinalAmount = sums[1]
-      return [["", "", "", "", "", "", "", quantity.toFixed(2), "", ""].concat(sums)];
+      return [["", "", "", "", "", "","", "", quantity.toFixed(2), "", "", "", ""].concat(sums)];
     },
 
     // 仓库选择框变化时触发

@@ -167,6 +167,11 @@ public class PurchaseOrderService extends AbsService {
                 savePrice(d, order);
             }
             original.setSecondarySum(secondarySum);
+
+            // 删除原有的订单明细
+            jqf.delete(qPurchaseOrderItem)
+                    .where(qPurchaseOrderItem.purchaseOrderId.eq(order.getId())).execute();
+
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
             order = purchaseOrderRepository.save(original);
             return order.getId();

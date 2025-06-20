@@ -2,25 +2,25 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-        <Button color="primary">导 出</Button>
-        <Button>打 印</Button>
+        <Button color="primary" class="mt-5px">导 出</Button>
+        <Button class="mt-5px">打 印</Button>
       </template>
       <template #tools>
-        <Select v-model="groupValues" class="w-240px ml-8px"
+        <Select v-model="groupValues" class="w-240px ml-8px mt-5px"
                 :datas="{product:'商品',supplier:'供货商',warehouse:'仓库'}"
                 placeholder="统计字段：" :multiple="true"/>
-        <DateRangePicker v-model="dateRange" class="w-220px ml-8px"></DateRangePicker>
-        <Select class="ml-8px"  :datas="warehouseList" keyName="id" titleName="name"
+        <DateRangePicker v-model="dateRange" class="w-220px ml-8px mt-5px"></DateRangePicker>
+        <Select class="ml-8p mt-5pxx" :datas="warehouseList" keyName="id" titleName="name"
                 v-model="warehouseIds" placeholder="请选择仓库" :multiple="true"/>
-        <Select class="ml-8px"  :datas="supplierList" keyName="id" titleName="name"
+        <Select class="ml-8px mt-5px" :datas="supplierList" keyName="id" titleName="name"
                 v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
-        <Select class="ml-8px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
+        <Select class="ml-8px mt-5px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
                 v-model="supplierCategoryIds" placeholder="请选择供货商类别"/>
-        <Select class="ml-8px"  :datas="productList" keyName="id" titleName="name"
+        <Select class="ml-8px mt-5px" :datas="productList" keyName="id" titleName="name"
                 v-model="productIds" placeholder="请选择商品" :multiple="true"/>
-        <Select class="ml-8px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
+        <Select class="ml-8px mt-5px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
                 v-model="productCategoryIds" placeholder="请选择商品类别"/>
-        <Button class="ml-8px" @click="doSearch" color="primary">查 询</Button>
+        <Button class="ml-8px mt-5px" @click="doSearch" color="primary">查 询</Button>
       </template>
     </vxe-toolbar>
     <div class="flex1">
@@ -149,7 +149,7 @@ export default {
     footerMethod({columns, data}) {
       let sums = [];
       columns.forEach((column) => {
-        if (column.property && ['baseQuantitySum','subtotalSum'].includes(column.property)) {
+        if (column.property && ['baseQuantitySum', 'subtotalSum'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             let rd = row[column.property];

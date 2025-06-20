@@ -9,6 +9,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.*;
+import com.flyemu.share.entity.purchase.PurchaseInbound;
 import com.flyemu.share.entity.purchase.PurchaseOrder;
 import com.flyemu.share.entity.purchase.QPurchaseInbound;
 import com.flyemu.share.entity.purchase.QPurchaseOrder;
@@ -81,7 +82,7 @@ public class OrderPaymentService extends AbsService {
     private final CodeRuleService codeRuleService;
     private final AccountService accountService;
     private final SupplierService supplierService;
-    private final PurchaseOrderRepository quantityRepository;
+    private final PurchaseInboundRepository quantityRepository;
     private final OrderPaymentItemRepository orderPaymentItemRepository;
     private final OrderPaymentCollectionRepository orderPaymentCollectionRepository;
     private final static QOrderPaymentItem QorderPaymentItem = QOrderPaymentItem.orderPaymentItem;
@@ -671,7 +672,7 @@ public class OrderPaymentService extends AbsService {
             } else {
 
                 purchaseOrderIdSet.add(purchaseOrderId);
-                PurchaseOrder purchaseOrder = quantityRepository.findById(purchaseOrderId).orElseThrow(() -> new ServiceException("采购单不存在：" + purchaseOrderId));
+                PurchaseInbound purchaseOrder = quantityRepository.findById(purchaseOrderId).orElseThrow(() -> new ServiceException("采购单不存在：" + purchaseOrderId));
 
                 if (!OrderStatus.已审核.equals(purchaseOrder.getOrderStatus())) {
                     throw new ServiceException("采购单未审核，无法引用：" + purchaseOrderId);
@@ -883,14 +884,28 @@ public class OrderPaymentService extends AbsService {
 
         QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
 
-        NumberExpression<BigDecimal> paymentVerifySum = qOrderPaymentItem.currentVerifyAmount.sum().coalesce(BigDecimal.ZERO);
+        NumberExpression<BigDecimal> paymentVerifySum = qOrderPaymentItem.currentVerifyAmount.sum().
+                coalesce(BigDecimal.ZERO);
 
-        NumberExpression<BigDecimal> verificationVerifySum = Expressions.numberTemplate(BigDecimal.class, "COALESCE(SUM(CASE WHEN {0} IS NOT NULL THEN {1} ELSE 0 END), 0)", qVerification.id, qVerificationItem.currentVerifyAmount).coalesce(BigDecimal.ZERO);
+        NumberExpression<BigDecimal> verificationVerifySum = Expressions.numberTemplate(BigDecimal.class,
+                "COALESCE(SUM(CASE WHEN {0} IS NOT NULL THEN {1} ELSE 0 END), 0)",
+                qVerification.id, qVerificationItem.currentVerifyAmount).coalesce(BigDecimal.ZERO);
 
         NumberExpression<BigDecimal> totalVerifiedExpr = paymentVerifySum.add(verificationVerifySum);
         NumberExpression<BigDecimal> unverifiedExpr = qPurchaseInbound.finalAmount.subtract(totalVerifiedExpr);
 
-        JPAQuery<PurchaseOrderWithVerification> mainQuery = jqf.select(Projections.fields(PurchaseOrderWithVerification.class, qPurchaseInbound.id.as("salesOrderId"), qPurchaseInbound.orderNo.as("salesOrderNo"), qPurchaseInbound.inboundDate.as("businessDate"), qPurchaseInbound.finalAmount.as("documentAmount"), totalVerifiedExpr.as("verifiedAmount"), unverifiedExpr.as("unverifiedAmount"))).from(qPurchaseInbound).leftJoin(qOrderPaymentItem).on(qOrderPaymentItem.businessId.eq(qPurchaseInbound.id)).leftJoin(qVerificationItem).on(qVerificationItem.businessId.eq(qPurchaseInbound.id.intValue()).and(qVerificationItem.businessType.eq(2))).leftJoin(qVerification).on(qVerification.id.eq(qVerificationItem.verificationId).and(qVerification.orderStatus.eq(OrderStatus.已审核))).where(query.builder.and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核))).groupBy(qPurchaseInbound.id, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qPurchaseInbound.finalAmount).having(unverifiedExpr.gt(BigDecimal.ZERO));
+        JPAQuery<PurchaseOrderWithVerification> mainQuery = jqf.select(
+                Projections.fields(PurchaseOrderWithVerification.class,
+                        qPurchaseInbound.id.as("salesOrderId"),
+                        qPurchaseInbound.orderNo.as("salesOrderNo"),
+                        qPurchaseInbound.inboundDate.as("businessDate"),
+                        qPurchaseInbound.finalAmount.as("documentAmount"),
+                        totalVerifiedExpr.as("verifiedAmount"),
+                        unverifiedExpr.as("unverifiedAmount"))).from(qPurchaseInbound)
+                .leftJoin(qOrderPaymentItem).
+                on(qOrderPaymentItem.businessId.eq(qPurchaseInbound.id)).leftJoin(qVerificationItem)
+                .on(qVerificationItem.businessId.eq(qPurchaseInbound.id.intValue())
+                        .and(qVerificationItem.businessType.eq(2))).leftJoin(qVerification).on(qVerification.id.eq(qVerificationItem.verificationId).and(qVerification.orderStatus.eq(OrderStatus.已审核))).where(query.builder.and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核))).groupBy(qPurchaseInbound.id, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qPurchaseInbound.finalAmount).having(unverifiedExpr.gt(BigDecimal.ZERO));
 
         List<PurchaseOrderWithVerification> result = mainQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
 

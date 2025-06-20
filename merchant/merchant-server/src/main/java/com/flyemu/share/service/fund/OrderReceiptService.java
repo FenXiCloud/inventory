@@ -12,6 +12,7 @@ import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.entity.sales.QSalesOrder;
 import com.flyemu.share.entity.sales.QSalesOutbound;
 import com.flyemu.share.entity.sales.SalesOrder;
+import com.flyemu.share.entity.sales.SalesOutbound;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
@@ -77,7 +78,7 @@ public class OrderReceiptService extends AbsService {
     private final CodeRuleService codeRuleService;
     private final CustomerService customerService;
     private final AccountService accountService;
-    private final SalesOrderRepository salesOrderRepository;
+    private final SalesOutboundRepository salesOrderRepository;
     private final OrderReceiptItemRepository orderReceiptItemRepository;
     private final OrderReceiptCollectionRepository orderReceiptCollectionRepository;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
@@ -646,7 +647,7 @@ public class OrderReceiptService extends AbsService {
 
                 salesOrderIdSet.add(salesOrderId);
 
-                SalesOrder salesOrder = salesOrderRepository.findById(salesOrderId)
+                SalesOutbound salesOrder = salesOrderRepository.findById(salesOrderId)
                         .orElseThrow(() -> new ServiceException("销售单不存在：" + salesOrderId));
                 if (!OrderStatus.已审核.equals(salesOrder.getOrderStatus())) {
                     throw new ServiceException("销售单未审核，无法引用：" + salesOrderId);
@@ -1039,7 +1040,7 @@ public class OrderReceiptService extends AbsService {
         if (query.getCustomerId() == null) {
             throw new ServiceException("客户ID不能为空");
         }
-        Customer customer = customerService.findById(query.getCustomerId());
+
         QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
 
         NumberExpression<BigDecimal> receiptVerifySum = qOrderReceiptItem.currentVerifyAmount.sum()

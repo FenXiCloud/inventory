@@ -151,7 +151,7 @@ public class PurchaseInboundService extends AbsService {
                 //保存更新购货商品价格
                 savePrice(d, purchaseInbound);
             }
-            // 删除原有的订单明细
+            // 删除原有的订单数据
             jqf.delete(qPurchaseInboundItem)
                     .where(qPurchaseInboundItem.purchaseInboundId.eq(purchaseInbound.getId())).execute();
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
@@ -222,6 +222,10 @@ public class PurchaseInboundService extends AbsService {
         jqf.delete(qPurchaseInbound)
                 .where(qPurchaseInbound.id.eq(purchaseInboundId).and(qPurchaseInbound.merchantId.eq(merchantId)).and(qPurchaseInbound.accountBookId.eq(accountBookId)))
                 .execute();
+        jqf.update(qPurchaseOrder)
+                .setNull(qPurchaseOrder.purchaseInboundId)
+                .where(qPurchaseOrder.purchaseInboundId.eq(purchaseInboundId)).execute();
+
     }
 
     public List<PurchaseInbound> select(Long merchantId, Long accountBookId) {

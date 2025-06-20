@@ -118,7 +118,7 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import {confirm, message} from "heyui.ext";
+import {message} from "heyui.ext";
 import {CopyObj} from "@common/utils";
 import Product from "@js/api/basic/Product";
 import ProductCategory from "@js/api/basic/ProductCategory";
@@ -266,17 +266,8 @@ export default {
             })
           }
         })
-        if (checkPrice) {
-          confirm({
-            title: "系统提示",
-            content: `检测到产品价格为0，是否继续?`,
-            onConfirm: () => {
-              this.confirm();
-            }
-          })
-        } else {
-          this.confirm();
-        }
+        this.confirm();
+
       }
     },
     confirm() {

@@ -15,15 +15,5 @@ export default {
   },
   addEdit(param) {
     return Ajax.post('/otherIncome/save', param);
-  },
-  writeOffTheOrder(param) {
-    return Ajax.get(`/otherIncome/writeOffTheOrder`, param);
-  },
-
-  orderStaffList(param) {
-    return Ajax.get('/orderStaff/list', param);
-  },
-  orderStaffAdd(param) {
-    return Ajax.post('/orderStaff/add', param);
   }
 };

@@ -510,6 +510,18 @@ const groupRoutes = [
     component: defineAsyncComponent(() =>
       import('@views/fund/OtherReceiptRecord')
     )
+  },
+  {
+    name: 'OtherExpenseRecord',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OtherExpenseRecord')
+    )
+  },
+  {
+    name: 'AccountTransferRecord',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/AccountTransferRecord')
+    )
   }
 ];
 

@@ -90,20 +90,39 @@
           width="130"
         />
         <vxe-column title="单据编号" field="orderNo" width="200" />
-        <vxe-column title="订单类型" field="orderType" width="200">
+        <!-- <vxe-column title="订单类型" field="orderType" width="200">
           <template #default="{ row }">
             {{ row.orderType == 1 ? '收款单' : '预收款单' }}
           </template>
+        </vxe-column> -->
+
+        <vxe-column title="转出账户" field="fromAccountName" min-width="120">
+          <template #default="{ row }">
+            <div :key="item.id" v-for="item in row.itemList" class="ml-10px">
+              {{ item.fromAccountName }}
+            </div>
+          </template>
+        </vxe-column>
+        <vxe-column title="转入账户" field="toAccountName" min-width="120">
+          <template #default="{ row }">
+            <div :key="item.id" v-for="item in row.itemList" class="ml-10px">
+              {{ item.toAccountName }}
+            </div>
+          </template>
+        </vxe-column>
+        <!-- <vxe-column title="转入账户" field="toAccountId" min-width="120" /> -->
+        <vxe-column title="金额" field="amount" min-width="120">
+          <template #default="{ row }">
+            <div :key="item.id" v-for="item in row.itemList" class="ml-10px">
+              {{ item.amount }}
+            </div>
+          </template>
         </vxe-column>
 
-        <vxe-column title="客户" field="customerName" min-width="120" />
-        <vxe-column title="结算账户" field="settlementAccount" min-width="120">
-        </vxe-column>
-        <vxe-column title="金额" field="amount" min-width="120"> </vxe-column>
-        <vxe-column title="收款金额" field="collectionAmount" min-width="120">
-        </vxe-column>
+        <vxe-column title="合计金额" field="amount" min-width="120" />
 
-        <vxe-column title="业务员" field="orderStaffName" width="120" />
+        <vxe-column title="备注" field="remarks" min-width="120"> </vxe-column>
+
         <vxe-column title="审核人" field="approvedBy" width="120" />
 
         <vxe-column
@@ -154,20 +173,16 @@
 </template>
 <script>
 import manba from 'manba';
-import SalesOrder from '@js/api/sales/SalesOrder';
 import { mapMutations } from 'vuex';
 import { confirm, loading, message } from 'heyui.ext';
-import PurchaseOrder from '@js/api/purchase/PurchaseOrder';
 import Customer from '@js/api/basic/Customer';
-import Warehouse from '@js/api/basic/Warehouse';
-import Product from '@js/api/basic/Product';
-import OtherReceipt from '@js/api/fund/OtherReceipt';
+import AccountTransfer from '@js/api/fund/AccountTransfer';
 
 const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
 
 export default {
-  name: 'OtherReceiptRecord',
+  name: 'AccountTransferRecord',
   data() {
     return {
       dataList: [],
@@ -214,17 +229,17 @@ export default {
 
     addForm(type = 'add', orderId = null) {
       // this.$store.commit('SET_TAB_DATA_RECEIPTRECORD', { type, orderId });
-      this.closeTabKey('OtherReceiptList');
+      this.closeTabKey('AccountTransferList');
       this.pushTab({
         keepAlive: false,
-        key: 'OtherReceiptList',
+        key: 'AccountTransferList',
         params: { type: type, orderId: orderId },
-        title: '其他收入单'
+        title: '资金转账单'
       });
     },
     loadList(type = true) {
       this.loading = true;
-      OtherReceipt.list(this.queryParams)
+      AccountTransfer.list(this.queryParams)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
           this.pagination.total = total;
@@ -256,7 +271,7 @@ export default {
         title: '系统提示',
         content: `确认删除?`,
         onConfirm: () => {
-          OtherReceipt.remove({ id: ids }).then(() => {
+          AccountTransfer.remove({ id: ids }).then(() => {
             message('删除成功~');
             this.loadList();
           });
@@ -279,7 +294,7 @@ export default {
             orderStatus: orderStatus,
             approvedBy: this.$store.state.user.admin.id
           };
-          OtherReceipt.batchAudit(params)
+          AccountTransfer.batchAudit(params)
             .then((success) => {
               if (success) {
                 if (orderStatus === '已审核') {
@@ -299,7 +314,7 @@ export default {
         console.log('this.$store.state.currentTab', this.$store.state.currentTab);
         //this.$store.commit('closeTabKey', this.$store.state.currentTab);
         this.$store.commit('closeTabKey', this.$store.state.currentTab);
-        this.$store.commit('newTab', 'OtherReceiptList');
+        this.$store.commit('newTab', 'AccountTransferList');
         // 使用 nextTick 确保在 DOM 更新后执行
         this.$nextTick(() => {
           // 通过 eventBus 或 vuex 触发刷新

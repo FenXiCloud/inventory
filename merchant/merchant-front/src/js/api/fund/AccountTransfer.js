@@ -1,16 +1,19 @@
-import Ajax from "@common/Request";
+import Ajax from '@common/Request';
 
 export default {
-    save(param) {
-        return Ajax[param.id ? 'put' : 'post']('/accountTransfer', param)
-    },
-    list(param) {
-        return Ajax.get('/accountTransfer', param)
-    },
-    remove(id) {
-        return Ajax.delete('/accountTransfer/' + id);
-    },
-    select(param) {
-        return Ajax.get('/accountTransfer/select', param)
-    }
-}
+  list(param) {
+    return Ajax.get('/accountTransfer/list', param);
+  },
+  details(param) {
+    return Ajax.get('/accountTransfer/selectById', param);
+  },
+  remove(id) {
+    return Ajax.post('/accountTransfer/delete', id);
+  },
+  batchAudit(param) {
+    return Ajax.post('/accountTransfer/updateStatus', param);
+  },
+  addEdit(param) {
+    return Ajax.post('/accountTransfer/save', param);
+  }
+};

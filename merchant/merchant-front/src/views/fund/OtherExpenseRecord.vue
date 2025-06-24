@@ -17,7 +17,7 @@
           <Select
             v-model="params.orderType"
             class="w-180px"
-            :datas="{ 1: '收款单', 2: '预收款单' }"
+            :datas="{ 1: '付款单', 2: '预付款单' }"
             placeholder="选择单据类型"
           />
         </div>
@@ -27,7 +27,7 @@
           search-button-theme="h-btn-default"
           show-search-button
           class="w-280px ml-8px"
-          placeholder="请输入客户名称或订单编号"
+          placeholder="请输入供应商名称或订单编号"
           @search="doSearch"
         >
           <i class="h-icon-search" />
@@ -90,17 +90,12 @@
           width="130"
         />
         <vxe-column title="单据编号" field="orderNo" width="200" />
-        <vxe-column title="订单类型" field="orderType" width="200">
-          <template #default="{ row }">
-            {{ row.orderType == 1 ? '收款单' : '预收款单' }}
-          </template>
-        </vxe-column>
 
-        <vxe-column title="客户" field="customerName" min-width="120" />
+        <vxe-column title="供应商" field="supplierName" min-width="120" />
         <vxe-column title="结算账户" field="settlementAccount" min-width="120">
         </vxe-column>
         <vxe-column title="金额" field="amount" min-width="120"> </vxe-column>
-        <vxe-column title="收款金额" field="collectionAmount" min-width="120">
+        <vxe-column title="付款金额" field="collectionAmount" min-width="120">
         </vxe-column>
 
         <vxe-column title="业务员" field="orderStaffName" width="120" />
@@ -161,13 +156,13 @@ import PurchaseOrder from '@js/api/purchase/PurchaseOrder';
 import Customer from '@js/api/basic/Customer';
 import Warehouse from '@js/api/basic/Warehouse';
 import Product from '@js/api/basic/Product';
-import OtherReceipt from '@js/api/fund/OtherReceipt';
+import OtherExpense from '@js/api/fund/OtherExpense';
 
 const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
 
 export default {
-  name: 'OtherReceiptRecord',
+  name: 'OtherExpenseRecord',
   data() {
     return {
       dataList: [],
@@ -214,17 +209,17 @@ export default {
 
     addForm(type = 'add', orderId = null) {
       // this.$store.commit('SET_TAB_DATA_RECEIPTRECORD', { type, orderId });
-      this.closeTabKey('OtherReceiptList');
+      this.closeTabKey('OtherExpenseList');
       this.pushTab({
         keepAlive: false,
-        key: 'OtherReceiptList',
+        key: 'OtherExpenseList',
         params: { type: type, orderId: orderId },
-        title: '其他收入单'
+        title: '其他支出单'
       });
     },
     loadList(type = true) {
       this.loading = true;
-      OtherReceipt.list(this.queryParams)
+      OtherExpense.list(this.queryParams)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
           this.pagination.total = total;
@@ -256,7 +251,7 @@ export default {
         title: '系统提示',
         content: `确认删除?`,
         onConfirm: () => {
-          OtherReceipt.remove({ id: ids }).then(() => {
+          OtherExpense.remove({ id: ids }).then(() => {
             message('删除成功~');
             this.loadList();
           });
@@ -279,7 +274,7 @@ export default {
             orderStatus: orderStatus,
             approvedBy: this.$store.state.user.admin.id
           };
-          OtherReceipt.batchAudit(params)
+          OtherExpense.batchAudit(params)
             .then((success) => {
               if (success) {
                 if (orderStatus === '已审核') {
@@ -299,7 +294,7 @@ export default {
         console.log('this.$store.state.currentTab', this.$store.state.currentTab);
         //this.$store.commit('closeTabKey', this.$store.state.currentTab);
         this.$store.commit('closeTabKey', this.$store.state.currentTab);
-        this.$store.commit('newTab', 'OtherReceiptList');
+        this.$store.commit('newTab', 'OtherExpenseList');
         // 使用 nextTick 确保在 DOM 更新后执行
         this.$nextTick(() => {
           // 通过 eventBus 或 vuex 触发刷新

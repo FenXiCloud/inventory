@@ -19,11 +19,11 @@
                 class="w-120px"
                 @change="handleSalesGroupChange"
                 :datas="{
-                   PRODUCT:'商品',
+                   PRODUCT:'产品',
                    CUSTOMER:'客户',
-                   PRODUCT_WAREHOUSE:'商品+仓库',
-                   CUSTOMER_PRODUCT:'客户+商品',
-                   CUSTOMER_PRODUCT_WAREHOUSE:'客户+商品+仓库'
+                   PRODUCT_WAREHOUSE:'产品+仓库',
+                   CUSTOMER_PRODUCT:'客户+产品',
+                   CUSTOMER_PRODUCT_WAREHOUSE:'客户+产品+仓库'
                 }"/>
       </div>
       <div class="h-input-group">
@@ -42,12 +42,12 @@
                 :datas="warehouseList" placeholder="请选择仓库"/>
       </div>
       <div class="h-input-group">
-        <span class="h-input-addon">商品：</span>
+        <span class="h-input-addon">产品：</span>
         <Select :multiple="true" v-model="params.productIds"  keyName="id" titleName="name"
-                :datas="productList" placeholder="请选择商品"/>
+                :datas="productList" placeholder="请选择产品"/>
       </div>
       <div class="h-input-group">
-        <span class="h-input-addon">商品类别：</span>
+        <span class="h-input-addon">产品类别：</span>
         <Select :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
                 v-model="params.productCategoryIds" placeholder="请选择类别"/>
       </div>
@@ -89,11 +89,11 @@
           </vxe-column>
         </template>
         <template v-if="this.params.salesGroupSearch !== 'CUSTOMER'" >
-          <vxe-column title="商品编码" field="productCode" />
-          <vxe-column title="商品名称" field="productName" />
+          <vxe-column title="产品编码" field="productCode"/>
+          <vxe-column title="产品名称" field="productName"/>
           <vxe-column title="销售单位" field="unitName" />
           <vxe-column title="规格型号" field="specification" />
-          <vxe-column title="商品类别" field="productCategoryName" />
+          <vxe-column title="产品类别" field="productCategoryName"/>
         </template>
         <template
             v-if="this.params.salesGroupSearch === 'PRODUCT_WAREHOUSE' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'">
@@ -123,7 +123,6 @@
 </template>
 <script>
 import manba from "manba";
-import SalesOutbound from "@js/api/sales/SalesOutbound";
 import {mapMutations} from "vuex";
 import SalesReport from "@js/api/sales/SalesReport";
 import Customer from "@js/api/basic/Customer";
@@ -242,8 +241,8 @@ export default {
         const exportData = this.dataList.map(item => ({
           '客户编码': item.customerCode,
           '客户名称': item.customerName,
-          '商品编码': item.productCode,
-          '商品名称': item.productName,
+          '产品编码': item.productCode,
+          '产品名称': item.productName,
           '销售单位': item.unitName,
           '仓库名称': item.warehouseName,
           '单价': item.unitPrice,
@@ -266,8 +265,8 @@ export default {
         ws['!cols'] = [
           { wch: 10 }, // 客户编码
           { wch: 15 }, // 客户名称
-          { wch: 12 }, // 商品编码
-          { wch: 20 }, // 商品名称
+          {wch: 12}, // 产品编码
+          {wch: 20}, // 产品名称
           { wch: 10 }, // 销售单位
           { wch: 12 }, // 仓库名称
           { wch: 10 }, // 单价

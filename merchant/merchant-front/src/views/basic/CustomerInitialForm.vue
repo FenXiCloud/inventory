@@ -86,7 +86,7 @@
 <script>
 import CustomerInitial from "@js/api/basic/CustomerInitial";
 import {mapMutations, mapState} from "vuex";
-import {confirm, loading, message} from "heyui.ext";
+import {loading, message} from "heyui.ext";
 import Customer from "@js/api/basic/Customer";
 
 
@@ -134,7 +134,7 @@ export default {
       item.balanceAfter = (item.balanceBefore - item.amount).toFixed(2);
     },
 
-    //选择商品
+    //选择产品
     selectCustomer(item, index) {
       console.log("item",item)
       console.log("index",index)

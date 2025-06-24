@@ -3,14 +3,14 @@
     <div class="modal-column-full-body">
       <div class="flex pt-15px">
         <Form ref="form" class="mr-10px" :model="model" mode="twocolumn" :label-width="90">
-          <FormItem label="商品编码" prop="code">
-            <Input placeholder="商品编码" v-model="model.code" disabled/>
+          <FormItem label="产品编码" prop="code">
+            <Input placeholder="产品编码" v-model="model.code" disabled/>
           </FormItem>
-          <FormItem label="商品名称" prop="name">
-            <Input placeholder="商品名称" v-model="model.name" maxlength="64" disabled/>
+          <FormItem label="产品名称" prop="name">
+            <Input placeholder="产品名称" v-model="model.name" maxlength="64" disabled/>
           </FormItem>
-          <FormItem label="商品分类" prop="productCategoryName">
-            <Input placeholder="商品分类" v-model="model.productCategoryName" maxlength="64" disabled/>
+          <FormItem label="产品分类" prop="productCategoryName">
+            <Input placeholder="产品分类" v-model="model.productCategoryName" maxlength="64" disabled/>
           </FormItem>
           <FormItem label="规格" prop="specification">
             <Input placeholder="请输入规格" v-model="model.specification" maxlength="120" disabled />
@@ -68,19 +68,13 @@
 
 <script>
 /**
- * @功能描述: 商品FORM
+ * @功能描述: 产品FORM
  * @创建时间: 2024年05月06日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import {confirm, message} from "heyui.ext";
-import {CopyObj} from "@common/utils";
-import Product from "@js/api/basic/Product";
-import ProductCategory from "@js/api/basic/ProductCategory";
-import CustomerLevel from "@js/api/basic/CustomerLevel";
-import Unit from "@js/api/basic/Unit";
-import {OssUpload} from "@js/api/App";
+import {message} from "heyui.ext";
 import PriceRecord from "@js/api/basic/PriceRecord";
 
 export default {

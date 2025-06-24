@@ -11,12 +11,12 @@
                   titleName="name" :datas="warehouseList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">商品：</span>
+          <span class="h-input-addon ml-8px">产品：</span>
           <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
                   titleName="name" :datas="productList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">商品类别：</span>
+          <span class="h-input-addon ml-8px">产品类别：</span>
           <Select v-model="params.productCategoryIds" :filterable="true" :multiple="true" keyName="id" titleName="name"
                   class="w-120px"
                   :datas="productCategoryList"/>
@@ -27,7 +27,7 @@
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
-                placeholder="请输入商品编号/名称/类别/规格" @search="doSearch">
+                placeholder="请输入产品编号/名称/类别/规格" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -45,10 +45,10 @@
                  :column-config="{resizable: true}"
                  :sort-config="{remote:true}"
                  :loading="loading">
-        <vxe-column title="商品图片" field="productUrl" align="center" width="130"/>
-        <vxe-column title="商品编码" field="productCode" width="200"/>
-        <vxe-column title="商品名称" field="productName" width="200"/>
-        <vxe-column title="商品类别" field="productCategoryName" min-width="120"/>
+        <vxe-column title="产品图片" field="productUrl" align="center" width="130"/>
+        <vxe-column title="产品编码" field="productCode" width="200"/>
+        <vxe-column title="产品名称" field="productName" width="200"/>
+        <vxe-column title="产品类别" field="productCategoryName" min-width="120"/>
         <vxe-column title="规格型号" field="productSpecification" width="120"/>
         <vxe-column title="单位" field="productUnitName" width="120"/>
         <vxe-colgroup align="center" title="全部仓库">
@@ -302,17 +302,17 @@ export default {
         return;
       }
       let headList = [
-        {label: "商品图片", key: "productUrl"},
-        {label: "商品编码", key: "productCode"},
-        {label: "商品名称", key: "productName"},
-        {label: "商品类别", key: "productCategoryName"},
+        {label: "产品图片", key: "productUrl"},
+        {label: "产品编码", key: "productCode"},
+        {label: "产品名称", key: "productName"},
+        {label: "产品类别", key: "productCategoryName"},
         {label: "规格型号", key: "productSpecification"},
         {label: "单位", key: "productUnitName"},
         {label: "单位数量", key: "all_quantity"},
         {label: "单位成本", key: "all_averageCost"},
         {label: "成本小计", key: "all_totalCost"},
       ];
-      const tHeader = ['商品图片', '商品编码', '商品名称', '商品类别', '规格型号', '单位', '全部仓库', null, null];
+      const tHeader = ['产品图片', '产品编码', '产品名称', '产品类别', '规格型号', '单位', '全部仓库', null, null];
       const secondHeader = [null, null, null, null, null, null, '单位数量', '单位成本', '成本小计'];
       const merges = [
         {s: {r: 0, c: 0}, e: {r: 1, c: 0}},

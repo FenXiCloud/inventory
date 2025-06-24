@@ -64,6 +64,7 @@ import {confirm, message} from "heyui.ext";
 import CodeRuleForm from "./CodeRuleForm.vue";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
+
 export default {
   name: "CodeRuleList",
   props: {
@@ -89,7 +90,7 @@ export default {
         {id: 14, documentType: '核销单', type: 1},
         {id: 15, documentType: '其他收款单', type: 1},
         {id: 16, documentType: '转帐单', type: 1},
-        {id: 17, documentType: '商品', type: 2},
+        {id: 17, documentType: '产品', type: 2},
         {id: 18, documentType: '仓库', type: 2},
         {id: 19, documentType: '客户', type: 2},
         {id: 20, documentType: '供货商', type: 2}

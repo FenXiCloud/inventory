@@ -19,9 +19,9 @@
         <Select class="ml-8px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
                 v-model="supplierCategoryIds" placeholder="请选择供货商类别"/>
         <Select class="ml-8px" required :datas="productList" keyName="id" titleName="name"
-                 v-model="productIds" placeholder="请选择商品" :multiple="true"/>
+                v-model="productIds" placeholder="请选择产品" :multiple="true"/>
         <Select class="ml-8px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
-                v-model="productCategoryIds" placeholder="请选择商品类别"/>
+                v-model="productCategoryIds" placeholder="请选择产品类别"/>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-260px ml-8px"
                 placeholder="请输入订单号/供货商名称" @search="doSearch">
@@ -43,7 +43,7 @@
                  :sort-config="{remote:true}"
                  :loading="loading">
         <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="商品信息" width="300">
+        <vxe-column title="产品信息" width="300">
           <template #default="{row,rowIndex}">
             <div class="flex">
               <div class="flex1 ml-8px">
@@ -53,7 +53,7 @@
           </template>
         </vxe-column>
         <vxe-column title="规格型号" field="spec" align="center" width="130"/>
-        <vxe-column title="商品类别" field="categoryName" align="center" width="130"/>
+        <vxe-column title="产品类别" field="categoryName" align="center" width="130"/>
         <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
         <vxe-column title="订单编号" field="orderNo" width="200"/>
         <vxe-column title="供货商" field="supplierName" min-width="120"/>

@@ -20,7 +20,7 @@
           :footer-method="footerMethod"
           :data="productData">
         <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
-        <vxe-column title="商品信息" width="300">
+        <vxe-column title="产品信息" width="300">
           <template #default="{row}">
             <div class="flex">
               <div class="flex1 ml-8px">
@@ -75,7 +75,6 @@ import manba from "manba";
 import {CopyObj} from "@common/utils";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import Stamp from "@views/common/Stamp.vue";
-import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
 
 export default {
   name: "PurchaseOrderDetail",

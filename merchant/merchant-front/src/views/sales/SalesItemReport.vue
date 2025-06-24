@@ -31,11 +31,12 @@
                 :datas="warehouseList" placeholder="请选择仓库"/>
       </div>
       <div class="h-input-group">
-        <span class="h-input-addon ml-8px">商品：</span>
-        <Select :multiple="true" v-model="params.productIds"  keyName="id" titleName="name" :datas="productList" placeholder="请选择商品"/>
+        <span class="h-input-addon ml-8px">产品：</span>
+        <Select :multiple="true" v-model="params.productIds" keyName="id" titleName="name" :datas="productList"
+                placeholder="请选择产品"/>
       </div>
       <div class="h-input-group">
-        <span class="h-input-addon">商品类别：</span>
+        <span class="h-input-addon">产品类别：</span>
         <Select :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
                 v-model="params.productCategoryIds" placeholder="请选择类别"/>
       </div>
@@ -72,9 +73,9 @@
           </template>
         </vxe-column>
 
-        <vxe-column title="商品编码" field="productCode" width="100"/>
-        <vxe-column title="商品名称" field="productName" width="100"/>
-        <vxe-column title="商品类别" field="productCategoryName" width="100"/>
+        <vxe-column title="产品编码" field="productCode" width="100"/>
+        <vxe-column title="产品名称" field="productName" width="100"/>
+        <vxe-column title="产品类别" field="productCategoryName" width="100"/>
         <vxe-column title="规格型号" field="specification" width="100"/>
         <vxe-column title="销售单位" field="unitName" width="100"/>
         <vxe-column title="仓库名称" field="warehouseName" width="100"/>
@@ -214,8 +215,8 @@ export default {
           '订单编号': item.orderNo,
           '业务类别': this.params.salesType === 'return' ? '退货' : '销货',
           '客户': item.customerName,
-          '商品编码': item.productCode,
-          '商品名称': item.productName,
+          '产品编码': item.productCode,
+          '产品名称': item.productName,
           '销售单位': item.unitName,
           '仓库名称': item.warehouseName,
           '数量': item.quantity,
@@ -240,8 +241,8 @@ export default {
           { wch: 30 }, // 订单编号
           { wch: 10 }, // 业务类别
           { wch: 15 }, // 客户
-          { wch: 12 }, // 商品编码
-          { wch: 20 }, // 商品名称
+          {wch: 12}, // 产品编码
+          {wch: 20}, // 产品名称
           { wch: 10 }, // 销售单位
           { wch: 12 }, // 仓库名称
           { wch: 10 }, // 数量

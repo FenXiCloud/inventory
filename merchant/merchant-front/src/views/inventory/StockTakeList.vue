@@ -28,7 +28,7 @@
                   titleName="name"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">商品类别：</span>
+          <span class="h-input-addon ml-8px">产品类别：</span>
           <Select v-model="params.productCategoryIds" :multiple="true" class="w-120px" :datas="productCategoryList"
                   keyName="id"
                   titleName="name"/>

@@ -11,12 +11,12 @@
                   titleName="name" :datas="warehouseList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">商品：</span>
+          <span class="h-input-addon ml-8px">产品：</span>
           <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
                   titleName="name" :datas="productList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">商品类别：</span>
+          <span class="h-input-addon ml-8px">产品类别：</span>
           <Select v-model="params.productCategoryIds" :filterable="true" :multiple="true" keyName="id" titleName="name"
                   class="w-120px"
                   :datas="productCategoryList"/>
@@ -27,7 +27,7 @@
         </div>
         <Search v-model.trim="params.summaryFilter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
-                placeholder="请输入商品编码/商品名称" @search="doSearch">
+                placeholder="请输入产品编码/产品名称" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -45,9 +45,9 @@
                  :column-config="{resizable: true}"
                  :sort-config="{remote:true}"
                  :loading="loading">
-        <vxe-column title="商品编号" field="productCode" align="center" width="130"/>
-        <vxe-column title="商品名称" field="productName" width="200"/>
-        <vxe-column title="商品类别" field="productCategoryName" width="200"/>
+        <vxe-column title="产品编号" field="productCode" align="center" width="130"/>
+        <vxe-column title="产品名称" field="productName" width="200"/>
+        <vxe-column title="产品类别" field="productCategoryName" width="200"/>
         <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
         <vxe-column title="单位" field="unitName" width="120"/>
         <vxe-column title="仓库" field="warehouseName" width="120"/>
@@ -562,9 +562,9 @@ export default {
         return;
       }
       let headList = [
-        {label: "商品编号", key: "productCode"},
-        {label: "商品名称", key: "productName"},
-        {label: "商品类别", key: "productCategoryName"},
+        {label: "产品编号", key: "productCode"},
+        {label: "产品名称", key: "productName"},
+        {label: "产品类别", key: "productCategoryName"},
         {label: "规格型号", key: "productSpecification"},
         {label: "单位", key: "unitName"},
         {label: "仓库", key: "warehouseName"},
@@ -599,7 +599,7 @@ export default {
         {label: "数量", key: "currentQuantity"},
         {label: "成本", key: "totalCost"},
       ];
-      const tHeader = ['商品编号', '商品名称', '商品类别', '规格型号', '单位', '仓库',
+      const tHeader = ['产品编号', '产品名称', '产品类别', '规格型号', '单位', '仓库',
         '期初', null, '采购入库', null,
         '销售退货', null, '调拨入库', null,
         '其他入库', null, '盘盈单', null,

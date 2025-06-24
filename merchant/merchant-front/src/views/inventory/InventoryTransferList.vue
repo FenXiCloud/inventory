@@ -17,7 +17,7 @@
     <vxe-toolbar>
       <template #buttons>
         <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon">商品：</span>
+          <span class="h-input-addon">产品：</span>
           <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
                   titleName="name" :datas="productList"/>
         </div>

@@ -17,12 +17,12 @@
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
           </template>
         </vxe-column>
-        <vxe-column field="productCode" title="商品编码" width="200">
+        <vxe-column field="productCode" title="产品编码" width="200">
           <template #default="{row}">
             {{ productList.find(item => item.id === row.productId)?.code || '-' }}
           </template>
         </vxe-column>
-        <vxe-column field="productName" title="商品名称" min-width="200">
+        <vxe-column field="productName" title="产品名称" min-width="200">
           <template #default="scope">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
@@ -103,7 +103,7 @@
 <script>
 import InventoryInitial from "@js/api/basic/InventoryInitial";
 import {mapMutations, mapState} from "vuex";
-import {confirm, loading, message} from "heyui.ext";
+import {loading, message} from "heyui.ext";
 import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
 import Unit from "@js/api/basic/Unit";
@@ -172,7 +172,7 @@ export default {
       item.subtotal = (item.quantity * item.unitPrice).toFixed(2);
     },
 
-    //选择商品
+    //选择产品
     selectProduct(item, index) {
       console.log("item",item)
       console.log("index",index)
@@ -237,7 +237,7 @@ export default {
 
     checkHttp(requestData) {
       if (requestData.length === 0) {
-        message.error("请选择商品~");
+        message.error("请选择产品~");
         return false
       }
       let quantityFlag = false
@@ -264,7 +264,7 @@ export default {
         }
       })
       if (productFlag) {
-        message.error("请选择商品~");
+        message.error("请选择产品~");
         return false
       }
       if (warehouseFlag) {

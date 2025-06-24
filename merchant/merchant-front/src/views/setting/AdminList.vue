@@ -33,7 +33,7 @@
           :column-config="{ resizable: true }"
           :loading="loading"
         >
-          <vxe-column type="seq" width="40" title="#" />
+          <vxe-column type="seq" width="60" title="#"/>
           <vxe-column title="账号" field="username" />
           <vxe-column title="姓名" field="name" />
           <vxe-column title="电话" field="mobile" />
@@ -92,9 +92,9 @@
 <script>
 import AdminForm from './AdminForm.vue';
 import Admin from '@js/api/setting/Admin';
-import { confirm, message } from 'heyui.ext';
-import { layer } from '@layui/layer-vue';
-import { h } from 'vue';
+import {confirm, message} from 'heyui.ext';
+import {layer} from '@layui/layer-vue';
+import {h} from 'vue';
 
 /**
  * @功能描述: 用户管理

@@ -2,7 +2,7 @@
   <div class="modal-column">
     <div class="modal-column-full-body">
       <Form ref="form" :model="model" :rules="validationRules">
-        <FormItem label="编码" prop="code">
+        <FormItem label="编码" prop="code" required>
           <Input
               placeholder="请输入分类编码"
               :disabled="model.id"
@@ -35,8 +35,8 @@
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 import ProductCategory from '@js/api/basic/ProductCategory';
-import { message } from 'heyui.ext';
-import { CopyObj } from '@common/utils';
+import {message} from 'heyui.ext';
+import {CopyObj} from '@common/utils';
 
 export default {
   name: 'ProductCategoryForm',

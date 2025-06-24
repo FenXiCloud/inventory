@@ -29,7 +29,7 @@
       <Button @click="$emit('close')" :loading="loading">
         取消
       </Button>
-      <Button color="green" :disabled="!file" @click="importData" :loading="loading">
+      <Button color="primary" :disabled="!file" @click="importData" :loading="loading">
         导 入
       </Button>
     </div>

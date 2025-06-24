@@ -196,7 +196,7 @@ export default {
 
     checkHttp(requestData) {
       if (requestData.length === 0) {
-        message.error("请选择客户");
+        message.error("请选择货商");
         return false
       }
       let quantityFlag = false

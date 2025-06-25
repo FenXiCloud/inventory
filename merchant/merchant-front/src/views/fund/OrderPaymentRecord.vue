@@ -17,7 +17,7 @@
           <Select
             v-model="params.orderType"
             class="w-180px"
-            :datas="{ 1: '收款单', 2: '预收款单' }"
+            :datas="{ 1: '付款单', 2: '预付款单' }"
             placeholder="选择单据类型"
           />
         </div>
@@ -91,7 +91,7 @@
         <vxe-column title="单据编号" field="orderNo" width="200" />
         <vxe-column title="订单类型" field="orderType" width="200">
           <template #default="{ row }">
-            {{ row.orderType == 1 ? '收款单' : '预收款单' }}
+            {{ row.orderType == 1 ? '付款单' : '预付款单' }}
           </template>
         </vxe-column>
         <vxe-column title="源单编号" field="businessNo" width="200">

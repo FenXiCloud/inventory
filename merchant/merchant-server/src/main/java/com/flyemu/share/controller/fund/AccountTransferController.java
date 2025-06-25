@@ -47,7 +47,7 @@ public class AccountTransferController {
     }
 
 
-    @DeleteMapping("delete")
+    @PostMapping("delete")
     public JsonResult delete(@RequestBody OrderPaymentUpdateDTO dto,
                              @SaAccountBookId Long accountBookId,
                              @SaMerchantId Long merchantId) {

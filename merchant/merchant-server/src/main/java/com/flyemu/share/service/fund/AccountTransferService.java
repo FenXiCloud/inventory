@@ -445,7 +445,6 @@ public class AccountTransferService extends AbsService {
     @Transactional
     public void updateAccountBalancesWithFlow(AccountTransfer transfer, OrderStatus targetStatus) {
         List<AccountTransferItem> items = findItemsByTransferId(transfer.getId());
-
         for (AccountTransferItem item : items) {
             BigDecimal amount = item.getAmount();
             if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
@@ -493,9 +492,6 @@ public class AccountTransferService extends AbsService {
                 inContext.setAmount(amount);
                 accountService.updateAccountBalanceWithFlow(inContext);
             } else {
-                if (transfer.getOrderStatus() != OrderStatus.已审核) {
-                    throw new ServiceException("该转账单未审核，无法反审核");
-                }
                 AccountBalanceChangeContext rollbackOutContext = AccountBalanceChangeContext.builder()
                         .accountId(fromAccountId)
                         .merchantId(merchantId)

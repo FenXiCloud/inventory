@@ -32,7 +32,7 @@ public class CustomerFlowController {
     private final CustomerFlowService customerFlowService;
 
     @GetMapping("/getCustomerBillFlows")
-    public PageResults<CustomerFlow> getCustomerBillFlows(
+    public JsonResult getCustomerBillFlows(
             Page page,
             @RequestParam Long customerId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startTime,
@@ -47,7 +47,8 @@ public class CustomerFlowController {
         queryDTO.setCustomerId(customerId);
         queryDTO.setStartTime(startDateTime);
         queryDTO.setEndTime(endDateTime);
-        return customerFlowService.getFlowsByCustomerBill(page, queryDTO);
+        return JsonResult.successful(customerFlowService.getFlowsByCustomerBill(page, queryDTO));
+
     }
 
     @GetMapping

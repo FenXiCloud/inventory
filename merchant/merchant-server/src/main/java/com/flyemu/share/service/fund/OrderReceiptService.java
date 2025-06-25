@@ -50,6 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -1226,17 +1227,23 @@ public class OrderReceiptService extends AbsService {
             }
         }
 
-        public void setStartTime(LocalDateTime startTime) {
-            if (startTime != null) {
-                builder.and(qOrderReceipt.createdAt.goe(startTime));
+        public void setStartTime(String startTime) {
+            if (startTime != null && !startTime.isEmpty()) {
+                LocalDate startDate = LocalDate.parse(startTime);
+                LocalDateTime startDateTime = startDate.atStartOfDay();
+                builder.and(qOrderReceipt.createdAt.goe(startDateTime));
             }
         }
 
-        public void setEndTime(LocalDateTime endTime) {
-            if (endTime != null) {
-                builder.and(qOrderReceipt.createdAt.loe(endTime));
+        public void setEndTime(String endTime) {
+            if (endTime != null && !endTime.isEmpty()) {
+                LocalDate endDate = LocalDate.parse(endTime);
+                LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay().minusSeconds(1);  
+                builder.and(qOrderReceipt.createdAt.loe(endDateTime));
             }
         }
+
+
 
         public void setKeyword(String keyword) {
             if (keyword != null && !keyword.isEmpty()) {

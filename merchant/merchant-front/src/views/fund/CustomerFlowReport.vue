@@ -2,135 +2,190 @@
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
       <template #buttons>
-
-      </template>
-      <template #tools>
         <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期：</span>
-          <DateRangePicker v-model="dateRange"></DateRangePicker>
+          <span class="h-input-addon ml-8px">单据日期:</span>
+          <DateRangePicker
+            v-model="dateRange"
+            @confirm="doSearch"
+          ></DateRangePicker>
         </div>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/客户名称" @search="doSearch">
-          <i class="h-icon-search"/>
-        </Search>
       </template>
     </vxe-toolbar>
     <div class="flex1">
-      <vxe-table row-id="id"
-                 ref="table"
-                 height="auto"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 show-footer
-                 :footer-method="footerMethod"
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :sort-config="{remote:true}"
-                 :loading="loading">
-        <vxe-column title="客户ID" field="customerId" align="center" width="130"/>
-        <vxe-column title="订单ID" field="orderId" width="200"/>
-        <vxe-column title="制单人" field="createdBy" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createdAt" align="center" width="200"/>
-        <vxe-column title="操作类型" field="customerFlowType" width="120"/>
-        <vxe-column title="交易金额" field="amount" width="120"/>
-        <vxe-column title="交易前余额" field="balanceBefore" width="120"/>
-        <vxe-column title="交易后余额" field="balanceAfter" width="120"/>
-        <vxe-column title="备注" field="remarks"/>
-
+      <vxe-table
+        row-id="id"
+        ref="table"
+        height="auto"
+        :data="dataList"
+        highlight-hover-row
+        show-overflow
+        show-footer
+        :footer-method="footerMethod"
+        :row-config="{ height: 48 }"
+        :column-config="{ resizable: true }"
+        :sort-config="{ remote: true }"
+        :loading="loading"
+      >
+        <!-- <vxe-column type="checkbox" width="40" align="center" /> -->
+        <!-- <vxe-column title="id" field="id"> </vxe-column> -->
+        <vxe-column
+          title="客户"
+          field="customerName"
+          align="center"
+          width="130"
+        />
+        <vxe-column
+          title="销售人员"
+          field="staffName"
+          align="center"
+          width="130"
+        />
+        <vxe-column
+          title="单据日期"
+          field="orderDate"
+          align="center"
+          width="130"
+        />
+        <vxe-column
+          title="单据编号"
+          field="orderNo"
+          align="center"
+          width="200"
+        />
+        <vxe-column title="业务类型" field="businessType" min-width="120" />
+        <vxe-column
+          title="增加应收款金额"
+          field="receivableAmount"
+          min-width="120"
+        />
+        <vxe-column
+          title="增加预收款金额"
+          field="prepaymentAmount"
+          min-width="120"
+        />
+        <vxe-column title="应收款余额" field="balance" min-width="120" />
+        <vxe-column title="备注" field="remarks" width="120" />
       </vxe-table>
     </div>
     <div class="justify-between items-center pt-5px">
-      <vxe-pager perfect @page-change="loadList(false)"
-                 v-model:current-page="pagination.page"
-                 v-model:page-size="pagination.pageSize"
-                 :total="pagination.total"
-                 :layouts="[ 'PrevPage', 'Number', 'NextPage', 'Sizes', 'Total']">
+      <vxe-pager
+        perfect
+        @page-change="loadList(false)"
+        v-model:current-page="pagination.page"
+        v-model:page-size="pagination.pageSize"
+        :total="pagination.total"
+        :layouts="[
+          'PrevJump',
+          'PrevPage',
+          'Number',
+          'NextPage',
+          'NextJump',
+          'Sizes',
+          'Total'
+        ]"
+      >
         <template #left>
-          <span class="mr-12px text-14px">合计金额：{{ amountTotal }}元</span>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
-                      :loading="loading"></vxe-button>
+          <vxe-button
+            @click="loadList(false)"
+            type="text"
+            size="mini"
+            icon="h-icon-refresh"
+            :loading="loading"
+          ></vxe-button>
         </template>
       </vxe-pager>
     </div>
   </div>
 </template>
 <script>
-import manba from "manba";
-import CustomerFlow from "@js/api/fund/CustomerFlow";
-import {mapMutations} from "vuex";
-
-const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
-const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
+import manba from 'manba';
+import { mapMutations } from 'vuex';
+import AccountFlow from '@js/api/fund/AccountFlow';
+const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
+const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
 
 export default {
-  name: "CustomerFlowReport",
+  name: 'CustomerFlowReport',
   data() {
     return {
       dataList: [],
-      loading: false,
-      amountTotal: 0,
-      totalParams: {},
       pagination: {
         page: 1,
         pageSize: 20,
         total: 0
       },
-      params: {
-        filter: null,
-        state: null,
-        sortCol: null,
-        sort: null,
-      },
+      loading: false,
+      params: {},
       dateRange: {
-        start: manba(startTime).format("YYYY-MM-dd"),
-        end: manba(endTime).format("YYYY-MM-dd")
-      },
-    }
+        start: manba(startTime).format('YYYY-MM-dd'),
+        end: manba(endTime).format('YYYY-MM-dd')
+      }
+    };
   },
   computed: {
     queryParams() {
       return Object.assign(this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
-      })
-    },
+        startTime: this.dateRange.start,
+        endTime: this.dateRange.end
+      });
+    }
   },
   methods: {
     ...mapMutations(['pushTab']),
-    footerMethod({columns, data}) {
-      let sums = [];
-      columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
+    footerMethodFormat({ columns, data }, list, totalName) {
+      // 初始化合计行，默认所有列为空字符串
+      const footerRow = new Array(columns.length).fill('');
+
+      // 设置第一列为“合计”
+      footerRow[0] = '合计';
+
+      // 遍历列，仅对需要合计的字段进行计算
+      columns.forEach((column, index) => {
+        if (list.includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              total += Number(rd || 0);
+            const value = parseFloat(row[column.property]);
+            if (!isNaN(value)) {
+              total += value;
             }
           });
-          sums.push(total.toFixed(2));
+          footerRow[index] = total.toFixed(2); // 将合计值放入对应位置
+
+          this[totalName] = total;
         }
-      })
-      return [["", "", "", "", "", ""].concat(sums)];
+      });
+
+      // this.form.collectionAmount = this.calcCollectionAmount();
+
+      return [footerRow]; // 返回二维数组用于渲染 footer
+    },
+    footerMethod({ columns, data }) {
+      return [[]];
+      // return this.footerMethodFormat(
+      //   { columns, data },
+      //   ['receivableAmount', 'prepaymentAmount', 'balance'],
+      //   'totalTb1'
+      // );
     },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
     },
+
     loadList(type = true) {
       this.loading = true;
-      CustomerFlow.list(this.queryParams).then(({data: data}) => {
-        this.dataList = data || [];
-        this.pagination.total = data.length;
-      }).finally(() => this.loading = false);
-    },
+      AccountFlow.getReceivableDetailReport(this.queryParams)
+        .then(({ data: { results, total } }) => {
+          this.dataList = results || [];
+          this.pagination.total = total;
+        })
+        .finally(() => (this.loading = false));
+    }
   },
   created() {
     this.loadList();
   }
-}
+};
 </script>

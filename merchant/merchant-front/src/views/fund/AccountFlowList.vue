@@ -91,7 +91,7 @@ const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
 
 export default {
-  name: 'PurchaseItemReport',
+  name: 'cashBankStatements',
   data() {
     return {
       dataList: [],
@@ -113,8 +113,8 @@ export default {
       return Object.assign(this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end
+        startTime: this.dateRange.start,
+        endTime: this.dateRange.end
       });
     }
   },
@@ -148,7 +148,8 @@ export default {
       return [footerRow]; // 返回二维数组用于渲染 footer
     },
     footerMethod({ columns, data }) {
-      return this.footerMethodFormat({ columns, data }, ['amount'], 'totalTb1');
+      // return this.footerMethodFormat({ columns, data }, ['amount'], 'totalTb1');
+      return [[]];
     },
     doSearch() {
       this.pagination.page = 1;

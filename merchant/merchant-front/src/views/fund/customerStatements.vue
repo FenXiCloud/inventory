@@ -9,6 +9,24 @@
             @confirm="doSearch"
           ></DateRangePicker>
         </div>
+
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">客户</span>
+          <Select
+            v-model="paramsfilter.customerName"
+            class="w-120px z-index-1"
+            :datas="customerDataList"
+            keyName="name"
+            titleName="name"
+            placeholder="选择客户"
+            :filterable="true"
+            @change="selectCustomer($event)"
+          >
+          </Select>
+        </div>
+      </template>
+      <template #tools>
+        <Button color="primary" @click="doSearch">查询</Button>
       </template>
     </vxe-toolbar>
     <div class="flex1">
@@ -26,41 +44,60 @@
         :sort-config="{ remote: true }"
         :loading="loading"
       >
-        <!-- <vxe-column type="checkbox" width="40" align="center" /> -->
-        <!-- <vxe-column title="id" field="id"> </vxe-column> -->
         <vxe-column
-          title="供应商"
-          field="supplierName"
-          align="center"
-          width="130"
-        />
-        <vxe-column
-          title="业务员"
-          field="staffName"
-          align="center"
-          width="130"
-        />
-        <vxe-column
-          title="单据日期"
-          field="orderDate"
+          title="单据Id"
+          field="businessId"
           align="center"
           width="130"
         />
         <vxe-column
           title="单据编号"
-          field="orderNo"
+          field="businessNo"
           align="center"
           width="200"
         />
-        <vxe-column title="业务类型" field="businessType" min-width="120" />
-        <vxe-column title="增加应付款" field="payableAmount" min-width="120" />
         <vxe-column
-          title="增加预付款"
-          field="prepaymentAmount"
+          align="center"
+          title="单据日期"
+          field="businessDate"
           min-width="120"
         />
-        <vxe-column title="应付款余额" field="balance" min-width="120" />
-        <vxe-column title="备注" field="remarks" width="120" />
+        <vxe-column
+          align="center"
+          title="操作类型"
+          field="customerFlowType"
+          min-width="120"
+        />
+        <vxe-column
+          align="center"
+          title="销售金额"
+          field="salesAmount"
+          min-width="120"
+        />
+        <vxe-column
+          align="center"
+          title="优惠金额"
+          field="preferentialAmount"
+          min-width="120"
+        />
+        <vxe-column
+          align="center"
+          title="应收金额"
+          field="receivableAmount"
+          min-width="120"
+        />
+        <vxe-column
+          align="center"
+          title="实收金额"
+          field="paidUpAmount"
+          min-width="120"
+        />
+        <vxe-column
+          align="center"
+          title="应收款余额"
+          field="balanceReceivables"
+          min-width="120"
+        />
       </vxe-table>
     </div>
     <div class="justify-between items-center pt-5px">
@@ -96,12 +133,15 @@
 <script>
 import manba from 'manba';
 import { mapMutations } from 'vuex';
+import { confirm, loading, message } from 'heyui.ext';
 import AccountFlow from '@js/api/fund/AccountFlow';
+import Customer from '@js/api/basic/Customer';
+
 const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
 
 export default {
-  name: 'SupplierFlowReport',
+  name: 'customerStatements',
   data() {
     return {
       dataList: [],
@@ -112,6 +152,9 @@ export default {
       },
       loading: false,
       params: {},
+      paramsfilter: {},
+      customerDataList: [],
+      totalCount: {},
       dateRange: {
         start: manba(startTime).format('YYYY-MM-dd'),
         end: manba(endTime).format('YYYY-MM-dd')
@@ -130,58 +173,45 @@ export default {
   },
   methods: {
     ...mapMutations(['pushTab']),
-    footerMethodFormat({ columns, data }, list, totalName) {
-      // 初始化合计行，默认所有列为空字符串
-      const footerRow = new Array(columns.length).fill('');
 
-      // 设置第一列为“合计”
-      footerRow[0] = '合计';
-
-      // 遍历列，仅对需要合计的字段进行计算
-      columns.forEach((column, index) => {
-        if (list.includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            const value = parseFloat(row[column.property]);
-            if (!isNaN(value)) {
-              total += value;
-            }
-          });
-          footerRow[index] = total.toFixed(2); // 将合计值放入对应位置
-
-          this[totalName] = total;
-        }
-      });
-
-      // this.form.collectionAmount = this.calcCollectionAmount();
-
-      return [footerRow]; // 返回二维数组用于渲染 footer
-    },
     footerMethod({ columns, data }) {
-      return [[]];
-      // return this.footerMethodFormat(
-      //   { columns, data },
-      //   ['payableAmount', 'prepaymentAmount', 'balance'],
-      //   'totalTb1'
-      // );
+      return [];
     },
+
     doSearch() {
       this.pagination.page = 1;
+      if (!this.params.customerId) {
+        return message.error('请选择客户进行查询~');
+      }
       this.loadList();
     },
 
-    loadList(type = true) {
+    //加载客户列表
+    loadCustomer() {
       this.loading = true;
-      AccountFlow.getPayableDetailReport(this.queryParams)
+      Customer.select()
+        .then(({ data }) => {
+          this.customerDataList = data || [];
+          // this.pagination.total = total;
+        })
+        .finally(() => (this.loading = false));
+    },
+    loadList() {
+      this.loading = true;
+      AccountFlow.getCustomerBillFlows(this.queryParams)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
           this.pagination.total = total;
         })
         .finally(() => (this.loading = false));
+    },
+
+    selectCustomer(e) {
+      this.params.customerId = e?.id || null;
     }
   },
   created() {
-    this.loadList();
+    this.loadCustomer();
   }
 };
 </script>

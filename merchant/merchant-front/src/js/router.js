@@ -472,9 +472,37 @@ const groupRoutes = [
     )
   },
   {
-    name: 'AccountFlowList',
+    name: 'cashBankStatements',
     component: defineAsyncComponent(() =>
       import('@views/fund/AccountFlowList.vue')
+    )
+  },
+  {
+    name: 'otherIncome',
+    component: defineAsyncComponent(() => import('@views/fund/otherIncome.vue'))
+  },
+  {
+    name: 'receivableSummary',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/receivableSummary.vue')
+    )
+  },
+  {
+    name: 'summaryPaymentsMade',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/summaryPaymentsMade.vue')
+    )
+  },
+  {
+    name: 'customerStatements',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/customerStatements.vue')
+    )
+  },
+  {
+    name: 'vendorStatements',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/vendorStatements.vue')
     )
   },
   {

@@ -14,43 +14,43 @@
           <Select
             v-model="params.type"
             class="w-180px"
-            :datas="{ 1: '客户', 2: '客户类型', 3: '销售员' }"
+            :datas="{ 1: '供应商', 2: '供应商类型', 3: '业务员' }"
             placeholder="选择单据类型"
             @change="changeType"
           />
         </div>
         <div v-if="params.type == 1" class="h-input-group">
-          <span class="h-input-addon ml-8px">客户</span>
+          <span class="h-input-addon ml-8px">供应商</span>
           <Select
-            v-model="paramsfilter.customerName"
+            v-model="paramsfilter.SupplierName"
             class="w-120px z-index-1"
-            :datas="customerDataList"
+            :datas="SupplierDataList"
             keyName="name"
             titleName="name"
-            placeholder="选择客户"
+            placeholder="选择供应商"
             :filterable="true"
-            @change="selectCustomer($event)"
+            @change="selectSupplier($event)"
           >
           </Select>
         </div>
         <div v-if="params.type == 2" class="h-input-group">
-          <span class="h-input-addon ml-8px">客户类型</span>
+          <span class="h-input-addon ml-8px">供应商类型</span>
           <Select
             ref="selectRef"
             style="z-index: 1"
-            v-model="paramsfilter.customerTypeName"
+            v-model="paramsfilter.SupplierTypeName"
             class="w-120px"
-            :datas="CustomerCategoryList"
+            :datas="SupplierCategoryList"
             keyName="name"
             titleName="name"
-            placeholder="选择客户类型"
+            placeholder="选择供应商类型"
             :filterable="true"
-            @change="selectCustomerType($event)"
+            @change="selectSupplierType($event)"
           >
           </Select>
         </div>
         <div v-if="params.type == 3" class="h-input-group">
-          <span class="h-input-addon ml-8px">销售员</span>
+          <span class="h-input-addon ml-8px">业务员</span>
           <Select
             ref="selectRef"
             style="z-index: 1"
@@ -59,7 +59,7 @@
             :datas="orderStaffList"
             keyName="name"
             titleName="name"
-            placeholder="选择销售员"
+            placeholder="选择业务员"
             :filterable="true"
             @change="selectOrderStaff($event)"
           >
@@ -90,42 +90,42 @@
 
         <template v-if="type == 1">
           <vxe-column
-            title="客户分类"
-            field="customerCategory"
+            title="供应商分类"
+            field="supplierCategory"
             align="center"
             width="130"
           />
           <vxe-column
-            title="客户编码"
+            title="供应商编码"
             align="center"
-            field="customerCode"
+            field="supplierCode"
             min-width="120"
           />
           <vxe-column
-            title="客户名称"
-            field="customerName"
+            title="供应商名称"
+            field="supplierName"
             align="center"
             width="130"
           />
         </template>
         <template v-if="type == 2">
           <vxe-column
-            title="客户分类"
-            field="customerCategory"
+            title="供应商分类"
+            field="supplierCategory"
             align="center"
             width="130"
           />
         </template>
         <template v-if="type == 3">
           <vxe-column
-            title="销售员编号"
-            field="customerCode"
+            title="业务员编号"
+            field="supplierCode"
             align="center"
             width="130"
           />
           <vxe-column
-            title="销售员"
-            field="customerName"
+            title="业务员"
+            field="supplierName"
             align="center"
             width="130"
           />
@@ -134,18 +134,18 @@
           title="期初余额"
           field="openingBalance"
           align="center"
-          width="130"
+          min-width="120"
         />
         <vxe-column
-          title="本期应收"
-          field="currentReceivable"
+          title="本期应付"
+          field="currentPayable"
           align="center"
-          width="200"
+          min-width="120"
         />
         <vxe-column
           align="center"
-          title="本期收款"
-          field="currentReceipt"
+          title="本期付款"
+          field="currentPayment"
           min-width="120"
         />
         <vxe-column
@@ -191,14 +191,14 @@ import manba from 'manba';
 import { mapMutations } from 'vuex';
 import AccountFlow from '@js/api/fund/AccountFlow';
 import OrderStaff from '@js/api/basic/OrderStaff';
-import Customer from '@js/api/basic/Customer';
-import CustomerCategory from '@js/api/basic/CustomerCategory';
+import Supplier from '@js/api/basic/Supplier';
+import SupplierCategory from '@js/api/basic/SupplierCategory';
 
 const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
 
 export default {
-  name: 'receivableSummary',
+  name: 'summaryPaymentsMade',
   data() {
     return {
       dataList: [],
@@ -212,8 +212,8 @@ export default {
         type: '1'
       },
       paramsfilter: {},
-      CustomerCategoryList: [],
-      customerDataList: [],
+      SupplierCategoryList: [],
+      SupplierDataList: [],
       orderStaffList: [],
       totalCount: {},
       dateRange: {
@@ -246,23 +246,23 @@ export default {
         '',
         '',
         this.totalCount.totalOpeningBalance,
-        this.totalCount.totalCurrentReceivable,
-        this.totalCount.totalCurrentReceipt,
+        this.totalCount.totalCurrentPayable,
+        this.totalCount.totalCurrentPayment,
         this.totalCount.totalClosingBalance
       ];
       let totalCount2 = [
         '合计',
         this.totalCount.totalOpeningBalance,
-        this.totalCount.totalCurrentReceivable,
-        this.totalCount.totalCurrentReceipt,
+        this.totalCount.totalCurrentPayable,
+        this.totalCount.totalCurrentPayment,
         this.totalCount.totalClosingBalance
       ];
       let totalCount3 = [
         '合计',
         '',
         this.totalCount.totalOpeningBalance,
-        this.totalCount.totalCurrentReceivable,
-        this.totalCount.totalCurrentReceipt,
+        this.totalCount.totalCurrentPayable,
+        this.totalCount.totalCurrentPayment,
         this.totalCount.totalClosingBalance
       ];
 
@@ -280,12 +280,12 @@ export default {
       this.type = this.params.type;
     },
     changeType() {
-      this.params.customerTypeId = null;
+      this.params.SupplierTypeId = null;
       this.params.salesmanId = null;
-      this.params.customerId = null;
+      this.params.SupplierId = null;
       // this.loadList();
     },
-    //加载销售员列表
+    //加载业务员列表
     loadOrderStaff() {
       OrderStaff.orderStaffList()
         .then(({ data }) => {
@@ -294,45 +294,45 @@ export default {
         })
         .finally();
     },
-    //加载客户分类
-    loadCustomerCategory() {
-      CustomerCategory.select()
+    //加载供应商分类
+    loadSupplierCategory() {
+      SupplierCategory.select()
         .then(({ data }) => {
-          this.CustomerCategoryList = data || [];
+          this.SupplierCategoryList = data || [];
           // this.pagination.total = total;
         })
         .finally();
     },
-    //加载客户列表
-    loadCustomer() {
+    //加载供应商列表
+    loadSupplier() {
       this.loading = true;
-      Customer.select()
+      Supplier.select()
         .then(({ data }) => {
-          this.customerDataList = data || [];
+          this.SupplierDataList = data || [];
           // this.pagination.total = total;
         })
         .finally(() => (this.loading = false));
     },
     loadList(type = true) {
       this.loading = true;
-      AccountFlow.summaryReceivableDetails(this.queryParams)
+      AccountFlow.summaryPayableDetails(this.queryParams)
         .then(
           ({
             data: {
-              receivableDetailsList,
+              payableDetailsList,
               receivableDetailsListTotal,
               totalOpeningBalance,
-              totalCurrentReceivable,
-              totalCurrentReceipt,
+              totalCurrentPayable,
+              totalCurrentPayment,
               totalClosingBalance
             }
           }) => {
-            this.dataList = receivableDetailsList || [];
+            this.dataList = payableDetailsList || [];
             this.pagination.total = receivableDetailsListTotal;
             this.totalCount = {
               totalOpeningBalance,
-              totalCurrentReceivable,
-              totalCurrentReceipt,
+              totalCurrentPayable,
+              totalCurrentPayment,
               totalClosingBalance
             };
 
@@ -344,18 +344,18 @@ export default {
     selectOrderStaff(e) {
       this.params.salesmanId = e?.id || null;
     },
-    selectCustomerType(e) {
-      this.params.customerTypeId = e?.id || null;
+    selectSupplierType(e) {
+      this.params.SupplierTypeId = e?.id || null;
     },
-    selectCustomer(e) {
-      this.params.customerId = e?.id || null;
+    selectSupplier(e) {
+      this.params.SupplierId = e?.id || null;
     }
   },
   created() {
     this.loadList();
     this.loadOrderStaff();
-    this.loadCustomer();
-    this.loadCustomerCategory();
+    this.loadSupplier();
+    this.loadSupplierCategory();
   }
 };
 </script>

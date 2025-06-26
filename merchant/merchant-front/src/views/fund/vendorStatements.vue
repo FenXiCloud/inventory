@@ -9,6 +9,24 @@
             @confirm="doSearch"
           ></DateRangePicker>
         </div>
+
+        <div class="h-input-group">
+          <span class="h-input-addon ml-8px">供应商</span>
+          <Select
+            v-model="paramsfilter.SupplierName"
+            class="w-120px z-index-1"
+            :datas="SupplierDataList"
+            keyName="name"
+            titleName="name"
+            placeholder="选择供应商"
+            :filterable="true"
+            @change="selectSupplier($event)"
+          >
+          </Select>
+        </div>
+      </template>
+      <template #tools>
+        <Button color="primary" @click="doSearch">查询</Button>
       </template>
     </vxe-toolbar>
     <div class="flex1">
@@ -26,41 +44,60 @@
         :sort-config="{ remote: true }"
         :loading="loading"
       >
-        <!-- <vxe-column type="checkbox" width="40" align="center" /> -->
-        <!-- <vxe-column title="id" field="id"> </vxe-column> -->
         <vxe-column
-          title="供应商"
-          field="supplierName"
-          align="center"
-          width="130"
-        />
-        <vxe-column
-          title="业务员"
-          field="staffName"
-          align="center"
-          width="130"
-        />
-        <vxe-column
-          title="单据日期"
-          field="orderDate"
+          title="单据Id"
+          field="businessId"
           align="center"
           width="130"
         />
         <vxe-column
           title="单据编号"
-          field="orderNo"
+          field="businessNo"
           align="center"
           width="200"
         />
-        <vxe-column title="业务类型" field="businessType" min-width="120" />
-        <vxe-column title="增加应付款" field="payableAmount" min-width="120" />
         <vxe-column
-          title="增加预付款"
-          field="prepaymentAmount"
+          align="center"
+          title="单据日期"
+          field="businessDate"
           min-width="120"
         />
-        <vxe-column title="应付款余额" field="balance" min-width="120" />
-        <vxe-column title="备注" field="remarks" width="120" />
+        <vxe-column
+          align="center"
+          title="操作类型"
+          field="supplierFlowType"
+          min-width="120"
+        />
+        <vxe-column
+          align="center"
+          title="采购金额"
+          field="purchaseAmount"
+          min-width="120"
+        />
+        <vxe-column
+          align="center"
+          title="优惠金额"
+          field="preferentialAmount"
+          min-width="120"
+        />
+        <vxe-column
+          align="center"
+          title="应付金额"
+          field="copeWithAmount"
+          min-width="120"
+        />
+        <vxe-column
+          align="center"
+          title="实付金额"
+          field="actualPaymentAmount"
+          min-width="120"
+        />
+        <vxe-column
+          align="center"
+          title="应付余额"
+          field="balancePayable"
+          min-width="120"
+        />
       </vxe-table>
     </div>
     <div class="justify-between items-center pt-5px">
@@ -96,12 +133,15 @@
 <script>
 import manba from 'manba';
 import { mapMutations } from 'vuex';
+import { confirm, loading, message } from 'heyui.ext';
 import AccountFlow from '@js/api/fund/AccountFlow';
+import Supplier from '@js/api/basic/Supplier';
+
 const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
 
 export default {
-  name: 'SupplierFlowReport',
+  name: 'vendorStatements',
   data() {
     return {
       dataList: [],
@@ -112,6 +152,9 @@ export default {
       },
       loading: false,
       params: {},
+      paramsfilter: {},
+      SupplierDataList: [],
+      totalCount: {},
       dateRange: {
         start: manba(startTime).format('YYYY-MM-dd'),
         end: manba(endTime).format('YYYY-MM-dd')
@@ -130,58 +173,44 @@ export default {
   },
   methods: {
     ...mapMutations(['pushTab']),
-    footerMethodFormat({ columns, data }, list, totalName) {
-      // 初始化合计行，默认所有列为空字符串
-      const footerRow = new Array(columns.length).fill('');
 
-      // 设置第一列为“合计”
-      footerRow[0] = '合计';
-
-      // 遍历列，仅对需要合计的字段进行计算
-      columns.forEach((column, index) => {
-        if (list.includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            const value = parseFloat(row[column.property]);
-            if (!isNaN(value)) {
-              total += value;
-            }
-          });
-          footerRow[index] = total.toFixed(2); // 将合计值放入对应位置
-
-          this[totalName] = total;
-        }
-      });
-
-      // this.form.collectionAmount = this.calcCollectionAmount();
-
-      return [footerRow]; // 返回二维数组用于渲染 footer
-    },
     footerMethod({ columns, data }) {
-      return [[]];
-      // return this.footerMethodFormat(
-      //   { columns, data },
-      //   ['payableAmount', 'prepaymentAmount', 'balance'],
-      //   'totalTb1'
-      // );
+      return [];
     },
+
     doSearch() {
       this.pagination.page = 1;
+      if (!this.params.supplierId) {
+        return message.error('请选择供应商进行查询~');
+      }
       this.loadList();
     },
 
-    loadList(type = true) {
+    loadList() {
       this.loading = true;
-      AccountFlow.getPayableDetailReport(this.queryParams)
+      AccountFlow.listBySupplier(this.queryParams)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
           this.pagination.total = total;
         })
         .finally(() => (this.loading = false));
+    },
+    //加载供应商列表
+    loadSupplier() {
+      this.loading = true;
+      Supplier.select()
+        .then(({ data }) => {
+          this.SupplierDataList = data || [];
+          // this.pagination.total = total;
+        })
+        .finally(() => (this.loading = false));
+    },
+    selectSupplier(e) {
+      this.params.supplierId = e?.id || null;
     }
   },
   created() {
-    this.loadList();
+    this.loadSupplier();
   }
 };
 </script>

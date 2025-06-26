@@ -32,7 +32,7 @@
           <vxe-column type="seq" width="80" title="#"/>
           <vxe-column title="编码" field="code" align="left" width="100"/>
           <vxe-column title="名称" field="name" align="left"/>
-          <vxe-column title="商品类别" field="productCategoryName" align="left"/>
+          <vxe-column title="产品类别" field="productCategoryName" align="left"/>
           <vxe-column title="规格" field="specification" align="left"/>
           <vxe-column title="单位" field="unitName" align="left"/>
 
@@ -72,7 +72,6 @@
 
 <script>
 import PriceRecord from "@js/api/basic/PriceRecord";
-import ProductForm from "@views/basic/ProductForm.vue";
 import {layer} from "@layui/layer-vue";
 import {h} from "vue";
 import ProductPriceForm from "@views/basic/ProductPriceForm.vue";

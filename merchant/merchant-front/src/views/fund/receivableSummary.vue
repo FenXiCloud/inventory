@@ -87,11 +87,18 @@
 import manba from 'manba';
 import { mapMutations } from 'vuex';
 import AccountFlow from '@js/api/fund/AccountFlow';
+import Supplier from '@js/api/basic/Supplier';
+import Warehouse from '@js/api/basic/Warehouse';
+import { loading } from 'heyui.ext';
+import Product from '@js/api/basic/Product';
+import ProductCategory from '@js/api/basic/ProductCategory';
+import SupplierCategory from '@js/api/basic/SupplierCategory';
+
 const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
 
 export default {
-  name: 'PurchaseItemReport',
+  name: 'receivableSummary',
   data() {
     return {
       dataList: [],

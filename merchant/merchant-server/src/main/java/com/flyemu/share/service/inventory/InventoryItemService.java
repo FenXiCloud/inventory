@@ -367,7 +367,7 @@ public class InventoryItemService extends AbsService {
                 voucherOrderIds.add(financeVoucher.getOrderId());
             }
         }
-        PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryItem)
+        JPAQuery<Tuple> tupleJPAQuery = jqf.selectFrom(qInventoryItem)
                 .select(
                         qProduct.id.as("productId"),
                         qProduct.code.as("productCode"),
@@ -388,10 +388,11 @@ public class InventoryItemService extends AbsService {
                 .where(qInventoryItem.id.notIn(voucherOrderIds))
                 .where(qProduct.id.isNotNull())
                 .where(qInventoryItem.operationType.ne(OperationType.期初余额))
-                .groupBy(qProduct.id)
-                .orderBy(qProduct.id.asc())
-                .orderBy(qWarehouse.id.desc())
-                .fetchPage(page.getOffset(), page.getOffsetEnd());
+                .groupBy(qProduct.id, qWarehouse.id)
+                .orderBy(qProduct.id.asc(), qWarehouse.id.asc())
+                .orderBy(qWarehouse.id.desc());
+        List<Tuple> fetchPage = tupleJPAQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
+        long fetchCount = tupleJPAQuery.fetchCount();
         List<InventoryItemReportDto> dtos = new ArrayList<>();
         InventoryItemReportDto dto;
         for (Tuple tuple : fetchPage) {
@@ -418,7 +419,7 @@ public class InventoryItemService extends AbsService {
             }
             dtos.add(dto);
         }
-        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
+        return new PageResults<>(dtos, page, fetchCount);
     }
 
     public List<InventoryItemReportDto> summaryOperationType(Query query) {

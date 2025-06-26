@@ -5,16 +5,15 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.OtherFundDetailsVO;
 import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.AccountFlowRepository;
 import com.flyemu.share.service.AbsService;
-import com.flyemu.share.dto.OtherFundDetailsVO;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -180,6 +178,7 @@ public class AccountFlowService extends AbsService {
             // 查询收入
             jpaQuery = jqf.select(Projections.bean(OtherFundDetailsVO.class,
                             QOtherIncome.otherIncome.orderDate.as("date"),
+
                             QOtherIncome.otherIncome.orderNo.as("documentNumber"),
                             QOtherIncome.otherIncome.orderStaffName.as("staffName"),
                             QOtherIncomeItem.otherIncomeItem.accountTypeName.as("accountType"),

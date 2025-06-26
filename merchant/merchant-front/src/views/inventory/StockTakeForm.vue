@@ -10,15 +10,15 @@
                   titleName="name"
                   v-model="form.warehouseIds" :placeholder="warehousePlaceholder" :disabled="looked || form.id"
                   @change="changeWarehouseId"/>
-          <label class="mr-20px ml-20px" style="font-size: 16px !important">商品：</label>
+          <label class="mr-20px ml-20px" style="font-size: 16px !important">产品：</label>
           <Select class="w-178px mr-20px" filterable required :datas="productList" keyName="id" titleName="name"
-                  v-model="form.productId" placeholder="请选择商品" :disabled="looked || form.id"/>
+                  v-model="form.productId" placeholder="请选择产品" :disabled="looked || form.id"/>
         </template>
         <template #tools>
           <Stamp v-if="approved"/>
           <Search v-if="!form.id" v-model.trim="form.filter" search-button-theme="h-btn-default"
                   show-search-button class="w-360px ml-8px"
-                  placeholder="请输入商品编号/商品名称" @search="doSearch">
+                  placeholder="请输入产品编号/产品名称" @search="doSearch">
             <i class="h-icon-search"/>
           </Search>
         </template>
@@ -30,12 +30,12 @@
                  @current-change="currentChangeEvent" @cell-click="tableCellClick">
         <vxe-column title="序号" type="seq" width="70" align="center" fixed="left"/>
         <vxe-column field="warehouseName" title="仓库" width="150"></vxe-column>
-        <vxe-column field="productUrl" title="商品图片" width="150" :cell-render="imgUrlCellRender"></vxe-column>
-        <vxe-column field="productCode" title="商品编码" width="160"></vxe-column>
-        <vxe-column field="productName" title="商品名称" min-width="250">
+        <vxe-column field="productUrl" title="产品图片" width="150" :cell-render="imgUrlCellRender"></vxe-column>
+        <vxe-column field="productCode" title="产品编码" width="160"></vxe-column>
+        <vxe-column field="productName" title="产品名称" min-width="250">
         </vxe-column>
         <vxe-column title="规格型号" field="productSpecification" align="center" width="120"></vxe-column>
-        <vxe-column title="商品类别" field="productCategoryName" align="center" width="110"></vxe-column>
+        <vxe-column title="产品类别" field="productCategoryName" align="center" width="110"></vxe-column>
         <!-- <vxe-column title="品牌" field="productBrand" width="90"></vxe-column> -->
         <!-- <vxe-column title="产地" field="productOrigin" align="center" width="80" /> -->
         <vxe-column title="单位" field="productUnitName" width="100"/>
@@ -126,7 +126,6 @@ import Inventory from "@js/api/inventory/Inventory";
 import {mapMutations, mapState} from "vuex";
 import StockTake from "@js/api/inventory/StockTake";
 import Stamp from "../common/Stamp.vue";
-import form from "vxe-table/lib/form";
 
 export default {
   name: "StockTakeForm",
@@ -177,7 +176,7 @@ export default {
       // 表格校验规则
       validRules: {
         productName: [
-          {required: true, message: '请选择商品名称'},
+          {required: true, message: '请选择产品名称'},
         ],
         warehouseName: [
           {required: true, message: '请选择仓库'},
@@ -357,7 +356,7 @@ export default {
     },
     //新增默认初始化行数
     newStockTakeData() {
-      // 获取所有商品、仓库展示
+      // 获取所有产品、仓库展示
       Inventory.products({
         warehouseId: this.form.warehouseId,
         warehouseIds: this.form.warehouseIds.join(","),
@@ -536,7 +535,7 @@ export default {
         });
         this.stockTakeData = newStockTakeData;
       } else {
-        // 搜索所有仓库商品
+        // 搜索所有仓库产品
         this.newStockTakeData();
       }
     },

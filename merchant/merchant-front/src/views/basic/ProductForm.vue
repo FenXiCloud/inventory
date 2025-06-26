@@ -5,13 +5,13 @@
         <Cell width="16">
           <div class="flex pt-15px">
             <Form ref="form" class="mr-10px" :model="model" :rules="validationRules" mode="twocolumn" :label-width="90">
-              <FormItem label="商品编码" prop="code">
+              <FormItem label="产品编码" prop="code">
                 <Input placeholder="请输入编码,不填自动生成" maxlength="64" :disabled="model.id" v-model="model.code"/>
               </FormItem>
-              <FormItem label="商品名称" required prop="name">
+              <FormItem label="产品名称" required prop="name">
                 <Input placeholder="长度<64" v-model="model.name" maxlength="64"/>
               </FormItem>
-              <FormItem label="商品分类" required prop="productCategoryId">
+              <FormItem label="产品分类" required prop="productCategoryId">
                 <CategoryPicker :option="categoryParams" type="key" filterable
                                 v-model="model.productCategoryId"></CategoryPicker>
               </FormItem>
@@ -48,10 +48,10 @@
               <FormItem label="进货价">
                 <Input placeholder="请输入进货价" v-model="model.purchasePrice"/>
               </FormItem>
-              <FormItem label="商品描述" prop="remarks" single>
-                <Textarea v-wordcount="150" rows="2" placeholder="商品描述" v-model="model.remarks"/>
+              <FormItem label="产品描述" prop="remarks" single>
+                <Textarea v-wordcount="150" rows="2" placeholder="产品描述" v-model="model.remarks"/>
               </FormItem>
-              <FormItem label="商品图片" prop="imgPath" single>
+              <FormItem label="产品图片" prop="imgPath" single>
                 <div class="h-uploader-image-empty h-uploader-browse-button" @click="$refs.uploads.click()">
                   <div class="h-uploader-image" v-if="model.imgPath">
                     <img :src="model.imgPath" v-if="model.imgPath" style="height: 70px;width: 70px"/>
@@ -112,13 +112,13 @@
 
 <script>
 /**
- * @功能描述: 商品FORM
+ * @功能描述: 产品FORM
  * @创建时间: 2024年05月06日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import {confirm, message} from "heyui.ext";
+import {message} from "heyui.ext";
 import {CopyObj} from "@common/utils";
 import Product from "@js/api/basic/Product";
 import ProductCategory from "@js/api/basic/ProductCategory";
@@ -266,17 +266,8 @@ export default {
             })
           }
         })
-        if (checkPrice) {
-          confirm({
-            title: "系统提示",
-            content: `检测到产品价格为0，是否继续?`,
-            onConfirm: () => {
-              this.confirm();
-            }
-          })
-        } else {
-          this.confirm();
-        }
+        this.confirm();
+
       }
     },
     confirm() {

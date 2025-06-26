@@ -12,12 +12,13 @@
                   :datas="warehouseList" placeholder="请选择仓库"/>
         </div>
         <div class="h-input-group">
-          <span class="h-input-addon ml-8px">商品：</span>
-          <Select class="w-178px" :multiple="true" v-model="params.productIds"  keyName="id" titleName="name" :datas="productList" placeholder="请选择商品"/>
+          <span class="h-input-addon ml-8px">产品：</span>
+          <Select class="w-178px" :multiple="true" v-model="params.productIds" keyName="id" titleName="name"
+                  :datas="productList" placeholder="请选择产品"/>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-280px ml-8px"
-                placeholder="请输入商品编码/名称" @search="doSearch">
+                placeholder="请输入产品编码/名称" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -70,7 +71,7 @@ import InventoryInitial from "@js/api/basic/InventoryInitial";
 import {mapMutations} from "vuex";
 import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
-import {loading, confirm,message} from "heyui.ext";
+import {confirm, loading, message} from "heyui.ext";
 
 export default {
   name: "InventoryInitialList",

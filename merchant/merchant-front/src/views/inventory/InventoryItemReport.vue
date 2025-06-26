@@ -7,7 +7,7 @@
       <template #tools>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-360px ml-8px"
-                placeholder="请输入商品名称/单据编号" @search="doSearch">
+                placeholder="请输入产品名称/单据编号" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
@@ -20,12 +20,12 @@
                   :datas="warehouseList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">商品：</span>
+          <span class="h-input-addon ml-8px">产品：</span>
           <Select :multiple="true" v-model="params.productIds" class="w-120px" keyName="id" titleName="name"
                   :datas="productList"/>
         </div>
         <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">商品类别：</span>
+          <span class="h-input-addon ml-8px">产品类别：</span>
           <Select :multiple="true" v-model="params.productCategoryIds" class="w-120px" keyName="id" titleName="name"
                   :datas="productCategoryList"/>
         </div>
@@ -63,9 +63,9 @@
                  :column-config="{resizable: true}"
                  :sort-config="{remote:true}"
                  :loading="loading">
-        <vxe-column title="商品编号" field="productCode" align="center" width="130"/>
-        <vxe-column title="商品名称" field="productName" width="200"/>
-        <vxe-column title="商品类别" field="productCategoryName" width="200"/>
+        <vxe-column title="产品编号" field="productCode" align="center" width="130"/>
+        <vxe-column title="产品名称" field="productName" width="200"/>
+        <vxe-column title="产品类别" field="productCategoryName" width="200"/>
         <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
         <vxe-column title="单据日期" field="inventoryDate" width="120">
           <template #default="{ row }">
@@ -92,7 +92,7 @@
         </vxe-column>
         <vxe-column title="仓库" field="warehouseName" align="center" width="100"/>
         <vxe-column title="单位" field="unitName" width="80"/>
-        <vxe-column title="商品名称备注" field="productRemarks" width="80"/>
+        <vxe-column title="产品名称备注" field="productRemarks" width="80"/>
         <vxe-column title="入库数量" field="quantity" width="80">
           <template #default="{ row }">
             <div v-if="inboundItems.includes(row['operationType'])">
@@ -203,7 +203,7 @@ import ProductCategory from "@js/api/basic/ProductCategory";
 import Warehouse from "@js/api/basic/Warehouse";
 import Supplier from "@js/api/basic/Supplier";
 import Customer from "@js/api/basic/Customer";
-import {exportExcel, exportExcelHeader} from "@js/excel";
+import {exportExcelHeader} from "@js/excel";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -365,9 +365,9 @@ export default {
       InventoryItem.report(params).then(({data: {results, total}}) => {
         let dataList = results || [];
         let headList = [
-          {label: "商品编号", key: "productCode"},
-          {label: "商品名称", key: "productName"},
-          {label: "商品类别", key: "productCategoryName"},
+          {label: "产品编号", key: "productCode"},
+          {label: "产品名称", key: "productName"},
+          {label: "产品类别", key: "productCategoryName"},
           {label: "规格型号", key: "productSpecification"},
           {label: "单据日期", key: "createdAt"},
           {label: "业务类型", key: "operationType"},
@@ -375,7 +375,7 @@ export default {
           {label: "往来单位", key: "correspondent"},
           {label: "仓库", key: "warehouseName"},
           {label: "单位", key: "unitName"},
-          {label: "商品名称备注", key: "productRemarks"},
+          {label: "产品名称备注", key: "productRemarks"},
           {label: "入库数量", key: "inQuantity"},
           {label: "基本单位数量", key: "inQuantity"},
           {label: "单位成本", key: "inUnitPrice"},
@@ -388,7 +388,7 @@ export default {
           {label: "单位成本", key: "summaryAverage"},
           {label: "成本", key: "summaryCost"},
         ];
-        const tHeader = ['商品编号', '商品名称', '商品类别', '规格型号', '单据日期', '业务类型', '单据编号', '往来单位', '仓库', '单位', '商品名称备注', '入库数量', '入库',
+        const tHeader = ['产品编号', '产品名称', '产品类别', '规格型号', '单据日期', '业务类型', '单据编号', '往来单位', '仓库', '单位', '产品名称备注', '入库数量', '入库',
           null, null, '出库数量', '出库', null, null, '结存', null, null
         ];
         const merges = [

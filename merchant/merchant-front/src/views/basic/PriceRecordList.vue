@@ -7,15 +7,16 @@
       <template #tools>
 <!--        <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入名称"/>-->
 
-        <Select v-model="params.priceSource" class="w-120px" :datas="{商品价格资料:'商品价格资料',最近采购价格:'最近采购价格',最近销售价格:'最近销售价格'}"
+        <Select v-model="params.priceSource" class="w-120px"
+                :datas="{产品价格资料:'产品价格资料',最近采购价格:'最近采购价格',最近销售价格:'最近销售价格'}"
                 placeholder="价格来源："/>
         <div class="h-input-group">
-          <span class="h-input-addon ml-8px">商品：</span>
+          <span class="h-input-addon ml-8px">产品：</span>
           <Select class="w-178px" :multiple="true" filterable :datas="productList" keyName="id" titleName="name"
-                  v-model="params.productIds" placeholder="请选择商品"  />
+                  v-model="params.productIds" placeholder="请选择产品"/>
         </div>
         <div class="h-input-group">
-          <span class="h-input-addon ml-8px">商品类别：</span>
+          <span class="h-input-addon ml-8px">产品类别：</span>
           <Select class="w-178px" :multiple="true" filterable :datas="productCategoryList" keyName="id" titleName="name"
                   v-model="params.productCategoryIds" placeholder="请选择类别"  />
         </div>
@@ -42,7 +43,7 @@
         <vxe-column type="seq" width="40" title="#"/>
         <vxe-column title="编码" field="productCode" align="left" width="100"/>
         <vxe-column title="名称" field="productName" align="left"/>
-        <vxe-column title="商品类别" field="productCategory" align="left"/>
+        <vxe-column title="产品类别" field="productCategory" align="left"/>
         <vxe-column title="规格" field="specification" align="left"/>
         <vxe-column title="单位" field="unitName" align="left"/>
         <vxe-column title="价格" field="unitPrice" align="left"/>
@@ -66,7 +67,7 @@
 
 <script>
 import PriceRecord from "@js/api/basic/PriceRecord";
-import {confirm, loading, message} from "heyui.ext";
+import {loading} from "heyui.ext";
 import Product from "@js/api/basic/Product";
 import ProductCategory from "@js/api/basic/ProductCategory";
 

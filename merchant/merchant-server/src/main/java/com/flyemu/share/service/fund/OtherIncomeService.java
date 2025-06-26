@@ -203,7 +203,7 @@ public class OtherIncomeService extends AbsService {
         income.setOrderNo(codeBuilder.toString());
     }
 
-
+    @Transactional
     private void updateCustomerBalance(OtherIncome otherIncome) {
         if (otherIncome.getApprovedBy() == null) {
             throw new ServiceException("已审核状态,审核人必填");
@@ -363,7 +363,7 @@ public class OtherIncomeService extends AbsService {
             if (targetStatus == OrderStatus.已保存 && !OrderStatus.已审核.equals(income.getOrderStatus())) {
                 throw new ServiceException("只能反审核【已审核】状态的单据：" + income.getOrderNo());
             }
-
+            updateCustomerAndAccountBalances(income, targetStatus);
             income.setOrderStatus(targetStatus);
             if (targetStatus == OrderStatus.已审核) {
                 income.setApprovedAt(now);
@@ -373,7 +373,7 @@ public class OtherIncomeService extends AbsService {
                 income.setApprovedBy(null);
             }
             otherIncomeRepository.save(income);
-            updateCustomerAndAccountBalances(income, targetStatus);
+
         }
 
         jqf.update(qOtherIncome)

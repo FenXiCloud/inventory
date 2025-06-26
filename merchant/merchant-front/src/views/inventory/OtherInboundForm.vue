@@ -40,9 +40,9 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column field="productUrl" title="商品图片" width="100" :cell-render="imgUrlCellRender"></vxe-column>
-        <vxe-column field="productCode" title="商品编码" width="100"></vxe-column>
-        <vxe-column field="productName" title="商品名称" min-width="300">
+        <vxe-column field="productUrl" title="产品图片" width="100" :cell-render="imgUrlCellRender"></vxe-column>
+        <vxe-column field="productCode" title="产品编码" width="100"></vxe-column>
+        <vxe-column field="productName" title="产品名称" min-width="300">
           <template #default="scope">
             <div class="h-input-group goodsSelect" v-if="!looked">
               <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable
@@ -53,11 +53,11 @@
                   <table class="h-table" style="width: 100%">
                     <thead class="h-table-header">
                     <tr>
-                      <td width="150" align="center">商品编号</td>
-                      <td width="150" align="center">商品图片</td>
-                      <td width="150" align="center">商品名称</td>
-                      <td width="150" align="center">商品类别</td>
-                      <td width="150" align="center">商品规格</td>
+                      <td width="150" align="center">产品编号</td>
+                      <td width="150" align="center">产品图片</td>
+                      <td width="150" align="center">产品名称</td>
+                      <td width="150" align="center">产品类别</td>
+                      <td width="150" align="center">产品规格</td>
                     </tr>
                     </thead>
                   </table>
@@ -85,7 +85,7 @@
           </template>
         </vxe-column>
         <vxe-column title="规格型号" field="productSpecification" align="center" width="80"></vxe-column>
-        <vxe-column title="商品类别" field="productCategoryName" align="center" width="120"></vxe-column>
+        <vxe-column title="产品类别" field="productCategoryName" align="center" width="120"></vxe-column>
         <!-- <vxe-column title="品牌" field="productBrand" width="90"></vxe-column> -->
         <!-- <vxe-column title="产地" field="productOrigin" align="center" width="80" /> -->
         <vxe-column title="单位" field="productUnitName" width="90"/>
@@ -244,7 +244,7 @@ export default {
       // 表格校验规则
       validRules: {
         productName: [
-          {required: true, message: '请选择商品名称'},
+          {required: true, message: '请选择产品名称'},
         ],
         warehouseName: [
           {required: true, message: '请选择仓库'},
@@ -306,7 +306,7 @@ export default {
           if (this.isEmpty(value)) {
             return;
           }
-          // 根据id获取商品信息更新
+          // 根据id获取产品信息更新
           Product.list({id: value}).then(res => {
             const {success, data} = res;
             if (success) {
@@ -418,7 +418,7 @@ export default {
       console.info("productData:", productData)
       if (productData.length > 0) {
         loading.close();
-        throw new Error("请选择商品~")
+        throw new Error("请选择产品~")
       }
       let warehouse = filterOtherInboundData.filter((c) => this.isEmpty(c.warehouseId));
       if (warehouse.length > 0) {
@@ -523,7 +523,7 @@ export default {
       if (this.isEmpty(productId) || this.isEmpty(warehouseId)) {
         return;
       }
-      // 获取商品库存进行提示
+      // 获取产品库存进行提示
       Inventory.list({productId}).then(res => {
         const {data} = res;
         if (data && data.results) {

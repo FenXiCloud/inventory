@@ -7,9 +7,9 @@
       </template>
       <template #tools>
         <div class="h-input-group">
-          <span class="h-input-addon">客商：</span>
+          <span class="h-input-addon">货商：</span>
           <Select class="w-178px" :multiple="true" v-model="params.supplierIds"  keyName="id" titleName="name"
-                  :datas="supplierList" placeholder="请选择客商"/>
+                  :datas="supplierList" placeholder="请选择货商"/>
         </div>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
                 show-search-button class="w-280px ml-8px"
@@ -60,8 +60,7 @@
 
 <script>
 import {mapMutations} from "vuex";
-import {loading, confirm,message} from "heyui.ext";
-import Customer from "@js/api/basic/Customer";
+import {confirm, loading, message} from "heyui.ext";
 import SupplierInitial from "@js/api/basic/SupplierInitial";
 import Supplier from "@js/api/basic/Supplier";
 

@@ -45,7 +45,7 @@ public class OtherIncomeController {
         otherIncomeService.updateStatus(orderReceipt);
         return JsonResult.successful();
     }
-    @DeleteMapping("/delete")
+    @PostMapping("/delete")
     public JsonResult delete(@RequestBody OrderPaymentUpdateDTO otherIncomeId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         otherIncomeService.delete(otherIncomeId.getId(), merchantId, accountBookId);
         return JsonResult.successful();

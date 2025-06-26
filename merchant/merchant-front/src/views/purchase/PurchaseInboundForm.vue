@@ -30,7 +30,7 @@
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
           </template>
         </vxe-column>
-        <vxe-column field="imgPath" title="商品图片" width="100">
+        <vxe-column field="imgPath" title="产品图片" width="100">
           <template #default="{row}">
             <img
                 :src="productList.find(item => item.id === row.productId)?.imgPath || '-'"
@@ -39,7 +39,7 @@
                 @click="previewImage(productList.find(item => item.id === row.productId)?.imgPath)">
           </template>
         </vxe-column>
-        <vxe-column title="商品信息" width="300">
+        <vxe-column title="产品信息" width="300">
           <template #default="{row,rowIndex}">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,rowIndex)" v-model="row.productId" :datas="productList"
@@ -75,7 +75,7 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="商品类别" field="categoryName" align="center" width="80"/>
+        <vxe-column title="产品类别" field="categoryName" align="center" width="80"/>
         <vxe-column title="规格型号" field="spec" align="center" width="80"/>
         <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
           <template #default="{row,rowIndex}">
@@ -398,7 +398,7 @@ export default {
         console.log("请选择产品")
         return;
       }
-      // 获取商品库存进行提示
+      // 获取产品库存进行提示
       let param = {
         productId: productId,
         page: 1,
@@ -421,7 +421,7 @@ export default {
       });
     },
 
-    //选择商品
+    //选择产品
     selectProduct(d, index) {
       if (d) {
         console.log('d', d)
@@ -468,7 +468,7 @@ export default {
         console.log("请选择产品")
         return;
       }
-      // 获取商品库存进行提示
+      // 获取产品库存进行提示
       let param = {
         productId: productId,
       }
@@ -488,7 +488,7 @@ export default {
       }
       let productData = this.productData.filter(c => c.quantity > 0);
       if (productData.length <= 0) {
-        message.error("请选择商品~");
+        message.error("请选择产品~");
         loading.close()
         return
       }
@@ -550,7 +550,7 @@ export default {
         if (this.productData.length > 1) {
           confirm({
             title: "系统提示",
-            content: `修改供货商后，将清除已选择的商品数据，确定修改？`,
+            content: `修改供货商后，将清除已选择的产品数据，确定修改？`,
             onConfirm: () => {
               this.productData = [{isNew: true}];
               this.form.supplierId = e.id;
@@ -565,7 +565,7 @@ export default {
       }
     },
 
-    //根据供货商加载商品列表
+    //根据供货商加载产品列表
     loadProductsBySupplier() {
       if (this.form.supplierId) {
         Supplier.selectProduct(this.form.supplierId).then(({data}) => {
@@ -602,7 +602,7 @@ export default {
       this.form.discountAmount = (this.allFinalAmount - this.form.finalAmount).toFixed(2)
       this.form.discountRate = this.form.finalAmount === 0 ? 0 : ((this.form.finalAmount / this.allFinalAmount) * 100).toFixed(2)
     },
-    //修改商品多单位
+    //修改产品多单位
     changeProductUnit(item, row) {
       row.secondaryUnitName = item.unitName
       row.secondaryPrice = (item.price || 0).toFixed(2) || 0

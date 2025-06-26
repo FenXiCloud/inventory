@@ -293,9 +293,6 @@ public class SupplierService extends AbsService {
         if (flow.getSupplierFlowType() == null) {
             throw new ServiceException("操作类型不能为空");
         }
-        if (flow.getPurchaseAmount() == null) {
-            throw new ServiceException("采购金额不能为空");
-        }
         if (flow.getBalancePayable() == null) {
             throw new ServiceException("应付余额不能为空");
         }

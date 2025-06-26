@@ -7,19 +7,19 @@
       </template>
       <template #tools>
         <Select v-model="groupValues" class="w-240px ml-8px mt-5px"
-                :datas="{product:'商品',supplier:'供货商',warehouse:'仓库'}"
+                :datas="{product:'产品',supplier:'供货商',warehouse:'仓库'}"
                 placeholder="统计字段：" :multiple="true"/>
         <DateRangePicker v-model="dateRange" class="w-220px ml-8px mt-5px"></DateRangePicker>
-        <Select class="ml-8p mt-5pxx" :datas="warehouseList" keyName="id" titleName="name"
+        <Select class="ml-8px mt-5px" :datas="warehouseList" keyName="id" titleName="name"
                 v-model="warehouseIds" placeholder="请选择仓库" :multiple="true"/>
         <Select class="ml-8px mt-5px" :datas="supplierList" keyName="id" titleName="name"
                 v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
         <Select class="ml-8px mt-5px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
                 v-model="supplierCategoryIds" placeholder="请选择供货商类别"/>
         <Select class="ml-8px mt-5px" :datas="productList" keyName="id" titleName="name"
-                v-model="productIds" placeholder="请选择商品" :multiple="true"/>
+                v-model="productIds" placeholder="请选择产品" :multiple="true"/>
         <Select class="ml-8px mt-5px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
-                v-model="productCategoryIds" placeholder="请选择商品类别"/>
+                v-model="productCategoryIds" placeholder="请选择产品类别"/>
         <Button class="ml-8px mt-5px" @click="doSearch" color="primary">查 询</Button>
       </template>
     </vxe-toolbar>
@@ -37,7 +37,7 @@
                  :sort-config="{remote:true}"
                  :loading="loading">
         <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="商品信息" width="300" v-if="isProduct">
+        <vxe-column title="产品信息" width="300" v-if="isProduct">
           <template #default="{row,rowIndex}">
             <div class="flex">
               <div class="flex1 ml-8px">
@@ -49,8 +49,8 @@
         <vxe-column title="基本单位" field="baseUnitName" min-width="100"/>
         <vxe-column title="基本数量" field="baseQuantitySum" min-width="120"/>
         <vxe-column title="总计" field="subtotalSum" min-width="120"/>
-        <vxe-column title="商品规格" field="spec" min-width="120" v-if="isProduct"/>
-        <vxe-column title="商品类别" field="categoryName" min-width="120" v-if="isProduct"/>
+        <vxe-column title="产品规格" field="spec" min-width="120" v-if="isProduct"/>
+        <vxe-column title="产品类别" field="categoryName" min-width="120" v-if="isProduct"/>
         <vxe-column title="供货商" field="supplierName" min-width="120" v-if="isSupplier"/>
         <vxe-column title="供货商编码" field="supplierCode" min-width="120" v-if="isSupplier"/>
         <vxe-column title="供货商类别" field="supplierCategoryName" min-width="120" v-if="isSupplier"/>
@@ -73,7 +73,6 @@
 </template>
 <script>
 import manba from "manba";
-import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import {mapMutations} from "vuex";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";

@@ -1,5 +1,6 @@
 package com.flyemu.share.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -8,7 +9,7 @@ import java.time.LocalDate;
 /**
  *@author shuaiqi
  */
-
+@JsonInclude()
 @Data
 public class OtherFundDetailsVO {
 

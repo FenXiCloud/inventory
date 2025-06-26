@@ -46,7 +46,7 @@ export default {
       param: {
         0: '客户',
         1: '供应商',
-        6: '商品'
+        6: '产品'
       },
       selected: '0',
       categoryType: ''

@@ -29,7 +29,7 @@
                   :datas="warehouseList"/>
         </div>
         <div class="h-input-group">
-          <span class="h-input-addon ml-8px">商品：</span>
+          <span class="h-input-addon ml-8px">产品：</span>
           <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
                   titleName="name" :datas="productList"/>
         </div>
@@ -111,7 +111,6 @@ import {confirm, loading, message} from "heyui.ext";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import Customer from "@js/api/basic/Customer";
-import {sum} from "xe-utils";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");

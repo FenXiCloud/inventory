@@ -1,16 +1,19 @@
-import Ajax from "@common/Request";
+import Ajax from '@common/Request';
 
 export default {
-    save(param) {
-        return Ajax[param.id ? 'put' : 'post']('/otherExpense', param)
-    },
-    list(param) {
-        return Ajax.get('/otherExpense', param)
-    },
-    remove(id) {
-        return Ajax.delete('/otherExpense/' + id);
-    },
-    select(param) {
-        return Ajax.get('/otherExpense/select', param)
-    }
-}
+  list(param) {
+    return Ajax.get('/otherExpense/list', param);
+  },
+  details(param) {
+    return Ajax.get('/otherExpense/selectById', param);
+  },
+  remove(id) {
+    return Ajax.post('/otherExpense/delete', id);
+  },
+  batchAudit(param) {
+    return Ajax.post('/otherExpense/updateStatus', param);
+  },
+  addEdit(param) {
+    return Ajax.post('/otherExpense/save', param);
+  }
+};

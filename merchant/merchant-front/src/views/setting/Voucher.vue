@@ -38,9 +38,9 @@
                         @click="editVoucher(row,'look')">查看</span>
                 </template>
               </vxe-column>
-              <vxe-column title="商品编号" field="productCode" align="center" width="130"/>
-              <vxe-column title="商品名称" field="productName" width="200"/>
-              <vxe-column title="商品类别" field="productCategoryName" width="200"/>
+              <vxe-column title="产品编号" field="productCode" align="center" width="130"/>
+              <vxe-column title="产品名称" field="productName" width="200"/>
+              <vxe-column title="产品类别" field="productCategoryName" width="200"/>
               <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
               <vxe-column title="单位" field="unitName" width="120"/>
               <vxe-column title="仓库" field="warehouseName" width="120"/>

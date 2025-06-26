@@ -23,7 +23,7 @@ public class OtherExpenseDetailsVO {
     private String approvedName;
     private Long id;
     private String settlementAccount;
-    private String settlementAccountId;
+    private Long settlementAccountId;
     private Long supplierId;
     private LocalDate orderDate;
     private String orderNo;

@@ -36,7 +36,7 @@ public class OtherIncomeItem {
     @Comment("收支类别ID")
     private Long accountTypeId;
     @Comment("收支类别名称")
-    private Long accountTypeName;
+    private String accountTypeName;
 
     @Comment("收入金额")
     private BigDecimal amount;

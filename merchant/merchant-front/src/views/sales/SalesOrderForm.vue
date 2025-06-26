@@ -30,7 +30,7 @@
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
           </template>
         </vxe-column>
-        <vxe-column field="imgPath" title="商品图片" width="100">
+        <vxe-column field="imgPath" title="产品图片" width="100">
           <template #default="{row}">
             <img
                 :src="productList.find(item => item.id === row.productId)?.imgPath || '-'"
@@ -39,8 +39,8 @@
                 @click="previewImage(productList.find(item => item.id === row.productId)?.imgPath)">
           </template>
         </vxe-column>
-        <vxe-column field="productCode" title="商品编码" width="240"></vxe-column>
-        <vxe-column title="商品信息" align="center" min-width="300">
+        <vxe-column field="productCode" title="产品编码" width="240"></vxe-column>
+        <vxe-column title="产品信息" align="center" min-width="300">
           <template #default="scope">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
@@ -50,11 +50,11 @@
                   <table class="h-table" style="width: 100%">
                     <thead class="h-table-header">
                     <tr>
-                      <td width="150" align="center">商品编号</td>
-                      <td width="150" align="center">商品图片</td>
-                      <td width="150" align="center">商品名称</td>
-                      <td width="150" align="center">商品类别</td>
-                      <td width="150" align="center">商品规格</td>
+                      <td width="150" align="center">产品编号</td>
+                      <td width="150" align="center">产品图片</td>
+                      <td width="150" align="center">产品名称</td>
+                      <td width="150" align="center">产品类别</td>
+                      <td width="150" align="center">产品规格</td>
                     </tr>
                     </thead>
                   </table>
@@ -81,7 +81,7 @@
             {{ productList.find(item => item.id === row.productId)?.specification || '-' }}
           </template>
         </vxe-column>
-        <vxe-column title="商品类别" field="productCategoryName" align="center" width="100">
+        <vxe-column title="产品类别" field="productCategoryName" align="center" width="100">
           <template #default="{row}">
             {{ productList.find(item => item.id === row.productId)?.productCategoryName || '-' }}
           </template>
@@ -234,7 +234,7 @@
     <!-- 预览图片的容器 -->
     <div v-if="previewVisible" class="image-preview-modal" @click="previewVisible = false">
       <div class="image-preview-container">
-        <img :src="previewImageUrl" class="preview-image" alt="商品图片预览">
+        <img :src="previewImageUrl" class="preview-image" alt="产品图片预览">
       </div>
     </div>
   </div>
@@ -243,7 +243,6 @@
 
 import {confirm, loading, message} from "heyui.ext";
 import manba from "manba";
-import {CopyObj} from "@common/utils";
 import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapMutations, mapState} from "vuex";
@@ -338,7 +337,7 @@ export default {
       return [["","","","", "", "", "","", quantity.toFixed(2), "", "", "",discountValue,subtotal,""]];
     },
 
-    //选择商品
+    //选择产品
     selectProduct(d, index) {
       console.log("selectProduct",d);
       let customerLevelPriceList = d.customerLevelPriceList;
@@ -397,14 +396,14 @@ export default {
     checkHttp() {
       console.log("this.productData.length",this.productData.length)
       if (this.productData.length === 0) {
-        message.error("请选择商品~");
+        message.error("请选择产品~");
         loading.close()
         return false
       }
       if (this.productData.length === 1) {
         let item = this.productData[0]
         if (item.isNew) {
-          message.error("请选择商品~");
+          message.error("请选择产品~");
           loading.close()
           return false
         }
@@ -558,7 +557,7 @@ export default {
         if (this.productData.length > 1) {
           confirm({
             title: "系统提示",
-            content: `修改客户后，将清除已选择的商品数据，确定修改？`,
+            content: `修改客户后，将清除已选择的产品数据，确定修改？`,
             onConfirm: () => {
               this.productData = [{isNew: true}];
               this.form.customerId = e.id;
@@ -583,7 +582,7 @@ export default {
         console.log("请选择产品")
         return;
       }
-      // 获取商品库存进行提示
+      // 获取产品库存进行提示
       let param = {
         productId: productId,
         page:1,
@@ -606,7 +605,7 @@ export default {
       });
     },
 
-    //修改商品多单位
+    //修改产品多单位
     changeProductUnit(item, row) {
       row.orderUnitName = item.unitName
       row.unitPrice = (item.price || 0).toFixed(2) || 0
@@ -642,7 +641,7 @@ export default {
         console.log("请选择产品")
         return;
       }
-      // 获取商品库存进行提示
+      // 获取产品库存进行提示
       let param = {
         productId: productId,
         priceSource:'最近销售价格',

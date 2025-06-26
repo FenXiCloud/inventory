@@ -89,7 +89,9 @@ public class PurchaseReportService extends AbsService {
     }
 
     public PageResults<PurchaseReportSummaryDto> queryStat(Page page, Query query, Set<String> groupValues) {
-
+        if (CollUtil.isEmpty(groupValues)) {
+            throw  new RuntimeException("统计字段不能为空");
+        }
         Map<String, Object> params = new HashMap<>();
         params.put("startDate", query.start);
         params.put("endDate", query.end);

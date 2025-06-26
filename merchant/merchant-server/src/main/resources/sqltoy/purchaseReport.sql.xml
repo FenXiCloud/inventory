@@ -7,17 +7,17 @@
             <![CDATA[
             SELECT
 	sum(po.subtotal) as subtotalSum,
-	po.product_id AS productId,
-	po.quantity AS baseQuantitySum,
-	jp.`name` as productName,
-	ju.`name` as baseUnitName,
-	jp.`code` as productCode,
-	jp.`specification` as spec,
-	jpc.`name` as categoryName,
-	jsc.`name` as supplierCategoryName,
-	js.`name` as supplierName,
-	js.`code` as supplierCode,
-	jw.`name` as warehouseName
+    sum(po.quantity) AS baseQuantitySum,
+    MAX(po.product_id) as productId,
+    MAX(jp.`name`) as productName,
+    MAX(ju.`name`) as baseUnitName,
+    MAX(jp.`code`) as productCode,
+    MAX(jp.`specification`) as spec,
+    MAX(jpc.`name`) as categoryName,
+    MAX(jsc.`name`) as supplierCategoryName,
+    MAX(js.`name`) as supplierName,
+    MAX(js.`code`) as supplierCode,
+    MAX(jw.`name`) as warehouseName
 FROM
 	(
 	SELECT

@@ -587,7 +587,6 @@ export default {
 
     //修改客户
     changeCustomer(e) {
-      console.log("e",e)
       if (!e) {
         this.form.customerId = null;
         this.productData = [{isNew: true}];
@@ -597,7 +596,7 @@ export default {
             title: "系统提示",
             content: `修改客户后，将清除已选择的产品数据，确定修改？`,
             onConfirm: () => {
-              //this.productData = [{isNew: true}];
+              this.productData = [{isNew: true}];
               this.productData = [];
               this.form.customerId = e.id;
             }
@@ -605,7 +604,7 @@ export default {
         } else {
           this.form.customerId = e.id;
           this.productData = [];
-          //this.productData = [{isNew: true}];
+          this.productData = [{isNew: true}];
         }
       }
     },

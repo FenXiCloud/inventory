@@ -105,7 +105,7 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="供应商" field="SupplierName" min-width="120" />
+        <vxe-column title="供应商" field="supplierName" min-width="120" />
         <vxe-column title="结算账户" field="settlementAccount" min-width="120">
           <template #default="{ row }">
             <div

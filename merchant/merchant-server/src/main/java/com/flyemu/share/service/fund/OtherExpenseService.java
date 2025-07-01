@@ -69,6 +69,7 @@ public class OtherExpenseService extends AbsService {
                         qOtherExpense.orderNo,
                         qOtherExpense.orderDate,
 
+                        qOtherExpense.remarks,
                         qOtherExpense.settlementAccount,
                         qOtherExpense.settlementAccountId,
                         qOtherExpense.orderStaffId,
@@ -91,7 +92,7 @@ public class OtherExpenseService extends AbsService {
                 .from(qOtherExpense)
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qOtherExpense.createdBy))
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qOtherExpense.approvedBy))
-                .where(query.builder);
+                .where(query.builder).orderBy(qOtherExpense.id.desc());
 
         List<OtherExpenseDetailsVO> mainList = mainQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
         long total = mainQuery.fetchCount();
@@ -112,6 +113,7 @@ public class OtherExpenseService extends AbsService {
             }
             assignOrderNumber(otherExpense);
         } else {
+            otherExpense.setUpdateAt(LocalDateTime.now());
             OtherExpense original = otherExpenseRepository.findById(otherExpense.getId())
                     .orElseThrow(() -> new ServiceException("其他支出单不存在"));
             if (!OrderStatus.已保存.equals(original.getOrderStatus())) {
@@ -248,6 +250,7 @@ public class OtherExpenseService extends AbsService {
 
         OtherExpenseDetailsVO otherExpenseVO = jqf.select(Projections.bean(OtherExpenseDetailsVO.class,
                         qOtherExpense.id,
+                        qOtherExpense.remarks,
                         qOtherExpense.supplierId,
                         qOtherExpense.settlementAccount,
                         qOtherExpense.settlementAccountId,
@@ -269,8 +272,8 @@ public class OtherExpenseService extends AbsService {
                         qOtherExpense.accountBookId,
                         qOtherExpense.merchantId,
                         qCreatedByUser.name.as("createName"),
-                        qUpdatedByUser.name.as("updaterName"),
-                        qApprovedByUser.name.as("approverName")
+                        qUpdatedByUser.name.as("updateName"),
+                        qApprovedByUser.name.as("approvedName")
                 ))
                 .from(qOtherExpense)
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qOtherExpense.createdBy))

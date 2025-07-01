@@ -72,6 +72,7 @@ public class AccountTransferService extends AbsService {
                         Projections.bean(AccountTransferQueryVO.class,
                                 qAccountTransfer.id,
                                 qAccountTransfer.orderDate,
+                                qAccountTransfer.remarks,
                                 qAccountTransfer.orderNo,
                                 qAccountTransfer.amount,
                                 qAccountTransfer.orderStatus,
@@ -304,6 +305,7 @@ public class AccountTransferService extends AbsService {
                                 qAccountTransfer.updateAt,
                                 qAccountTransfer.accountBookId,
                                 qAccountTransfer.merchantId,
+                                qAccountTransfer.remarks,
                                 qCreatedByUser.name.as("createName"),
                                 qUpdatedByUser.name.as("updateName"),
                                 qApprovedByUser.name.as("approvedName")

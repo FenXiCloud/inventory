@@ -123,11 +123,11 @@
 
         <vxe-column title="备注" field="remarks" min-width="120"> </vxe-column>
 
-        <vxe-column title="审核人" field="approvedBy" width="120" />
+        <vxe-column title="审核人" field="approvedName" width="120" />
 
         <vxe-column
           title="制单人"
-          field="createdBy"
+          field="createName"
           align="center"
           width="100"
         />

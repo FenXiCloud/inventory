@@ -27,7 +27,8 @@ import java.time.LocalDateTime;
 @DynamicUpdate
 public class OtherExpense {
 
-
+    @Comment("备注")
+    private String remarks;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

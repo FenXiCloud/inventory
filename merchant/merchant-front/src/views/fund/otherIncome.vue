@@ -62,7 +62,7 @@
         <vxe-column title="单据编号" field="documentNumber" align="center">
         </vxe-column>
         <vxe-column title="日期" field="date" align="center"></vxe-column>
-        <vxe-column title="往来单位" field="businessPartner" align="center" />
+        <!-- <vxe-column title="往来单位" field="businessPartner" align="center" /> -->
         <vxe-column
           :title="amountName"
           field="amount"

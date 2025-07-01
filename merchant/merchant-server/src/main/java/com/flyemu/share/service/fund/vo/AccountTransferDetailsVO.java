@@ -23,7 +23,7 @@ public class AccountTransferDetailsVO {
     private Long updateBy;
     private LocalDateTime updateAt;
     private LocalDate orderDate;
-
+    private String remarks;
     private String orderNo;
 
     private BigDecimal amount;

@@ -328,14 +328,16 @@ export default {
         updateName,
         createdAt,
         updateAt,
-        approvedName
+        approvedName,
+        approvedAt
       } = this.form;
       const logEntries = [
         `制单人: ${createName}`,
         createdAt ? `制单时间: ${createdAt}` : null,
         updateName ? `最后修改人: ${updateName}` : null,
         updateAt ? `最后修改时间: ${updateAt}` : null,
-        approvedName ? `审核人: ${approvedName}` : null
+        approvedName ? `审核人: ${approvedName}` : null,
+        approvedAt ? `审核时间: ${approvedAt}` : null
       ].filter((entry) => entry); // 过滤掉 null 的条目
 
       this.logContent = logEntries.join('\n');

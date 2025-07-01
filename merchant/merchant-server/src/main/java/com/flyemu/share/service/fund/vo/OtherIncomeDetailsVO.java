@@ -21,9 +21,10 @@ public class OtherIncomeDetailsVO {
     private String createName;
     private String updateName;
     private String approvedName;
+    private Long updateBy;
     private Long id;
     private String settlementAccount;
-    private String settlementAccountId;
+    private Long settlementAccountId;
     private Long customerId;
     private LocalDate orderDate;
     private String orderNo;
@@ -33,16 +34,12 @@ public class OtherIncomeDetailsVO {
     private BigDecimal collectionAmount;
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
-
+    private String remarks;
     private Long createdBy;
-
     private LocalDateTime createdAt;
-
+    private LocalDateTime updateAt;
     private Long approvedBy;
-
     private LocalDateTime approvedAt;
-
     private Long accountBookId;
-
     private Long merchantId;
 }

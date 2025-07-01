@@ -317,7 +317,7 @@ public class PurchaseInboundService extends AbsService {
                 }
                 BigDecimal finalAmount = order.getFinalAmount();
                 Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
-                supplier.setBalance(supplier.getBalance().subtract(finalAmount));
+                supplier.setBalance(supplier.getBalance().add(finalAmount));
                 SupplierFlow flow = new SupplierFlow();
                 flow.setSupplierId(order.getSupplierId());
                 flow.setBusinessId(order.getId());
@@ -355,7 +355,7 @@ public class PurchaseInboundService extends AbsService {
     private void inboundSupplierFlows(Long adminId, PurchaseInbound order) {
         Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
         BigDecimal finalAmount = order.getFinalAmount();
-        supplier.setBalance(supplier.getBalance().add(finalAmount));
+        supplier.setBalance(supplier.getBalance().subtract(finalAmount));
         SupplierFlow flow = new SupplierFlow();
         flow.setSupplierId(order.getSupplierId());
         flow.setBusinessId(order.getId());

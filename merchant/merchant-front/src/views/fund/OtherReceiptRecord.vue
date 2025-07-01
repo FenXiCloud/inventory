@@ -99,16 +99,16 @@
         <vxe-column title="客户" field="customerName" min-width="120" />
         <vxe-column title="结算账户" field="settlementAccount" min-width="120">
         </vxe-column>
-        <vxe-column title="金额" field="amount" min-width="120"> </vxe-column>
+        <vxe-column title="欠款金额" field="amount" min-width="120"> </vxe-column>
         <vxe-column title="收款金额" field="collectionAmount" min-width="120">
         </vxe-column>
 
         <vxe-column title="业务员" field="orderStaffName" width="120" />
-        <vxe-column title="审核人" field="approvedBy" width="120" />
+        <vxe-column title="审核人" field="approvedName" width="120" />
 
         <vxe-column
           title="制单人"
-          field="createdBy"
+          field="createName"
           align="center"
           width="100"
         />

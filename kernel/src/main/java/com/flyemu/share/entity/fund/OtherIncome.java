@@ -38,6 +38,8 @@ public class OtherIncome {
     private Long customerId;
     @Comment("客户名称")
     private String customerName;
+    @Comment("备注")
+    private String remarks;
     @Comment("单据日期")
     private LocalDate orderDate;
     @Comment("单据编号")

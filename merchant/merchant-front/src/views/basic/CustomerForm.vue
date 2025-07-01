@@ -48,7 +48,7 @@
             placeholder="请输入余额"
             type="number"
             step="1"
-            min="1"
+            min="0"
             v-model="model.balance"
           />
         </FormItem>
@@ -79,17 +79,17 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import Customer from "@js/api/basic/Customer";
-import { message } from "heyui.ext";
-import { CopyObj } from "@common/utils";
-import CustomerCategory from "@js/api/basic/CustomerCategory";
-import CustomerLevel from "@js/api/basic/CustomerLevel";
+import Customer from '@js/api/basic/Customer';
+import { message } from 'heyui.ext';
+import { CopyObj } from '@common/utils';
+import CustomerCategory from '@js/api/basic/CustomerCategory';
+import CustomerLevel from '@js/api/basic/CustomerLevel';
 
 export default {
-  name: "CustomerForm",
+  name: 'CustomerForm',
   computed: {},
   props: {
-    entity: Object,
+    entity: Object
   },
   data() {
     return {
@@ -104,30 +104,30 @@ export default {
         phone: null,
         customerCategoryId: null,
         customerLevelId: null,
-        remarks: null,
+        remarks: null
       },
       validationRules: {
-        balance: [{ required: true, message: "余额不能为空" }],
-      },
+        balance: [{ required: true, message: '余额不能为空' }]
+      }
     };
   },
   methods: {
     confirm() {
       let validResult = this.$refs.form.valid();
       const num = Number(this.model.balance);
-      if (!Number.isInteger(num) || num < 1) {
-        return message("请输入有效的正整数");
+      if (num < 0) {
+        return message('金额不可为负');
       }
       if (validResult.result) {
         this.loading = true;
         Customer.save(this.model)
           .then(() => {
-            message("保存成功~");
-            this.$emit("success");
+            message('保存成功~');
+            this.$emit('success');
           })
           .finally(() => (this.loading = false));
       }
-    },
+    }
   },
   created() {
     CopyObj(this.model, this.entity);
@@ -137,6 +137,6 @@ export default {
         this.customerLevelList = results[1].data || [];
       })
       .finally(() => (this.loading = false));
-  },
+  }
 };
 </script>

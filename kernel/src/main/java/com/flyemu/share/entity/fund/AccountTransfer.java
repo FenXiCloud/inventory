@@ -53,7 +53,8 @@ public class AccountTransfer {
 
     @Comment("审核人")
     private Long approvedBy;
-
+    @Comment("备注")
+    private String remarks;
     @Comment("审核时间")
     private LocalDateTime approvedAt;
 

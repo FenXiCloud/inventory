@@ -437,7 +437,7 @@ public class PurchaseReturnService extends AbsService {
         Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
         BigDecimal refundAmount = order.getRefundAmount();
 
-        supplier.setBalance(supplier.getBalance().subtract(refundAmount));
+        supplier.setBalance(supplier.getBalance().add(refundAmount));
 
         SupplierFlow flow = new SupplierFlow();
         if (order.getDiscountAmount() != null) {

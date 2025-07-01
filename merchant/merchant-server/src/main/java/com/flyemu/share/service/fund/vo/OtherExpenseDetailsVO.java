@@ -33,7 +33,7 @@ public class OtherExpenseDetailsVO {
     private BigDecimal collectionAmount;
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
-
+    private String remarks;
     private Long createdBy;
 
     private LocalDateTime createdAt;

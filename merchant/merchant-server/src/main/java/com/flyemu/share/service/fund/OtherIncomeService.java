@@ -71,6 +71,8 @@ public class OtherIncomeService extends AbsService {
                         qOtherIncome.orderNo,
                         qOtherIncome.orderDate,
                         qOtherIncome.collectionAmount,
+                        qOtherIncome.settlementAccount,
+                        qOtherIncome.settlementAccountId,
                         qOtherIncome.customerId,
                         qOtherIncome.customerName,
                         qOtherIncome.orderStaffId,
@@ -85,6 +87,7 @@ public class OtherIncomeService extends AbsService {
                         qOtherIncome.updateAt,
                         qOtherIncome.accountBookId,
                         qOtherIncome.merchantId,
+                        qOtherIncome.remarks,
                         qCreatedByUser.name.as("createName"),
                         qApprovedByUser.name.as("approvedName")
                 ))
@@ -92,7 +95,7 @@ public class OtherIncomeService extends AbsService {
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qOtherIncome.customerId))
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qOtherIncome.createdBy))
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qOtherIncome.approvedBy))
-                .where(query.builder);
+                .where(query.builder).orderBy(qOtherIncome.id.desc());
 
 
         List<OtherIncomeDetailsVO> mainList = mainQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
@@ -136,6 +139,7 @@ public class OtherIncomeService extends AbsService {
             }
             assignOrderNumber(otherIncome);
         } else {
+            otherIncome.setUpdateAt(LocalDateTime.now());
             OtherIncome original = otherIncomeRepository.findById(otherIncome.getId())
                     .orElseThrow(() -> new ServiceException("其他收入单不存在"));
             if (!OrderStatus.已保存.equals(original.getOrderStatus())) {
@@ -276,7 +280,9 @@ public class OtherIncomeService extends AbsService {
                         qOtherIncome.id,
                         qOtherIncome.customerId,
                         qOtherIncome.customerName,
-
+                        qOtherIncome.settlementAccount,
+                        qOtherIncome.settlementAccountId,
+                        qOtherIncome.remarks,
                         qOtherIncome.orderStaffId,
                         qOtherIncome.orderStaffName,
                         qOtherIncome.orderDate,
@@ -294,8 +300,8 @@ public class OtherIncomeService extends AbsService {
                         qOtherIncome.accountBookId,
                         qOtherIncome.merchantId,
                         qCreatedByUser.name.as("createName"),
-                        qUpdatedByUser.name.as("updaterName"),
-                        qApprovedByUser.name.as("approverName")
+                        qUpdatedByUser.name.as("updateName"),
+                        qApprovedByUser.name.as("approvedName")
                 ))
                 .from(qOtherIncome)
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qOtherIncome.createdBy))

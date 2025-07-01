@@ -541,6 +541,7 @@ export default {
           this.form = orderReceipt;
           this.tableData = collectionList || [];
           this.tableData2 = itemList || [];
+
           // this.pagination.total = total;
           this.getLog();
         })
@@ -598,8 +599,28 @@ export default {
         return message.error('请选择结算账户');
       } else if (!this.tableData.length || !this.tableData[0].amount) {
         return message.error('请输入金额');
+      } else if (params.itemList?.length) {
+        if (this.form.collectionAmount > 0) {
+          confirm({
+            title: '系统提示',
+            content: `收款金额大于本次折扣后核销金额,是否仍要修改?`,
+            onConfirm: () => {
+              this.addEdit(type, params);
+            }
+          });
+          return;
+        }
+        if (this.form.collectionAmount < 0) {
+          confirm({
+            title: '系统提示',
+            content: `收款金额小于本次折扣后核销金额,是否仍要修改?`,
+            onConfirm: () => {
+              this.addEdit(type, params);
+            }
+          });
+          return;
+        }
       }
-
       this.addEdit(type, params);
     },
 
@@ -829,7 +850,10 @@ export default {
               .filter((item) => item.salesOrderNo)
               .map((item) => {
                 delete item._X_ROW_KEY;
-                return item;
+                return {
+                  ...item,
+                  currentVerifyAmount: item.unverifiedAmount
+                };
               });
 
             console.log(this.tableData2, 'tableData2tableData2');

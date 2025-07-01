@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.fund;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.flyemu.share.enums.OrderStatus;
 import jakarta.persistence.*;
@@ -42,6 +43,7 @@ public class Verification {
     //人员名称
     private String personnelName;
     //单据日期
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
     private LocalDateTime orderDate;
     //单据编号
     private String orderNo;

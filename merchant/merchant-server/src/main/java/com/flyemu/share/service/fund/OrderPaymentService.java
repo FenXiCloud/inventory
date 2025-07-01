@@ -610,7 +610,7 @@ public class OrderPaymentService extends AbsService {
 
 
     public PageResults<OrderPaymentQueryVO> query(OrderPaymentService.Query query, Page page) {
-        JPAQuery<OrderPayment> mainQuery = jqf.select(qOrderPayment).from(qOrderPayment).where(query.builder).orderBy(qOrderPayment.id.desc());
+        JPAQuery<OrderPayment> mainQuery = jqf.select(qOrderPayment).from(qOrderPayment).leftJoin(qSupplier).on(qSupplier.id.eq(qOrderPayment.supplierId)).where(query.builder).orderBy(qOrderPayment.id.desc());
 
         List<OrderPayment> mainList = mainQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
         long total = mainQuery.fetchCount();
@@ -924,7 +924,6 @@ public class OrderPaymentService extends AbsService {
         private BigDecimal unverifiedAmount;
     }
 
-    private final static QPurchaseOrder qSuppler = QPurchaseOrder.purchaseOrder;
 
     public class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

@@ -325,7 +325,7 @@ public class OrderPaymentService extends AbsService {
 
     private BigDecimal getOpeningBalance(Long supplierId, LocalDateTime dateTime) {
         QOrderPayment qPayment = QOrderPayment.orderPayment;
-        QPurchaseOrder qPurchase = QPurchaseOrder.purchaseOrder;
+        QPurchaseOrder qPurchase = QPurchaseOrder.purchaseOrder     ;
         QOrderPaymentItem qItem = QOrderPaymentItem.orderPaymentItem;
 
         BigDecimal paymentSum = jqf.select(qPayment.collectionAmount.sum()).from(qPayment).where(qPayment.supplierId.eq(supplierId).and(qPayment.approvedAt.lt(dateTime)).and(qPayment.orderStatus.eq(OrderStatus.已审核))).fetchOne();
@@ -336,7 +336,6 @@ public class OrderPaymentService extends AbsService {
         purchaseSum = purchaseSum == null ? BigDecimal.ZERO : purchaseSum;
         return purchaseSum.subtract(paymentSum);
     }
-
     private BigDecimal getCurrentPayable(Long supplierId, SummaryPayableDetailsQuery query) {
         LocalDateTime startTime = query.getStartDate().atStartOfDay();
         LocalDateTime endTime = query.getEndDate().atStartOfDay();

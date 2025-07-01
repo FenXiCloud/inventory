@@ -18,6 +18,7 @@ import com.querydsl.jpa.impl.JPAQuery;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -90,15 +91,15 @@ public class AccountFlowService extends AbsService {
             }
         }
 
-        public void setStartTime(LocalDateTime startTime) {
-            if (startTime != null) {
-                builder.and(qAccountFlow.createdAt.goe(startTime));
+        public void setStartTime(String startTime) {
+            if (StringUtils.isNotEmpty(startTime)) {
+                builder.and(qAccountFlow.createdAt.goe(LocalDateTime.parse(startTime + "T00:00:00")));
             }
         }
 
-        public void setEndTime(LocalDateTime endTime) {
-            if (endTime != null) {
-                builder.and(qAccountFlow.createdAt.loe(endTime));
+        public void setEndTime(String endTime) {
+            if (StringUtils.isNotEmpty(endTime)) {
+                builder.and(qAccountFlow.createdAt.loe(LocalDateTime.parse(endTime + "T23:59:59")));
             }
         }
     }

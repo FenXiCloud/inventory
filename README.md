@@ -63,7 +63,7 @@
 ### 参与方式奖励
   - 对于我们接受的pr，提交者可以获取相应issure的报酬，具体查看管理员发布的issure标注
   - 如果您有任何问题可以添加客服
-  - <img src="https://f3.fenxi365.com/api/assets/logo/4d6614c2-4384-487f-ba73-d8a4439f2033.png" height="150px" width="150px"/>
+  - v:flyemu  13944878765（同v）
 
 ## 我们的承诺
 
@@ -129,7 +129,7 @@
 ## 如何支持
 - 开源不易，坚持更难！如果您觉得纷析云进销存不错，请给个star支持下。
 - 如果您有任何问题可以添加客服进群
-- <img src="https://f3.fenxi365.com/api/assets/logo/4d6614c2-4384-487f-ba73-d8a4439f2033.png" height="150px" width="150px"/>
+- v:flyemu  13944878765（同v）
 
 - 纷析云（杭州）科技有限公司
 - https://fenxi365.com

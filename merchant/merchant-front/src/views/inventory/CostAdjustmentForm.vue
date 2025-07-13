@@ -141,7 +141,7 @@
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
         <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
         <!-- 仅当状态为审核时显示 -->
-        <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
+        <Button v-if="approved && looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
       </div>
     </div>
   </div>

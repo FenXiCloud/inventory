@@ -242,6 +242,9 @@ public class InventoryItemService extends AbsService {
                     currentQuantity = currentQuantity - inventoryItem.getQuantity();
                     totalCost = totalCost.subtract(inventoryItem.getSubtotal());
                 }
+                if (currentQuantity < 0) {
+                    currentQuantity = 0;
+                }
                 inventoryItem.setCurrentQuantity(currentQuantity);
                 inventoryItem.setTotalCost(totalCost);
                 if (!OperationType.成本调整.equals(inventoryItem.getOperationType())) {

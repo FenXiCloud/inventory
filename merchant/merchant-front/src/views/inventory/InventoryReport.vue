@@ -238,7 +238,7 @@ export default {
                   item['all_quantity'] = allQuantity;
                   item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
                   item['all_totalCost'] = allTotalCost;
-                  if (isNaN(item['all_averageCost'])) {
+                  if (!Number.isFinite(item['all_averageCost'])) {
                     item['all_averageCost'] = 0;
                   }
                 });
@@ -290,7 +290,7 @@ export default {
                   item['all_quantity'] = allQuantity;
                   item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
                   item['all_totalCost'] = allTotalCost;
-                  if (isNaN(item['all_averageCost'])) {
+                  if (!Number.isFinite(item['all_averageCost'])) {
                     item['all_averageCost'] = 0;
                   }
                 });

@@ -364,7 +364,7 @@ export default {
                   this.closeWindow();
                   this.pushTab({
                     key: 'OtherOutboundForm',
-                    title: '编辑其他入库单',
+                    title: '编辑其他出库单',
                     params: {type: 'edit', otherOutboundId: data.id}
                   });
                   this.$emit("update:otherOutboundId", data.id);

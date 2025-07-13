@@ -402,6 +402,9 @@ export default {
       this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
       this.stockTakeData = [];
+      this.form.generatedDisabled = true;
+      this.outbounds = [];
+      this.inbounds = [];
       StockTake.load(this.stockTakeId || id).then(
           ({data}) => {
             if (data && data.length > 0) {
@@ -436,6 +439,10 @@ export default {
               });
               this.originalStockTakeData = JSON.parse(JSON.stringify(this.stockTakeData));
               this.form.totalQuantity = totalQuantity;
+              // 获取盘点单据
+              if (this.approved) {
+                this.getInventoryList();
+              }
             }
           }
       );
@@ -485,6 +492,7 @@ export default {
         return;
       }
       id = res.data.id;
+      this.form.id = id;
       const approveParams = {id, type: operateType};
       loading("审核中....");
       StockTake.approve(approveParams)
@@ -493,7 +501,6 @@ export default {
               message("审核成功~");
               setTimeout(() => {
                 this.loadEditForm(id);
-                this.getInventoryList();
               }, 300);
             }
           })
@@ -508,7 +515,7 @@ export default {
       });
     },
     doSearch() {
-      if (this.stockTakeId) {
+      if (this.form.id) {
         const warehouseId = this.form.warehouseId;
         const warehouseIds = this.form.warehouseIds;
         const productId = this.form.productId;
@@ -541,8 +548,8 @@ export default {
     },
     // 获取盘点单据
     getInventoryList() {
-      if (this.stockTakeId) {
-        StockTake.export(this.stockTakeId).then(res => {
+      if (this.form.id && this.approved) {
+        StockTake.export(this.form.id).then(res => {
           console.info(res.data)
           const data = res.data;
           if (data) {
@@ -571,14 +578,11 @@ export default {
   },
   created() {
     loading("加载中....");
+    this.form.id = this.stockTakeId;
     this.loadDict(() => {
       //订单详情/编辑订单
       if (this.stockTakeId) {
         this.loadEditForm();
-        // 获取盘点单据
-        if (this.status && this.status === "已审核") {
-          this.getInventoryList();
-        }
         const type = this.type;
         switch (type) {
           case 'audits':

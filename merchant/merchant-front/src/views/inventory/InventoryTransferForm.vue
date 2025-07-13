@@ -11,7 +11,7 @@
           <label class="mr-20px ml-20px" style="font-size: 16px !important">调出仓库：</label>
           <Select class="w-178px" filterable required :datas="warehouseList" keyName="id" titleName="name"
                   v-model="form.fromWarehouseId" placeholder="请选择调出仓库"
-                  :disabled="looked"
+                  :disabled="looked" :deletable="false"
                   @change="changeFromWarehouseId"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">调入仓库：</label>
           <Select class="w-178px" filterable required :datas="warehouseList" keyName="id" titleName="name"
@@ -44,8 +44,10 @@
         <vxe-column field="productName" title="产品名称" min-width="350">
           <template #default="scope">
             <div class="h-input-group goodsSelect" v-if="!looked">
-              <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable :equalWidth="false"
-                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="changeRow(scope, 'product')">
+              <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable
+                      :equalWidth="false"
+                      placeholder="输入编码/名称" keyName="id" titleName="customName"
+                      @change="changeRow(scope, 'product')">
                 <template v-slot:top>
                   <table class="h-table" style="width: 100%">
                     <thead class="h-table-header">
@@ -469,16 +471,14 @@ export default {
       });
     },
     // 更改调出仓库
-    changeFromWarehouseId() {
+    async changeFromWarehouseId() {
       const warehouseId = this.form.fromWarehouseId;
-      if (this.isEmpty(warehouseId)) {
-        return;
-      }
+      await this.loadProductList();
       const inventoryTransferData = this.inventoryTransferData;
-      inventoryTransferData.forEach(async inventoryTransferItem => {
+      for (const inventoryTransferItem of inventoryTransferData) {
         const {productId} = inventoryTransferItem;
         if (this.isEmpty(productId)) {
-          return;
+          continue;
         }
         // 获取产品库存进行提示
         const {data} = await Inventory.list({productId});
@@ -499,7 +499,7 @@ export default {
           inventoryTransferItem.warehouseQuantity = 0;
           inventoryTransferItem.warehouseTotal = 0;
         }
-      });
+      }
     },
     //失去焦点
     quantityBlur(type, {rowIndex}) {
@@ -544,24 +544,29 @@ export default {
     },
     //加载字典
     loadDict(callback) {
-      Promise.all([Product.select(), Warehouse.select()])
-          .then((results) => {
-            this.productList = results[0].data || [];
-            // 调整productList的name值
-            this.productList.forEach(item => {
-              item.customName = `${item.code}--${item.name}`;
-            });
-            this.warehouseList = results[1].data || [];
+      Promise.all([Warehouse.select()])
+          .then(async (results) => {
+            this.warehouseList = results[0].data || [];
             if (this.warehouseList != null) {
               this.form.fromWarehouseId = this.warehouseList.find(
                   (val) => val.systemDefault
               )?.id;
             }
             if (callback) {
+              await this.loadProductList();
               callback();
             }
           })
           .finally(() => loading.close());
+    },
+    async loadProductList() {
+      const {data} = await Inventory.selectProduct({
+        warehouseId: this.form.fromWarehouseId
+      });
+      this.productList = data || [];
+      this.productList.forEach(item => {
+        item.customName = `${item.code}--${item.name}`;
+      });
     },
     //初始化表单
     initIncreaseForm() {

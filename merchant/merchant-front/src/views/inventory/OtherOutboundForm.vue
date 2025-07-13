@@ -137,17 +137,17 @@
     <div class="modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button color="primary" v-if="!approved && !looked" @click="saveOrder('increase')"
+        <Button color="primary" v-if="!approved" @click="saveOrder('increase')"
                 :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder" v-if="!approved && !looked"
+        <Button @click="saveOrder" v-if="!approved"
                 :loading="loading"> 保存
         </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
+        <Button v-if="!approved" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
         <!-- 仅当状态为审核时显示 -->
-        <Button v-if="approved && looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
+        <Button v-if="approved" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
       </div>
     </div>
   </div>

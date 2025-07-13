@@ -600,21 +600,19 @@ export default {
     async auditForm(operateType) {
       const type = this.type;
       let {id} = this.form;
-      if (!id) {
-        const filterOtherOutboundData = this.otherOutboundData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-        // 校验
-        this.validatorsForm(filterOtherOutboundData);
-        // 操作对象
-        const params = this.getSaveOrderParams(filterOtherOutboundData, type);
-        const res = await OtherOutbound.save(params);
-        if (!res.success) {
-          return;
-        }
-        id = res.data.id;
+      const filterOtherOutboundData = this.otherOutboundData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
+      // 校验
+      this.validatorsForm(filterOtherOutboundData);
+      // 操作对象
+      const params = this.getSaveOrderParams(filterOtherOutboundData, type);
+      const res = await OtherOutbound.save(params);
+      if (!res.success) {
+        return;
       }
-      const params = {id, type: operateType};
+      id = res.data.id;
+      const approveParams = {id, type: operateType};
       loading("审核中....");
-      OtherOutbound.approve(params)
+      OtherOutbound.approve(approveParams)
           .then((success) => {
             if (success) {
               message("审核成功~");

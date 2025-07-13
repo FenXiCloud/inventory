@@ -475,21 +475,19 @@ export default {
     async auditForm(operateType) {
       const type = this.type;
       let {id} = this.form;
-      if (!id) {
-        const filterStockTakeData = this.stockTakeData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-        // 校验
-        this.validatorsForm(filterStockTakeData);
-        // 操作对象
-        const params = this.getSaveOrderParams(filterStockTakeData, type);
-        const res = await StockTake.save(params);
-        if (!res.success) {
-          return;
-        }
-        id = res.data.id;
+      const filterStockTakeData = this.stockTakeData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
+      // 校验
+      this.validatorsForm(filterStockTakeData);
+      // 操作对象
+      const params = this.getSaveOrderParams(filterStockTakeData, type);
+      const res = await StockTake.save(params);
+      if (!res.success) {
+        return;
       }
-      const params = {id, type: operateType};
+      id = res.data.id;
+      const approveParams = {id, type: operateType};
       loading("审核中....");
-      StockTake.approve(params)
+      StockTake.approve(approveParams)
           .then((success) => {
             if (success) {
               message("审核成功~");

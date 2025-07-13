@@ -129,7 +129,7 @@
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
         <Button v-if="!approved" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
         <!-- 仅当状态为审核时显示 -->
-        <Button v-if="approved && looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
+        <Button v-if="approved" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
       </div>
     </div>
   </div>
@@ -585,21 +585,19 @@ export default {
     async auditForm(operateType) {
       const type = this.type;
       let {id} = this.form;
-      if (!id) {
-        const filterInventoryTransferData = this.inventoryTransferData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-        // 校验
-        this.validatorsForm(filterInventoryTransferData);
-        // 操作对象
-        const params = this.getSaveOrderParams(filterInventoryTransferData, type);
-        const res = await InventoryTransfer.save(params);
-        if (!res.success) {
-          return;
-        }
-        id = res.data.id;
+      const filterInventoryTransferData = this.inventoryTransferData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
+      // 校验
+      this.validatorsForm(filterInventoryTransferData);
+      // 操作对象
+      const params = this.getSaveOrderParams(filterInventoryTransferData, type);
+      const res = await InventoryTransfer.save(params);
+      if (!res.success) {
+        return;
       }
-      const params = {id, type: operateType};
+      id = res.data.id;
+      const approveParams = {id, type: operateType};
       loading("审核中....");
-      InventoryTransfer.approve(params)
+      InventoryTransfer.approve(approveParams)
           .then((success) => {
             if (success) {
               message("审核成功~");

@@ -405,6 +405,25 @@ public class InventoryService extends AbsService {
         }
     }
 
+    /**
+     * 获取库存中的商品列表
+     *
+     * @param merchantId    商户id
+     * @param accountBookId 账号id
+     * @param warehouseId   仓库id
+     * @return list
+     */
+    public List<Product> selectProduct(Long merchantId, Long accountBookId, Long warehouseId) {
+        return jqf.selectFrom(qInventory)
+                .select(qProduct)
+                .leftJoin(qProduct).on(qProduct.id.eq(qInventory.productId))
+                .where(qInventory.merchantId.eq(merchantId)
+                        .and(qInventory.accountBookId.eq(accountBookId))
+                        .and(qInventory.warehouseId.eq(warehouseId)))
+                .orderBy(qInventory.productId.desc())
+                .fetch();
+    }
+
 
     @Data
     public static class Query {

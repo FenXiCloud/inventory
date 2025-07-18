@@ -235,12 +235,16 @@ public class InventoryItemService extends AbsService {
             }
             for (InventoryItem inventoryItem : goeFetch) {
                 boolean contains = increaseTypeList.contains(inventoryItem.getOperationType());
-                if (contains) {
+                boolean equalsCb = OperationType.成本调整.equals(inventoryItem.getOperationType());
+                if (contains || (equalsCb && inventoryItem.getSubtotal().compareTo(BigDecimal.ZERO) > 0)) {
                     currentQuantity = currentQuantity + inventoryItem.getQuantity();
                     totalCost = totalCost.add(inventoryItem.getSubtotal());
                 } else {
                     currentQuantity = currentQuantity - inventoryItem.getQuantity();
                     totalCost = totalCost.subtract(inventoryItem.getSubtotal());
+                }
+                if (currentQuantity < 0) {
+                    currentQuantity = 0;
                 }
                 inventoryItem.setCurrentQuantity(currentQuantity);
                 inventoryItem.setTotalCost(totalCost);

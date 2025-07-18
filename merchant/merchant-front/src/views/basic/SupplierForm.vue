@@ -84,6 +84,7 @@ export default {
       loading: false,
       supplierCategoryList: [],
       model: {
+        balance: null,
         id: null,
         code: null,
         name: null,
@@ -101,11 +102,12 @@ export default {
   methods: {
     confirm() {
       let validResult = this.$refs.form.valid();
-      const num = Number(this.model.balance);
-      if (!Number.isInteger(num) || num < 1) {
-        return message("请输入有效的正整数");
-      }
+      
       if (validResult.result) {
+        const num = Number(this.model.balance);
+        if (!Number.isInteger(num) || num < 1) {
+          return message("请输入有效的正整数");
+        }
         this.loading = true;
         Supplier.save(this.model)
           .then(() => {
@@ -117,7 +119,8 @@ export default {
     },
   },
   created() {
-    CopyObj(this.model, this.entity);
+    // CopyObj(this.model, this.entity);
+    this.model = {...this.entity};
     Promise.all([SupplierCategory.select()])
       .then((results) => {
         this.supplierCategoryList = results[0].data;

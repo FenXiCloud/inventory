@@ -65,7 +65,7 @@
         </vxe-table>
         <vxe-pager perfect @page-change="loadCustomer(false)"
                    v-model:current-page="pagination.page"
-                   v-model:page-size="pagination.pageSize"
+                   v-model:page-size="pagination.size"
                    :total="pagination.total"
                    :layouts="[ 'PrevPage', 'Number', 'NextPage', 'Sizes', 'Total']">
           <template #left>
@@ -123,7 +123,7 @@ export default {
     queryParams() {
       return Object.assign(this.params, {
         page: this.pagination.page,
-        pageSize: this.pagination.pageSize,
+        pageSize: this.pagination.size,
       })
     }
   },

@@ -513,7 +513,7 @@ export default {
       });
       this.allFinalAmount = sums[1];
       return [
-        ['', '', '', '', '', '', '', quantity.toFixed(2), '', ''].concat(sums)
+        ['', '','', '', '', '', '', '', '', '', quantity.toFixed(0), '', ''].concat(sums)
       ];
     },
 

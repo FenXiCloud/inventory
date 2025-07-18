@@ -23,6 +23,9 @@
           </template>
         </vxe-column>
         <vxe-column field="productName" title="产品名称" min-width="200">
+          <template #header>
+            <span style="color: red">*</span>产品名称
+          </template>
           <template #default="scope">
             <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
               <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
@@ -45,6 +48,9 @@
           </template>
         </vxe-column>
         <vxe-column title="仓库" field="warehouseId" align="center" width="180">
+          <template #header>
+            <span style="color: red">*</span>仓库
+          </template>
           <template #default="{row,rowIndex}">
             <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
                     titleName="name" :disabled="this.type === 'edit'"
@@ -52,6 +58,9 @@
           </template>
         </vxe-column>
         <vxe-column title="数量" field="quantity">
+          <template #header>
+            <span style="color: red">*</span>数量
+          </template>
           <template #default="{row,rowIndex,columnIndex}">
             <vxe-input
                 :id="'r'+rowIndex+''+3"
@@ -65,6 +74,9 @@
           </template>
         </vxe-column>
         <vxe-column title="单价" field="unitPrice">
+          <template #header>
+            <span style="color: red">*</span>单价
+          </template>
           <template #default="{row,rowIndex,}">
             <vxe-input
                 :id="'r'+rowIndex+''+4"

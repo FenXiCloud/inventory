@@ -274,7 +274,7 @@ export default {
     },
   },
   created() {
-    this.loadDict(()=>{});
+    this.loadDict();
     this.loadList();
   }
 }

@@ -420,14 +420,16 @@ export default {
     },
     getLog() {
       // this.logContent
+      
+      let createName = this.user.admin.name
       let {
-        createName = this.user.admin.name,
         updateName,
         createdAt,
         updateAt,
         approvedName,
         approvedAt,
       } = this.form;
+      console.log(createName)
       const logEntries = [
         `制单人: ${createName}`,
         createdAt ? `制单时间: ${createdAt}` : null,
@@ -495,8 +497,9 @@ export default {
         return message.error("本次核销金额不可为0");
       }
       const isEqual = this.checkTotalVerificationAmountEqual();
+
       if (!isEqual) {
-        layer.msg("本次核销金额总计不一致，请检查");
+        layer.msg("请检查本次核销金额");
         return;
       }
       this.addEdit(type, params);

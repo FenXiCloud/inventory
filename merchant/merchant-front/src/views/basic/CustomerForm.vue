@@ -17,7 +17,7 @@
         <FormItem label="客户名称" required prop="name" single>
           <Input placeholder="请输入客户名称" v-model="model.name" />
         </FormItem>
-        <FormItem label="客户分类" required prop="customersCategoryId">
+        <FormItem label="客户分类" required prop="customerCategoryId">
           <Select
             :datas="customerCategoryList"
             keyName="id"
@@ -27,7 +27,7 @@
             :deletable="false"
           />
         </FormItem>
-        <FormItem label="客户等级" required prop="customersLevelId">
+        <FormItem label="客户等级" required prop="customerLevelId">
           <Select
             :datas="customerLevelList"
             keyName="id"
@@ -97,6 +97,7 @@ export default {
       customerCategoryList: [],
       customerLevelList: [],
       model: {
+        balance: null,
         id: null,
         code: null,
         name: null,
@@ -107,7 +108,7 @@ export default {
         remarks: null
       },
       validationRules: {
-        balance: [{ required: true, message: '余额不能为空' }]
+        // balance: [{ required: true, message: '余额不能为空' }]
       }
     };
   },

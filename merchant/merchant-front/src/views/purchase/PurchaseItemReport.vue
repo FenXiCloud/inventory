@@ -1,34 +1,36 @@
 <template>
   <div class="frame-page flex flex-column">
     <vxe-toolbar>
-      <template #buttons>
-        <Button color="primary">导出</Button>
-        <Button >打 印</Button>
-      </template>
       <template #tools>
-        <div class="h-input-group">
+        <div class="h-input-group ml-0px m-6px">
           <Select v-model="params.orderType" class="w-120px" :datas="{in:'入库单',out:'退货单',all:'全部'}"
                   placeholder="订单类型：" :deletable="false"/>
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <Select class="ml-8px" required :datas="warehouseList" keyName="id" titleName="name"
+        <Select class="ml-0px m-6px" required :datas="warehouseList" keyName="id" titleName="name"
                 v-model="warehouseIds" placeholder="请选择仓库" :multiple="true"/>
-        <Select class="ml-8px" required :datas="supplierList" keyName="id" titleName="name"
+        <Select class="ml-0px m-6px" required :datas="supplierList" keyName="id" titleName="name"
                 v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
-        <Select class="ml-8px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
+        <Select class="ml-0px m-6px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
                 v-model="supplierCategoryIds" placeholder="请选择供货商类别"/>
-        <Select class="ml-8px" required :datas="productList" keyName="id" titleName="name"
+        <Select class="ml-0px m-6px" required :datas="productList" keyName="id" titleName="name"
                 v-model="productIds" placeholder="请选择产品" :multiple="true"/>
-        <Select class="ml-8px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
+        <Select class="ml-0px m-6px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
                 v-model="productCategoryIds" placeholder="请选择产品类别"/>
         <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-260px ml-8px"
+                show-search-button class="w-260px ml-0px m-6px"
                 placeholder="请输入订单号/供货商名称" @search="doSearch">
           <i class="h-icon-search"/>
         </Search>
       </template>
     </vxe-toolbar>
+    <!-- <vxe-toolbar>
+      <template #buttons>
+        <Button color="primary">导出</Button>
+        <Button >打 印</Button>
+      </template>
+    </vxe-toolbar> -->
     <div class="flex1">
       <vxe-table row-id="id"
                  ref="table"

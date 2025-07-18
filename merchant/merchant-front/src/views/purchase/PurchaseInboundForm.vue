@@ -120,6 +120,13 @@
         </vxe-column>
         <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
         <vxe-column title="基本数量" field="quantity" width="90"/>
+        <vxe-column title="折扣率(%)" field="discountRate" width="100">
+          <template #default="{row,rowIndex}">
+            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5" @keyup="handleEnter($event,rowIndex,5)"
+                       @blur="updateDiscount(row)" v-model.number="row.discountRate" type="float" min="0"
+                       :controls="false"></vxe-input>
+          </template>
+        </vxe-column>
         <vxe-column title="购货单价" field="secondaryPrice" width="100">
           <template #default="{row,rowIndex}">
             <template v-if="!row.isNew">
@@ -153,13 +160,7 @@
             </template>
           </template>
         </vxe-column>
-        <vxe-column title="折扣率(%)" field="discountRate" width="100">
-          <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5" @keyup="handleEnter($event,rowIndex,5)"
-                       @blur="updateDiscount(row)" v-model.number="row.discountRate" type="float" min="0"
-                       :controls="false"></vxe-input>
-          </template>
-        </vxe-column>
+       
         <vxe-column title="折扣额" field="discountAmount" width="100">
           <template #default="{row,rowIndex}">
             <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+6" @keyup="handleEnter($event,rowIndex,6)"
@@ -362,7 +363,7 @@ export default {
       let sums = [];
       let quantity = 0;
       columns.forEach((column) => {
-        if (column.property && ['quantity', 'discountAmount', 'subtotal'].includes(column.property)) {
+        if (column.property && ['quantity','discountAmount','subtotal'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
             if (column.property === 'quantity') {
@@ -383,7 +384,7 @@ export default {
         }
       })
       this.allFinalAmount = sums[1]
-      return [["", "", "", "", "", "", "", quantity.toFixed(2), "", ""].concat(sums)];
+      return [["","","","", "", "", "", "", "", "",quantity.toFixed(0), "", ""].concat(sums)];
     },
 
     // 仓库选择框变化时触发

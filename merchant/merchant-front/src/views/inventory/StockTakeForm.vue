@@ -87,19 +87,17 @@
     <div class="modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button v-if="!approved" color="primary" @click="saveOrder('increase')"
-                :loading="loading">
+        <Button v-if="!approved && !looked" color="primary" @click="saveOrder('increase')" :loading="loading">
           保存并新增
         </Button>
         <Button color="primary" :disabled="form.generatedDisabled" @click="openGeneratedModal" :loading="loading">
           生成盘点单据
         </Button>
-        <Button v-if="!approved" @click="saveOrder" :loading="loading">保存</Button>
+        <Button v-if="!approved && !looked" @click="saveOrder" :loading="loading">保存</Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button v-if="!approved" @click="auditForm('AUDITS')" :loading="loading"> 审核
-        </Button>
+        <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
         <!-- 仅当状态为审核时显示 -->
-        <Button v-if="approved" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
+        <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
       </div>
     </div>
     <Modal v-model="opened" hasCloseIcon>
@@ -402,9 +400,6 @@ export default {
       this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
       this.stockTakeData = [];
-      this.form.generatedDisabled = true;
-      this.outbounds = [];
-      this.inbounds = [];
       StockTake.load(this.stockTakeId || id).then(
           ({data}) => {
             if (data && data.length > 0) {
@@ -439,10 +434,6 @@ export default {
               });
               this.originalStockTakeData = JSON.parse(JSON.stringify(this.stockTakeData));
               this.form.totalQuantity = totalQuantity;
-              // 获取盘点单据
-              if (this.approved) {
-                this.getInventoryList();
-              }
             }
           }
       );
@@ -482,25 +473,27 @@ export default {
     async auditForm(operateType) {
       const type = this.type;
       let {id} = this.form;
-      const filterStockTakeData = this.stockTakeData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-      // 校验
-      this.validatorsForm(filterStockTakeData);
-      // 操作对象
-      const params = this.getSaveOrderParams(filterStockTakeData, type);
-      const res = await StockTake.save(params);
-      if (!res.success) {
-        return;
+      if (!id) {
+        const filterStockTakeData = this.stockTakeData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
+        // 校验
+        this.validatorsForm(filterStockTakeData);
+        // 操作对象
+        const params = this.getSaveOrderParams(filterStockTakeData, type);
+        const res = await StockTake.save(params);
+        if (!res.success) {
+          return;
+        }
+        id = res.data.id;
       }
-      id = res.data.id;
-      this.form.id = id;
-      const approveParams = {id, type: operateType};
+      const params = {id, type: operateType};
       loading("审核中....");
-      StockTake.approve(approveParams)
+      StockTake.approve(params)
           .then((success) => {
             if (success) {
               message("审核成功~");
               setTimeout(() => {
                 this.loadEditForm(id);
+                this.getInventoryList();
               }, 300);
             }
           })
@@ -515,7 +508,7 @@ export default {
       });
     },
     doSearch() {
-      if (this.form.id) {
+      if (this.stockTakeId) {
         const warehouseId = this.form.warehouseId;
         const warehouseIds = this.form.warehouseIds;
         const productId = this.form.productId;
@@ -548,8 +541,8 @@ export default {
     },
     // 获取盘点单据
     getInventoryList() {
-      if (this.form.id && this.approved) {
-        StockTake.export(this.form.id).then(res => {
+      if (this.stockTakeId) {
+        StockTake.export(this.stockTakeId).then(res => {
           console.info(res.data)
           const data = res.data;
           if (data) {
@@ -578,11 +571,14 @@ export default {
   },
   created() {
     loading("加载中....");
-    this.form.id = this.stockTakeId;
     this.loadDict(() => {
       //订单详情/编辑订单
       if (this.stockTakeId) {
         this.loadEditForm();
+        // 获取盘点单据
+        if (this.status && this.status === "已审核") {
+          this.getInventoryList();
+        }
         const type = this.type;
         switch (type) {
           case 'audits':

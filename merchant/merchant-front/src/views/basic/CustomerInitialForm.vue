@@ -223,11 +223,11 @@ export default {
         return false
       }
       if (quantityFlag) {
-        message.error("期初应收款~");
+        message.error("期初应收款为空~");
         return false
       }
       if (unitPriceFlag) {
-        message.error("期初预收款~");
+        message.error("期初预收款为空~");
         return false
       }
       if (subtotalFlag) {

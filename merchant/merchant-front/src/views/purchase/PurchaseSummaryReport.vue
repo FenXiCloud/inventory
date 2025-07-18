@@ -1,28 +1,35 @@
 <template>
   <div class="frame-page flex flex-column">
+
+    <vxe-toolbar>
+      <template #tools>
+        <Select v-model="groupValues" class="w-240px ml-0px m-6px"
+                :datas="{product:'产品',supplier:'供货商',warehouse:'仓库'}"
+                placeholder="统计字段：" :multiple="true"/>
+        <DateRangePicker v-model="dateRange" class="w-220px ml-0px m-6px"></DateRangePicker>
+
+        <Select class="ml-0px m-6px ml-4px"  :datas="warehouseList" keyName="id" titleName="name"
+                v-model="warehouseIds" placeholder="请选择仓库" :multiple="true"/>
+        <Select class="ml-0px m-6px"  :datas="supplierList" keyName="id" titleName="name"
+                v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
+        <Select class="ml-0px m-6px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
+                v-model="supplierCategoryIds" placeholder="请选择供货商类别"/>
+        <Select class="ml-0px m-6px"  :datas="productList" keyName="id" titleName="name"
+                v-model="productIds" placeholder="请选择产品" :multiple="true"/>
+        <Select class="ml-0px m-6px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
+                v-model="productCategoryIds" placeholder="请选择产品类别"/>
+        <Button class="ml-0px m-6px" @click="doSearch" color="primary">查 询</Button>
+      </template>
+    </vxe-toolbar>
+
     <vxe-toolbar>
       <template #buttons>
         <Button color="primary">导 出</Button>
         <Button>打 印</Button>
       </template>
-      <template #tools>
-        <Select v-model="groupValues" class="w-240px ml-8px"
-                :datas="{product:'产品',supplier:'供货商',warehouse:'仓库'}"
-                placeholder="统计字段：" :multiple="true"/>
-        <DateRangePicker v-model="dateRange" class="w-220px ml-8px"></DateRangePicker>
-        <Select class="ml-8px"  :datas="warehouseList" keyName="id" titleName="name"
-                v-model="warehouseIds" placeholder="请选择仓库" :multiple="true"/>
-        <Select class="ml-8px"  :datas="supplierList" keyName="id" titleName="name"
-                v-model="supplierIds" placeholder="请选择供货商" :multiple="true"/>
-        <Select class="ml-8px" :multiple="true" :datas="supplierCategoryList" keyName="id" titleName="name"
-                v-model="supplierCategoryIds" placeholder="请选择供货商类别"/>
-        <Select class="ml-8px"  :datas="productList" keyName="id" titleName="name"
-                v-model="productIds" placeholder="请选择产品" :multiple="true"/>
-        <Select class="ml-8px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
-                v-model="productCategoryIds" placeholder="请选择产品类别"/>
-        <Button class="ml-8px" @click="doSearch" color="primary">查 询</Button>
-      </template>
     </vxe-toolbar>
+
+    
     <div class="flex1">
       <vxe-table row-id="id"
                  ref="table"

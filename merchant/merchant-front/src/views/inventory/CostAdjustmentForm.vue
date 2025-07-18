@@ -134,14 +134,14 @@
     <div class="modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button v-if="!approved" color="primary" @click="saveOrder('increase')" :loading="loading">
+        <Button v-if="!approved && !looked" color="primary" @click="saveOrder('increase')" :loading="loading">
           保存并新增
         </Button>
-        <Button v-if="!approved" @click="saveOrder" :loading="loading"> 保存</Button>
+        <Button v-if="!approved && !looked" @click="saveOrder" :loading="loading"> 保存</Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button v-if="!approved" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
+        <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
         <!-- 仅当状态为审核时显示 -->
-        <Button v-if="approved" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
+        <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
       </div>
     </div>
   </div>
@@ -543,19 +543,21 @@ export default {
     async auditForm(operateType) {
       const type = this.type;
       let {id} = this.form;
-      const filterCostAdjustmentData = this.costAdjustmentData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-      // 校验
-      this.validatorsForm(filterCostAdjustmentData);
-      // 操作对象
-      const params = this.getSaveOrderParams(filterCostAdjustmentData, type);
-      const res = await CostAdjustment.save(params);
-      if (!res.success) {
-        return;
+      if (!id) {
+        const filterCostAdjustmentData = this.costAdjustmentData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
+        // 校验
+        this.validatorsForm(filterCostAdjustmentData);
+        // 操作对象
+        const params = this.getSaveOrderParams(filterCostAdjustmentData, type);
+        const res = await CostAdjustment.save(params);
+        if (!res.success) {
+          return;
+        }
+        id = res.data.id;
       }
-      id = res.data.id;
-      const approveParams = {id, type: operateType};
+      const params = {id, type: operateType};
       loading("审核中....");
-      CostAdjustment.approve(approveParams)
+      CostAdjustment.approve(params)
           .then((success) => {
             if (success) {
               message("审核成功~");

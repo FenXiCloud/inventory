@@ -238,7 +238,7 @@ export default {
                   item['all_quantity'] = allQuantity;
                   item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
                   item['all_totalCost'] = allTotalCost;
-                  if (!Number.isFinite(item['all_averageCost'])) {
+                  if (isNaN(item['all_averageCost'])) {
                     item['all_averageCost'] = 0;
                   }
                 });
@@ -265,9 +265,9 @@ export default {
       params.productCategoryIds = params.productCategoryIds.join(",");
       params.productIds = params.productIds.join(",");
       params.warehouseIds = params.warehouseIds.join(",");
-      Promise.all([InventoryItem.balance(params)])
+      Promise.all([Inventory.reportInventory(params)])
           .then(results => {
-            let reportInventoryList = results[0].data.results || [];
+            let reportInventoryList = results[0].data || [];
             Inventory.report(params).then(({data: {results, total}}) => {
               let dataList = results || [];
               dataList.forEach(item => {
@@ -290,9 +290,6 @@ export default {
                   item['all_quantity'] = allQuantity;
                   item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
                   item['all_totalCost'] = allTotalCost;
-                  if (!Number.isFinite(item['all_averageCost'])) {
-                    item['all_averageCost'] = 0;
-                  }
                 });
               });
               this.callExcel(dataList);

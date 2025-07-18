@@ -72,8 +72,8 @@
             <div class="flex p-8px border-bottom">
               <span class="font-bold">客户级别定价</span>
             </div>
-            <div style="height:calc(100vh - 665px); overflow-y:auto;">
-              <vxe-table height="auto" row-id="customerLeveId" ref="tableCustomLevelPrice"
+            <div style="overflow-y:auto;">
+              <vxe-table  row-id="customerLeveId" ref="tableCustomLevelPrice"
                          :data="customerLevelPriceList"
                          highlight-hover-row show-overflow border :row-config="{height: 48}">
                 <vxe-column title="客户级别" field="customerLeveName" width="130"/>

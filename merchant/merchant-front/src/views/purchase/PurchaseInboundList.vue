@@ -202,7 +202,7 @@ export default {
               total += Number(rd || 0);
             }
           });
-          sums.push(total.toFixed(2));
+          sums.push(total.toFixed(column.property === 'secondarySum' ? 0 : 2));
         }
       })
       return [["", "", "", "","",  ""].concat(sums)];

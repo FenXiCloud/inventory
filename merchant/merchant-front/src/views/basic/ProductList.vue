@@ -118,7 +118,7 @@ export default {
       productCategoryDataList: [],
       pagination: {
         page: 1,
-        size: 20,
+        pageSize: 20,
         total: 0
       },
     }
@@ -276,6 +276,7 @@ export default {
   min-width: 300px; /* 最小宽度 */
   width: 300px; /* 固定宽度 */
   padding: 20px;
+  overflow-y: auto;
   //background-color: #f8e1e1;
 }
 

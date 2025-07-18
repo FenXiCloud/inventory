@@ -52,9 +52,7 @@
         </div>
       </template>
       <template #tools>
-        <div class="h-button-group">
-          <Button @click="doSearch" color="primary">查询</Button>
-        </div>
+        <Button @click="doSearch" color="primary">查询</Button>
       </template>
     </vxe-toolbar>
     <div class="flex1">
@@ -324,8 +322,3 @@ export default {
   }
 }
 </script>
-<style scoped>
-.h-button-group {
-  min-width: 70px;
-}
-</style>

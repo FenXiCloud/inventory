@@ -32,7 +32,4 @@ export default {
     totalCost(productId, warehouseId) {
         return Ajax.get(`/inventory/totalCost/${productId}/${warehouseId}`);
     },
-    selectProduct(param) {
-        return Ajax.get(`/inventory/selectProduct`, param);
-    },
 }

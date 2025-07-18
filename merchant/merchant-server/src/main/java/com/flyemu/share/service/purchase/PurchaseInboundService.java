@@ -134,7 +134,9 @@ public class PurchaseInboundService extends AbsService {
             PurchaseInbound original = purchaseInboundRepository.getById(purchaseInbound.getId());
             Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能更新~");
             BeanUtil.copyProperties(purchaseInbound, original, CopyOptions.create().ignoreNullValue());
-
+            jqf.delete(QPurchaseInboundItem.purchaseInboundItem)
+                    .where(QPurchaseInboundItem.purchaseInboundItem.purchaseInboundId.eq(purchaseInbound.getId()))
+                    .execute();
             Set<Long> ids = new HashSet<>();
             Double secondarySum = 0.0;
             for (PurchaseInboundItem d : purchaseInboundForm.getPurchaseInboundItemList()) {
@@ -212,7 +214,10 @@ public class PurchaseInboundService extends AbsService {
         Assert.isFalse(bqf.selectFrom(qConnection)
                 .where(qConnection.purchaseInboundId.eq(purchaseInboundId))
                 .fetchCount() > 0, "已关联退货单不能删除~");
-
+        jqf.update(QPurchaseOrder.purchaseOrder)
+                .set(QPurchaseOrder.purchaseOrder.purchaseInboundId, (Long) null)
+                .where(QPurchaseOrder.purchaseOrder.purchaseInboundId.eq(purchaseInboundId))
+                .execute();
         jqf.delete(qPurchaseInboundItem)
                 .where(qPurchaseInboundItem.purchaseInboundId.eq(purchaseInboundId).and(qPurchaseInboundItem.accountBookId.eq(accountBookId)).and(qPurchaseInboundItem.merchantId.eq(merchantId)))
                 .execute();
@@ -307,7 +312,7 @@ public class PurchaseInboundService extends AbsService {
                 }
 
                 if (bqf.selectFrom(qConnection).where(qConnection.purchaseInboundId.eq(order.getId())).fetchCount() > 0) {
-                    continue;
+                    throw new ServiceException("存在已关联的退货单，无法反审核");
                 }
 
                 boolean hasPaymentOrVerification = checkHasPaymentOrVerification(order.getId());

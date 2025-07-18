@@ -15,10 +15,7 @@ import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.ProductDto;
 import com.flyemu.share.entity.basic.*;
-import com.flyemu.share.entity.inventory.InventoryItem;
-import com.flyemu.share.entity.inventory.QStockTake;
-import com.flyemu.share.entity.inventory.QStockTakeItem;
-import com.flyemu.share.entity.inventory.StockTake;
+import com.flyemu.share.entity.inventory.*;
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOrderItem;
 import com.flyemu.share.entity.setting.CodeRule;
@@ -188,6 +185,18 @@ public class ProductService extends AbsService {
                 } else {
                     product.setCode(CodeGenerator.generateCode());
                 }
+            }else{
+                Long count = jqf.select(qProduct.id.count())
+                        .from(qProduct)
+                        .where(qProduct.code.eq(product.getCode())
+                                .and(qProduct.merchantId.eq(merchantId))
+                                .and(qProduct.accountBookId.eq(accountBookId)))
+                        .fetchOne();
+
+                if (count != null && count > 0) {
+                    throw new ServiceException("编码已存在，请重新输入！");
+                }
+
             }
             product.setAccountBookId(accountBookId);
             product.setMerchantId(merchantId);
@@ -370,13 +379,20 @@ public class ProductService extends AbsService {
         jqf.delete(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(productsId).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).execute();
         jqf.delete(qProduct).where(qProduct.id.eq(productsId).and(qProduct.merchantId.eq(merchantId)).and(qProduct.accountBookId.eq(accountBookId))).execute();
     }
-
-    public List<ProductDto> select(Long merchantId, Long accountBookId,Long productCategoryId) {
+    private final static QInventory qInventory = QInventory.inventory;
+    public List<ProductDto> select(Long merchantId, Long accountBookId,Long productCategoryId,Long warehouseId) {
         //left join 查询商品单位
         BlazeJPAQuery<Tuple> where = bqf.selectFrom(qProduct).
                 select(qProduct, qUnit.name, qProductCategory.name).
                 leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
-                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).where(qProduct.merchantId.eq(merchantId)
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId));
+        if (warehouseId != null) {
+            where.innerJoin(qInventory)
+                    .on(qInventory.productId.eq(qProduct.id)
+                            .and(qInventory.warehouseId.eq(warehouseId)))
+                    .where(qInventory.currentQuantity.gt(0));
+        }
+        where.where(qProduct.merchantId.eq(merchantId)
                         .and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue()));
         if (productCategoryId!=null){
             where.where(qProduct.productCategoryId.eq(productCategoryId));

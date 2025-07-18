@@ -2,6 +2,7 @@ package com.flyemu.share.service.basic;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.util.StrUtil;
 import com.flyemu.share.entity.basic.QUnit;
 import com.flyemu.share.entity.basic.Unit;
 import com.flyemu.share.exception.ServiceException;
@@ -46,6 +47,22 @@ public class UnitService extends AbsService {
     @Transactional
     public Unit save(Unit unit) {
         try {
+            BooleanBuilder builder = new BooleanBuilder();
+            builder.and(qUnit.merchantId.eq(unit.getMerchantId()))
+                    .and(qUnit.accountBookId.eq(unit.getAccountBookId()))
+                    .and(qUnit.name.eq(unit.getName()));
+
+            if (unit.getId() != null) {
+                builder.and(qUnit.id.ne(unit.getId()));
+            }
+            Long count = jqf.select(qUnit.id.count())
+                    .from(qUnit)
+                    .where(builder)
+                    .fetchOne();
+
+            if (count != null && count > 0) {
+                throw new ServiceException("已存在同名单位：" + unit.getName());
+            }
             if (unit.getId() != null) {
                 Unit original = unitRepository.getById(unit.getId());
                 BeanUtil.copyProperties(unit, original, CopyOptions.create().ignoreNullValue());
@@ -53,10 +70,11 @@ public class UnitService extends AbsService {
             }
             return unitRepository.save(unit);
         } catch (Exception e) {
-            log.error("Unit", e);
+            log.error("保存单位失败", e);
             throw new ServiceException(e.getMessage());
         }
     }
+
 
     private final ProductExistenceChecker existenceChecker;
 
@@ -109,11 +127,12 @@ public class UnitService extends AbsService {
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
-        public void setFilter(String filter) {
-            if (filter != null) {
-                builder.and(qUnit.name.contains(filter));
+        public void setName(String name) {
+            if (StrUtil.isNotBlank(name)) {
+                builder.and(qUnit.name.contains(name));
             }
         }
+
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {

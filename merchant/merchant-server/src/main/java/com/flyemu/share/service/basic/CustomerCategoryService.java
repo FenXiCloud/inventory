@@ -4,7 +4,9 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.Assert;
 import com.flyemu.share.entity.basic.CustomerCategory;
+import com.flyemu.share.entity.basic.QCustomer;
 import com.flyemu.share.entity.basic.QCustomerCategory;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.CustomerCategoryRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
@@ -66,7 +68,7 @@ public class CustomerCategoryService extends AbsService {
         Assert.isTrue(count == 0, customerCategory.getName() + "名称已存在~");
         return customerCategoryRepository.save(customerCategory);
     }
-
+    private final QCustomer qCustomer = QCustomer.customer;
     /**
      * 删除
      *
@@ -74,6 +76,15 @@ public class CustomerCategoryService extends AbsService {
      */
     @Transactional
     public void delete(Long customersCategoryId, Long merchantId, Long accountBookId) {
+        long customerCount = jqf.selectFrom(qCustomer)
+                .where(qCustomer.customerCategoryId.eq(customersCategoryId)
+                        .and(qCustomer.merchantId.eq(merchantId))
+                        .and(qCustomer.accountBookId.eq(accountBookId)))
+                .fetchCount();
+
+        if (customerCount > 0) {
+            throw new ServiceException("该分类下存在客户数据，不能删除");
+        }
         jqf.delete(qCustomerCategory)
                 .where(qCustomerCategory.id.eq(customersCategoryId).and(qCustomerCategory.merchantId.eq(merchantId)).and(qCustomerCategory.accountBookId.eq(accountBookId)))
                 .execute();

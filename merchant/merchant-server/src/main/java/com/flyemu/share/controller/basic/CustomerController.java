@@ -23,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -48,55 +50,64 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CustomerController {
 
+    private static final Logger log = LoggerFactory.getLogger(CustomerController.class);
     private final CustomerService customerService;
 
     @GetMapping
     public JsonResult list(Page page, CustomerService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(customerService.query(page,query));
+        return JsonResult.successful(customerService.query(page, query));
     }
 
     @PostMapping
     public JsonResult save(@RequestBody @Valid Customer customer, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId, @SaAccountVal AccountDto accountDto) {
         customer.setMerchantId(merchantId);
         customer.setAccountBookId(accountBookId);
-        customerService.save(customer,accountDto.getMerchant().getCode());
+        customerService.save(customer, accountDto.getMerchant().getCode());
         return JsonResult.successful();
     }
 
     @PutMapping
     public JsonResult update(@RequestBody @Valid Customer customer, @SaAccountVal AccountDto accountDto) {
-        customerService.save(customer,accountDto.getMerchant().getCode());
+        customerService.save(customer, accountDto.getMerchant().getCode());
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{customerId}")
     public JsonResult delete(@PathVariable Long customerId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        customerService.delete(customerId,merchantId,accountBookId);
+        customerService.delete(customerId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
     @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId,@SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(customerService.select(merchantId,accountBookId));
+    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(customerService.select(merchantId, accountBookId));
     }
 
     // 导入
     @PostMapping("/importData")
-    public JsonResult importData(@RequestParam("file") MultipartFile multipartFile, @SaMerchantId Long merchantId) {
+    public JsonResult importData(@RequestParam("file") MultipartFile multipartFile, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         try {
+            System.setProperty("javax.xml.parsers.SAXParserFactory", "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl");
+
             ExcelReader reader = ExcelUtil.getReader(multipartFile.getInputStream());
             ImportVoUtil.setHeaderAlias(CustomerImportVo.class, reader);
             List<CustomerImportVo> rows = reader.readAll(CustomerImportVo.class);
             Assert.isFalse(CollUtil.isEmpty(rows), "excel中未解析到可以导入的数据");
-            customerService.importData(rows, merchantId);
+            if (CollUtil.isEmpty(rows)) {
+                throw new ServiceException("excel中未解析到可以导入的数据");
+            }
+            if (rows.size() > 1000) {
+                throw new ServiceException("导入数据不能大于1000行");
+            }
+            customerService.importData(rows, merchantId, accountBookId);
             return JsonResult.successful();
         } catch (IllegalArgumentException ae) {
+            log.error(ae.getMessage());
             throw new ServiceException(ae.getMessage());
         } catch (IOException e) {
-            throw new ServiceException("表头解析失败");
-        } catch (ServiceException e) {
+            log.error(e.getMessage());
             throw new ServiceException(e.getMessage());
         }
     }
@@ -113,7 +124,7 @@ public class CustomerController {
         Font font = StyleUtil.createFont(workbook, Font.COLOR_RED, (short) 11, null);
         CellStyle cellStyle = StyleUtil.cloneCellStyle(workbook, writer.getStyleSet().getHeadCellStyle());
         cellStyle.setFont(font);
-        List<String> strings = Arrays.asList("分类编码", "分类名称", "客户编码", "客户名称", "客户联系人",
+        List<String> strings = Arrays.asList("分类名称", "客户编码", "客户名称", "客户联系人",
                 "联系电话", "备注", "客户等级", "应收账款", "客户状态");
         writer.writeHeadRow(strings);
 

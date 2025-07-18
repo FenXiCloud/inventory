@@ -30,9 +30,9 @@ public class OtherIncome {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Comment("收支类别名称")
+    @Comment("结算方式名称")
     private String settlementAccount;
-    @Comment("收支类别ID")
+    @Comment("结算方式ID")
     private Long settlementAccountId;
     @Comment("客户ID")
     private Long customerId;

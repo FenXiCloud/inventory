@@ -129,6 +129,17 @@ public class SupplierService extends AbsService {
                 } else {
                     supplier.setCode(CodeGenerator.generateCode());
                 }
+            }else{
+                Long count = jqf.select(qSupplier.id.count())
+                        .from(qSupplier)
+                        .where(qSupplier.code.eq(supplier.getCode())
+                                .and(qSupplier.merchantId.eq(supplier.getMerchantId()))
+                                .and(qSupplier.accountBookId.eq(supplier.getAccountBookId())))
+                        .fetchOne();
+
+                if (count != null && count > 0) {
+                    throw new ServiceException("编码已存在，请重新输入！");
+                }
             }
             Supplier save = supplierRepository.save(supplier);
             SupplierFlow supplierFlow=new SupplierFlow();

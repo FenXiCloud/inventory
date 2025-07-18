@@ -100,6 +100,17 @@ public class WarehouseService extends AbsService {
             } else {
                 warehouse.setCode(CodeGenerator.generateCode());
             }
+        }else{
+            Long count = jqf.select(qWarehouse.id.count())
+                    .from(qWarehouse)
+                    .where(qWarehouse.code.eq(warehouse.getCode())
+                            .and(qWarehouse.merchantId.eq(warehouse.getMerchantId()))
+                            .and(qWarehouse.accountBookId.eq(warehouse.getAccountBookId())))
+                    .fetchOne();
+
+            if (count != null && count > 0) {
+                throw new ServiceException("编码已存在，请重新输入！");
+            }
         }
         Long merchantId = warehouse.getMerchantId();
         Long accountBookId = warehouse.getAccountBookId();
@@ -212,9 +223,14 @@ public class WarehouseService extends AbsService {
             }
         }
 
-        public void setFilter(String filter) {
-            if (StrUtil.isNotBlank(filter)) {
-                builder.and(qWarehouse.name.contains(filter));
+        public void setName(String name) {
+            if (StrUtil.isNotBlank(name)) {
+                builder.and(qWarehouse.name.contains(name));
+            }
+        }
+        public void setEnabled(Boolean enabled) {
+             if (enabled!=null) {
+                builder.and(qWarehouse.enabled.eq(enabled));
             }
         }
 

@@ -30,11 +30,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 
 /**
@@ -78,7 +76,7 @@ public class CustomerService extends AbsService {
         if (customer.getId() != null) {
             //更新
             Customer original = customerRepository.getById(customer.getId());
-            if (original.getBalance()!=null&&original.getBalance().compareTo(customer.getBalance())!=0){
+            if (original.getBalance() != null && original.getBalance().compareTo(customer.getBalance()) != 0) {
                 throw new ServiceException("余额不允许修改");
             }
             if (!original.getCode().equals(customer.getCode())) {
@@ -114,9 +112,20 @@ public class CustomerService extends AbsService {
             } else {
                 customer.setCode(CodeGenerator.generateCode());
             }
+        } else {
+            Long count = jqf.select(qCustomer.id.count())
+                    .from(qCustomer)
+                    .where(qCustomer.code.eq(customer.getCode())
+                            .and(qCustomer.merchantId.eq(customer.getMerchantId()))
+                            .and(qCustomer.accountBookId.eq(customer.getAccountBookId())))
+                    .fetchOne();
+
+            if (count != null && count > 0) {
+                throw new ServiceException("编码已存在，请重新输入！");
+            }
         }
         Customer m = customerRepository.save(customer);
-        CustomerFlow customerFlow=new CustomerFlow();
+        CustomerFlow customerFlow = new CustomerFlow();
         customerFlow.setCustomerId(m.getId());
         customerFlow.setBalanceReceivables(customer.getBalance());
         customerFlow.setCustomerFlowType(CustomerFlow.CustomerFlowType.期初);
@@ -158,26 +167,77 @@ public class CustomerService extends AbsService {
 
     // 导入
     @Transactional
-    public void importData(List<CustomerImportVo> rows, Long merchantId) {
+    public void importData(List<CustomerImportVo> rows, Long merchantId, Long accountBookId) {
+        for (int i = 0; i < rows.size(); i++) {
+            if (StringUtils.isEmpty(rows.get(i).getName())){
+                throw new ServiceException("客户名称不能为空");
+            }
+            if (StringUtils.isEmpty(rows.get(i).getCode())){
+                throw new ServiceException("客户编码不能为空");
+            }
+            if (StringUtils.isEmpty(rows.get(i).getPhone())){
+                throw new ServiceException("手机号不能为空");
+            }
+            if (StringUtils.isEmpty(rows.get(i).getContact())){
+                throw new ServiceException("联系人不能为空");
+            }
+            if (rows.get(i).getCustomerCategoryName() == null){
+                throw new ServiceException("客户分类不能为空");
+            }
+            if (rows.get(i).getCustomerLevelName() == null){
+                throw new ServiceException("客户等级不能为空");
+            }
+        }
+        Set<String> codeSet = new HashSet<>();
+        List<String> duplicateCodes = rows.stream()
+                .filter(row -> !codeSet.add(row.getCode()))
+                .map(CustomerImportVo::getCode)
+                .distinct()
+                .toList();
 
-        //TODO: 校验客户档案字段不能为空，请补充
-        Assert.isFalse(rows.stream().filter(c -> StrUtil.isEmpty(c.getName())).count() > 0, "客户名称不能为空");
+        Assert.isTrue(duplicateCodes.isEmpty(), "导入数据中存在重复的客户编码：" + String.join("、", duplicateCodes));
+        List<String> existingCodes = jqf.select(qCustomer.code)
+                .from(qCustomer)
+                .where(qCustomer.merchantId.eq(merchantId).and(qCustomer.accountBookId.eq(accountBookId)))
+                .fetch();
 
-        CustomerLevel level = jqf.selectFrom(qCustomerLevel).where(qCustomerLevel.merchantId.eq(merchantId)).fetchFirst();
-        CustomerCategory category = jqf.selectFrom(qCustomerCategory).where(qCustomerCategory.merchantId.eq(merchantId)).fetchFirst();
+        Set<String> existingCodeSet = new HashSet<>(existingCodes);
+        List<String> duplicatedInDb = rows.stream()
+                .map(CustomerImportVo::getCode)
+                .filter(existingCodeSet::contains)
+                .distinct()
+                .toList();
+
+        Assert.isTrue(duplicatedInDb.isEmpty(), "以下客户编码已在系统中存在，请修改后重新导入：" + String.join("、", duplicatedInDb));
+
 
         for (CustomerImportVo row : rows) {
-            Customer customer = new Customer();
-            customer.setCustomerCategoryId(category.getId());
-            customer.setCustomerLevelId(level.getId());
-            customer.setMerchantId(merchantId);
-            customer.setAccountBookId(merchantId);
-            customer.setCode(row.getCode());
-            customer.setName(row.getName());
-            customer.setPhone(row.getPhone());
-            customer.setContact(row.getContact());
-            customer.setRemarks(row.getRemarks());
-            customerRepository.save(customer);
+            if (row.getCode() != null && StringUtils.isNotBlank(row.getName())
+                    && StringUtils.isNotBlank(row.getCustomerLevelName()) &&
+                    StringUtils.isNotBlank(row.getCustomerCategoryName())) {
+                Customer customer = new Customer();
+                CustomerCategory category = jqf.selectFrom(qCustomerCategory).where(qCustomerCategory.merchantId.eq(merchantId)
+                        .and(qCustomerCategory.accountBookId.eq(accountBookId)).and(qCustomerCategory.name.eq(row.getCustomerCategoryName()))).fetchFirst();
+                if (category == null) {
+                    throw new ServiceException("客户分类不存在");
+                }
+                CustomerLevel level = jqf.selectFrom(qCustomerLevel).where(qCustomerLevel.merchantId.eq(merchantId)
+                        .and(qCustomerLevel.accountBookId.eq(accountBookId)).and(qCustomerLevel.name.eq(row.getCustomerLevelName()))).fetchFirst();
+                if (level == null) {
+                    throw new ServiceException("等级不存在");
+                }
+                customer.setCustomerCategoryId(category.getId());
+                customer.setCustomerLevelId(level.getId());
+                customer.setMerchantId(merchantId);
+                customer.setAccountBookId(accountBookId);
+                customer.setCode(row.getCode());
+                customer.setName(row.getName());
+                customer.setPhone(row.getPhone());
+                customer.setContact(row.getContact());
+                customer.setRemarks(row.getRemarks());
+                customer.setBalance(BigDecimal.ZERO);
+                customerRepository.save(customer);
+            }
         }
     }
 
@@ -195,17 +255,18 @@ public class CustomerService extends AbsService {
         bqf.selectFrom(qCustomer).select(qCustomer, qCustomerCategory.name, qCustomerCategory.id, qCustomerLevel.name, qCustomerLevel.id).leftJoin(qCustomerCategory).on(qCustomerCategory.id.eq(qCustomer.customerCategoryId).and(qCustomerCategory.merchantId.eq(merchantId))).leftJoin(qCustomerLevel).on(qCustomerLevel.id.eq(qCustomer.customerCategoryId).and(qCustomer.merchantId.eq(merchantId))).orderBy(qCustomer.code.desc(), qCustomer.id.desc()).where(qCustomer.merchantId.eq(merchantId).and(builder)).fetch().forEach(tuple -> {
             Customer customer = BeanUtil.toBean(tuple.get(qCustomer), Customer.class);
             JSONObject jsonObject = new JSONObject();
-            jsonObject.put("分类编码", tuple.get(qCustomerCategory.id));
-            jsonObject.put("分类名称", tuple.get(qCustomerCategory.name));
-            jsonObject.put("客户编码", qCustomer.code);
-            jsonObject.put("客户名称", qCustomer.name);
-            jsonObject.put("客户级别ID", tuple.get(qCustomerLevel.id));
-            jsonObject.put("客户级别名称", tuple.get(qCustomerLevel.name));
-            jsonObject.put("应收账款", tuple.get(qCustomer.balance));
-            jsonObject.put("联系人", tuple.get(qCustomer.contact));
-            jsonObject.put("电话", tuple.get(qCustomer.phone));
-            jsonObject.put("备注", qCustomer.remarks);
-            jsonObject.put("状态", qCustomer.enabled);
+//            jsonObject.put("分类编码", tuple.get(qCustomerCategory.));
+            jsonObject.put("分类名称", tuple.get(qCustomerCategory.name) != null ? tuple.get(qCustomerCategory.name) : "");
+            jsonObject.put("客户编码", customer.getCode() != null ? customer.getCode() : "");
+            jsonObject.put("客户名称", customer.getName() != null ? customer.getName() : "");
+            jsonObject.put("客户级别ID", tuple.get(qCustomerLevel.id) != null ? tuple.get(qCustomerLevel.id).toString() : "");
+            jsonObject.put("客户级别名称", tuple.get(qCustomerLevel.name) != null ? tuple.get(qCustomerLevel.name) : "");
+            jsonObject.put("应收账款", customer.getBalance() != null ? customer.getBalance().toString() : "");
+            jsonObject.put("联系人", customer.getContact() != null ? customer.getContact() : "");
+            jsonObject.put("电话", customer.getPhone() != null ? customer.getPhone() : "");
+            jsonObject.put("备注", customer.getRemarks() != null ? customer.getRemarks() : "");
+            jsonObject.put("状态", customer.getEnabled() != null ? customer.getEnabled().toString() : "");
+
             list.add(jsonObject);
         });
         return list;

@@ -39,7 +39,7 @@ public class UploadController {
 
     @PostMapping("/upload/{type}")
     @ResponseBody
-    public JsonResult uploadPhoto(@RequestParam("file") MultipartFile file, @RequestParam(value = "name", required = false) String name, @PathVariable String type) {
+    public JsonResult uploadPhoto(@RequestParam("file") MultipartFile file, @RequestParam(value = "name", required = false) String name, @RequestParam(value = "type", required = false) String type) {
         try {
             File photoDir = new File(appConfig.getUploadRoot(), type);
             if (!photoDir.exists()) {

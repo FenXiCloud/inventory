@@ -3,6 +3,7 @@ package com.flyemu.share.service.basic;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.Assert;
+import cn.hutool.core.util.StrUtil;
 import com.flyemu.share.entity.basic.CustomerLevel;
 import com.flyemu.share.entity.basic.QCustomerLevel;
 import com.flyemu.share.entity.basic.QCustomerLevelPrice;
@@ -101,11 +102,12 @@ public class CustomerLevelService extends AbsService {
             }
         }
 
-        public void setFilter(String filter) {
-            if (filter != null) {
-                builder.and(qCustomerLevel.name.contains(filter));
+        public void setName(String name) {
+            if (StrUtil.isNotBlank(name)) {
+                builder.and(qCustomerLevel.name.contains(name));
             }
         }
+
     }
 
 

@@ -34,9 +34,7 @@ public class OrderReceiptCollection implements Serializable {
      * 收款单ID
      */
     private Integer receiptId;
-    /**
-     * 结算账户 cash现金，bank_deposit银行，wechat_pay微信，alipay支付宝
-     */
+
     private String settlementAccount;
     private Long settlementAccountId;
     /**

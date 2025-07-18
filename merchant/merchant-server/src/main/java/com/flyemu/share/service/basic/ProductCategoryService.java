@@ -2,15 +2,19 @@ package com.flyemu.share.service.basic;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import com.flyemu.share.entity.basic.ProductCategory;
 import com.flyemu.share.entity.basic.QProduct;
 import com.flyemu.share.entity.basic.QProductCategory;
 import com.flyemu.share.exception.ServiceException;
+import com.flyemu.share.repository.CategoryTreeRepository;
 import com.flyemu.share.repository.ProductCategoryRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.jpa.impl.JPAQuery;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -18,7 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.rowset.serial.SerialException;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @功能描述: 商品分类
@@ -36,6 +41,7 @@ public class ProductCategoryService extends AbsService {
     private static final QProductCategory qProductCategory = QProductCategory.productCategory;
 
     private final ProductCategoryRepository productCategoryRepository;
+    private final CategoryTreeRepository categoryTreeRepository;
 
     private static final QProduct qProduct = QProduct.product;
 
@@ -55,6 +61,23 @@ public class ProductCategoryService extends AbsService {
                 ProductCategory parent = productCategoryRepository.getReferenceById(productCategory.getPid());
                 parent.setLeaf(false);
                 productCategoryRepository.save(parent);
+            }
+            BooleanBuilder builder = new BooleanBuilder();
+            builder.and(qProductCategory.merchantId.eq(productCategory.getMerchantId()))
+                    .and(qProductCategory.accountBookId.eq(productCategory.getAccountBookId()))
+                    .and(qProductCategory.code.eq(productCategory.getCode()));
+
+            if (productCategory.getId() != null) {
+                builder.and(qProductCategory.id.ne(productCategory.getId()));
+            }
+
+            Long count = jqf.select(qProductCategory.id.count())
+                    .from(qProductCategory)
+                    .where(builder)
+                    .fetchOne();
+
+            if (count != null && count > 0) {
+                throw new ServiceException("已存在相同编码的分类：" + productCategory.getCode());
             }
 
             if (productCategory.getId() != null) {
@@ -81,20 +104,48 @@ public class ProductCategoryService extends AbsService {
 
     @Transactional
     public void delete(Long merchantId, Long productsCategoryId, Long accountBookId) {
+
         ProductCategory productCategory = productCategoryRepository.getReferenceById(productsCategoryId);
-
-        List<Long> ids = bqf.selectFrom(qProductCategory).select(qProductCategory.id).where((qProductCategory.merchantId.eq(merchantId)).and(qProductCategory.accountBookId.eq(accountBookId))).fetch();
-
-        Assert.isFalse(bqf.selectFrom(qProduct).where(qProduct.productCategoryId.in(ids).and(qProduct.merchantId.eq(merchantId)).and(qProduct.accountBookId.eq(accountBookId))).fetchCount() > 0, "商品已使用，不能删除");
+        List<Long> allSubCategoryIds = categoryTreeRepository.getAllSubCategoryIds(productsCategoryId);
+        List<Long> categoryIds = bqf.select(qProductCategory.id)
+                .from(qProductCategory)
+                .where(qProductCategory.merchantId.eq(merchantId)
+                        .and(qProductCategory.accountBookId.eq(accountBookId))
+                        .and(qProductCategory.id.in(allSubCategoryIds)))
+                .fetch();
+        if (CollUtil.isNotEmpty(categoryIds)) {
+            long count = bqf.selectFrom(qProduct)
+                    .where(qProduct.productCategoryId.in(categoryIds)
+                            .and(qProduct.merchantId.eq(merchantId))
+                            .and(qProduct.accountBookId.eq(accountBookId)))
+                    .fetchCount();
+            Assert.isFalse(count > 0, "该分类或其子分类已被商品使用，不能删除");
+        }
 
         if (productCategory.getPid() != null) {
-            long count = bqf.selectFrom(qProductCategory).where(qProductCategory.pid.eq(productCategory.getPid()).and(qProductCategory.merchantId.eq(merchantId)).and(qProductCategory.accountBookId.eq(accountBookId))).fetchCount();
-            if (count == 1) {
-                jqf.update(qProductCategory).set(qProductCategory.leaf, true).where(qProductCategory.id.eq(productCategory.getPid()).and(qProductCategory.merchantId.eq(merchantId)).and(qProductCategory.accountBookId.eq(accountBookId))).execute();
+            long childCount = bqf.selectFrom(qProductCategory)
+                    .where(qProductCategory.pid.eq(productCategory.getPid())
+                            .and(qProductCategory.merchantId.eq(merchantId))
+                            .and(qProductCategory.accountBookId.eq(accountBookId)))
+                    .fetchCount();
+
+            if (childCount == 1) {
+                jqf.update(qProductCategory)
+                        .set(qProductCategory.leaf, true)
+                        .where(qProductCategory.id.eq(productCategory.getPid())
+                                .and(qProductCategory.merchantId.eq(merchantId))
+                                .and(qProductCategory.accountBookId.eq(accountBookId)))
+                        .execute();
             }
         }
-        jqf.delete(qProductCategory).where(qProductCategory.merchantId.eq(merchantId).and(qProductCategory.accountBookId.eq(accountBookId)).and(qProductCategory.id.in(ids))).execute();
+
+        jqf.delete(qProductCategory)
+                .where(qProductCategory.id.eq(productsCategoryId)
+                        .and(qProductCategory.merchantId.eq(merchantId))
+                        .and(qProductCategory.accountBookId.eq(accountBookId)))
+                .execute();
     }
+
 
     public ProductCategory loadById(Long merchantId, Long orgId) {
         return bqf.selectFrom(qProductCategory).where(qProductCategory.merchantId.eq(merchantId).and(qProductCategory.id.eq(orgId))).fetchFirst();

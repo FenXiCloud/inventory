@@ -485,7 +485,7 @@ public class InventoryItemService extends AbsService {
                     Product product = productRepository.getById(inventoryItem.getProductId());
                     //根据仓库id查询仓库
                     Warehouse warehouse = warehouseRepository.getById(inventoryItem.getWarehouseId());
-                    throw new InvalidContextException("商品：" + product.getName() + "，仓库：" + warehouse.getName() + "，期初库存数据已存在");
+                    throw new InvalidContextException("商品：" + product.getName()+"【" +product.getCode()+ "】仓库：" + warehouse.getName() + "，期初库存数据已存在");
                 }
                 inventoryItem.setUpdatedAt(LocalDateTime.now());
                 inventoryItem.setFirstSort(false);

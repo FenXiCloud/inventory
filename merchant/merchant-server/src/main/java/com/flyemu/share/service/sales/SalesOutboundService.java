@@ -12,6 +12,7 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
+import com.flyemu.share.entity.purchase.QPurchaseOrder;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.AccountBookParameters;
 import com.flyemu.share.entity.setting.QAccountBookParameters;
@@ -350,7 +351,18 @@ public class SalesOutboundService extends AbsService {
                 throw new InvalidContextException("已关联销售退货单不能删除");
             });
         }
+        List<Long> salesOrderIds = bqf.select(qSalesOutboundItem.salesOrderId)
+                .from(qSalesOutboundItem)
+                .where(qSalesOutboundItem.salesOutboundId.eq(salesOutboundId))
+                .distinct()
+                .fetch();
 
+        if (!salesOrderIds.isEmpty()) {
+            jqf.update(QSalesOrder.salesOrder)
+                    .set(QSalesOrder.salesOrder.status, 0)
+                    .where(QSalesOrder.salesOrder.id.in(salesOrderIds))
+                    .execute();
+        }
         jqf.delete(qSalesOutbound)
                 .where(qSalesOutbound.id.eq(salesOutboundId).and(qSalesOutbound.merchantId.eq(merchantId)).and(qSalesOutbound.accountBookId.eq(accountBookId)))
                 .execute();

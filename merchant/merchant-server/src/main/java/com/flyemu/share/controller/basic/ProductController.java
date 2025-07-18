@@ -55,8 +55,8 @@ public class ProductController {
     }
 
     @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, Long productCategoryId) {
-        return JsonResult.successful(productService.select(merchantId,accountBookId, productCategoryId));
+    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, Long productCategoryId,Long warehouseId) {
+        return JsonResult.successful(productService.select(merchantId,accountBookId, productCategoryId,warehouseId));
     }
 
 //    @GetMapping("loadTo/order")

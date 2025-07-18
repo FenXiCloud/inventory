@@ -9,6 +9,8 @@ import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
 import com.flyemu.share.dto.SalesOutboundDTO;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.inventory.Inventory;
+import com.flyemu.share.entity.inventory.QInventory;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
@@ -53,6 +55,7 @@ import static com.flyemu.share.entity.sales.QSalesOutboundItem.salesOutboundItem
 public class SalesOrderService extends AbsService {
 
     private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
+    private final static QInventory qInventory = QInventory.inventory;
     private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
@@ -71,8 +74,6 @@ public class SalesOrderService extends AbsService {
     private final static QUnit qUnit = QUnit.unit;
     private final PriceRecordService priceRecordService;
     private final PriceRecordRepository priceRecordRepository;
-
-
 
 
     public PageResults<SalesOrderDTO> query(Page page, SalesOrderService.Query query) {
@@ -114,7 +115,7 @@ public class SalesOrderService extends AbsService {
                         .on(qsalesReturnItem.salesOutboundId.eq(qSalesOutboundItem.salesOutboundId).and(qsalesReturnItem.outItemId.eq(qSalesOutboundItem.id)))
                         .select(qSalesOutboundItem.quantity, qsalesReturnItem.quantity)
                         .where(qSalesOutboundItem.salesOrderId.eq(item.getSalesOrderId())
-                            .and(qSalesOutboundItem.tempId.eq(item.getId())))
+                                .and(qSalesOutboundItem.tempId.eq(item.getId())))
                         .fetch();
                 //出库数量
                 Double outQuantity = fetch.stream()
@@ -124,7 +125,7 @@ public class SalesOrderService extends AbsService {
                 Double returnQuantity = fetch.stream()
                         .mapToDouble(tuple2 -> tuple2.get(qsalesReturnItem.quantity) != null ? tuple2.get(qsalesReturnItem.quantity) : 0.0)
                         .sum();
-                
+
                 itemDTO.setQuantityOut(outQuantity);
                 itemDTO.setQuantityReturn(returnQuantity);
             });
@@ -145,7 +146,7 @@ public class SalesOrderService extends AbsService {
         if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
             List<String> outOrderNoList = new ArrayList<>();
             //通过销售出库单id关联查询出销售出库单
-            for (SalesOutboundItem item : salesOutboundItemList){
+            for (SalesOutboundItem item : salesOutboundItemList) {
                 //只查询订单编号
                 String outOrderNo = bqf.selectFrom(qSalesOutbound)
                         .select(qSalesOutbound.orderNo)
@@ -190,7 +191,7 @@ public class SalesOrderService extends AbsService {
                 salesOrderItemRepository.saveAll(salesOrderItemList);
             }
             return update;
-        }else{
+        } else {
             //销售订单状态初始化
             salesOrder.setOrderStatus(OrderStatus.已保存);
             //初始化订单状态;
@@ -303,11 +304,14 @@ public class SalesOrderService extends AbsService {
         }
         SalesOrder salesOrder = salesOrderForm.getSalesOrder();
         salesOrders.forEach(order -> {
+            if (order.getOrderStatus().equals(OrderStatus.已审核)) {
+                throw new InvalidContextException("批量审核时发现已审核单据,请选择正确的数据");
+            }
             OrderStatus orderStatus = salesOrderForm.getOrderStatus();
             if (orderStatus.equals(OrderStatus.已保存)) {
                 //已关联销售出库单不能审核
                 Long salesOrderId = order.getId();
-                if (salesOrderId != null){
+                if (salesOrderId != null) {
                     //根据销售单id查询销售出库单商品
                     List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
                             .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
@@ -317,6 +321,45 @@ public class SalesOrderService extends AbsService {
                     }
                 }
             }
+            List<SalesOrderItem> salesOrderItems = bqf.selectFrom(qSalesOrderItem)
+                    .where(qSalesOrderItem.salesOrderId.eq(order.getId()))
+                    .fetch();
+
+            for (SalesOrderItem item : salesOrderItems) {
+                Long productId = item.getProductId();
+                Long warehouseId = item.getWarehouseId();
+                Double quantity = item.getQuantity();
+
+                Inventory inventory = bqf.selectFrom(qInventory)
+                        .where(qInventory.productId.eq(productId)
+                                .and(qInventory.warehouseId.eq(warehouseId))
+                                .and(qInventory.accountBookId.eq(order.getAccountBookId())))
+                        .fetchOne();
+                Product product = bqf.selectFrom(qProduct)
+                        .where(qProduct.id.eq(productId))
+                        .fetchOne();
+                if (product==null){
+                    throw new InvalidContextException("产品不存在");
+                }
+                Warehouse warehouse = bqf.selectFrom(qWarehouse)
+                        .where(qWarehouse.id.eq(warehouseId))
+                        .fetchOne();
+                if (warehouse==null){
+                    throw new InvalidContextException("仓库不存在");
+                }
+                if (inventory == null) {
+                    String productName = product.getName();
+                    String warehouseName = warehouse.getName();
+                    throw new InvalidContextException("仓库中没有该产品的库存: 产品=" + productName + ", 仓库=" + warehouseName);
+                }
+                if (quantity > inventory.getCurrentQuantity()) {
+                    String productName = product.getName();
+                    String warehouseName = warehouse.getName();
+                    throw new InvalidContextException("库存不足: 产品=" + productName + ", 仓库=" + warehouseName +
+                            ", 需要数量=" + quantity + ", 当前库存=" + inventory.getCurrentQuantity());
+                }
+            }
+
             order.setOrderStatus(orderStatus);
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(salesOrder.getApprovedBy());
@@ -333,12 +376,12 @@ public class SalesOrderService extends AbsService {
         if (original.getId() == null) {
             throw new IllegalArgumentException("单据不存在");
         }
-        //反审核
+
+        // 反审核
         OrderStatus orderStatus = salesOrder.getOrderStatus();
         if (orderStatus.equals(OrderStatus.已保存)) {
-            //已关联销售出库单不能审核
+            // 已关联销售出库单不能反审核
             Long salesOrderId = original.getId();
-            //根据销售单id查询销售出库单商品
             List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
                     .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
                     .fetch();
@@ -346,12 +389,52 @@ public class SalesOrderService extends AbsService {
                 throw new InvalidContextException("已关联销售出库单不能反审核");
             }
         }
+
+        List<SalesOrderItem> salesOrderItems = bqf.selectFrom(qSalesOrderItem)
+                .where(qSalesOrderItem.salesOrderId.eq(original.getId()))
+                .fetch();
+
+        for (SalesOrderItem item : salesOrderItems) {
+            Long productId = item.getProductId();
+            Long warehouseId = item.getWarehouseId();
+            Double quantity = item.getQuantity();
+
+            Inventory inventory = bqf.selectFrom(qInventory)
+                    .where(qInventory.productId.eq(productId)
+                            .and(qInventory.warehouseId.eq(warehouseId))
+                            .and(qInventory.accountBookId.eq(original.getAccountBookId())))
+                    .fetchOne();
+
+            Product product = bqf.selectFrom(qProduct)
+                    .where(qProduct.id.eq(productId))
+                    .fetchOne();
+            if (product == null) {
+                throw new InvalidContextException("产品不存在");
+            }
+
+            Warehouse warehouse = bqf.selectFrom(qWarehouse)
+                    .where(qWarehouse.id.eq(warehouseId))
+                    .fetchOne();
+            if (warehouse == null) {
+                throw new InvalidContextException("仓库不存在");
+            }
+
+            if (inventory == null) {
+                throw new InvalidContextException("仓库中没有该产品的库存: 产品=" + product.getName() + ", 仓库=" + warehouse.getName());
+            }
+
+            if (quantity > inventory.getCurrentQuantity()) {
+                throw new InvalidContextException("库存不足: 产品=" + product.getName() + ", 仓库=" + warehouse.getName() +
+                        ", 需要数量=" + quantity + ", 当前库存=" + inventory.getCurrentQuantity());
+            }
+        }
+
         original.setApprovedAt(LocalDateTime.now());
         original.setApprovedBy(salesOrder.getApprovedBy());
-        original.setOrderStatus(salesOrder.getOrderStatus());
-        //审核单据
+        original.setOrderStatus(orderStatus);
         salesOrderRepository.save(original);
     }
+
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

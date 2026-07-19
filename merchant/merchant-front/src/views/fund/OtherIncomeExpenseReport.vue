@@ -1,147 +1,206 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
-        <Button @click="addForm()" color="primary">新 增</Button>
-        <Button>审 核</Button>
-      </template>
-      <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
-                placeholder="审核状态："/>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期：</span>
-          <DateRangePicker v-model="dateRange"></DateRangePicker>
-        </div>
-        <Search v-model.trim="params.filter"
-                show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/客户名称" @search="doSearch">
-          <t-icon name="search" />
-        </Search>
-      </template>
-    </vxe-toolbar>
-    <div class="flex1">
-      <vxe-table row-id="id"
-                 ref="table"
-                 height="auto"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 show-footer
-                 :footer-method="footerMethod"
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :sort-config="{remote:true}"
-                 :loading="loading">
-        <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="操作" align="center" width="120">
-          <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="showForm('add',row.id)">编辑</span>
-            <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
-          </template>
-        </vxe-column>
-        <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="code" width="200"/>
-        <vxe-column title="关联销售出库单" field="code" width="200"/>
-        <vxe-column title="客户" field="customerName" min-width="120"/>
-        <vxe-column title="销售金额" field="totalAmount" width="120"/>
-        <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-        <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        <vxe-column title="制单人" field="createDate" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createDate" align="center" width="100"/>
-        <vxe-column title="审核状态" field="orderStatus" width="80"/>
-
-      </vxe-table>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-date-range-picker
+            v-model="dateRangeValue"
+            clearable
+            allow-input
+            placeholder="单据日期"
+            style="width: 260px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.orderStaffId"
+            :options="orderStaffList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            placeholder="选择业务员"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.type"
+            :options="typeOptions"
+            placeholder="选择单据类型"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
     </div>
-    <div class="flex justify-between items-center pt-5px">
-      <vxe-pager perfect @page-change="loadList(false)"
-                 v-model:current-page="pagination.page"
-                 v-model:page-size="pagination.pageSize"
-                 :total="pagination.total"
-                 :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
-        <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
-                      :loading="loading"></vxe-button>
-        </template>
-      </vxe-pager>
+    <div class="simple-page__table">
+      <t-table
+          row-key="rowKey"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="tableData"
+          :columns="columns"
+          :loading="loading"
+          :foot-data="footData"
+      />
+    </div>
+    <div class="simple-page__pager">
+      <span class="simple-page__total">{{ amountName }}合计：{{ amountTotal }}元</span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
 <script>
-import manba from "manba";
-import OtherIncome from "@js/api/fund/OtherIncome";
-import {mapMutations} from "vuex";
+import manba from 'manba';
+import { mapMutations } from 'vuex';
+import OrderStaff from '@js/api/basic/OrderStaff';
+import AccountFlow from '@js/api/fund/AccountFlow';
 
-const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
-const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
+const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-DD');
+const endTime = manba().endOf(manba.DAY).format('YYYY-MM-DD');
 
+/**
+ * @功能描述: 其他收支明细报表
+ */
 export default {
-  name: "OtherIncomeExpenseReport",
+  name: 'OtherIncomeExpenseReport',
   data() {
     return {
       dataList: [],
-      loading: false,
-      amountTotal: 0,
-      totalParams: {},
+      orderStaffList: [],
       pagination: {
         page: 1,
         pageSize: 20,
         total: 0
       },
+      loading: false,
+      amountName: '收入金额',
+      amountTotal: '0.00',
       params: {
-        filter: null,
-        state: null,
-        sortCol: null,
-        sort: null,
+        type: 1,
+        orderStaffId: null
       },
-      dateRange: {
-        start: manba(startTime).format("YYYY-MM-dd"),
-        end: manba(endTime).format("YYYY-MM-dd")
-      },
-    }
+      dateRangeValue: [startTime, endTime],
+      typeOptions: [
+        { label: '其他收入', value: 1 },
+        { label: '其他支出', value: 2 }
+      ]
+    };
   },
   computed: {
+    columns() {
+      return [
+        { colKey: 'documentNumber', title: '单据编号', align: 'center', ellipsis: true },
+        { colKey: 'date', title: '日期', align: 'center', width: 130 },
+        { colKey: 'amount', title: this.amountName, align: 'right', width: 130 },
+        { colKey: 'accountType', title: '收支类别', align: 'center', minWidth: 120 },
+        { colKey: 'businessPartner', title: '往来单位', align: 'center', minWidth: 120, ellipsis: true },
+        { colKey: 'staffName', title: '业务员', align: 'center', minWidth: 120 },
+      ];
+    },
     queryParams() {
-      return Object.assign(this.params, {
+      const [start, end] = this.dateRangeValue || [];
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
-      })
+        startTime: start || null,
+        endTime: end || null
+      });
     },
+    tableData() {
+      return (this.dataList || []).map((row, index) => ({
+        ...row,
+        rowKey: `${row.documentNumber || ''}_${row.date || ''}_${index}`
+      }));
+    },
+    footData() {
+      const total = (this.dataList || []).reduce((acc, row) => acc + Number(row.amount || 0), 0);
+      return [{
+        documentNumber: '合计',
+        amount: total.toFixed(2),
+      }];
+    }
   },
   methods: {
     ...mapMutations(['pushTab']),
-    footerMethod({columns, data}) {
-      let sums = [];
-      columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              total += Number(rd || 0);
-            }
-          });
-          sums.push(total.toFixed(2));
-        }
-      })
-      return [["", "", "", "", "", ""].concat(sums)];
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
     },
     doSearch() {
+      this.amountName = this.params.type == 2 ? '支出金额' : '收入金额';
       this.pagination.page = 1;
       this.loadList();
     },
-    loadList(type = true) {
+    loadList() {
       this.loading = true;
-      OtherIncome.list(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results || [];
-        this.pagination.total = total;
-      }).finally(() => this.loading = false);
+      AccountFlow.otherFundDetails(this.queryParams)
+        .then(({ data: { results, total } }) => {
+          this.dataList = results || [];
+          this.pagination.total = total;
+          const amountTotal = this.dataList.reduce((acc, row) => acc + Number(row.amount || 0), 0);
+          this.amountTotal = amountTotal.toFixed(2);
+        })
+        .finally(() => (this.loading = false));
     },
+    loadOrderStaff() {
+      OrderStaff.orderStaffList().then(({ data }) => {
+        this.orderStaffList = data || [];
+      });
+    }
   },
   created() {
     this.loadList();
+    this.loadOrderStaff();
   }
-}
+};
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
+}
+</style>

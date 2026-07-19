@@ -1,46 +1,49 @@
 <template>
-  <div class="frame-page" style="margin: 0">
-    <div class="h-panel">
-      <div class="h-panel-body">
-        <div class="table-toolbar">
-          <div class="table-toolbar-left">
-            <div class="h-input-group">
-              <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入角色名称"/>
-              <span class="h-input-addon" @click="doSearch" :loading="loading"><t-icon name="search" /></span>
-            </div>
-          </div>
-          <div class="table-toolbar-right">
-            <Button @click="showForm()" color="primary">新 增</Button>
-          </div>
-        </div>
-        <vxe-table row-id="id"
-                   ref="table"
-                   :data="dataList"
-                   highlight-hover-row
-                   show-overflow
-                   :row-config="{height: 48}"
-                   :column-config="{resizable: true}"
-                   :loading="loading">
-          <vxe-column type="seq" width="40" title="#"/>
-          <vxe-column title="名称" field="name"/>
-          <vxe-column title="是否默认" field="systemDefault" width="100" align="center">
-            <template #default="{row:{systemDefault}}">
-              <Tag color="primary" v-if="systemDefault">是</Tag>
-              <Tag color="gray" v-else>否</Tag>
-            </template>
-          </vxe-column>
-          <vxe-column title="操作" align="center" width="300">
-            <template #default="{row}">
-              <div class="flex items-center justify-center" v-if="!row.systemDefault">
-                <span class="primary-color text-hover" @click="showGrantMenu(row)">可用菜单</span>
-                <t-icon name="edit" class="primary-color ml-10px" @click="showForm(row)" />
-                <t-icon name="delete" class="primary-color ml-10px" @click="doRemove(row)" />
-              </div>
-            </template>
-          </vxe-column>
-        </vxe-table>
-        <!--        <Pagination align="right" class="mt-16px" v-model="pagination" @change="pageChange" small/>-->
-      </div>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
+        <t-input
+            v-model="params.name"
+            clearable
+            placeholder="请输入角色名称"
+            style="width: 240px; border-radius: 4px"
+            @enter="doSearch"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
+          </template>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
+    </div>
+
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="auto"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+      >
+        <template #systemDefault="{ row }">
+          <t-tag :theme="row.systemDefault ? 'primary' : 'default'" variant="light">
+            {{ row.systemDefault ? '是' : '否' }}
+          </t-tag>
+        </template>
+        <template #ops="{ row }">
+          <t-space v-if="!row.systemDefault" size="small">
+            <t-link theme="primary" @click="showGrantMenu(row)">可用菜单</t-link>
+            <t-link theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
+            <t-link theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
+          </t-space>
+        </template>
+      </t-table>
     </div>
   </div>
 </template>
@@ -74,12 +77,17 @@ export default {
         page: 1,
         size: 20,
         total: 0
-      }
+      },
+      columns: [
+        {colKey: 'name', title: '名称', minWidth: 160, ellipsis: true},
+        {colKey: 'systemDefault', title: '是否默认', width: 100, align: 'center'},
+        {colKey: 'ops', title: '操作', width: 200, align: 'center', fixed: 'right'}
+      ]
     }
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.size
       })
@@ -130,9 +138,6 @@ export default {
     pageChange() {
       this.loadList();
     },
-    tableCheck() {
-      this.checkedRows = this.$refs.table.getCheckboxRecords();
-    },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
@@ -155,3 +160,28 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+</style>

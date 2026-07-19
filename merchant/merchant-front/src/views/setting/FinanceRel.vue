@@ -1,80 +1,78 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <div class="flex1" style="width: 980px;margin: 0 auto">
-      <vxe-table
-          ref="table"
-          :data="dataList"
-          highlight-hover-row
-          border
-          show-overflow
-          :loading="loading">
-        <vxe-column title="关联状态" width="100">
-          <template #default="{row}">
-            <div>{{ row.linkStatus }}</div>
+  <div class="simple-page">
+    <div class="simple-page__body">
+      <div class="simple-page__table">
+        <t-table
+            row-key="id"
+            size="medium"
+            bordered
+            stripe
+            hover
+            height="100%"
+            table-layout="auto"
+            :data="dataList"
+            :columns="columns"
+            :loading="loading"
+        >
+          <template #linkStatus="{ row }">
+            {{ row.linkStatus }}
           </template>
-        </vxe-column>
-        <vxe-column title="进销存软件账套" field="accountBookName" min-width="150"/>
-        <vxe-column title="财务软件帐套" field="financeAccountName" min-width="150"/>
-        <vxe-column title="操作" align="center" width="300" fixed="right">
-          <template #default="{row}">
-            <template v-if="row.linkStatus==='关联'">
-              <div class="flex items-center justify-center">
-                <span class=" primary-color text-hover ml-10px" @click="showForm(row.id)" size="s">编辑</span>
-                <!--                <span class=" primary-color text-hover ml-10px" @click="showForm(row.id)" size="s">进入云财务账套</span>-->
-              </div>
-            </template>
-            <template v-else>
-              <div class="flex items-center justify-center">
-                <span class=" primary-color text-hover ml-10px" @click="showForm(row.id)" size="s">关联云财务</span>
-              </div>
-            </template>
+          <template #ops="{ row }">
+            <t-space size="small">
+              <template v-if="row.linkStatus === '关联'">
+                <t-link theme="primary" @click="showForm(row.id)">编辑</t-link>
+              </template>
+              <template v-else>
+                <t-link theme="primary" @click="showForm(row.id)">关联云财务</t-link>
+              </template>
+            </t-space>
           </template>
-        </vxe-column>
-      </vxe-table>
-      <div class="mt-10px">
-        <div class="mb-10px" style="font-weight: bold">操作指引:</div>
-        <div class="flex w-900px" style="text-align: center;margin: 0 auto">
-          <div class="w-150px p-10px bg-gray4-color br" @click="showForm()">
-            <div class="pt-20px">
-              <t-icon name="link" :size="40" />
+        </t-table>
+      </div>
+
+      <div class="guide">
+        <div class="guide__title">操作指引:</div>
+        <div class="guide__steps">
+          <div class="guide__card" @click="showForm()">
+            <div class="guide__icon">
+              <t-icon name="link" :size="40"/>
             </div>
-            <div class="p-10px" style="font-weight: bold">关联财务帐套</div>
-            <div class="pb-20px" style="text-align: left;color: gray;font-size: small">
+            <div class="guide__name">关联财务帐套</div>
+            <div class="guide__desc">
               只有同时拥有财务软件和进销存的账套管理员才有权限设置关联
             </div>
           </div>
-          <div class="m-10px icon-center">
-            <t-icon name="chevron-right" :size="50" color="gainsboro" />
+          <div class="guide__arrow">
+            <t-icon name="chevron-right" :size="50" color="gainsboro"/>
           </div>
-          <div class="w-150px p-10px bg-gray4-color br" @click="templateConfig">
-            <div class="pt-20px">
-              <t-icon name="setting" :size="40" />
+          <div class="guide__card" @click="templateConfig">
+            <div class="guide__icon">
+              <t-icon name="setting" :size="40"/>
             </div>
-            <div class="p-10px" style="font-weight: bold">进销存凭证模板</div>
-            <div class="pb-20px" style="text-align: left;color: gray;font-size: small">检查确定进销存核算参数的设置
-            </div>
+            <div class="guide__name">进销存凭证模板</div>
+            <div class="guide__desc">检查确定进销存核算参数的设置</div>
           </div>
-          <div class="m-10px icon-center ">
-            <t-icon name="chevron-right" :size="50" color="gainsboro" />
+          <div class="guide__arrow">
+            <t-icon name="chevron-right" :size="50" color="gainsboro"/>
           </div>
-          <div class="w-150px p-10px bg-gray4-color br" @click="itemMapping">
-            <div class="pt-20px">
-              <t-icon name="setting" :size="40" />
+          <div class="guide__card" @click="itemMapping">
+            <div class="guide__icon">
+              <t-icon name="setting" :size="40"/>
             </div>
-            <div class="p-10px" style="font-weight: bold">进销存辅助资料</div>
-            <div class="pb-20px" style="text-align: left;color: gray;font-size: small">
+            <div class="guide__name">进销存辅助资料</div>
+            <div class="guide__desc">
               设置进销存基础资料与财务软件账套的会计科目之间的对应关系
             </div>
           </div>
-          <div class="m-10px icon-center">
-            <t-icon name="chevron-right" :size="50" color="gainsboro" />
+          <div class="guide__arrow">
+            <t-icon name="chevron-right" :size="50" color="gainsboro"/>
           </div>
-          <div class="w-150px p-10px bg-gray4-color br" @click="toVoucher">
-            <div class="pt-20px">
-              <t-icon name="check" :size="40" />
+          <div class="guide__card" @click="toVoucher">
+            <div class="guide__icon">
+              <t-icon name="check" :size="40"/>
             </div>
-            <div class="p-10px" style="font-weight: bold">生成凭证</div>
-            <div class="pb-20px" style="text-align: left;color: gray;font-size: small">选择进销存单据生成凭证</div>
+            <div class="guide__name">生成凭证</div>
+            <div class="guide__desc">选择进销存单据生成凭证</div>
           </div>
         </div>
       </div>
@@ -93,7 +91,6 @@ import {ObjectUtil} from "../../js/common/utils";
 import FinanceItemMap from "./FinanceItemMap.vue";
 import Voucher from "./Voucher.vue";
 
-
 export default {
   name: "FinanceRel",
   props: {
@@ -103,6 +100,12 @@ export default {
     return {
       loading: false,
       dataList: [],
+      columns: [
+        {colKey: 'linkStatus', title: '关联状态', width: 100},
+        {colKey: 'accountBookName', title: '进销存软件账套', minWidth: 150, ellipsis: true},
+        {colKey: 'financeAccountName', title: '财务软件帐套', minWidth: 150, ellipsis: true},
+        {colKey: 'ops', title: '操作', width: 160, align: 'center', fixed: 'right'}
+      ]
     }
   },
   methods: {
@@ -176,8 +179,7 @@ export default {
     loadList() {
       this.loading = true;
       FinanceAccountLink.list().then(({data}) => {
-        console.log(data);
-        this.dataList = data;
+        this.dataList = data || [];
       }).finally(() => this.loading = false);
     },
   },
@@ -186,18 +188,90 @@ export default {
   }
 }
 </script>
-<style>
-.icon-center {
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.cw-content :hover {
+.simple-page__body {
+  width: 980px;
+  max-width: 100%;
+  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.guide {
+  flex-shrink: 0;
+  margin-top: 10px;
+}
+
+.guide__title {
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.guide__steps {
+  display: flex;
+  width: 900px;
+  max-width: 100%;
+  margin: 0 auto;
+  text-align: center;
+  align-items: stretch;
+}
+
+.guide__card {
+  width: 150px;
+  padding: 10px;
+  background: var(--td-bg-color-secondarycontainer, #f3f3f3);
+  border-radius: 10px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.guide__card:hover {
   border: 1px solid #3d74ff;
 }
 
-.br {
-  border-radius: 10px
+.guide__icon {
+  padding-top: 20px;
+}
+
+.guide__name {
+  padding: 10px;
+  font-weight: bold;
+}
+
+.guide__desc {
+  padding-bottom: 20px;
+  text-align: left;
+  color: gray;
+  font-size: small;
+}
+
+.guide__arrow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 10px;
 }
 </style>

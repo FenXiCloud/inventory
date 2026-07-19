@@ -1,123 +1,70 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">单据日期:</span>
-          <DateRangePicker v-model="dateRange"></DateRangePicker>
-        </div>
-
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">业务员</span>
-          <Select
-            ref="selectRef"
-            style="z-index: 1"
-            v-model="params.orderStaffName"
-            class="w-120px"
-            :datas="orderStaffList"
-            keyName="name"
-            titleName="name"
-            placeholder="选择业务员"
-            :filterable="true"
-            @change="selectOrderStaff($event)"
-          >
-            <!-- <template #bottom>
-              <Button no-border icon="add" @click="addOrderStaff()"
-                >新建</Button
-              >
-            </template> -->
-          </Select>
-        </div>
-
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">类型</span>
-          <Select
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-date-range-picker
+            v-model="dateRangeValue"
+            clearable
+            allow-input
+            placeholder="单据日期"
+            style="width: 260px; border-radius: 4px"
+        />
+        <t-select
             v-model="params.type"
-            class="w-180px"
-            :datas="{ 1: '其他收入', 2: '其他支出' }"
-            placeholder="选择单据类型"
-          />
-        </div>
-      </template>
-      <template #tools>
-        <Button color="primary" @click="doSearch">查询</Button>
-      </template>
-    </vxe-toolbar>
-    <div class="flex1">
-      <vxe-table
-        row-id="id"
-        ref="table"
-        height="auto"
-        :data="dataList"
-        highlight-hover-row
-        show-overflow
-        show-footer
-        :footer-method="footerMethod"
-        :row-config="{ height: 48 }"
-        :column-config="{ resizable: true }"
-        :sort-config="{ remote: true }"
-        :loading="loading"
-      >
-        <!-- <vxe-column type="checkbox" width="40" align="center" /> -->
-        <vxe-column title="单据编号" field="documentNumber" align="center">
-        </vxe-column>
-        <vxe-column title="日期" field="date" align="center"></vxe-column>
-        <!-- <vxe-column title="往来单位" field="businessPartner" align="center" /> -->
-        <vxe-column
-          :title="amountName"
-          field="amount"
-          align="center"
-          width="130"
-        >
-        </vxe-column>
-        <vxe-column title="收支类别" field="accountType" align="center" />
-        <vxe-column title="业务员" field="staffName" align="center" />
-      </vxe-table>
+            :options="typeOptions"
+            placeholder="单据类型"
+            style="width: 140px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.orderStaffId"
+            :options="orderStaffList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            placeholder="选择业务员"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
     </div>
-    <div class="justify-between items-center pt-5px">
-      <vxe-pager
-        perfect
-        @page-change="loadList(false)"
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :layouts="[
-          'PrevJump',
-          'PrevPage',
-          'Number',
-          'NextPage',
-          'NextJump',
-          'Sizes',
-          'Total'
-        ]"
-      >
-        <template #left>
-          <vxe-button
-            @click="loadList(false)"
-            type="text"
-            size="mini"
-            icon="vxe-icon-refresh"
-            :loading="loading"
-          ></vxe-button>
-        </template>
-      </vxe-pager>
+    <div class="simple-page__table">
+      <t-table
+          row-key="rowKey"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="tableData"
+          :columns="columns"
+          :loading="loading"
+          :foot-data="footData"
+      />
+    </div>
+    <div class="simple-page__pager">
+      <span class="simple-page__total">{{ amountName }}合计：{{ amountTotal }}元</span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
 <script>
 import manba from 'manba';
-import { mapMutations } from 'vuex';
+import { MessagePlugin } from 'tdesign-vue-next';
 import OrderStaff from '@js/api/basic/OrderStaff';
 import AccountFlow from '@js/api/fund/AccountFlow';
-import Supplier from '@js/api/basic/Supplier';
-import Warehouse from '@js/api/basic/Warehouse';
-import { LoadingPlugin } from 'tdesign-vue-next';
-import Product from '@js/api/basic/Product';
-import ProductCategory from '@js/api/basic/ProductCategory';
-import SupplierCategory from '@js/api/basic/SupplierCategory';
 
-const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
-const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
+const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-DD');
+const endTime = manba().endOf(manba.DAY).format('YYYY-MM-DD');
+const money = (v) => Number(v || 0).toFixed(2);
 
 export default {
   name: 'otherIncome',
@@ -125,100 +72,126 @@ export default {
     return {
       dataList: [],
       orderStaffList: [],
-      pagination: {
-        page: 1,
-        pageSize: 20,
-        total: 0
-      },
+      pagination: { page: 1, pageSize: 20, total: 0 },
       loading: false,
       amountName: '收入金额',
-      params: {
-        type: 1
-      },
-      dateRange: {
-        start: manba(startTime).format('YYYY-MM-dd'),
-        end: manba(endTime).format('YYYY-MM-dd')
-      }
+      amountTotal: '0.00',
+      params: { type: 1, orderStaffId: null },
+      dateRangeValue: [startTime, endTime],
+      typeOptions: [
+        { label: '其他收入', value: 1 },
+        { label: '其他支出', value: 2 }
+      ]
     };
   },
   computed: {
+    columns() {
+      return [
+        { colKey: 'date', title: '日期', width: 120, align: 'center' },
+        { colKey: 'documentNumber', title: '单据编号', minWidth: 180, ellipsis: true },
+        { colKey: 'accountType', title: '收支类别', minWidth: 120, ellipsis: true },
+        { colKey: 'businessPartner', title: '往来单位', minWidth: 140, ellipsis: true },
+        { colKey: 'staffName', title: '业务员', width: 110, align: 'center' },
+        { colKey: 'amount', title: this.amountName, width: 130, align: 'right' },
+      ];
+    },
     queryParams() {
-      return Object.assign(this.params, {
+      const [start, end] = this.dateRangeValue || [];
+      return {
+        ...this.params,
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        startTime: this.dateRange.start,
-        endTime: this.dateRange.end
-      });
+        startTime: start || null,
+        endTime: end || null
+      };
+    },
+    tableData() {
+      return (this.dataList || []).map((row, index) => ({
+        ...row,
+        rowKey: `${row.documentNumber || ''}_${index}`,
+        amount: money(row.amount)
+      }));
+    },
+    footData() {
+      const total = money((this.dataList || []).reduce((acc, row) => acc + Number(row.amount || 0), 0));
+      return [{ documentNumber: '合计', amount: total }];
     }
   },
   methods: {
-    ...mapMutations(['pushTab']),
-    footerMethodFormat({ columns, data }, list, totalName) {
-      // 初始化合计行，默认所有列为空字符串
-      const footerRow = new Array(columns.length).fill('');
-
-      // 设置第一列为“合计”
-      footerRow[0] = '合计';
-
-      // 遍历列，仅对需要合计的字段进行计算
-      columns.forEach((column, index) => {
-        if (list.includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            const value = parseFloat(row[column.property]);
-            if (!isNaN(value)) {
-              total += value;
-            }
-          });
-          footerRow[index] = total.toFixed(2); // 将合计值放入对应位置
-
-          this[totalName] = total;
-        }
-      });
-
-      // this.form.collectionAmount = this.calcCollectionAmount();
-
-      return [footerRow]; // 返回二维数组用于渲染 footer
-    },
-    footerMethod({ columns, data }) {
-      return [[]];
-      // return this.footerMethodFormat({ columns, data }, ['amount'], 'totalTb1');
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
     },
     doSearch() {
-      if (this.params.type == 1) {
-        this.amountName = '收入金额';
-      } else if (this.params.type == 2) {
-        this.amountName = '支出金额';
+      if (!this.params.type) {
+        return MessagePlugin.warning('请选择单据类型');
       }
+      this.amountName = this.params.type == 2 ? '支出金额' : '收入金额';
       this.pagination.page = 1;
       this.loadList();
     },
-
-    loadList(type = true) {
+    loadList() {
       this.loading = true;
       AccountFlow.otherFundDetails(this.queryParams)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
-          this.pagination.total = total;
+          this.pagination.total = total || 0;
+          this.amountTotal = money(this.dataList.reduce((acc, row) => acc + Number(row.amount || 0), 0));
         })
         .finally(() => (this.loading = false));
     },
-    //加载业务员列表
     loadOrderStaff() {
-      OrderStaff.orderStaffList()
-        .then(({ data }) => {
-          this.orderStaffList = data || [];
-          // this.pagination.total = total;
-        })
-        .finally();
-    },
-    selectOrderStaff(e) {
-      this.params.orderStaffId = e?.id || null;
+      OrderStaff.orderStaffList().then(({ data }) => {
+        this.orderStaffList = data || [];
+      });
     }
   },
   created() {
-    this.loadList();
     this.loadOrderStaff();
+    this.loadList();
   }
 };
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
+}
+</style>

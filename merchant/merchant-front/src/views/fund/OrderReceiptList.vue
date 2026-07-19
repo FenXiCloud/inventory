@@ -1,351 +1,261 @@
 <template>
-  <div class="frame-page flex flex-column" style="height: auto !important">
-    <vxe-toolbar class-name="!size--mini">
-      <template #tools>
-        <Stamp v-if="form.orderStatus === '已审核'" />
-      </template>
-    </vxe-toolbar>
-    <vxe-toolbar>
-      <template #buttons>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">
-            <span style="color: red">*</span>客户</span
-          >
-
-          <div style="position: relative">
-            <Select
-              v-model="form.customerName"
-              class="w-120px z-index-1"
-              :datas="customerDataList"
-              keyName="name"
-              titleName="name"
-              placeholder="选择客户"
-              :filterable="true"
-              @change="selectCustomer($event)"
-            >
-              <!-- <template #bottom>
-                <Button no-border icon="add" @click="addCustomer()"
-                  >新建</Button
-                >
-              </template> -->
-            </Select>
-          </div>
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">总欠款</span>
+  <div class="page-column">
+    <div class="page-column-full-body">
+      <vxe-toolbar class-name="!size--mini">
+        <template #buttons>
+          <label class="mr-20px" style="font-size: 16px !important">
+            <span style="color: red">*</span>客户：
+          </label>
+          <Select
+            v-model="form.customerName"
+            class="w-200px z-index-1"
+            :datas="customerDataList"
+            keyName="name"
+            titleName="name"
+            placeholder="请选择客户"
+            :filterable="true"
+            :disabled="isAudited"
+            @change="selectCustomer($event)"
+          />
+          <label class="mr-20px ml-16px" style="font-size: 16px !important">总欠款：</label>
           <Input v-model="form.totalAmountsOwed" class="w-120px" disabled />
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">业务员</span>
+          <label class="mr-20px ml-16px" style="font-size: 16px !important">业务员：</label>
           <Select
             ref="selectRef"
             style="z-index: 1"
             v-model="form.orderStaffName"
-            class="w-120px"
+            class="w-140px"
             :datas="orderStaffList"
             keyName="name"
             titleName="name"
             placeholder="选择业务员"
             :filterable="true"
+            :disabled="isAudited"
             @change="selectOrderStaff($event)"
           >
             <template #bottom>
-              <Button no-border icon="add" @click="addOrderStaff()"
-                >新建</Button
-              >
+              <Button no-border icon="add" @click="addOrderStaff()">新建</Button>
             </template>
           </Select>
-        </div>
+          <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
+          <DatePicker
+            class="w-140px"
+            v-model="form.orderDate"
+            :clearable="false"
+            :disabled="isAudited"
+          />
+        </template>
+        <template #tools>
+          <Stamp v-if="isAudited" />
+        </template>
+      </vxe-toolbar>
 
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期</span>
-          <DatePicker class="w-120px" v-model="form.orderDate"></DatePicker>
-          <!-- <DateRangePicker v-model="dateRange"></DateRangePicker> -->
-        </div>
-      </template>
-
-      <template #tools>
-        <Button
-          v-if="form.orderStatus != '已审核'"
-          @click="saveForm('add')"
-          color="primary"
-          >保存并新增</Button
-        >
-        <Button
-          v-if="form.orderStatus != '已审核'"
-          @click="saveForm('save')"
-          color="primary"
-          >保 存</Button
-        >
-        <Button
-          v-if="form.orderStatus == '已保存'"
-          @click="saveForm('audit', '已审核')"
-          >审 核</Button
-        >
-        <Button
-          v-if="form.orderStatus == '已审核'"
-          @click="batchAudit('已保存')"
-          >反审核</Button
-        >
-      </template>
-    </vxe-toolbar>
-
-    <div class="flex1">
       <vxe-table
+        ref="collectionTable"
+        size="mini"
         border
+        stripe
         show-overflow
-        :edit-config="editConfig"
+        :row-config="{ height: 40 }"
+        :edit-config="isAudited ? undefined : editConfig"
         :data="tableData"
         :show-footer="showFooter"
         :footer-method="footerMethod"
       >
-        <vxe-column type="seq" width="70" fixed="left"></vxe-column>
-        <vxe-column
-          title="操作"
-          field="seq"
-          width="70"
-          align="center"
-          fixed="left"
-        >
+        <vxe-column type="seq" title="序号" width="60" align="center" fixed="left" />
+        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
           <template #default="{ rowIndex }">
-            <div
-              class="fa fa-plus text-hover mr-5px"
-              @click="adjustRows('insert', rowIndex, tableData)"
-            ></div>
-            <div
-              class="fa fa-minus text-hover"
-              v-if="canDelete(tableData)"
-              @click="adjustRows('delete', rowIndex, tableData)"
-            ></div>
+            <template v-if="!isAudited">
+              <div
+                class="fa fa-plus text-hover mr-5px"
+                @click="adjustRows('insert', rowIndex, tableData)"
+              ></div>
+              <div
+                class="fa fa-minus text-hover"
+                v-if="canDelete(tableData)"
+                @click="adjustRows('delete', rowIndex, tableData)"
+              ></div>
+            </template>
           </template>
         </vxe-column>
-        <vxe-column
-          field="settlementAccount"
-          title="结算账户"
-          :edit-render="{}"
-        >
+        <vxe-column field="settlementAccount" title="结算账户" min-width="140" :edit-render="{}">
           <template #header>
             <span style="color: red">*</span>结算账户
           </template>
           <template #default="{ row }">
-            <span> {{ row.settlementAccount }}</span>
+            <span>{{ row.settlementAccount }}</span>
           </template>
           <template #edit="{ row }">
             <vxe-select
-              @change="changeAccount(row.settlementAccount, row)"
               v-model="row.settlementAccount"
               placeholder="请选择"
               :multiple="false"
               transfer
+              @change="changeAccount(row.settlementAccount, row)"
             >
               <vxe-option
                 v-for="item in settlementAccount"
                 :key="item.id"
                 :value="item.name"
                 :label="item.name"
-              ></vxe-option>
+              />
             </vxe-select>
           </template>
         </vxe-column>
-        <vxe-column field="amount" title="收款金额" :edit-render="{}">
+        <vxe-column field="amount" title="收款金额" width="140" :edit-render="{}">
           <template #header>
             <span style="color: red">*</span>收款金额
           </template>
           <template #default="{ row }">
-            <span> {{ row.amount }}</span>
+            <span>{{ row.amount }}</span>
           </template>
           <template #edit="{ row }">
             <vxe-input
-              @change="updateFootEvent"
               v-model="row.amount"
               type="number"
               placeholder="请输入数值"
               min="0"
-            ></vxe-input>
+              @change="updateFootEvent"
+            />
           </template>
         </vxe-column>
-
-        <!-- <vxe-column field="num1" title="Number" :edit-render="{}">
-          <template #edit="{ row }">
-            <vxe-input
-              v-model="row.num1"
-              type="number"
-              placeholder="请输入数值"
-            ></vxe-input>
-          </template>
-        </vxe-column> -->
-        <vxe-column
-          field="paymentMethodName"
-          title="结算方式"
-          :edit-render="{}"
-        >
+        <vxe-column field="paymentMethodName" title="结算方式" min-width="120" :edit-render="{}">
           <template #default="{ row }">
-            <span> {{ row.paymentMethodName }}</span>
+            <span>{{ row.paymentMethodName }}</span>
           </template>
-
           <template #edit="{ row }">
             <vxe-select
-              @change="changePaymentMethod(row.paymentMethodName, row)"
               v-model="row.paymentMethodName"
               placeholder="请选择"
               :multiple="false"
               transfer
+              @change="changePaymentMethod(row.paymentMethodName, row)"
             >
               <vxe-option
                 v-for="item in paymentMethodList"
                 :key="item.id"
                 :value="item.name"
                 :label="item.name"
-              ></vxe-option>
+              />
             </vxe-select>
           </template>
         </vxe-column>
-        <!-- <vxe-column
-          title="结算号"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column> -->
-        <vxe-column
-          field="remarks"
-          title="备注"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column>
-        <vxe-column
-          field="theOnlineTransactionNumber"
-          title="在线交易单号"
-        ></vxe-column>
+        <vxe-column field="remarks" title="备注" min-width="120" :edit-render="{ name: 'input' }" />
+        <vxe-column field="theOnlineTransactionNumber" title="在线交易单号" min-width="160" />
       </vxe-table>
 
       <vxe-toolbar>
-        <template v-if="form.orderStatus != '已审核'" #tools>
-          <Button @click="sourceForm()" color="">选择源单</Button>
+        <template v-if="!isAudited" #tools>
+          <Button @click="sourceForm()">选择源单</Button>
           <Button @click="autoMatic()">自动核销</Button>
         </template>
       </vxe-toolbar>
+
       <vxe-table
         ref="table"
+        size="mini"
         border
-        :edit-config="editConfig"
+        stripe
         show-overflow
+        :row-config="{ height: 40 }"
+        :edit-config="isAudited ? undefined : editConfig"
         :data="tableData2"
         :show-footer="showFooter"
         :footer-method="footerMethod2"
       >
-        <vxe-column type="seq" width="70" fixed="left"></vxe-column>
+        <vxe-column type="seq" title="序号" width="60" align="center" fixed="left" />
         <vxe-column title="操作" field="seq" width="70" align="center">
           <template #default="{ rowIndex }">
-            <div
-              class="fa fa-plus text-hover mr-5px"
-              @click="adjustRows('insert', rowIndex, tableData2)"
-            ></div>
-            <div
-              class="fa fa-minus text-hover"
-              v-if="canDelete(tableData2)"
-              @click="adjustRows('delete', rowIndex, tableData2)"
-            ></div>
+            <template v-if="!isAudited">
+              <div
+                class="fa fa-plus text-hover mr-5px"
+                @click="adjustRows('insert', rowIndex, tableData2)"
+              ></div>
+              <div
+                class="fa fa-minus text-hover"
+                v-if="canDelete(tableData2)"
+                @click="adjustRows('delete', rowIndex, tableData2)"
+              ></div>
+            </template>
           </template>
         </vxe-column>
-        <vxe-column field="salesOrderNo" title="源单编号"></vxe-column>
-        <vxe-column field="businessType" title="业务类别"></vxe-column>
-        <vxe-column field="businessDate" title="单据日期"></vxe-column>
-        <!-- <vxe-column
-          title="收款到期日"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column> -->
-        <vxe-column field="documentAmount" title="单据金额"></vxe-column>
-        <vxe-column field="verifiedAmount" title="已核销金额"></vxe-column>
-        <vxe-column field="unverifiedAmount" title="未核销金额"></vxe-column>
-        <vxe-column
-          field="currentVerifyAmount"
-          title="本次核销金额"
-          :edit-render="{}"
-        >
+        <vxe-column field="salesOrderNo" title="源单编号" min-width="140" />
+        <vxe-column field="businessType" title="业务类别" width="110" align="center" />
+        <vxe-column field="businessDate" title="单据日期" width="120" align="center" />
+        <vxe-column field="documentAmount" title="单据金额" width="110" align="right" />
+        <vxe-column field="verifiedAmount" title="已核销金额" width="110" align="right" />
+        <vxe-column field="unverifiedAmount" title="未核销金额" width="110" align="right" />
+        <vxe-column field="currentVerifyAmount" title="本次核销金额" width="130" :edit-render="{}">
           <template #header>
             <span style="color: red">*</span>本次核销金额
           </template>
           <template #default="{ row }">
-            <span> {{ row.currentVerifyAmount }}</span>
+            <span>{{ row.currentVerifyAmount }}</span>
           </template>
           <template #edit="{ row }">
             <vxe-input
               v-model="row.currentVerifyAmount"
               type="number"
               :max="row.documentAmount"
-              @change="changeDiscountRate"
               min="0"
-            ></vxe-input>
+              @change="changeDiscountRate"
+            />
           </template>
         </vxe-column>
-        <vxe-column field="remarks" title="单据备注"></vxe-column>
+        <vxe-column field="remarks" title="单据备注" min-width="120" />
       </vxe-table>
+
       <div class="mt-10px"></div>
       <div class="filler-panel">
-        <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
-          <Textarea
+        <div class="filler-item">
+          <label class="mr-16px w-80px">备注说明：</label>
+          <Input
             placeholder="请输入备注"
             maxlength="150"
-            style="width: 100%"
             v-model="form.remarks"
+            :disabled="isAudited"
           />
+        </div>
+      </div>
+      <div class="filler-panel">
+        <div class="filler-item">
+          <label class="mr-16px w-80px">整单折扣：</label>
+          <Input
+            type="number"
+            v-model="form.discountRate"
+            min="0"
+            :disabled="isAudited"
+            @blur="changeDiscountRate"
+          />
+          <label class="ml-10px mr-16px w-100px">本单预收款：</label>
+          <Input disabled v-model="form.collectionAmount" />
+          <div class="receipt-extra-actions">
+            <Button @click="historyForm()">历史单据</Button>
+            <Button :title="logContent">操作日志</Button>
+          </div>
         </div>
       </div>
     </div>
 
-    <vxe-toolbar>
-      <template #buttons>
-        <div class="filler-panel">
-          <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
-            <label class="mr-16px w-80px">整单折扣:</label>
-            <Input
-              type="number"
-              v-model="form.discountRate"
-              @blur="changeDiscountRate"
-              min="0"
-            />
-
-            <label class="ml-10px w-90px">本单预收款:</label>
-            <Input disabled v-model="form.collectionAmount" />
-          </div>
-        </div>
-      </template>
-
-      <template #tools>
-        <Button @click="historyForm()" color="">历史单据</Button>
-        <!-- <vxe-tooltip theme="light" :content="logContent"> -->
-        <Button :title="logContent">操作日志</Button>
-        <!-- </vxe-tooltip> -->
-      </template>
-    </vxe-toolbar>
-
-    <div class="mb-10px"></div>
-    <!-- <div class="flex justify-between items-center pt-5px">
-      <vxe-pager
-        perfect
-        @page-change="loadList(false)"
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :layouts="[
-          'PrevJump',
-          'PrevPage',
-          'Number',
-          'NextPage',
-          'NextJump',
-          'Sizes',
-          'Total'
-        ]"
-      >
-        <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-          <vxe-button
-            @click="loadList(false)"
-            type="text"
-            size="mini"
-            icon="vxe-icon-refresh"
+    <div class="page-column-footer modal-column-between bg-white-color border">
+      <Button :loading="loading" @click="closeWindow">取消</Button>
+      <div>
+        <template v-if="!isAudited">
+          <Button color="primary" :loading="loading" @click="saveForm('add')">保存并新增</Button>
+          <Button :loading="loading" @click="saveForm('save')">保存</Button>
+          <Button
+            v-if="form.orderStatus == '已保存'"
             :loading="loading"
-          ></vxe-button>
+            @click="saveForm('audit', '已审核')"
+          >审核</Button>
         </template>
-      </vxe-pager>
-    </div> -->
+        <Button
+          v-else
+          :loading="loading"
+          @click="batchAudit('已保存')"
+        >反审核</Button>
+      </div>
+    </div>
   </div>
 </template>
 <script>
@@ -405,7 +315,7 @@ export default {
 
       loading: false,
       amountTotal: 0,
-      // totalParams: {},
+      settlementAccount: [],
       pagination: {
         page: 1,
         pageSize: 100,
@@ -417,41 +327,16 @@ export default {
         sortCol: null,
         sort: null
       },
-
       showFooter: true,
-
       editConfig,
       accountOptions
     };
   },
-  watch: {
-    // currentTabData(newVal) {
-    //   console.log('tab 参数更新:', newVal);
-    //   // 在这里处理参数变化
-    // },
-    // 监听 store 中的 currentTabData
-    // '$store.state.currentTabReceiptRecord': {
-    //   handler(newVal) {
-    //     console.log('currentTabReceiptRecord changed:', newVal);
-    //     if (newVal && newVal.refresh) {
-    //       this.loadList();
-    //       // 重置刷新标志
-    //       this.$store.commit('SET_TAB_DATA_RECEIPTRECORD', null);
-    //     }
-    //   },
-    //   deep: true
-    // }
-  },
-
   computed: {
     ...mapState(['user']),
-    // currentTabData() {
-    //   const tab = this.$store.state.tabs.find(
-    //     (tab) => tab.key === this.$store.state.currentTab
-    //   );
-    //   return tab ? tab.params : {};
-    // },
-
+    isAudited() {
+      return this.form.orderStatus === '已审核';
+    },
     queryParams() {
       return Object.assign(this.params, {
         page: this.pagination.page,
@@ -461,6 +346,18 @@ export default {
   },
   methods: {
     ...mapMutations(['pushTab', 'closeSelfTab']),
+    closeWindow() {
+      this.closeSelfTab(this.index);
+      this.pushTab({
+        keepAlive: false,
+        key: 'OrderReceiptList',
+        title: '收款单'
+      });
+    },
+    updateFootEvent() {
+      this.$refs.collectionTable && this.$refs.collectionTable.updateFooter();
+      this.form.collectionAmount = this.calcCollectionAmount();
+    },
     getLog() {
       // this.logContent
       let {
@@ -493,18 +390,15 @@ export default {
         orderStatus: orderStatus,
         approvedBy: this.$store.state.user.admin.id
       };
+      const isAnti = orderStatus === '已保存';
       DialogPlugin.confirm({
-        content: `确定审核订单？`,
+        content: isAnti ? '确定反审核该收款单？' : '确定审核该收款单？',
         onConfirm: () => {
           OrderReceipt.batchAudit(params)
             .then((success) => {
               if (success) {
-                if (orderStatus === '已审核') {
-                  MessagePlugin.success('审核成功');
-                } else {
-                  MessagePlugin.success('反审核成功');
-                }
-                this.loadList(); // Refresh the list
+                MessagePlugin.success(isAnti ? '反审核成功' : '审核成功');
+                this.loadList();
               }
             })
             .finally(() => LoadingPlugin(false));
@@ -519,15 +413,9 @@ export default {
 
     updatePage(type = 'add', orderId = null) {
       this.closeSelfTab(this.index);
-      // this.pushTab({
-      //   keepAlive: false,
-      //   key: 'OrderReceiptRecord',
-      //   title: '收款单记录'
-      // });
-      // 打开当前
       this.pushTab({
         keepAlive: false,
-        key: 'OrderReceiptList',
+        key: 'OrderReceiptForm',
         params: { type: type, orderId: orderId },
         title: '收款单'
       });
@@ -556,8 +444,8 @@ export default {
     historyForm() {
       this.pushTab({
         keepAlive: false,
-        key: 'OrderReceiptRecord',
-        title: '收款单记录'
+        key: 'OrderReceiptList',
+        title: '收款单'
       });
     },
     saveForm(type = 'add', orderStatus = '已保存') {
@@ -652,6 +540,7 @@ export default {
       return [footerRow]; // 返回二维数组用于渲染 footer
     },
     changeDiscountRate() {
+      this.$refs.table && this.$refs.table.updateFooter();
       this.form.collectionAmount = this.calcCollectionAmount();
     },
     footerMethod({ columns, data }) {
@@ -837,7 +726,6 @@ export default {
             closeDialog(dialogId);
           },
           onSuccess: (checkList) => {
-            debugger;
             const merged = new Map(
               this.tableData2.map((item) => [item.salesOrderNo, item])
             );
@@ -884,5 +772,12 @@ export default {
 :deep(.vxe-select > .vxe-input) {
   width: 100%;
   height: 100%;
+}
+
+.receipt-extra-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 </style>

@@ -1,21 +1,20 @@
 <template>
-  <div class="frame-page flex flex-column !p-0px" style="background: none!important;height: 0px">
-    <div class="flex">
-      <div class="flex1 flex-column bg-white-color">
-        <div class="flex border-bottom p-16px m-10px justify-between">
-          <div class="flex  items-center">
-            <span class="text-28px mr-9px">{{ user.admin.name }} </span>
-            你好，欢迎使用进销存管理系统！
-          </div>
-        </div>
+  <div class="dashboard">
+    <div class="dashboard__welcome">
+      <div class="dashboard__hello">
+        <div class="dashboard__name">{{ user.admin.name }}</div>
+        <div class="dashboard__text">你好，欢迎使用进销存管理系统</div>
       </div>
-      <div class="flex bg-white-color ml-10px">
-        <DatePicker v-model="date" :inline="true"/>
+      <div class="dashboard__meta">
+        <div class="dashboard__date-label">今日</div>
+        <div class="dashboard__date-value">{{ todayText }}</div>
       </div>
+    </div>
+    <div class="dashboard__calendar">
+      <DatePicker v-model="date" :inline="true"/>
     </div>
   </div>
 </template>
-
 
 <script>
 /**
@@ -40,6 +39,9 @@ export default {
   },
   computed: {
     ...mapState(['user', 'accountBooks']),
+    todayText() {
+      return manba().format("YYYY年MM月DD日");
+    }
   },
   methods: {
     addAccountBook() {
@@ -68,99 +70,63 @@ export default {
 }
 </script>
 
-<style scoped lang="less">
-.card-header {
-  padding: 16px;
-  color: #000;
-  text-align: center;
+<style scoped>
+.dashboard {
+  height: 100%;
+  min-height: 0;
   display: flex;
-  background-color: #fff;
+  gap: 12px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.common-card__footer-order {
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-
-  .common-card__footer-title {
-    cursor: pointer;
-    margin-top: 10px;
-  }
-}
-
-.backlog-card__orderreview {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  flex: 1 1;
-  margin-right: 12px;
-  height: 72px;
-  background: #e9f1da;
-  border-radius: 10px;
-
-  .backlog-card__suffix {
-    margin-left: 23px;
-
-    .backlog-card__suffix-number {
-      cursor: pointer;
-      font-size: 18px;
-      color: #333;
-      letter-spacing: 0;
-      font-weight: 500;
-    }
-  }
-
-  .backlog-card__prefix {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-left: 10px;
-    width: 44px;
-    height: 44px;
-    background: #2ba471;
-    border-radius: 50%;
-  }
-}
-
-.common-card__header {
-  display: flex;
-}
-
-.order-list a:not(:last-child) {
-  margin-right: 10px;
-}
-
-.order-list a {
-  font-size: 0.7rem;
-  color: white;
+.dashboard__welcome {
   flex: 1;
-  height: 95px;
-  margin-bottom: 10px;
-
-
-  .order-item {
-    display: flex;
-    flex-direction: initial;
-    padding: 15px;
-    border-radius: 6px;
-  }
-
-  h3 {
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: initial;
-  }
-
-  .order-item-content {
-    width: 100%;
-    text-align: left;
-    color: #fff;
-    font-size: 0.7rem;
-  }
+  min-width: 0;
+  background: #fff;
+  border-radius: 4px;
+  padding: 28px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  box-sizing: border-box;
 }
 
+.dashboard__name {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1f2329;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
 
+.dashboard__text {
+  font-size: 15px;
+  color: #646a73;
+}
+
+.dashboard__meta {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.dashboard__date-label {
+  font-size: 13px;
+  color: #8f959e;
+  margin-bottom: 6px;
+}
+
+.dashboard__date-value {
+  font-size: 16px;
+  color: #1f2329;
+  font-weight: 500;
+}
+
+.dashboard__calendar {
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 4px;
+  padding: 8px;
+  box-sizing: border-box;
+}
 </style>

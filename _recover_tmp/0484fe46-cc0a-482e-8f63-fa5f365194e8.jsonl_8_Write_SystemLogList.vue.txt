@@ -1,0 +1,164 @@
+<template>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-input
+            v-model="params.filter"
+            clearable
+            placeholder="请输入规则名称"
+            style="width: 240px; border-radius: 4px"
+            @enter="doSearch"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
+          </template>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
+    </div>
+
+    <div class="simple-page__table">
+      <t and-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="auto"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+      >
+        <template #systemDefault="{ row }">
+          <t-tag
+              :theme="row.systemDefault ? 'primary' : 'danger'"
+              variant="light"
+              style="cursor:pointer"
+              @click="trigger(row)"
+          >
+            {{ row.systemDefault ? '是' : '否' }}
+          </t-tag>
+        </template>
+        <template #ops="{ row }">
+          <t-space size="small">
+            <t-link theme="primary" @click="showForm(row)">编辑</t-link>
+          </t-space>
+        </template>
+      </t and-table>
+    </div>
+  </div>
+</template>
+
+<script>
+import SystemLog from "@js/api/setting/SystemLog";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
+
+export default {
+  name: "SystemLogList",
+  props: {
+    merchant: Object,
+  },
+  data() {
+    return {
+      opened: true,
+      loading: false,
+      params: {
+        name: null,
+        merchantId: null,
+      },
+      checkedRows: [],
+      dataList: [],
+      areaList: [],
+      merchantList: [],
+      param: [
+        {title: '启用', key: 'enabled'},
+        {title: '禁用', key: 'disabled'},
+      ],
+      columns: [
+        {colKey: 'name', title: '规则名称', width: 200, ellipsis: true},
+        {colKey: 'format', title: '编码规则', minWidth: 160, ellipsis: true},
+        {colKey: 'serialNumberLength', title: '流水号位数', width: 120},
+        {colKey: 'createdAt', title: '创建时间', width: 140},
+        {colKey: 'systemDefault', title: '默认', width: 80, align: 'center'},
+        {colKey: 'ops', title: '操作', width: 100, fixed: 'right', align: 'center'}
+      ]
+    }
+  },
+  computed: {
+    queryParams() {
+      return Object.assign({}, this.params)
+    }
+  },
+  methods: {
+    showForm() {
+      // 原页面模板引用了编辑，但未实现表单逻辑，保留占位
+    },
+    loadList() {
+      this.loading = true;
+      SystemLog.list(this.queryParams).then(({data}) => {
+        this.dataList = data;
+      }).finally(() => this.loading = false);
+    },
+    pageChange() {
+      this.loadList();
+    },
+    doSearch() {
+      this.loadList();
+    },
+    doRemove(row) {
+      DialogPlugin.confirm({
+        title: "系统提示",
+        content: `确认删除规则：${row.name}?`,
+        onConfirm: () => {
+          SystemLog.remove(row.id).then(() => {
+            MessagePlugin.success("删除成功~");
+            this.doSearch();
+          })
+        }
+      })
+    },
+    trigger(row) {
+      let enabled = !row.enabled;
+      DialogPlugin.confirm({
+        title: "系统提示",
+        content: `确认要「${enabled ? "启用" : "禁用"}」规则：${row.name}?`,
+        onConfirm: () => {
+          SystemLog.save({id: row.id, enabled}).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.loadList();
+          })
+        }
+      })
+    }
+  },
+  created() {
+    this.doSearch();
+  }
+}
+</script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+</style>

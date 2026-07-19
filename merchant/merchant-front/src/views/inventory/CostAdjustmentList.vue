@@ -1,91 +1,117 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
-        <Button @click="addForm()" color="primary">新增</Button>
-        <Button @click="auditsForm('audits')">审核</Button>
-        <Button @click="auditsForm('antiAudits')">反审核</Button>
-      </template>
-      <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{未审核:'未审核',已审核:'已审核'}"
-                placeholder="审核状态："/>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期：</span>
-          <DateRangePicker v-model="dateRange"></DateRangePicker>
-        </div>
-        <Search v-model.trim="params.filter"
-                show-search-button class="w-360px ml-8px"
-                placeholder="请输入单据编号/制单人/备注" @search="doSearch">
-          <t-icon name="search" />
-        </Search>
-      </template>
-    </vxe-toolbar>
-    <div class="flex1">
-      <vxe-table row-id="id"
-                 ref="table"
-                 height="auto"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 show-footer
-                 :footer-method="footerMethod"
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :sort-config="{remote:true}"
-                 :loading="loading">
-        <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="操作" align="center" width="120">
-          <template #default="{row}">
-            <span v-if="!editable(row)" class="primary-color  text-hover ml-10px"
-                  @click="addForm('look',row.id)">查看</span>
-            <span v-if="editable(row)" class="primary-color  text-hover ml-10px"
-                  @click="addForm('edit',row.id)">编辑</span>
-            <span v-if="editable(row)" class="red-color  text-hover ml-10px"
-                  @click="doRemove(row)">删除</span>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="auditsForm('audits')">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="auditsForm('antiAudits')">反审核</t-button>
+        <t-select
+            v-model="params.state"
+            :options="stateOptions"
+            clearable
+            placeholder="审核状态"
+            style="width: 140px; border-radius: 4px"
+        />
+        <t-date-range-picker
+            v-model="dateRangeValue"
+            clearable
+            allow-input
+            placeholder="订单日期"
+            style="width: 260px; border-radius: 4px"
+        />
+        <t-input
+            v-model="params.filter"
+            clearable
+            placeholder="请输入单据编号/制单人/备注"
+            style="width: 260px; background: #fff; border-radius: 4px"
+            @enter="doSearch"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
           </template>
-        </vxe-column>
-        <vxe-column title="单据日期" field="djustmentDate" align="center" width="130"/>
-        <vxe-column title="单据编号" field="orderNo" width="200"/>
-        <vxe-column title="业务类型" field="adjustmentType" width="200"/>
-        <vxe-column title="调整金额" field="adjustmentAmount" min-width="120"/>
-        <vxe-column title="制单人" field="createdByName" width="120"/>
-        <vxe-column title="单据备注" field="remarks" width="120"/>
-        <vxe-column title="审核状态" field="orderStatus" width="80"/>
-
-      </vxe-table>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
     </div>
-    <div class="flex justify-between items-center pt-5px">
-      <vxe-pager perfect @page-change="loadList(false)"
-                 v-model:current-page="pagination.page"
-                 v-model:page-size="pagination.pageSize"
-                 :total="pagination.total"
-                 :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
-        <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
-                      :loading="loading"></vxe-button>
+
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+          :selected-row-keys="selectedRowKeys"
+          :foot-data="footData"
+          @select-change="onSelectChange"
+      >
+        <template #ops="{ row }">
+          <t-space size="small">
+            <template v-if="editable(row)">
+              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link theme="danger" @click="doRemove(row)">删除</t-link>
+            </template>
+            <template v-else>
+              <t-link theme="primary" @click="addForm('look', row.id)">查看</t-link>
+            </template>
+          </t-space>
         </template>
-      </vxe-pager>
+        <template #orderStatus="{ row }">
+          <t-tag
+              :theme="row.orderStatus === '已审核' ? 'success' : 'warning'"
+              variant="light"
+          >
+            {{ row.orderStatus }}
+          </t-tag>
+        </template>
+      </t-table>
+    </div>
+
+    <div class="simple-page__pager">
+      <span class="simple-page__total">总金额：{{ amountTotal }}元</span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
+
 <script>
 import manba from "manba";
 import CostAdjustment from "@js/api/inventory/CostAdjustment";
 import {mapMutations} from "vuex";
 import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 
-const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
-const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
+const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
+const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
 
+/**
+ * @功能描述: 成本调整单列表
+ * @创建时间: 2023年08月08日
+ * @公司官网: www.fenxi365.com
+ * @公司信息: 纷析云（杭州）科技有限公司
+ * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
+ */
 export default {
   name: "CostAdjustmentList",
   data() {
     return {
       dataList: [],
+      selectedRowKeys: [],
+      selectedRows: [],
       loading: false,
       amountTotal: 0,
-      totalParams: {},
       pagination: {
         page: 1,
         pageSize: 20,
@@ -97,88 +123,88 @@ export default {
         sortCol: null,
         sort: null,
       },
-      dateRange: {
-        start: manba(startTime).format("YYYY-MM-dd"),
-        end: manba(endTime).format("YYYY-MM-dd")
-      },
+      dateRangeValue: [startTime, endTime],
+      stateOptions: [
+        {label: '未审核', value: '未审核'},
+        {label: '已审核', value: '已审核'},
+      ],
+      columns: [
+        {colKey: 'row-select', type: 'multiple', width: 46},
+        {colKey: 'ops', title: '操作', width: 110, fixed: 'left', align: 'center'},
+        {colKey: 'djustmentDate', title: '单据日期', width: 120, align: 'center'},
+        {colKey: 'orderNo', title: '单据编号', minWidth: 160, ellipsis: true},
+        {colKey: 'adjustmentType', title: '业务类型', width: 140, ellipsis: true},
+        {colKey: 'adjustmentAmount', title: '调整金额', width: 120, align: 'right'},
+        {colKey: 'createdByName', title: '制单人', width: 100, align: 'center'},
+        {colKey: 'remarks', title: '单据备注', minWidth: 120, ellipsis: true},
+        {colKey: 'orderStatus', title: '审核状态', width: 100, align: 'center', fixed: 'right'},
+      ]
     }
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      const [start, end] = this.dateRangeValue || [];
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
+        start: start || null,
+        end: end || null,
       })
     },
+    footData() {
+      const sum = (key, digits = 2) => {
+        const total = (this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0);
+        return total.toFixed(digits);
+      };
+      return [{
+        ops: '合计',
+        adjustmentAmount: sum('adjustmentAmount'),
+      }];
+    }
   },
   methods: {
     ...mapMutations(['pushTab']),
+    onSelectChange(keys, {selectedRowData}) {
+      this.selectedRowKeys = keys;
+      this.selectedRows = selectedRowData || [];
+    },
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
+    },
     addForm(type = 'add', costAdjustmentId = null) {
-      console.log(type, costAdjustmentId);
       this.pushTab({
         key: 'CostAdjustmentForm',
         title: type === 'edit' ? '编辑成本调整单' : type === 'look' ? '查看成本调整单' : '新增成本调整单',
         params: {type: type, costAdjustmentId: costAdjustmentId}
       });
     },
-    footerMethod({columns, data}) {
-      let sums = [];
-      columns.forEach((column) => {
-        if (column.property && ['adjustmentAmount'].includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              total += Number(rd || 0);
-            }
-          });
-          sums.push(total.toFixed(2));
-        }
-      })
-      return [["", "", "", "", ""].concat(sums)];
+    clearSelection() {
+      this.selectedRowKeys = [];
+      this.selectedRows = [];
     },
-    doSearch() {
-      this.pagination.page = 1;
-      this.loadList();
-    },
-    loadList(type = true) {
-      this.loading = true;
-      CostAdjustment.list(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results || [];
-        this.pagination.total = total;
-        this.dataList.forEach((item) => {
-          this.amountTotal = this.amountTotal + item.adjustmentAmount;
-        });
-      }).finally(() => this.loading = false);
+    editable(row) {
+      return row.orderStatus === '未审核';
     },
     auditsForm(type) {
-      const selectRecords = this.$refs.table.getCheckboxRecords();
-      if (!selectRecords || selectRecords.length === 0) {
+      if (!this.selectedRows.length) {
         MessagePlugin.warning("请选择要操作的数据~");
         return;
       }
       if (type === "audits") {
-        const filterRecords = selectRecords.filter(item => item.orderStatus === "未审核");
-        if (!filterRecords || filterRecords.length === 0) {
+        const filterRecords = this.selectedRows.filter(item => item.orderStatus === "未审核");
+        if (!filterRecords.length) {
           MessagePlugin.warning("请选择状态为未审核的数据，进行审核~");
           return;
         }
-        const ids = filterRecords.map(item => {
-          return item.id
-        });
-        const params = {
-          ids: ids.join(','),
-          type: "AUDITS",
-        };
-        console.info(filterRecords, ids);
+        const ids = filterRecords.map(item => item.id);
         LoadingPlugin(true);
-        CostAdjustment.approves(params)
+        CostAdjustment.approves({ids: ids.join(','), type: "AUDITS"})
             .then((success) => {
               if (success) {
                 MessagePlugin.success("审核成功~");
-                this.$refs.table.clearCheckboxRow();
+                this.clearSelection();
                 this.loadList();
               }
             })
@@ -186,51 +212,98 @@ export default {
         return;
       }
       if (type === "antiAudits") {
-        console.info("selectRecords:", selectRecords);
-        const filterRecords = selectRecords.filter(item => item.orderStatus === "已审核");
-        if (!filterRecords || filterRecords.length === 0) {
+        const filterRecords = this.selectedRows.filter(item => item.orderStatus === "已审核");
+        if (!filterRecords.length) {
           MessagePlugin.warning("请选择状态为已审核的数据，进行审核~");
           return;
         }
-        const ids = filterRecords.map(item => {
-          return item.id
-        });
-        const params = {
-          ids: ids.join(','),
-          type: "ANTI_AUDIT",
-        };
-        console.info(filterRecords, ids);
+        const ids = filterRecords.map(item => item.id);
         LoadingPlugin(true);
-        CostAdjustment.approves(params)
+        CostAdjustment.approves({ids: ids.join(','), type: "ANTI_AUDIT"})
             .then((success) => {
               if (success) {
                 MessagePlugin.success("反审核成功~");
-                this.$refs.table.clearCheckboxRow();
+                this.clearSelection();
                 this.loadList();
               }
             })
             .finally(() => LoadingPlugin(false));
       }
     },
+    doSearch() {
+      this.pagination.page = 1;
+      this.clearSelection();
+      this.loadList();
+    },
+    loadList() {
+      this.loading = true;
+      CostAdjustment.list(this.queryParams).then(({data: {results, total}}) => {
+        this.dataList = results || [];
+        this.pagination.total = total;
+        let amountTotal = 0;
+        this.dataList.forEach((item) => {
+          amountTotal += Number(item.adjustmentAmount || 0);
+        });
+        this.amountTotal = amountTotal;
+      }).finally(() => this.loading = false);
+    },
     doRemove({id}) {
       DialogPlugin.confirm({
         title: "系统提示",
         content: `是否删除当前数据?`,
         onConfirm: () => {
-          CostAdjustment.remove(id).then(({data}) => {
-            console.log(data);
+          CostAdjustment.remove(id).then(() => {
             MessagePlugin.success("操作成功～");
             this.loadList();
           });
         },
       });
     },
-    editable(row) {
-      return ['未审核'].includes(row.orderStatus);
-    }
   },
   created() {
     this.loadList();
   }
 }
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
+}
+</style>

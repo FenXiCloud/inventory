@@ -1,103 +1,92 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules" :labelWidth="120">
-        <FormItem label="规则名称" required prop="name">
-          <Input placeholder="请输入规则名称" v-model="model.name"/>
-        </FormItem>
-        <FormItem label="规则前缀" required prop="prefix">
-          <Input placeholder="请输入规则前缀" v-model="model.prefix"/>
-        </FormItem>
-        <FormItem label="格式化" required prop="format">
-          <Input v-model="model.format"/>
-        </FormItem>
-        <FormItem label="流水号" required prop="serialNumberLength">
-          <Input placeholder="请输入流水号" v-model="model.serialNumberLength"/>
-        </FormItem>
-        <FormItem label="起始值" required prop="startValue">
-          <Input placeholder="起始值" v-model="model.startValue"/>
-        </FormItem>
-        <FormItem label="流水号清零" required prop="resetPeriod">
-          <Input placeholder="流水号清零" v-model="model.resetPeriod"/>
-        </FormItem>
-        <FormItem label="单据类型" required prop="documentType">
-          <Input placeholder="单据类型" v-model="model.documentType"/>
-        </FormItem>
-      </Form>
+      <t-form
+          ref="form"
+          :data="model"
+          :rules="rules"
+          layout="vertical"
+          label-align="top"
+      >
+        <t-form-item label="模板名称" name="name">
+          <t-input v-model="model.name" placeholder="请输入模板名称" :maxlength="32" />
+        </t-form-item>
+        <t-form-item label="单据类型" name="documentType">
+          <t-select
+              v-model="model.documentType"
+              :options="documentTypeOptions"
+              :disabled="!!model.id"
+              placeholder="请选择单据类型"
+          />
+        </t-form-item>
+        <t-form-item label="默认模板" name="systemDefault">
+          <t-switch v-model="model.systemDefault" />
+        </t-form-item>
+      </t-form>
     </div>
-    <div class="modal-column-right">
-      <Button icon="fa fa-save" style="justify-content: right" color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+    <div class="modal-column-between">
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
 
 <script>
+import PrintTemplate from '@js/api/setting/PrintTemplate';
+import { MessagePlugin } from 'tdesign-vue-next';
+import { CopyObj } from '@common/utils';
 
-import PrintTemplate from "@js/api/setting/PrintTemplate";
-import {MessagePlugin} from "tdesign-vue-next";
-import {CopyObj} from "@common/utils";
-import manba from "manba";
+const DOCUMENT_TYPES = [
+  '采购订单', '采购入库单', '采购退货单',
+  '销售订单', '销售出库单', '销售退货单',
+  '调拨单', '盘点单', '其他入库单', '其他出库单', '成本调整单',
+  '收款单', '付款单', '核销单', '其他收款单', '其他付款单', '转帐单'
+];
 
+/**
+ * @功能描述: 打印模板表单
+ */
 export default {
-  name: "PrintTemplateForm",
-  emits: {
-    close: null,
-    success: null
-  },
+  name: 'PrintTemplateForm',
+  emits: { close: null, success: null },
   props: {
-    PrintTemplate: Object,
+    printTemplate: Object
   },
   data() {
     return {
       loading: false,
-      merchantList: [],
-      areaList: [],
-      levelList: [],
-      warehouseList: [],
+      documentTypeOptions: DOCUMENT_TYPES.map((value) => ({ label: value, value })),
       model: {
         id: null,
-        prefix: null,
-        code: null,
-        format: null,
-        serialNumberLength: null,
-        startValue: null,
-        resetPeriod: null,
+        name: null,
         documentType: null,
+        systemDefault: false
       },
-      validationRules: {}
-    }
+      rules: {
+        name: [{ required: true, message: '请输入模板名称', type: 'error' }],
+        documentType: [{ required: true, message: '请选择单据类型', type: 'error' }]
+      }
+    };
   },
   methods: {
     confirm() {
-      this.$refs.form.validate().then((res) => {
-        if (res === true || res.result === true) {
-          this.loading = true;
-          this.model.startDate = manba(this.model.startDate).format("YYYY-MM")
-          PrintTemplate.save(this.model).then(() => {
-            MessagePlugin.success("保存成功~");
+      this.$refs.form.validate().then((result) => {
+        if (result !== true) return;
+        this.loading = true;
+        PrintTemplate.save(this.model)
+          .then(() => {
+            MessagePlugin.success('保存成功~');
             this.$emit('success');
-          }).finally(() => this.loading = false);
-        }
+          })
+          .finally(() => (this.loading = false));
       }).catch(() => {});
-    },
-    init() {
-      // this.loading = true;
-      // Promise.all([
-      //   Area.select(),
-      //   Level.select(),
-      //   Warehouse.select(),
-      // ]).then((results) => {
-      //   this.areaList = results[0].data
-      //   this.levelList = results[1].data
-      //   this.warehouseList = results[2].data
-      // }).finally(() => this.loading = false);
     }
   },
   created() {
-    this.init();
-    CopyObj(this.model, this.PrintTemplate);
+    CopyObj(this.model, this.printTemplate);
+    if (this.model.systemDefault == null) {
+      this.model.systemDefault = false;
+    }
   }
-}
+};
 </script>

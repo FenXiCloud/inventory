@@ -1,6 +1,6 @@
 <template>
   <div class="modal-column">
-    <div class="frame-page flex flex-column">
+    <div class="simple-page voucher-page">
       <div class="parent_container">
         <div class="left">
           <vxe-table
@@ -328,6 +328,11 @@ export default {
 </script>
 
 <style lang="less" scoped>
+.voucher-page {
+  height: 70vh;
+  min-height: 480px;
+  padding: 0;
+}
 
 .parent_container {
   display: flex;
@@ -335,22 +340,29 @@ export default {
 }
 
 .left {
-  width: 300px; /* 固定宽度 */
-  padding: 20px;
+  width: 220px;
+  flex-shrink: 0;
+  padding: 12px;
+  border-right: 1px solid #e7e7e7;
+  box-sizing: border-box;
 }
 
 .right {
-  flex: 1; /* 占用剩余空间 */
-  padding: 20px;
-  width: calc(100% - 380px);
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 .table-container {
-  height: calc(100% - 50px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .selected {
   background-color: #dddddd;
 }
-
 </style>

@@ -1,10 +1,13 @@
 package com.flyemu.share.controller.setting;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.setting.PrintTemplate;
+import com.flyemu.share.entity.setting.SystemLog;
 import com.flyemu.share.service.setting.PrintTemplateService;
+import com.flyemu.share.service.setting.SystemLogService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 public class PrintTemplateController {
 
     private final PrintTemplateService printTemplateService;
+    private final SystemLogService systemLogService;
 
     @GetMapping
     public JsonResult list(PrintTemplateService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
@@ -31,22 +35,42 @@ public class PrintTemplateController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PrintTemplate printTemplate, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid PrintTemplate printTemplate,
+                           @SaAccountBookId Long accountBookId,
+                           @SaMerchantId Long merchantId,
+                           @SaAdminId Long adminId) {
         printTemplate.setMerchantId(merchantId);
         printTemplate.setAccountBookId(accountBookId);
-        printTemplateService.save(printTemplate);
+        PrintTemplate saved = printTemplateService.save(printTemplate);
+        systemLogService.record("打印模板", SystemLog.OperationType.新增,
+                "新增打印模板「" + saved.getName() + "」",
+                null, saved.getDocumentType() == null ? null : saved.getDocumentType().name(),
+                saved.getId(), adminId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PrintTemplate printTemplate) {
-        printTemplateService.save(printTemplate);
+    public JsonResult update(@RequestBody @Valid PrintTemplate printTemplate,
+                             @SaAccountBookId Long accountBookId,
+                             @SaMerchantId Long merchantId,
+                             @SaAdminId Long adminId) {
+        PrintTemplate saved = printTemplateService.save(printTemplate);
+        systemLogService.record("打印模板", SystemLog.OperationType.修改,
+                "修改打印模板「" + saved.getName() + "」",
+                null, saved.getDocumentType() == null ? null : saved.getDocumentType().name(),
+                saved.getId(), adminId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{printTemplateId}")
-    public JsonResult delete(@PathVariable Long printTemplateId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long printTemplateId,
+                             @SaAccountBookId Long accountBookId,
+                             @SaMerchantId Long merchantId,
+                             @SaAdminId Long adminId) {
         printTemplateService.delete(printTemplateId, merchantId, accountBookId);
+        systemLogService.record("打印模板", SystemLog.OperationType.删除,
+                "删除打印模板#" + printTemplateId,
+                null, null, printTemplateId, adminId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 

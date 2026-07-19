@@ -1,13 +1,15 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <div class="flex1">
+  <div class="page-column">
+    <div class="page-column-full-body">
       <vxe-table
                  ref="xTable"
+                 size="mini"
+                 border
                  :data="dataList"
                  highlight-hover-row
                  show-overflow
                  stripe
-                 :row-config="{height: 48}"
+                 :row-config="{height: 40}"
                  :column-config="{resizable: true}"
                  :loading="loading">
         <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
@@ -34,7 +36,7 @@
             </div>
           </template>
         </vxe-column>
-        <vxe-column title="期初应收款" field="balanceBefore">
+        <vxe-column title="期初应付款" field="balanceBefore">
           <template #default="{row,rowIndex,columnIndex}">
             <vxe-input
                 :id="'r'+rowIndex+''+3"
@@ -47,7 +49,7 @@
             </vxe-input>
           </template>
         </vxe-column>
-        <vxe-column title="期初预收款" field="amount">
+        <vxe-column title="期初预付款" field="amount">
           <template #default="{row,rowIndex,}">
             <vxe-input
                 :id="'r'+rowIndex+''+4"
@@ -74,10 +76,10 @@
         </vxe-column>
       </vxe-table>
     </div>
-    <div class="modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading"> 取消</Button>
+    <div class="page-column-footer modal-column-between bg-white-color border">
+      <Button @click="closeWindow" :loading="loading">取消</Button>
       <div>
-        <Button color="primary" @click="save" :loading="loading"> 保存</Button>
+        <Button color="primary" @click="save" :loading="loading">保存</Button>
       </div>
     </div>
   </div>
@@ -223,11 +225,11 @@ export default {
         return false
       }
       if (quantityFlag) {
-        MessagePlugin.error("期初应收款~");
+        MessagePlugin.error("期初应付款为空~");
         return false
       }
       if (unitPriceFlag) {
-        MessagePlugin.error("期初预收款~");
+        MessagePlugin.error("期初预付款为空~");
         return false
       }
       if (subtotalFlag) {

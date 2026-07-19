@@ -1,88 +1,107 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
-        <Button @click="addForm()" color="primary">新 增</Button>
-        <Button>审 核</Button>
-      </template>
-      <template #tools>
-        <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}"
-                placeholder="审核状态："/>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">订单日期：</span>
-          <DateRangePicker v-model="dateRange"></DateRangePicker>
-        </div>
-        <Search v-model.trim="params.filter"
-                show-search-button class="w-360px ml-8px"
-                placeholder="请输入订单号/客户名称" @search="doSearch">
-          <t-icon name="search" />
-        </Search>
-      </template>
-    </vxe-toolbar>
-    <div class="flex1">
-      <vxe-table row-id="id"
-                 ref="table"
-                 height="auto"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 show-footer
-                 :footer-method="footerMethod"
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :sort-config="{remote:true}"
-                 :loading="loading">
-        <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="操作" align="center" width="120">
-          <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="showForm('add',row.id)">编辑</span>
-            <span class="primary-color  text-hover ml-10px" @click="doRemove(row)">删除</span>
-          </template>
-        </vxe-column>
-        <vxe-column title="订单日期" field="orderDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="code" width="200"/>
-        <vxe-column title="关联销售出库单" field="code" width="200"/>
-        <vxe-column title="客户" field="customerName" min-width="120"/>
-        <vxe-column title="销售金额" field="totalAmount" width="120"/>
-        <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-        <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        <vxe-column title="制单人" field="createDate" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createDate" align="center" width="100"/>
-        <vxe-column title="审核状态" field="orderStatus" width="80"/>
-
-      </vxe-table>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="batchAudit('已审核')">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="batchAudit('已保存')">反审核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="doRemove()">删 除</t-button>
+        <t-date-range-picker
+            v-model="dateRangeValue"
+            clearable
+            allow-input
+            placeholder="单据日期"
+            style="width: 260px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.customerId"
+            :options="customerList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            placeholder="请选择客户"
+            style="width: 180px; border-radius: 4px"
+        />
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
     </div>
-    <div class="flex justify-between items-center pt-5px">
-      <vxe-pager perfect @page-change="loadList(false)"
-                 v-model:current-page="pagination.page"
-                 v-model:page-size="pagination.pageSize"
-                 :total="pagination.total"
-                 :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
-        <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
-                      :loading="loading"></vxe-button>
+
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+          :selected-row-keys="selectedRowKeys"
+          :foot-data="footData"
+          @select-change="onSelectChange"
+      >
+        <template #ops="{ row }">
+          <t-space size="small">
+            <template v-if="row.orderStatus != '已审核'">
+              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link theme="danger" @click="doRemove(row)">删除</t-link>
+            </template>
+            <template v-else>
+              <t-link theme="primary" @click="addForm('edit', row.id)">查看</t-link>
+            </template>
+          </t-space>
         </template>
-      </vxe-pager>
+        <template #orderStatus="{ row }">
+          <t-tag
+              :theme="row.orderStatus === '已审核' ? 'success' : 'warning'"
+              variant="light"
+          >
+            {{ row.orderStatus === '已保存' ? '未审核' : row.orderStatus }}
+          </t-tag>
+        </template>
+      </t-table>
+    </div>
+
+    <div class="simple-page__pager">
+      <span class="simple-page__total">合计金额：{{ amountTotal }}元</span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
+
 <script>
-import manba from "manba";
-import OtherIncome from "@js/api/fund/OtherIncome";
-import {mapMutations} from "vuex";
+import manba from 'manba';
+import { mapMutations } from 'vuex';
+import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next';
+import Customer from '@js/api/basic/Customer';
+import OtherReceipt from '@js/api/fund/OtherReceipt';
 
-const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
-const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
+const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-DD');
+const endTime = manba().endOf(manba.DAY).format('YYYY-MM-DD');
 
+/**
+ * @功能描述: 其他收入单列表（菜单别名 OtherIncomeList）
+ */
 export default {
-  name: "OtherIncomeList",
+  name: 'OtherIncomeList',
   data() {
     return {
       dataList: [],
+      customerList: [],
+      selectedRowKeys: [],
+      selectedRows: [],
       loading: false,
       amountTotal: 0,
-      totalParams: {},
       pagination: {
         page: 1,
         pageSize: 20,
@@ -93,55 +112,184 @@ export default {
         state: null,
         sortCol: null,
         sort: null,
+        customerId: null
       },
-      dateRange: {
-        start: manba(startTime).format("YYYY-MM-dd"),
-        end: manba(endTime).format("YYYY-MM-dd")
-      },
-    }
+      dateRangeValue: [startTime, endTime],
+      columns: [
+        { colKey: 'row-select', type: 'multiple', width: 46 },
+        { colKey: 'ops', title: '操作', width: 110, fixed: 'left', align: 'center' },
+        { colKey: 'orderStatus', title: '状态', width: 100, align: 'center' },
+        { colKey: 'orderDate', title: '单据日期', width: 120, align: 'center' },
+        { colKey: 'orderNo', title: '单据编号', minWidth: 160, ellipsis: true },
+        { colKey: 'customerName', title: '客户', minWidth: 120, ellipsis: true },
+        { colKey: 'settlementAccount', title: '结算账户', minWidth: 120, ellipsis: true },
+        { colKey: 'arrearsAmount', title: '欠款金额', width: 110, align: 'right' },
+        { colKey: 'collectionAmount', title: '收款金额', width: 110, align: 'right' },
+        { colKey: 'orderStaffName', title: '业务员', width: 90, align: 'center' },
+        { colKey: 'approvedName', title: '审核人', width: 90, align: 'center' },
+        { colKey: 'createName', title: '制单人', width: 90, align: 'center' },
+        { colKey: 'createdAt', title: '制单时间', width: 160, align: 'center', ellipsis: true },
+        { colKey: 'remarks', title: '备注', minWidth: 100, ellipsis: true },
+      ]
+    };
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      const [start, end] = this.dateRangeValue || [];
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
-      })
+        startTime: start || null,
+        endTime: end || null
+      });
     },
+    footData() {
+      const sum = (key) => {
+        const total = (this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0);
+        return total.toFixed(2);
+      };
+      return [{
+        ops: '合计',
+        arrearsAmount: sum('arrearsAmount'),
+        collectionAmount: sum('collectionAmount'),
+      }];
+    }
   },
   methods: {
-    ...mapMutations(['pushTab']),
-    footerMethod({columns, data}) {
-      let sums = [];
-      columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              total += Number(rd || 0);
+    ...mapMutations(['pushTab', 'closeTabKey']),
+    onSelectChange(keys, { selectedRowData }) {
+      this.selectedRowKeys = keys;
+      this.selectedRows = selectedRowData || [];
+    },
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
+    },
+    clearSelection() {
+      this.selectedRowKeys = [];
+      this.selectedRows = [];
+    },
+    getSelectedIds() {
+      return (this.selectedRowKeys || []).join(',');
+    },
+    addForm(type = 'add', orderId = null) {
+      this.closeTabKey('OtherReceiptList');
+      this.pushTab({
+        keepAlive: false,
+        key: 'OtherReceiptList',
+        params: { type, orderId },
+        title: '其他收入单'
+      });
+    },
+    loadList() {
+      this.loading = true;
+      OtherReceipt.list(this.queryParams)
+        .then(({ data: { results, total } }) => {
+          this.dataList = results || [];
+          this.pagination.total = total;
+          const amountTotal = this.dataList.reduce((acc, item) => acc + Number(item.collectionAmount || 0), 0);
+          this.amountTotal = amountTotal.toFixed(2);
+        })
+        .finally(() => (this.loading = false));
+    },
+    loadCustomer() {
+      Customer.select().then(({ data }) => {
+        this.customerList = data || [];
+      });
+    },
+    doRemove(row = null) {
+      const ids = row ? row.id : this.getSelectedIds();
+      if (!ids) {
+        return MessagePlugin.error('请选择至少一个订单');
+      }
+      DialogPlugin.confirm({
+        title: '系统提示',
+        content: '确认删除?',
+        onConfirm: () => {
+          OtherReceipt.remove({ id: ids }).then(() => {
+            MessagePlugin.success('删除成功~');
+            this.clearSelection();
+            this.loadList();
+          });
+        }
+      });
+    },
+    batchAudit(orderStatus) {
+      const selectedRows = this.getSelectedIds();
+      if (!selectedRows) {
+        MessagePlugin.error('请选择至少一个订单');
+        return;
+      }
+      const isAnti = orderStatus === '已保存';
+      DialogPlugin.confirm({
+        content: isAnti ? '确定反审核该其他收款单？' : '确定审核该其他收款单？',
+        onConfirm: () => {
+          OtherReceipt.batchAudit({
+            id: selectedRows,
+            orderStatus,
+            approvedBy: this.$store.state.user.admin.id
+          }).then((success) => {
+            if (success) {
+              MessagePlugin.success(isAnti ? '反审核成功' : '审核成功');
+              this.clearSelection();
+              this.loadList();
             }
           });
-          sums.push(total.toFixed(2));
         }
-      })
-      return [["", "", "", "", "", ""].concat(sums)];
+      });
     },
     doSearch() {
       this.pagination.page = 1;
+      this.clearSelection();
       this.loadList();
-    },
-    loadList(type = true) {
-      this.loading = true;
-      OtherIncome.list(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results || [];
-        this.pagination.total = total;
-      }).finally(() => this.loading = false);
-    },
+    }
   },
   created() {
+    this.loadCustomer();
     this.loadList();
   }
-}
+};
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
+}
+</style>

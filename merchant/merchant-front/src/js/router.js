@@ -53,6 +53,12 @@ const groupRoutes = [
       import('@views/setting/PrintTemplateList.vue')
     )
   },
+  {
+    name: 'BackupRestore',
+    component: defineAsyncComponent(() =>
+      import('@views/setting/BackupRestore.vue')
+    )
+  },
 
   {
     name: 'SystemLogList',
@@ -422,15 +428,27 @@ const groupRoutes = [
       import('@views/fund/OtherIncomeList.vue')
     )
   },
+  // 菜单入口：列表；录入页走 *Form
   {
     name: 'OtherExpenseList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OtherExpenseRecord.vue')
+    )
+  },
+  {
+    name: 'OtherExpenseForm',
     component: defineAsyncComponent(() =>
       import('@views/fund/OtherExpenseList.vue')
     )
   },
-
   {
     name: 'OrderReceiptList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OrderReceiptRecord.vue')
+    )
+  },
+  {
+    name: 'OrderReceiptForm',
     component: defineAsyncComponent(() =>
       import('@views/fund/OrderReceiptList.vue')
     )
@@ -438,11 +456,23 @@ const groupRoutes = [
   {
     name: 'OrderPaymentList',
     component: defineAsyncComponent(() =>
+      import('@views/fund/OrderPaymentRecord.vue')
+    )
+  },
+  {
+    name: 'OrderPaymentForm',
+    component: defineAsyncComponent(() =>
       import('@views/fund/OrderPaymentList.vue')
     )
   },
   {
     name: 'VerificationList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OrderVerificationRecord.vue')
+    )
+  },
+  {
+    name: 'VerificationForm',
     component: defineAsyncComponent(() =>
       import('@views/fund/VerificationList.vue')
     )
@@ -450,7 +480,19 @@ const groupRoutes = [
   {
     name: 'AccountTransferList',
     component: defineAsyncComponent(() =>
+      import('@views/fund/AccountTransferRecord.vue')
+    )
+  },
+  {
+    name: 'AccountTransferForm',
+    component: defineAsyncComponent(() =>
       import('@views/fund/AccountTransferList.vue')
+    )
+  },
+  {
+    name: 'counterpartDebt',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/counterpartDebt.vue')
     )
   },
   {

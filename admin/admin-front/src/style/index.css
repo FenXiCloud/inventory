@@ -161,3 +161,20 @@ body,
 .t-menu__popup {
   display: none !important;
 }
+
+/* 商户配置弹窗：内容区撑满宽度 */
+.merchant-setting-dialog {
+  width: 1200px !important;
+  max-width: 95vw !important;
+}
+
+.merchant-setting-dialog .t-dialog__body {
+  width: 100%;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.merchant-setting-dialog .t-dialog__body > * {
+  width: 100%;
+  box-sizing: border-box;
+}

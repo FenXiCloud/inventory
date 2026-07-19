@@ -102,6 +102,12 @@ public class AccountFlowService extends AbsService {
                 builder.and(qAccountFlow.createdAt.loe(LocalDateTime.parse(endTime + "T23:59:59")));
             }
         }
+
+        public void setAccountId(Long accountId) {
+            if (accountId != null) {
+                builder.and(qAccountFlow.accountId.eq(accountId));
+            }
+        }
     }
 
     public PageResults<OtherFundDetailsVO> queryOtherFundDetails(Page page, OtherFundQuery query) {
@@ -147,6 +153,16 @@ public class AccountFlowService extends AbsService {
             }
             if (!staffConditions.isEmpty()) {
                 condition.andAnyOf(staffConditions.toArray(new BooleanExpression[0]));
+            }
+        }
+
+        Long orderStaffId = query.getOrderStaffId();
+        if (orderStaffId != null) {
+            if (type == 1) {
+                condition.and(QOtherIncome.otherIncome.orderStaffId.eq(orderStaffId));
+            }
+            if (type == 2) {
+                condition.and(QOtherExpense.otherExpense.orderStaffId.eq(orderStaffId));
             }
         }
 
@@ -227,6 +243,7 @@ public class AccountFlowService extends AbsService {
         private Long merchantId;
         private Long accountBookId;
         private String orderStaffName;
+        private Long orderStaffId;
         private Integer type;
         private LocalDate startTime;
         private LocalDate endTime;

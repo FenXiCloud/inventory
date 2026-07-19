@@ -1,67 +1,59 @@
 <template>
   <div class="login">
-    <div class="body-wrapper">
-      <div class="login-header">
-        <div class="login-logo"></div>
-        &nbsp;
-        <div class="login-title">
-          纷析云进销存管理系统
-          <div class="login-title-bot">FinXi MART Management System</div>
+    <div class="login__main">
+      <div class="login__header">
+        <div class="login__logo"></div>
+        <div class="login__title-wrap">
+          <div class="login__title">纷析云进销存管理系统</div>
+          <div class="login__title-en">FinXi MART Management System</div>
         </div>
       </div>
-      <div class="section login-bg">
-        <div class="login-form">
-          <t-form ref="loginForm" :data="form" :rules="rules" label-width="70px" @submit.prevent>
-            <div class="wel">&nbsp;<span></span></div>
-            <t-form-item name="username">
-              <template #label>
-                <span class="white-color">账 号:</span>
-              </template>
+
+      <div class="login__body">
+        <div class="login__visual"></div>
+        <div class="login__form-panel">
+          <t-form ref="loginForm" :data="form" :rules="rules" label-align="top" @submit.prevent>
+            <div class="login__form-title">商户登录</div>
+            <t-form-item label="账号" name="username">
               <t-input
-                type="text"
-                style="border-radius: 3px"
-                v-model="form.username"
-                autocomplete="off"
-                placeholder="请输入登录账号"
+                  v-model="form.username"
+                  clearable
+                  autocomplete="off"
+                  placeholder="请输入登录账号"
+                  style="border-radius: 4px"
               />
             </t-form-item>
-            <t-form-item name="password">
-              <template #label>
-                <span class="white-color">密 码:</span>
-              </template>
+            <t-form-item label="密码" name="password">
               <t-input
-                type="password"
-                style="border-radius: 3px"
-                v-model="form.password"
-                autocomplete="off"
-                @enter="submitForm"
-                placeholder="请输入密码"
+                  v-model="form.password"
+                  type="password"
+                  autocomplete="off"
+                  placeholder="请输入密码"
+                  style="border-radius: 4px"
+                  @enter="submitForm"
               />
             </t-form-item>
             <t-form-item>
               <t-button
-                :loading="loading"
-                class="login-form-btn"
-                theme="primary"
-                block
-                @click="submitForm"
+                  theme="primary"
+                  block
+                  :loading="loading"
+                  style="height: 40px; border-radius: 4px; background: #3d74ff"
+                  @click="submitForm"
               >登 录</t-button>
             </t-form-item>
           </t-form>
         </div>
       </div>
-      <div class="login-footer">
+
+      <div class="login__tagline">
         <p>开启智慧之旅，获取虚拟学习的无尽宝库.</p>
-        <p>
-          Start a journey of wisdom and gain an endless treasure trove of
-          virtual learning.
-        </p>
+        <p>Start a journey of wisdom and gain an endless treasure trove of virtual learning.</p>
       </div>
     </div>
-    <div class="footerWrap">
-      <div class="copyright">
-        <span>Copyright © 2014-2024, 纷析云（杭州）科技有限公司</span>
-      </div>
+
+    <div class="login__footer">
+      <span>Copyright © 2014-2024, 纷析云（杭州）科技有限公司</span>
     </div>
   </div>
 </template>
@@ -75,8 +67,6 @@ export default {
   data() {
     return {
       loading: false,
-      account: null,
-      selected: null,
       form: {
         username: null,
         password: null
@@ -87,7 +77,6 @@ export default {
       }
     };
   },
-
   methods: {
     loginByMobile() {
       const search = window.location.search;
@@ -123,9 +112,7 @@ export default {
               this.loading = false;
             });
         }
-      }).catch(() => {
-        // 表单校验失败，TDesign 会自动显示字段错误
-      });
+      }).catch(() => {});
     }
   },
   created() {
@@ -137,127 +124,130 @@ export default {
   }
 };
 </script>
+
 <style scoped lang="less">
 .login {
-  display: flex;
-  height: 100vh;
+  min-height: 100vh;
   width: 100vw;
-  background: white;
+  display: flex;
+  flex-direction: column;
+  background:
+      radial-gradient(ellipse at 12% 18%, rgba(61, 116, 255, 0.1), transparent 42%),
+      linear-gradient(180deg, #f7f9fc 0%, #eef3fa 100%);
 }
 
-.body-wrapper {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 900px;
-  height: 560px;
-  margin-left: -450px;
-  margin-top: -300px;
+.login__main {
+  flex: 1;
+  width: min(920px, calc(100% - 32px));
+  margin: 40px auto 24px;
+  display: flex;
+  flex-direction: column;
+}
 
-  .wel {
-    font-size: 24px;
-    color: #fff;
-    font-weight: normal;
-    margin: 60px 0 50px;
-    line-height: 1;
-  }
+.login__header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
 
-  .lineD {
-    float: right;
-    width: 180px;
-    height: 1px;
-    background: #96aecc;
-    margin-top: 20px;
-  }
+.login__logo {
+  width: 110px;
+  height: 38px;
+  background: url(@/assets/logo_login.png) no-repeat;
+  background-size: contain;
+  flex-shrink: 0;
+}
 
-  .login-header {
-    display: flex;
-    word-wrap: break-word;
-    overflow: hidden;
-    width: 100%;
-    margin-bottom: 30px;
-    text-align: left;
+.login__title-wrap {
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 1px solid #c8ced6;
+}
 
-    .login-logo {
-      width: 110px;
-      height: 38px;
-      background: url(@/assets/logo_login.png) no-repeat;
-      background-size: 99%;
-      padding-right: 12px;
-    }
+.login__title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #333639;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
 
-    .login-title {
-      font-size: 20px;
-      color: #5a5a5a;
-      padding-left: 8px;
-      line-height: 1.2;
-      letter-spacing: 0.5px;
-      font-weight: bold;
-      border-left: 1px solid #bebebe;
-      color: #5a5a5a;
-    }
+.login__title-en {
+  font-size: 12px;
+  color: #8f959e;
+  margin-top: 2px;
+}
 
-    .login-title-bot {
-      display: block;
-      font-size: 12px;
-      color: #5a5a5a;
-      line-height: 1.6;
-      letter-spacing: 0;
-      font-weight: normal;
-    }
-  }
+.login__body {
+  display: flex;
+  height: 400px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 10px 32px rgba(31, 45, 61, 0.1);
+}
 
-  .login-bg {
-    width: 900px;
-    height: 398px;
-    background: url(@/assets/login-bg.jpg) no-repeat;
-    border-radius: 3px;
-  }
+.login__visual {
+  flex: 1;
+  background: url(@/assets/login-bg.jpg) no-repeat center/cover;
+}
 
-  .login-form {
-    float: right;
-    width: 320px;
-    height: 398px;
-    background: #a7bcde;
-    padding: 0 30px;
-    .login-form-btn {
-      width: 100%;
-      background-color: #3d74ff;
-      border-radius: 3px;
-    }
-  }
+.login__form-panel {
+  flex: 0 0 340px;
+  padding: 36px 32px;
+  background: #fff;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
 
-  .login-footer {
-    text-align: right;
-    padding-top: 40px;
+.login__form-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1f2329;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+}
 
-    p {
-      font-size: 13px;
-      color: #3d74ff;
-      line-height: 1.6;
-      margin: 0;
-    }
+.login__tagline {
+  margin-top: 20px;
+  text-align: right;
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: #3d74ff;
+    line-height: 1.6;
   }
 }
 
-.footerWrap {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  height: 70px;
+.login__footer {
+  height: 56px;
   background: #3d74ff;
-  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+}
 
-  .copyright {
-    width: 900px;
-    margin: 0 auto;
+@media (max-width: 760px) {
+  .login__body {
+    flex-direction: column;
+    height: auto;
+  }
 
-    span {
-      font-size: 12px;
-      color: #fff;
-      padding-left: 10px;
-      opacity: 0.8;
-    }
+  .login__visual {
+    height: 160px;
+  }
+
+  .login__form-panel {
+    flex: none;
+    width: 100%;
+  }
+
+  .login__tagline {
+    text-align: left;
   }
 }
 </style>

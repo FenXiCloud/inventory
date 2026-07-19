@@ -1,207 +1,187 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar class-name="!size--mini">
-      <template #tools>
-        <Stamp v-if="form.orderStatus === '已审核'" />
-      </template>
-    </vxe-toolbar>
+  <div class="page-column">
+    <div class="page-column-full-body">
+      <vxe-toolbar class-name="!size--mini">
+        <template #buttons>
+          <label class="mr-20px" style="font-size: 16px !important">单据日期：</label>
+          <DatePicker
+            class="w-140px"
+            v-model="form.orderDate"
+            :clearable="false"
+            :disabled="isAudited"
+          />
+        </template>
+        <template #tools>
+          <Stamp v-if="isAudited" />
+        </template>
+      </vxe-toolbar>
 
-    <!-- 下拉选择 -->
-    <vxe-toolbar>
-      <template #buttons>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">单据日期</span>
-          <DatePicker class="w-120px" v-model="form.orderDate"></DatePicker>
-        </div>
-      </template>
-
-      <template #tools>
-        <Button
-          v-if="form.orderStatus != '已审核'"
-          @click="saveForm('add')"
-          color="primary"
-          >保存并新增</Button
-        >
-        <Button
-          v-if="form.orderStatus != '已审核'"
-          @click="saveForm('save')"
-          color="primary"
-          >保 存</Button
-        >
-        <Button
-          v-if="form.orderStatus == '已保存'"
-          @click="saveForm('audit', '已审核')"
-          >审 核</Button
-        >
-        <Button
-          v-if="form.orderStatus == '已审核'"
-          @click="batchAudit('已保存')"
-          >反审核</Button
-        >
-      </template>
-    </vxe-toolbar>
-
-    <!-- 表格输入 -->
-    <div class="flex1">
       <vxe-table
+        ref="transferTable"
+        size="mini"
         border
+        stripe
         show-overflow
-        :edit-config="editConfig"
+        :row-config="{ height: 40 }"
+        :edit-config="isAudited ? undefined : editConfig"
         :data="tableData"
         :show-footer="showFooter"
         :footer-method="footerMethod"
       >
-        <vxe-column type="seq" width="70" fixed="left"></vxe-column>
-        <vxe-column
-          title="操作"
-          field="seq"
-          width="70"
-          align="center"
-          fixed="left"
-        >
+        <vxe-column type="seq" title="序号" width="60" align="center" fixed="left" />
+        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
           <template #default="{ rowIndex }">
-            <div
-              class="fa fa-plus text-hover mr-5px"
-              @click="adjustRows('insert', rowIndex, tableData)"
-            ></div>
-            <div
-              class="fa fa-minus text-hover"
-              v-if="canDelete(tableData)"
-              @click="adjustRows('delete', rowIndex, tableData)"
-            ></div>
+            <template v-if="!isAudited">
+              <div
+                class="fa fa-plus text-hover mr-5px"
+                @click="adjustRows('insert', rowIndex, tableData)"
+              ></div>
+              <div
+                class="fa fa-minus text-hover"
+                v-if="canDelete(tableData)"
+                @click="adjustRows('delete', rowIndex, tableData)"
+              ></div>
+            </template>
           </template>
         </vxe-column>
-        <vxe-column field="fromAccountName" title="转出账户" :edit-render="{}">
+        <vxe-column field="fromAccountName" title="转出账户" min-width="140" :edit-render="{}">
           <template #header>
             <span style="color: red">*</span>转出账户
           </template>
           <template #default="{ row }">
-            <span> {{ row.fromAccountName }}</span>
+            <span>{{ row.fromAccountName }}</span>
           </template>
           <template #edit="{ row }">
             <vxe-select
-              @change="changeAccount(row.fromAccountName, 'fromAccountId', row)"
               v-model="row.fromAccountName"
               placeholder="请选择"
               :multiple="false"
               transfer
+              @change="changeAccount(row.fromAccountName, 'fromAccountId', row)"
             >
               <vxe-option
                 v-for="item in settlementAccount"
                 :key="item.id"
                 :value="item.name"
                 :label="item.name"
-              ></vxe-option>
+              />
             </vxe-select>
           </template>
         </vxe-column>
-        <vxe-column field="toAccountName" title="转入账户" :edit-render="{}">
+        <vxe-column field="toAccountName" title="转入账户" min-width="140" :edit-render="{}">
           <template #header>
             <span style="color: red">*</span>转入账户
           </template>
           <template #default="{ row }">
-            <span> {{ row.toAccountName }}</span>
+            <span>{{ row.toAccountName }}</span>
           </template>
           <template #edit="{ row }">
             <vxe-select
-              @change="changeAccount(row.toAccountName, 'toAccountId', row)"
               v-model="row.toAccountName"
               placeholder="请选择"
               :multiple="false"
               transfer
+              @change="changeAccount(row.toAccountName, 'toAccountId', row)"
             >
               <vxe-option
                 v-for="item in settlementAccount"
                 :key="item.id"
                 :value="item.name"
                 :label="item.name"
-              ></vxe-option>
+              />
             </vxe-select>
           </template>
         </vxe-column>
-        <vxe-column field="amount" title="金额" :edit-render="{}">
-          <template #header> <span style="color: red">*</span>金额 </template>
+        <vxe-column field="amount" title="金额" width="140" :edit-render="{}">
+          <template #header>
+            <span style="color: red">*</span>金额
+          </template>
           <template #default="{ row }">
-            <span> {{ row.amount }}</span>
+            <span>{{ row.amount }}</span>
           </template>
           <template #edit="{ row }">
             <vxe-input
-              @change="updateFootEvent"
               v-model="row.amount"
               type="number"
               placeholder="请输入数值"
               min="0"
-            ></vxe-input>
+              @change="updateFootEvent"
+            />
           </template>
         </vxe-column>
-        <vxe-column
-          field="paymentMethodName"
-          title="结算方式"
-          :edit-render="{}"
-        >
+        <vxe-column field="paymentMethodName" title="结算方式" min-width="120" :edit-render="{}">
           <template #default="{ row }">
-            <span> {{ row.paymentMethodName }}</span>
+            <span>{{ row.paymentMethodName }}</span>
           </template>
-
           <template #edit="{ row }">
             <vxe-select
-              @change="changePaymentMethod(row.paymentMethodName, row)"
               v-model="row.paymentMethodName"
               placeholder="请选择"
               :multiple="false"
               transfer
+              @change="changePaymentMethod(row.paymentMethodName, row)"
             >
               <vxe-option
                 v-for="item in paymentMethodList"
                 :key="item.id"
                 :value="item.name"
                 :label="item.name"
-              ></vxe-option>
+              />
             </vxe-select>
           </template>
         </vxe-column>
-
         <vxe-column
           field="settlementNumber"
           title="结算号"
+          min-width="120"
           :edit-render="{ name: 'input' }"
-        ></vxe-column>
-
-        <vxe-column
-          field="remarks"
-          title="备注"
-          :edit-render="{ name: 'input' }"
-        ></vxe-column>
+        />
+        <vxe-column field="remarks" title="备注" min-width="120" :edit-render="{ name: 'input' }" />
       </vxe-table>
+
       <div class="mt-10px"></div>
       <div class="filler-panel">
-        <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
-          <Textarea
+        <div class="filler-item">
+          <label class="mr-16px w-80px">备注说明：</label>
+          <Input
             placeholder="请输入备注"
             maxlength="150"
-            style="width: 100%"
             v-model="form.remarks"
+            :disabled="isAudited"
           />
+          <div class="transfer-extra-actions">
+            <Button @click="historyForm()">历史单据</Button>
+            <Button :title="logContent">操作日志</Button>
+          </div>
         </div>
       </div>
     </div>
-    <!-- 底部 -->
-    <vxe-toolbar>
-      <template #tools>
-        <Button @click="historyForm()" color="">历史单据</Button>
-        <!-- <vxe-tooltip theme="light" :content="logContent"> -->
-        <Button :title="logContent">操作日志</Button>
-        <!-- </vxe-tooltip> -->
-      </template>
-    </vxe-toolbar>
 
-    <div class="mb-10px"></div>
+    <div class="page-column-footer modal-column-between bg-white-color border">
+      <Button :loading="loading" @click="closeWindow">取消</Button>
+      <div>
+        <template v-if="!isAudited">
+          <Button color="primary" :loading="loading" @click="saveForm('add')">保存并新增</Button>
+          <Button :loading="loading" @click="saveForm('save')">保存</Button>
+          <Button
+            v-if="form.orderStatus == '已保存'"
+            :loading="loading"
+            @click="saveForm('audit', '已审核')"
+          >审核</Button>
+        </template>
+        <Button
+          v-else
+          :loading="loading"
+          @click="batchAudit('已保存')"
+        >反审核</Button>
+      </div>
+    </div>
   </div>
 </template>
 <script>
 import manba from 'manba';
 import { DialogPlugin, LoadingPlugin, MessagePlugin } from 'tdesign-vue-next';
-import {openDialog, closeDialog} from '@common/dialog';
+import { openDialog, closeDialog } from '@common/dialog';
 import { h } from 'vue';
 import AccountTransfer from '@js/api/fund/AccountTransfer';
 import Account from '@js/api/fund/Account';
@@ -209,7 +189,6 @@ import PaymentMethod from '@js/api/basic/PaymentMethod';
 import Customer from '@js/api/basic/Customer';
 import OrderStaff from '@js/api/basic/OrderStaff';
 import AccountType from '@js/api/basic/AccountType';
-
 import OrderStaffForm from './OrderStaffForm';
 import { mapState, mapMutations } from 'vuex';
 import Stamp from '../common/Stamp.vue';
@@ -228,17 +207,11 @@ export default {
       trigger: 'click',
       mode: 'cell'
     };
-    const accountOptions = [
-      // { name: '现金', id: 'cash' },
-      // { name: '银行', id: 'bank_deposit' },
-      // { name: '微信', id: 'wechat_pay' },
-      // { name: '支付宝', id: 'alipay' }
-    ];
+    const accountOptions = [];
 
     return {
       logContent: null,
       val1: [],
-
       form: {
         customerName: null,
         orderStaffName: null,
@@ -251,16 +224,10 @@ export default {
       paymentMethodList: [],
       accountTypeList: [],
       settlementAccount: [],
-
       totalTb1: 0,
       totalTb2: 0,
-
-      // customerData: {},
-      // orderStaffData: {},
-
       loading: false,
       amountTotal: 0,
-      // totalParams: {},
       pagination: {
         page: 1,
         pageSize: 100,
@@ -272,41 +239,16 @@ export default {
         sortCol: null,
         sort: null
       },
-
       showFooter: true,
-
       editConfig,
       accountOptions
     };
   },
-  watch: {
-    // currentTabData(newVal) {
-    //   console.log('tab 参数更新:', newVal);
-    //   // 在这里处理参数变化
-    // },
-    // 监听 store 中的 currentTabData
-    // '$store.state.currentTabReceiptRecord': {
-    //   handler(newVal) {
-    //     console.log('currentTabReceiptRecord changed:', newVal);
-    //     if (newVal && newVal.refresh) {
-    //       this.loadList();
-    //       // 重置刷新标志
-    //       this.$store.commit('SET_TAB_DATA_RECEIPTRECORD', null);
-    //     }
-    //   },
-    //   deep: true
-    // }
-  },
-
   computed: {
     ...mapState(['user']),
-    // currentTabData() {
-    //   const tab = this.$store.state.tabs.find(
-    //     (tab) => tab.key === this.$store.state.currentTab
-    //   );
-    //   return tab ? tab.params : {};
-    // },
-
+    isAudited() {
+      return this.form.orderStatus === '已审核';
+    },
     queryParams() {
       return Object.assign(this.params, {
         page: this.pagination.page,
@@ -316,13 +258,23 @@ export default {
   },
   methods: {
     ...mapMutations(['pushTab', 'closeSelfTab']),
+    closeWindow() {
+      this.closeSelfTab(this.index);
+      this.pushTab({
+        keepAlive: false,
+        key: 'AccountTransferList',
+        title: '资金转账单'
+      });
+    },
+    updateFootEvent() {
+      this.$refs.transferTable && this.$refs.transferTable.updateFooter();
+    },
     loadAccountType() {
       AccountType.list().then((res) => {
         this.accountTypeList = res.data;
       });
     },
     getLog() {
-      // this.logContent
       let {
         createName = this.user.admin.name,
         updateName,
@@ -338,7 +290,7 @@ export default {
         updateAt ? `最后修改时间: ${updateAt}` : null,
         approvedName ? `审核人: ${approvedName}` : null,
         approvedAt ? `审核时间: ${approvedAt}` : null
-      ].filter((entry) => entry); // 过滤掉 null 的条目
+      ].filter((entry) => entry);
 
       this.logContent = logEntries.join('\n');
     },
@@ -356,25 +308,21 @@ export default {
         (parseFloat(this.form.collectionAmount) || 0)
       ).toFixed(2);
     },
-
     batchAudit(orderStatus) {
       let params = {
         id: this.form.id,
         orderStatus: orderStatus,
         approvedBy: this.$store.state.user.admin.id
       };
+      const isAnti = orderStatus === '已保存';
       DialogPlugin.confirm({
-        content: `确定审核订单？`,
+        content: isAnti ? '确定反审核该资金转账单？' : '确定审核该资金转账单？',
         onConfirm: () => {
           AccountTransfer.batchAudit(params)
             .then((success) => {
               if (success) {
-                if (orderStatus === '已审核') {
-                  MessagePlugin.success('审核成功');
-                } else {
-                  MessagePlugin.success('反审核成功');
-                }
-                this.loadList(); // Refresh the list
+                MessagePlugin.success(isAnti ? '反审核成功' : '审核成功');
+                this.loadList();
               }
             })
             .finally(() => LoadingPlugin(false));
@@ -382,57 +330,44 @@ export default {
       });
     },
     clerarData() {
-      this.form = {};
+      this.form = {
+        orderDate: manba().format('YYYY-MM-DD')
+      };
       this.tableData = [{}];
       this.tableData2 = [{}];
     },
-
     updatePage(type = 'add', orderId = null) {
       this.closeSelfTab(this.index);
-      // 打开当前
       this.pushTab({
         keepAlive: false,
-        key: 'AccountTransferList',
+        key: 'AccountTransferForm',
         params: { type: type, orderId: orderId },
         title: '资金转账单'
       });
     },
     loadList() {
       this.loading = true;
-      // const params = JSON.parse(JSON.stringify(this.queryParams));
-      // params.customerIds = params.customerIds.join(',');
       AccountTransfer.details({ id: this.orderId })
         .then(({ data: { order, itemList } }) => {
           this.form = order;
           this.tableData = itemList || [];
-          // this.pagination.total = total;
           this.getLog();
         })
         .finally(() => (this.loading = false));
     },
-    addForm(type = 'add', orderId = null) {
-      // this.form = {};
-      // this.tableData = [{}];
-      // this.tableData2 = [{}];
-      // this.updatePage();
-    },
+    addForm() {},
     historyForm() {
       this.pushTab({
         keepAlive: false,
-        key: 'AccountTransferRecord',
-        title: '资金转账单记录'
+        key: 'AccountTransferList',
+        title: '资金转账单'
       });
     },
     saveForm(type = 'add', orderStatus = '已保存') {
-      // this.type = type;
-      // console.log(
-      //   'saveForm----------------------------------------------------------'
-      // );
       let orderReceipt = {
-        // documentSource: 1,
         createdBy: this.user.admin.id,
         updateBy: this.user.admin.id,
-        orderStatus: orderStatus, //||已审核
+        orderStatus: orderStatus,
         amount: this.totalTb1,
         ...this.form
       };
@@ -441,7 +376,6 @@ export default {
         orderReceipt.approvedBy = this.user.admin.id;
         orderReceipt.approvedName = this.user.admin.name;
       }
-      // console.log(this.tableData2);
       const filterEmptyObjects = (arr) =>
         arr
           .map(({ _X_ROW_KEY, ...rest }) => rest)
@@ -459,19 +393,12 @@ export default {
       } else if (!this.tableData.length || !this.tableData[0].amount) {
         return MessagePlugin.error('请输入金额');
       }
-      console.log(params);
 
       this.addEdit(type, params);
     },
-
     footerMethodFormat({ columns, data }, list, totalName) {
-      // 初始化合计行，默认所有列为空字符串
       const footerRow = new Array(columns.length).fill('');
-
-      // 设置第一列为“合计”
       footerRow[0] = '合计';
-
-      // 遍历列，仅对需要合计的字段进行计算
       columns.forEach((column, index) => {
         if (list.includes(column.property)) {
           let total = 0;
@@ -481,22 +408,17 @@ export default {
               total += value;
             }
           });
-          footerRow[index] = total.toFixed(2); // 将合计值放入对应位置
-
+          footerRow[index] = total.toFixed(2);
           this[totalName] = total;
         }
       });
-
       this.form.collectionAmount = this.calcCollectionAmount();
       this.form.arrearsAmount = this.calcArrearsAmount();
-
-      return [footerRow]; // 返回二维数组用于渲染 footer
+      return [footerRow];
     },
-
     footerMethod({ columns, data }) {
       return this.footerMethodFormat({ columns, data }, ['amount'], 'totalTb1');
     },
-
     canDelete(tableData) {
       return tableData.length > 1;
     },
@@ -507,7 +429,6 @@ export default {
         tableData.splice(index, 1);
       }
     },
-
     addEdit(type, params) {
       this.loading = true;
       AccountTransfer.addEdit(params)
@@ -520,22 +441,18 @@ export default {
         })
         .finally(() => (this.loading = false));
     },
-    //加载客户列表
     loadCustomer() {
       this.loading = true;
       Customer.select()
         .then(({ data }) => {
           this.customerDataList = data || [];
-          // this.pagination.total = total;
         })
         .finally(() => (this.loading = false));
     },
-    //加载业务员列表
     loadOrderStaff() {
       OrderStaff.orderStaffList()
         .then(({ data }) => {
           this.orderStaffList = data || [];
-          // this.pagination.total = total;
         })
         .finally();
     },
@@ -555,19 +472,14 @@ export default {
         })
         .finally(() => (this.loading = false));
     },
-
     selectCustomer(e) {
       this.form.customerId = e?.id || null;
-      // this.form.totalAmountsOwed = e?.balance || null;
-
       this.form = {
         ...this.form
       };
     },
     selectAccounter(e) {
       this.form.settlementAccountId = e?.id || null;
-      // this.form.totalAmountsOwed = e?.balance || null;
-
       this.form = {
         ...this.form
       };
@@ -579,28 +491,22 @@ export default {
       const selectedItem = this.settlementAccount.find(
         (item) => item.name === value
       );
-      debugger;
-
       if (selectedItem) {
-        row[keyname] = selectedItem.id; // 设置 id
+        row[keyname] = selectedItem.id;
       }
-
-      console.log(row, 'changeAccount');
     },
     changePaymentMethod(value, row) {
-      console.log(value, 'changePaymentMethod');
       const selectedItem = this.paymentMethodList.find(
         (item) => item.name === value
       );
       if (selectedItem) {
-        row.paymentMethodId = selectedItem.id; // 设置 id
+        row.paymentMethodId = selectedItem.id;
       }
     },
     addOrderStaff() {
       document.getElementsByClassName('h-dropdown')[0].style.zIndex = 1;
       this.showForm();
     },
-
     showForm(entity) {
       let type = 0;
       let dialogId = openDialog({
@@ -612,7 +518,6 @@ export default {
           entity,
           type,
           onClose: () => {
-            console.log(this.$refs.selectRef);
             closeDialog(dialogId);
           },
           onSuccess: () => {
@@ -624,7 +529,6 @@ export default {
     }
   },
   created() {
-    console.log(this.orderId, this.type, 'orderIdorderId');
     if (this.orderId) {
       this.loadList();
     }
@@ -636,7 +540,6 @@ export default {
     setTimeout(() => {
       this.getLog();
     }, 500);
-    // this.getLog()
   }
 };
 </script>
@@ -644,5 +547,12 @@ export default {
 :deep(.vxe-select > .vxe-input) {
   width: 100%;
   height: 100%;
+}
+
+.transfer-extra-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 </style>

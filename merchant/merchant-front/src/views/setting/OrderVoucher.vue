@@ -1,48 +1,47 @@
 <template>
-  <div class="frame-page flex flex-column">
-
-    <div class="parent_container">
-      <div class="left">
-        <vxe-table
-            border
-            ref="documentTypeGridRef"
-            size="mini"
+  <div class="simple-page">
+    <div class="simple-page__split">
+      <div class="simple-page__side">
+        <t-table
+            row-key="id"
+            size="medium"
+            bordered
+            hover
+            height="100%"
+            table-layout="auto"
             :data="documentTypeDataList"
-            @radio-change="handleDocumentTypeChange"
-            :rowConfig="{isCurrent: true,isHover: true}"
-            :radio-config="{trigger: 'row',labelField: 'documentType',highlight: true}">
-          <vxe-column field="documentType" title="单据类型"></vxe-column>
-        </vxe-table>
+            :columns="documentTypeColumns"
+            :selected-row-keys="selectedDocumentTypeKeys"
+            :active-row-keys="selectedDocumentTypeKeys"
+            @row-click="onDocumentTypeRowClick"
+            @select-change="onDocumentTypeSelect"
+        />
       </div>
 
-      <div class="right">
-        <vxe-toolbar>
-          <template #buttons>
+      <div class="simple-page__main">
+        <div class="simple-page__toolbar">
+          <t-space break-line>
+            <t-button variant="outline" style="border-radius: 4px" @click="showForm()">批量删除凭证</t-button>
+            <t-button theme="primary" style="border-radius: 4px" :loading="loading" @click="doSearch">生成凭证</t-button>
+          </t-space>
+        </div>
 
-          </template>
-          <template #tools>
-            <Button @click="showForm()">批量删除凭证</Button>
-            <Button color="primary" :loading="loading" @click="doSearch">生成凭证</Button>
-          </template>
-        </vxe-toolbar>
-
-        <vxe-table row-id="id"
-                   ref="table"
-                   :data="dataList"
-                   highlight-hover-row
-                   show-overflow
-                   :loading="loading">
-          <vxe-column type="checkbox" width="40" align="center"/>
-          <vxe-column type="seq" width="60" align="center"/>
-          <vxe-column title="日期" field="name" width="200"/>
-          <vxe-column title="单据编码" field="documentType"/>
-          <vxe-column title="单据类型" field="format"/>
-          <vxe-column title="供应商" field="serialNumberLength" width="120"/>
-          <vxe-column title="客户" field="serialNumberLength" width="120"/>
-          <vxe-column title="单据金额" field="serialNumberLength" width="120"/>
-          <vxe-column title="制单人" field="createdAt" width="120"/>
-          <vxe-column title="凭证号" field="createdAt" width="120"/>
-        </vxe-table>
+        <div class="simple-page__table">
+          <t-table
+              row-key="id"
+              size="medium"
+              bordered
+              stripe
+              hover
+              height="100%"
+              table-layout="auto"
+              :data="dataList"
+              :columns="columns"
+              :loading="loading"
+              :selected-row-keys="selectedRowKeys"
+              @select-change="onSelectChange"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -85,6 +84,8 @@ export default {
         {id: 19, documentType: '客户', type: 2},
         {id: 20, documentType: '供货商', type: 2}
       ],
+      selectedDocumentTypeKeys: [1],
+      selectedRowKeys: [],
       opened: true,
       loading: false,
       params: {
@@ -98,47 +99,56 @@ export default {
       param: [
         {title: '启用', key: 'enabled'},
         {title: '禁用', key: 'disabled'},
+      ],
+      documentTypeColumns: [
+        {colKey: 'row-select', type: 'single', width: 46},
+        {colKey: 'documentType', title: '单据类型', minWidth: 120, ellipsis: true}
+      ],
+      columns: [
+        {colKey: 'row-select', type: 'multiple', width: 46},
+        {colKey: 'name', title: '日期', width: 200},
+        {colKey: 'documentType', title: '单据编码', minWidth: 120},
+        {colKey: 'format', title: '单据类型', minWidth: 120},
+        {colKey: 'supplier', title: '供应商', width: 120, cell: (h, {row}) => row.serialNumberLength},
+        {colKey: 'customer', title: '客户', width: 120, cell: (h, {row}) => row.serialNumberLength},
+        {colKey: 'amount', title: '单据金额', width: 120, cell: (h, {row}) => row.serialNumberLength},
+        {colKey: 'creator', title: '制单人', width: 120, cell: (h, {row}) => row.createdAt},
+        {colKey: 'voucherNo', title: '凭证号', width: 120, cell: (h, {row}) => row.createdAt}
       ]
-
     }
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {})
+      return Object.assign({}, this.params)
+    },
+    currentDocumentType() {
+      const row = this.documentTypeDataList.find(item => this.selectedDocumentTypeKeys.includes(item.id));
+      return row ? row.documentType : this.params.documentType;
     }
   },
-  mounted() {
-    // 默认选中第一个单据类型
-    this.selectFirstDocumentType();
-  },
   methods: {
-    selectFirstDocumentType() {
-      // 默认选中第一个单据类型
-      const table = this.$refs.documentTypeGridRef;
-      table.setRadioRow(this.documentTypeDataList[0]);
-    },
-
-    handleDocumentTypeChange(data) {
-      // 单选框变化时的处理函数
-      this.params.documentType = data.row.documentType;
-      this.loadList();
-
-    },
-    showForm(CodeRule) {
-      const table = this.$refs.documentTypeGridRef;
-      if (table) {
-        const currRow = table.getRadioRecord();
-        if (!CodeRule && currRow) {
-          CodeRule = {documentType: currRow.documentType};
-        }
+    onDocumentTypeSelect(keys) {
+      if (!keys || !keys.length) return;
+      this.selectedDocumentTypeKeys = keys.slice(0, 1);
+      const row = this.documentTypeDataList.find(item => item.id === keys[0]);
+      if (row) {
+        this.params.documentType = row.documentType;
+        this.loadList();
       }
-
+    },
+    onDocumentTypeRowClick({row}) {
+      this.onDocumentTypeSelect([row.id]);
+    },
+    onSelectChange(keys) {
+      this.selectedRowKeys = keys;
+      this.checkedRows = this.dataList.filter(item => keys.includes(item.id));
+    },
+    showForm() {
       let dialogId = openDialog({
         header: "规则编码",
         closeOnOverlayClick: false,
         width: '50vw',
-        body: h(CodeRuleForm, {
-          CodeRule,
+        body: h(VoucherForm, {
           onClose: () => {
             closeDialog(dialogId);
           },
@@ -192,25 +202,53 @@ export default {
 }
 </script>
 
-<style lang="less" scoped>
-
-.parent_container {
-  display: flex;
+<style scoped>
+.simple-page {
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.left {
-  width: 300px; /* 固定宽度 */
-  padding: 20px;
+.simple-page__split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
 }
 
-.right {
-  flex: 1; /* 占用剩余空间 */
-  padding: 20px;
+.simple-page__side {
+  width: 260px;
+  flex-shrink: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px 0;
 }
 
-.selected {
-  background-color: #dddddd;
+.simple-page__main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
 </style>

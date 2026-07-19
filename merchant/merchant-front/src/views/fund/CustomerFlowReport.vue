@@ -1,191 +1,202 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">单据日期:</span>
-          <DateRangePicker
-            v-model="dateRange"
-            @confirm="doSearch"
-          ></DateRangePicker>
-        </div>
-      </template>
-    </vxe-toolbar>
-    <div class="flex1">
-      <vxe-table
-        row-id="id"
-        ref="table"
-        height="auto"
-        :data="dataList"
-        highlight-hover-row
-        show-overflow
-        show-footer
-        :footer-method="footerMethod"
-        :row-config="{ height: 48 }"
-        :column-config="{ resizable: true }"
-        :sort-config="{ remote: true }"
-        :loading="loading"
-      >
-        <!-- <vxe-column type="checkbox" width="40" align="center" /> -->
-        <!-- <vxe-column title="id" field="id"> </vxe-column> -->
-        <vxe-column
-          title="客户"
-          field="customerName"
-          align="center"
-          width="130"
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-date-range-picker
+            v-model="dateRangeValue"
+            clearable
+            allow-input
+            placeholder="单据日期"
+            style="width: 260px; border-radius: 4px"
         />
-        <vxe-column
-          title="销售人员"
-          field="staffName"
-          align="center"
-          width="130"
+        <t-select
+            v-model="params.customerId"
+            :options="customerList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            placeholder="选择客户"
+            style="width: 180px; border-radius: 4px"
         />
-        <vxe-column
-          title="单据日期"
-          field="orderDate"
-          align="center"
-          width="130"
-        />
-        <vxe-column
-          title="单据编号"
-          field="orderNo"
-          align="center"
-          width="200"
-        />
-        <vxe-column title="业务类型" field="businessType" min-width="120" />
-        <vxe-column
-          title="增加应收款金额"
-          field="receivableAmount"
-          min-width="120"
-        />
-        <vxe-column
-          title="增加预收款金额"
-          field="prepaymentAmount"
-          min-width="120"
-        />
-        <vxe-column title="应收款余额" field="balance" min-width="120" />
-        <vxe-column title="备注" field="remarks" width="120" />
-      </vxe-table>
+        <t-input
+            v-model="params.keyword"
+            clearable
+            placeholder="客户名称/单据编号"
+            style="width: 220px; background: #fff; border-radius: 4px"
+            @enter="doSearch"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch" />
+          </template>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
     </div>
-    <div class="justify-between items-center pt-5px">
-      <vxe-pager
-        perfect
-        @page-change="loadList(false)"
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :layouts="[
-          'PrevJump',
-          'PrevPage',
-          'Number',
-          'NextPage',
-          'NextJump',
-          'Sizes',
-          'Total'
-        ]"
-      >
-        <template #left>
-          <vxe-button
-            @click="loadList(false)"
-            type="text"
-            size="mini"
-            icon="vxe-icon-refresh"
-            :loading="loading"
-          ></vxe-button>
-        </template>
-      </vxe-pager>
+    <div class="simple-page__table">
+      <t-table
+          row-key="rowKey"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="tableData"
+          :columns="columns"
+          :loading="loading"
+          :foot-data="footData"
+      />
+    </div>
+    <div class="simple-page__pager">
+      <span class="simple-page__total">增加应收：{{ amountTotal }} / 增加预收：{{ prepayTotal }}</span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
 <script>
 import manba from 'manba';
-import { mapMutations } from 'vuex';
 import AccountFlow from '@js/api/fund/AccountFlow';
-const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
-const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
+import Customer from '@js/api/basic/Customer';
+
+const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-DD');
+const endTime = manba().endOf(manba.DAY).format('YYYY-MM-DD');
+const money = (v) => Number(v || 0).toFixed(2);
 
 export default {
   name: 'CustomerFlowReport',
   data() {
     return {
       dataList: [],
-      pagination: {
-        page: 1,
-        pageSize: 20,
-        total: 0
-      },
+      customerList: [],
+      pagination: { page: 1, pageSize: 20, total: 0 },
       loading: false,
-      params: {},
-      dateRange: {
-        start: manba(startTime).format('YYYY-MM-dd'),
-        end: manba(endTime).format('YYYY-MM-dd')
-      }
+      amountTotal: '0.00',
+      prepayTotal: '0.00',
+      params: { customerId: null, keyword: null },
+      dateRangeValue: [startTime, endTime],
+      columns: [
+        { colKey: 'orderDate', title: '单据日期', width: 120, align: 'center' },
+        { colKey: 'orderNo', title: '单据编号', minWidth: 180, ellipsis: true },
+        { colKey: 'customerName', title: '客户', minWidth: 130, ellipsis: true },
+        { colKey: 'staffName', title: '销售人员', width: 110, align: 'center' },
+        { colKey: 'businessType', title: '业务类型', width: 110, align: 'center' },
+        { colKey: 'receivableAmount', title: '增加应收款', width: 120, align: 'right' },
+        { colKey: 'prepaymentAmount', title: '增加预收款', width: 120, align: 'right' },
+        { colKey: 'balance', title: '应收款余额', width: 120, align: 'right' },
+        { colKey: 'remarks', title: '备注', minWidth: 120, ellipsis: true },
+      ]
     };
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      const [start, end] = this.dateRangeValue || [];
+      return {
+        ...this.params,
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        startTime: this.dateRange.start,
-        endTime: this.dateRange.end
-      });
+        startTime: start || null,
+        endTime: end || null
+      };
+    },
+    tableData() {
+      return (this.dataList || []).map((row, index) => ({
+        ...row,
+        rowKey: `${row.orderNo || ''}_${index}`,
+        receivableAmount: money(row.receivableAmount),
+        prepaymentAmount: money(row.prepaymentAmount),
+        balance: money(row.balance)
+      }));
+    },
+    footData() {
+      const sum = (key) => money((this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0));
+      return [{
+        orderNo: '合计',
+        receivableAmount: sum('receivableAmount'),
+        prepaymentAmount: sum('prepaymentAmount'),
+        balance: sum('balance'),
+      }];
     }
   },
   methods: {
-    ...mapMutations(['pushTab']),
-    footerMethodFormat({ columns, data }, list, totalName) {
-      // 初始化合计行，默认所有列为空字符串
-      const footerRow = new Array(columns.length).fill('');
-
-      // 设置第一列为“合计”
-      footerRow[0] = '合计';
-
-      // 遍历列，仅对需要合计的字段进行计算
-      columns.forEach((column, index) => {
-        if (list.includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            const value = parseFloat(row[column.property]);
-            if (!isNaN(value)) {
-              total += value;
-            }
-          });
-          footerRow[index] = total.toFixed(2); // 将合计值放入对应位置
-
-          this[totalName] = total;
-        }
-      });
-
-      // this.form.collectionAmount = this.calcCollectionAmount();
-
-      return [footerRow]; // 返回二维数组用于渲染 footer
-    },
-    footerMethod({ columns, data }) {
-      return [[]];
-      // return this.footerMethodFormat(
-      //   { columns, data },
-      //   ['receivableAmount', 'prepaymentAmount', 'balance'],
-      //   'totalTb1'
-      // );
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
     },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
     },
-
-    loadList(type = true) {
+    loadCustomer() {
+      Customer.select().then(({ data }) => {
+        this.customerList = data || [];
+      });
+    },
+    loadList() {
       this.loading = true;
       AccountFlow.getReceivableDetailReport(this.queryParams)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
-          this.pagination.total = total;
+          this.pagination.total = total || 0;
+          this.amountTotal = money(this.dataList.reduce((acc, row) => acc + Number(row.receivableAmount || 0), 0));
+          this.prepayTotal = money(this.dataList.reduce((acc, row) => acc + Number(row.prepaymentAmount || 0), 0));
         })
         .finally(() => (this.loading = false));
     }
   },
   created() {
+    this.loadCustomer();
     this.loadList();
   }
 };
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
+}
+</style>

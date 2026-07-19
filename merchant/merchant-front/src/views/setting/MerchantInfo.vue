@@ -1,31 +1,37 @@
 <template>
-  <div class="frame-page">
-    <div class="h-panel">
-      <div class="h-panel-body">
-        <Form class="mt-16px w-400px" ref="form" :model="merchant" :rules="validationRules">
-          <FormItem label="编号">
-            <Input v-model="merchant.code" readonly/>
-          </FormItem>
-          <FormItem label="名称" prop="name">
-            <Input v-model="merchant.name"/>
-          </FormItem>
-          <FormItem label="联系人" prop="linkman">
-            <Input v-model="merchant.linkman"/>
-          </FormItem>
-          <FormItem label="电话" prop="mobile">
-            <Input v-model="merchant.mobile"/>
-          </FormItem>
-          <FormItem label="地址">
-            <Input v-model="merchant.address"/>
-          </FormItem>
-          <FormItem label="邮箱">
-            <Input v-model="merchant.email"/>
-          </FormItem>
-          <FormItem>
-            <Button @click="doSave" :loading="loading" color="primary">保 存</Button>
-          </FormItem>
-        </Form>
-      </div>
+  <div class="simple-page">
+    <div class="settings-card">
+      <div class="settings-card__title">商户信息</div>
+      <t-form
+          ref="form"
+          :data="merchant"
+          :rules="formRules"
+          label-width="80px"
+          class="settings-card__form"
+          @submit="doSave"
+      >
+        <t-form-item label="编号" name="code">
+          <t-input v-model="merchant.code" readonly style="width: 320px; border-radius: 4px"/>
+        </t-form-item>
+        <t-form-item label="名称" name="name">
+          <t-input v-model="merchant.name" style="width: 320px; border-radius: 4px"/>
+        </t-form-item>
+        <t-form-item label="联系人" name="linkman">
+          <t-input v-model="merchant.linkman" style="width: 320px; border-radius: 4px"/>
+        </t-form-item>
+        <t-form-item label="电话" name="mobile">
+          <t-input v-model="merchant.mobile" style="width: 320px; border-radius: 4px"/>
+        </t-form-item>
+        <t-form-item label="地址" name="address">
+          <t-input v-model="merchant.address" style="width: 320px; border-radius: 4px"/>
+        </t-form-item>
+        <t-form-item label="邮箱" name="email">
+          <t-input v-model="merchant.email" style="width: 320px; border-radius: 4px"/>
+        </t-form-item>
+        <t-form-item>
+          <t-button theme="primary" type="submit" :loading="loading" style="border-radius: 4px">保 存</t-button>
+        </t-form-item>
+      </t-form>
     </div>
   </div>
 </template>
@@ -52,22 +58,22 @@ export default {
     return {
       loading: false,
       merchant: {},
-      validationRules: {
-        required: ['name', 'linkman', 'phone'],
-        mobile: ['phone']
+      formRules: {
+        name: [{required: true, message: '请输入名称'}],
+        linkman: [{required: true, message: '请输入联系人'}],
+        mobile: [{required: true, message: '请输入电话'}]
       }
     }
   },
   methods: {
-    doSave() {
-      this.$refs.form.validate().then((res) => {
-        if (res === true || res.result === true) {
-          this.loading = true;
-          Merchant.save(this.merchant).then(() => {
-            MessagePlugin.success("保存成功,重新登录后生效~");
-          }).finally(() => this.loading = false);
-        }
-      }).catch(() => {});
+    doSave({validateResult}) {
+      if (validateResult !== true) {
+        return;
+      }
+      this.loading = true;
+      Merchant.save(this.merchant).then(() => {
+        MessagePlugin.success("保存成功,重新登录后生效~");
+      }).finally(() => this.loading = false);
     }
   },
   created() {
@@ -75,3 +81,28 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 16px 20px;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.settings-card__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333639;
+  margin-bottom: 20px;
+}
+
+.settings-card__form {
+  max-width: 480px;
+}
+</style>

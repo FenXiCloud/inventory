@@ -1,6 +1,6 @@
 <template>
-  <div class="modal-column">
-    <div class="modal-column-full-body">
+  <div class="page-column">
+    <div class="page-column-full-body">
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
@@ -125,7 +125,7 @@
       </vxe-table>
       <div class="mt-10px"></div>
       <div class="filler-panel">
-        <div class="filler-item" style="flex: 1; margin: 5px 0 !important">
+        <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
           <Input :disabled="looked" placeholder="请输入备注" type="text" maxlength="150"
                  style="width: 80%"
@@ -134,7 +134,7 @@
         </div>
       </div>
     </div>
-    <div class="modal-column-between bg-white-color border">
+    <div class="page-column-footer modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
         <Button color="primary" v-if="!approved && !looked" @click="saveOrder('increase')"

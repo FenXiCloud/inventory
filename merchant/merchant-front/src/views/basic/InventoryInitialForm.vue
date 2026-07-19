@@ -1,13 +1,15 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <div class="flex1">
+  <div class="page-column">
+    <div class="page-column-full-body">
       <vxe-table
                  ref="xTable"
+                 size="mini"
+                 border
                  :data="dataList"
                  highlight-hover-row
                  show-overflow
                  stripe
-                 :row-config="{height: 48}"
+                 :row-config="{height: 40}"
                  :column-config="{resizable: true}"
                  :loading="loading">
         <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
@@ -103,10 +105,10 @@
         </vxe-column>
       </vxe-table>
     </div>
-    <div class="modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading"> 取消</Button>
+    <div class="page-column-footer modal-column-between bg-white-color border">
+      <Button @click="closeWindow" :loading="loading">取消</Button>
       <div>
-        <Button color="primary" @click="save" :loading="loading"> 保存</Button>
+        <Button color="primary" @click="save" :loading="loading">保存</Button>
       </div>
     </div>
   </div>

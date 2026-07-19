@@ -1,56 +1,89 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
-        <Button @click="excel" color="primary">导出</Button>
-      </template>
-      <template #tools>
-        <Search v-model.trim="params.filter"
-                show-search-button class="w-360px ml-8px"
-                placeholder="请输入产品名称/单据编号" @search="doSearch">
-          <t-icon name="search" />
-        </Search>
-      </template>
-    </vxe-toolbar>
-    <vxe-toolbar>
-      <template #buttons>
-        <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">仓库：</span>
-          <Select :multiple="true" v-model="params.warehouseIds" class="w-120px" keyName="id" titleName="name"
-                  :datas="warehouseList"/>
-        </div>
-        <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">产品：</span>
-          <Select :multiple="true" v-model="params.productIds" class="w-120px" keyName="id" titleName="name"
-                  :datas="productList"/>
-        </div>
-        <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">产品类别：</span>
-          <Select :multiple="true" v-model="params.productCategoryIds" class="w-120px" keyName="id" titleName="name"
-                  :datas="productCategoryList"/>
-        </div>
-        <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">供应商：</span>
-          <Select :multiple="true" v-model="params.supplierIds" class="w-120px" keyName="id" titleName="name"
-                  :datas="supplierList"/>
-        </div>
-        <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">客户：</span>
-          <Select :multiple="true" v-model="params.customerIds" class="w-120px" keyName="id" titleName="name"
-                  :datas="customerList"/>
-        </div>
-        <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">业务类型：</span>
-          <Select autosize :filterable="true" :multiple="true" v-model="params.operationTypes" class="w-120px"
-                  :datas="operationTypeList"/>
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">单据日期：</span>
-          <DateRangePicker v-model="dateRange"></DateRangePicker>
-        </div>
-      </template>
-    </vxe-toolbar>
-    <div class="flex1">
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="excel">导 出</t-button>
+        <t-select
+            v-model="params.warehouseIds"
+            :options="warehouseList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            multiple
+            placeholder="仓库"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.productIds"
+            :options="productList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            multiple
+            placeholder="产品"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.productCategoryIds"
+            :options="productCategoryList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            multiple
+            placeholder="产品类别"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.supplierIds"
+            :options="supplierList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            multiple
+            placeholder="供应商"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.customerIds"
+            :options="customerList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            multiple
+            placeholder="客户"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.operationTypes"
+            :options="operationTypeOptions"
+            filterable
+            clearable
+            multiple
+            placeholder="业务类型"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-date-range-picker
+            v-model="dateRangeValue"
+            clearable
+            allow-input
+            placeholder="单据日期"
+            style="width: 260px; border-radius: 4px"
+        />
+        <t-input
+            v-model="params.filter"
+            clearable
+            placeholder="请输入产品名称/单据编号"
+            style="width: 260px; background: #fff; border-radius: 4px"
+            @enter="doSearch"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
+          </template>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
+    </div>
+    <div class="simple-page__table">
       <vxe-table row-id="id"
                  ref="table"
                  height="auto"
@@ -177,19 +210,18 @@
         </vxe-colgroup>
       </vxe-table>
     </div>
-    <div class="flex justify-between items-center pt-5px">
-      <vxe-pager perfect @page-change="loadList(false)"
-                 v-model:current-page="pagination.page"
-                 v-model:page-size="pagination.pageSize"
-                 v-model:page-sizes="pagination.pageSizes"
-                 :total="pagination.total"
-                 :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
-        <template #left>
-          <!--          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>-->
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
-                      :loading="loading"></vxe-button>
-        </template>
-      </vxe-pager>
+    <div class="simple-page__pager">
+      <span class="simple-page__total"></span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :page-size-options="pagination.pageSizeOptions"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
@@ -219,7 +251,7 @@ export default {
       pagination: {
         page: 1,
         pageSize: 1000,
-        pageSizes: [
+        pageSizeOptions: [
           {label: "300条/页", value: 300},
           {label: "500条/页", value: 500},
           {label: "1000条/页", value: 1000},
@@ -239,10 +271,7 @@ export default {
         sortCol: null,
         sort: null,
       },
-      dateRange: {
-        start: manba(startTime).format("YYYY-MM-dd"),
-        end: manba(endTime).format("YYYY-MM-dd")
-      },
+      dateRangeValue: [startTime, endTime],
       warehouseList: [],
       productList: [],
       productCategoryList: [],
@@ -250,35 +279,41 @@ export default {
       customerList: [],
       outboundItems: ["采购退货", "销售出库", "调拨出库", "盘亏出库", "其他出库"],
       inboundItems: ["采购入库", "销售退货", "调拨入库", "其他入库", "盘盈入库"],
-      operationTypeList: {
-        "采购入库": "采购入库",
-        "销售退货": "销售退货",
-        "调拨入库": "调拨入库",
-        "其他入库": "其他入库",
-        "盘盈入库": "盘盈入库",
-        "采购退货": "采购退货",
-        "销售出库": "销售出库",
-        "调拨出库": "调拨出库",
-        "盘亏出库": "盘亏出库",
-        "其他出库": "其他出库",
-        "成本调整": "成本调整",
-      },
+      operationTypeOptions: [
+        {label: "采购入库", value: "采购入库"},
+        {label: "销售退货", value: "销售退货"},
+        {label: "调拨入库", value: "调拨入库"},
+        {label: "其他入库", value: "其他入库"},
+        {label: "盘盈入库", value: "盘盈入库"},
+        {label: "采购退货", value: "采购退货"},
+        {label: "销售出库", value: "销售出库"},
+        {label: "调拨出库", value: "调拨出库"},
+        {label: "盘亏出库", value: "盘亏出库"},
+        {label: "其他出库", value: "其他出库"},
+        {label: "成本调整", value: "成本调整"},
+      ],
       summaryQuantity: 0,
       summaryCost: 0
     }
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      const [start, end] = this.dateRangeValue || [];
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
+        start: start || null,
+        end: end || null,
       })
     },
   },
   methods: {
     ...mapMutations(['pushTab']),
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
+    },
     footerMethod({columns, data}) {
       let inQuantity = 0;
       let outQuantity = 0;
@@ -464,3 +499,45 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
+}
+</style>

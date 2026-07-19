@@ -1025,7 +1025,13 @@ public class OrderPaymentService extends AbsService {
 
         public void setKeyword(String keyword) {
             if (StringUtils.isNotBlank(keyword)) {
-                builder.and(qOrderPayment.orderNo.like("%" + keyword + "%").or(qSupplier.name.like("%" + keyword + "%")));
+                builder.and(qOrderPayment.orderNo.like("%" + keyword + "%").or(qOrderPayment.supplierName.like("%" + keyword + "%")));
+            }
+        }
+
+        public void setSupplierId(Long supplierId) {
+            if (supplierId != null) {
+                builder.and(qOrderPayment.supplierId.eq(supplierId));
             }
         }
     }

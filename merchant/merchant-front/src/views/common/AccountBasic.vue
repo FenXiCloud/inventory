@@ -1,43 +1,59 @@
 <template>
-  <div class="frame-page">
-    <div class="h-panel">
-      <div class="h-panel-body">
-        <Tabs :datas="tabs" v-model="tab"/>
-        <Form v-if="tab==='base'" class="mt-16px w-400px" mode="block" ref="form" :model="admin" :rules="validationRules">
-          <FormItem label="账号">
-            <Input v-model="admin.username" readonly/>
-          </FormItem>
-          <FormItem label="姓名" prop="name">
-            <Input v-model="admin.name"/>
-          </FormItem>
-          <FormItem label="电话" prop="phone">
-            <Input v-model="admin.phone"/>
-          </FormItem>
-          <FormItem>
-            <Button @click="doSave" :loading="loading" icon="fa fa-save" color="primary">保 存</Button>
-          </FormItem>
-        </Form>
-        <Form v-if="tab==='safe'" class="mt-16px w-400px" mode="block" ref="pform" :model="passwordForm" :rules="validationRules">
-          <FormItem label="原密码" prop="oldPassword">
-            <Input v-model="passwordForm.oldPassword"/>
-          </FormItem>
-          <FormItem label="新密码" prop="newPassword">
-            <Input v-model="passwordForm.newPassword"/>
-          </FormItem>
-          <FormItem label="确认新密码" prop="confirmPassword">
-            <Input v-model="passwordForm.confirmPassword"/>
-          </FormItem>
-          <FormItem>
-            <Button @click="doChange" :loading="loading" icon="fa fa-save" color="primary">修 改 密 码</Button>
-          </FormItem>
-        </Form>
-      </div>
+  <div class="simple-page">
+    <div class="settings-card">
+      <t-tabs v-model="tab">
+        <t-tab-panel value="base" label="基本信息">
+          <t-form
+              ref="form"
+              class="settings-card__form"
+              :data="admin"
+              :rules="baseRules"
+              label-width="80px"
+              @submit="doSave"
+          >
+            <t-form-item label="账号" name="username">
+              <t-input v-model="admin.username" readonly style="width: 320px; border-radius: 4px"/>
+            </t-form-item>
+            <t-form-item label="姓名" name="name">
+              <t-input v-model="admin.name" style="width: 320px; border-radius: 4px"/>
+            </t-form-item>
+            <t-form-item label="电话" name="phone">
+              <t-input v-model="admin.phone" style="width: 320px; border-radius: 4px"/>
+            </t-form-item>
+            <t-form-item>
+              <t-button theme="primary" type="submit" :loading="loading" style="border-radius: 4px">保 存</t-button>
+            </t-form-item>
+          </t-form>
+        </t-tab-panel>
+        <t-tab-panel value="safe" label="安全设置">
+          <t-form
+              ref="pform"
+              class="settings-card__form"
+              :data="passwordForm"
+              :rules="safeRules"
+              label-width="100px"
+              @submit="doChange"
+          >
+            <t-form-item label="原密码" name="oldPassword">
+              <t-input v-model="passwordForm.oldPassword" type="password" style="width: 320px; border-radius: 4px"/>
+            </t-form-item>
+            <t-form-item label="新密码" name="newPassword">
+              <t-input v-model="passwordForm.newPassword" type="password" style="width: 320px; border-radius: 4px"/>
+            </t-form-item>
+            <t-form-item label="确认新密码" name="confirmPassword">
+              <t-input v-model="passwordForm.confirmPassword" type="password" style="width: 320px; border-radius: 4px"/>
+            </t-form-item>
+            <t-form-item>
+              <t-button theme="primary" type="submit" :loading="loading" style="border-radius: 4px">修改密码</t-button>
+            </t-form-item>
+          </t-form>
+        </t-tab-panel>
+      </t-tabs>
     </div>
   </div>
 </template>
 
 <script>
-
 import {mapState} from "vuex"
 import {clone} from "xe-utils"
 import {MessagePlugin} from "tdesign-vue-next";
@@ -52,42 +68,47 @@ export default {
     return {
       loading: false,
       tab: 'base',
-      tabs: {
-        base: '基本信息',
-        safe: '安全设置',
-      },
       admin: {},
       passwordForm: {
         oldPassword: null,
         newPassword: null,
         confirmPassword: null
       },
-      validationRules: {
-        required: ['name', 'linkman', 'phone', 'oldPassword', 'newPassword', 'confirmPassword'],
-        mobile: ['phone']
+      baseRules: {
+        name: [{required: true, message: '请输入姓名'}],
+        phone: [{required: true, message: '请输入电话'}]
+      },
+      safeRules: {
+        oldPassword: [{required: true, message: '请输入原密码'}],
+        newPassword: [{required: true, message: '请输入新密码'}],
+        confirmPassword: [
+          {required: true, message: '请确认新密码'},
+          {
+            validator: (val) => val === this.passwordForm.newPassword,
+            message: '两次密码不一致'
+          }
+        ]
       }
     }
   },
   methods: {
-    doSave() {
-      this.$refs.form.validate().then((res) => {
-        if (res === true || res.result === true) {
-          this.loading = true;
-          Admin.save(this.admin).then(() => {
-            MessagePlugin.success("保存成功,重新登录后生效~");
-          }).finally(() => this.loading = false);
-        }
-      }).catch(() => {});
+    doSave({validateResult}) {
+      if (validateResult !== true) {
+        return;
+      }
+      this.loading = true;
+      Admin.save(this.admin).then(() => {
+        MessagePlugin.success("保存成功,重新登录后生效~");
+      }).finally(() => this.loading = false);
     },
-    doChange() {
-      this.$refs.pform.validate().then((res) => {
-        if (res === true || res.result === true) {
-          this.loading = true;
-          Admin.updatePassword(this.passwordForm).then(() => {
-            MessagePlugin.success("保存成功,重新登录时生效~");
-          }).finally(() => this.loading = false);
-        }
-      }).catch(() => {});
+    doChange({validateResult}) {
+      if (validateResult !== true) {
+        return;
+      }
+      this.loading = true;
+      Admin.updatePassword(this.passwordForm).then(() => {
+        MessagePlugin.success("保存成功,重新登录时生效~");
+      }).finally(() => this.loading = false);
     }
   },
   created() {
@@ -95,3 +116,22 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 12px 20px 20px;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.settings-card__form {
+  max-width: 480px;
+  margin-top: 20px;
+}
+</style>

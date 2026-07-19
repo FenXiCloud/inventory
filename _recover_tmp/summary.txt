@@ -1,0 +1,14 @@
+TOOL 0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl:2 Read path=D:\Idea\inventory\merchant\merchant-front\src\views\setting\PrintTemplateList.vue len=0
+TOOL 0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl:2 Read path=D:\Idea\inventory\merchant\merchant-front\src\views\setting\SystemLogList.vue len=0
+TOOL 0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl:8 Write path=D:\Idea\inventory\merchant\merchant-front\src\views\setting\PrintTemplateList.vue len=4640
+  SAVED D:\Idea\inventory\_recover_tmp\0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl_8_Write_PrintTemplateList.vue.txt
+TOOL 0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl:8 Write path=D:\Idea\inventory\merchant\merchant-front\src\views\setting\SystemLogList.vue len=3998
+  SAVED D:\Idea\inventory\_recover_tmp\0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl_8_Write_SystemLogList.vue.txt
+TOOL 0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl:9 StrReplace path=D:\Idea\inventory\merchant\merchant-front\src\views\setting\SystemLogList.vue len=783
+TOOL 0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl:9 StrReplace path=D:\Idea\inventory\merchant\merchant-front\src\views\setting\SystemLogList.vue len=35
+TOOL 0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl:10 Read path=D:\Idea\inventory\merchant\merchant-front\src\views\setting\SystemLogList.vue len=0
+MARKER 5787f25c-1ca9-402b-82b5-acb3fbc43f2c.jsonl:1 has 操作模块
+TOOL 5df13b96-1c53-446f-8069-43e1b1aafebc.jsonl:7 Write path=D:\Idea\inventory\merchant\merchant-front\src\views\inventory\InventoryItemReport.vue len=18920
+TOOL 5df13b96-1c53-446f-8069-43e1b1aafebc.jsonl:7 Write path=D:\Idea\inventory\merchant\merchant-front\src\views\inventory\InventorySummaryReport.vue len=31455
+CONTENT 0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl:8 key=contents label=PrintTemplateList len=4640 saved=D:\Idea\inventory\_recover_tmp\0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl_8_CONTENT_PrintTemplateList.txt
+CONTENT 0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl:8 key=contents label=SystemLogList len=3998 saved=D:\Idea\inventory\_recover_tmp\0484fe46-cc0a-482e-8f63-fa5f365194e8.jsonl_8_CONTENT_SystemLogList.txt

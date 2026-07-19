@@ -1,140 +1,127 @@
 <template>
-  <div class="frame-page flex flex-column">
-<!--    <vxe-toolbar>-->
-<!--      <template #buttons>-->
-<!--        <Button @click="exportData" color="primary">导 出</Button>-->
-<!--        <Button @click="printEvent">打 印</Button>-->
-<!--      </template>-->
-<!--    </vxe-toolbar>-->
-
-    <div class="filter-row flex flex-wrap gap-8px p-10px bg-white-color border-b">
-      <div class="h-input-group">
-        <Button @click="exportData" color="primary">导 出</Button>
-        <Button @click="printEvent" class="ml-8px">打 印</Button>
-      </div>
-
-      <div class="h-input-group">
-        <span class="h-input-addon">汇总条件：</span>
-        <Select v-model="params.salesGroup"
-                class="w-120px"
-                @change="handleSalesGroupChange"
-                :datas="{
-                   PRODUCT:'产品',
-                   CUSTOMER:'客户',
-                   PRODUCT_WAREHOUSE:'产品+仓库',
-                   CUSTOMER_PRODUCT:'客户+产品',
-                   CUSTOMER_PRODUCT_WAREHOUSE:'客户+产品+仓库'
-                }"/>
-      </div>
-      <div class="h-input-group">
-        <span class="h-input-addon">日期：</span>
-        <DateRangePicker v-model="dateRange"></DateRangePicker>
-      </div>
-      <div class="h-input-group" v-if="this.params.salesGroupSearch === 'CUSTOMER_PRODUCT' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'
-                  || this.params.salesGroupSearch === 'CUSTOMER'">
-        <span class="h-input-addon">客户：</span>
-        <Select :multiple="true"  :datas="customerList" keyName="id" titleName="name"
-                v-model="params.customerIds" placeholder="请选择客户"/>
-      </div>
-      <div class="h-input-group">
-        <span class="h-input-addon">仓库：</span>
-        <Select :multiple="true" v-model="params.warehouseIds"  keyName="id" titleName="name"
-                :datas="warehouseList" placeholder="请选择仓库"/>
-      </div>
-      <div class="h-input-group">
-        <span class="h-input-addon">产品：</span>
-        <Select :multiple="true" v-model="params.productIds"  keyName="id" titleName="name"
-                :datas="productList" placeholder="请选择产品"/>
-      </div>
-      <div class="h-input-group">
-        <span class="h-input-addon">产品类别：</span>
-        <Select :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
-                v-model="params.productCategoryIds" placeholder="请选择类别"/>
-      </div>
-      <div class="h-input-group" v-if="this.params.salesGroupSearch === 'CUSTOMER_PRODUCT' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'
-                  || this.params.salesGroupSearch === 'CUSTOMER'">
-        <span class="h-input-addon">客户类别：</span>
-        <Select :multiple="true" :datas="customerCategoryList" keyName="id" titleName="name"
-                v-model="params.customerCategoryIds" placeholder="请选择类别"/>
-      </div>
-
-      <div class="h-input-group" style="margin-left: 10px">
-        <Button @click="doSearch" color="primary">查 询</Button>
-      </div>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="exportData">导 出</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="printEvent">打 印</t-button>
+        <t-select
+            v-model="params.salesGroup"
+            :options="salesGroupOptions"
+            placeholder="汇总条件"
+            style="width: 200px; border-radius: 4px"
+            @change="handleSalesGroupChange"
+        />
+        <t-date-range-picker
+            v-model="dateRangeValue"
+            clearable
+            allow-input
+            placeholder="日期"
+            style="width: 260px; border-radius: 4px"
+        />
+        <t-select
+            v-if="showCustomerFilter"
+            v-model="params.customerIds"
+            :options="customerList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="请选择客户"
+            style="width: 180px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.warehouseIds"
+            :options="warehouseList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="请选择仓库"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.productIds"
+            :options="productList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="请选择产品"
+            style="width: 180px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.productCategoryIds"
+            :options="productCategoryList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="产品类别"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-if="showCustomerFilter"
+            v-model="params.customerCategoryIds"
+            :options="customerCategoryList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="客户类别"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
     </div>
-    <div class="flex1">
-      <vxe-table row-id="id"
-                 ref="table"
-                 height="auto"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 show-footer
-                 :footer-method="footerMethod"
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :sort-config="{remote:true}"
-                 :loading="loading">
 
-
-        <template
-            v-if="this.params.salesGroupSearch === 'CUSTOMER_PRODUCT' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'
-                  || this.params.salesGroupSearch === 'CUSTOMER'">
-          <vxe-column title="客户编码" field="customerCode"/>
-          <vxe-column title="客户名称" field="customerName"/>
-          <vxe-column title="客户类别" field="customerCategoryId">
-            <template #default="{row}">
-              {{ customerCategoryList.find(item => item.id === row.customerCategoryId)?.name || '-' }}
-            </template>
-          </vxe-column>
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+          :foot-data="footData"
+      >
+        <template #customerCategoryId="{ row }">
+          {{ customerCategoryList.find(item => item.id === row.customerCategoryId)?.name || '-' }}
         </template>
-        <template v-if="this.params.salesGroupSearch !== 'CUSTOMER'" >
-          <vxe-column title="产品编码" field="productCode"/>
-          <vxe-column title="产品名称" field="productName"/>
-          <vxe-column title="销售单位" field="unitName" />
-          <vxe-column title="规格型号" field="specification" />
-          <vxe-column title="产品类别" field="productCategoryName"/>
-        </template>
-        <template
-            v-if="this.params.salesGroupSearch === 'PRODUCT_WAREHOUSE' || this.params.salesGroupSearch === 'CUSTOMER_PRODUCT_WAREHOUSE'">
-          <vxe-column title="仓库名称" field="warehouseName"/>
-        </template>
-        <vxe-column title="单价" field="unitPrice" />
-        <vxe-column title="数量" field="quantity" />
-        <!--        <vxe-column title="折扣金额" field="discountValue" width="120"/>-->
-        <vxe-column title="销售收入" field="subtotal"/>
-
-      </vxe-table>
+      </t-table>
     </div>
-    <div class="flex justify-between items-center pt-5px">
-      <vxe-pager perfect @page-change="loadList(false)"
-                 v-model:current-page="pagination.page"
-                 v-model:page-size="pagination.pageSize"
-                 :total="pagination.total"
-                 :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
-        <template #left>
-<!--          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>-->
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
-                      :loading="loading"></vxe-button>
-        </template>
-      </vxe-pager>
+
+    <div class="simple-page__pager">
+      <span class="simple-page__total"></span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
+
 <script>
 import manba from "manba";
-import {mapMutations} from "vuex";
 import SalesReport from "@js/api/sales/SalesReport";
 import Customer from "@js/api/basic/Customer";
-import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import * as XLSX from "xlsx";
 import ProductCategory from "@js/api/basic/ProductCategory";
 import CustomerCategory from "@js/api/basic/CustomerCategory";
 
-const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
-const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
+const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
+const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
 
 export default {
   name: "SalesSummaryReport",
@@ -142,91 +129,122 @@ export default {
     return {
       dataList: [],
       loading: false,
-      amountTotal: 0,
-      totalParams: {},
+      quantityTotal: '0.00',
+      subtotalTotal: '0.00',
       pagination: {
         page: 1,
         pageSize: 20,
         total: 0
       },
       params: {
-        filter: null,
-        state: null,
-        sortCol: null,
-        sort: null,
         salesGroup: 'PRODUCT',
-        salesGroupSearch: 'PRODUCT'
+        salesGroupSearch: 'PRODUCT',
+        customerIds: [],
+        warehouseIds: [],
+        productIds: [],
+        productCategoryIds: [],
+        customerCategoryIds: [],
       },
-      dateRange: {
-        start: manba(startTime).format("YYYY-MM-dd"),
-        end: manba(endTime).format("YYYY-MM-dd")
-      },
+      dateRangeValue: [startTime, endTime],
       customerList: [],
       warehouseList: [],
       productList: [],
-      productCategoryList:[],
-      customerCategoryList:[],
+      productCategoryList: [],
+      customerCategoryList: [],
+      salesGroupOptions: [
+        {label: '产品', value: 'PRODUCT'},
+        {label: '客户', value: 'CUSTOMER'},
+        {label: '产品+仓库', value: 'PRODUCT_WAREHOUSE'},
+        {label: '客户+产品', value: 'CUSTOMER_PRODUCT'},
+        {label: '客户+产品+仓库', value: 'CUSTOMER_PRODUCT_WAREHOUSE'},
+      ],
     }
   },
   computed: {
+    showCustomerFilter() {
+      const g = this.params.salesGroupSearch;
+      return g === 'CUSTOMER' || g === 'CUSTOMER_PRODUCT' || g === 'CUSTOMER_PRODUCT_WAREHOUSE';
+    },
+    showProductCols() {
+      return this.params.salesGroupSearch !== 'CUSTOMER';
+    },
+    showWarehouseCols() {
+      const g = this.params.salesGroupSearch;
+      return g === 'PRODUCT_WAREHOUSE' || g === 'CUSTOMER_PRODUCT_WAREHOUSE';
+    },
+    columns() {
+      const cols = [];
+      if (this.showCustomerFilter) {
+        cols.push(
+            {colKey: 'customerCode', title: '客户编码', minWidth: 110, ellipsis: true},
+            {colKey: 'customerName', title: '客户名称', minWidth: 120, ellipsis: true},
+            {colKey: 'customerCategoryId', title: '客户类别', minWidth: 110, ellipsis: true},
+        );
+      }
+      if (this.showProductCols) {
+        cols.push(
+            {colKey: 'productCode', title: '产品编码', minWidth: 110, ellipsis: true},
+            {colKey: 'productName', title: '产品名称', minWidth: 120, ellipsis: true},
+            {colKey: 'unitName', title: '销售单位', width: 90, align: 'center'},
+            {colKey: 'specification', title: '规格型号', minWidth: 100, ellipsis: true},
+            {colKey: 'productCategoryName', title: '产品类别', minWidth: 110, ellipsis: true},
+        );
+      }
+      if (this.showWarehouseCols) {
+        cols.push({colKey: 'warehouseName', title: '仓库名称', minWidth: 110, ellipsis: true});
+      }
+      cols.push(
+          {colKey: 'unitPrice', title: '单价', width: 100, align: 'right'},
+          {colKey: 'quantity', title: '数量', width: 100, align: 'right'},
+          {colKey: 'subtotal', title: '销售收入', width: 110, align: 'right'},
+      );
+      return cols;
+    },
     queryParams() {
-      return Object.assign(this.params, {
+      const [start, end] = this.dateRangeValue || [];
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
+        start: start || null,
+        end: end || null,
       })
     },
+    footData() {
+      const sum = (key) => {
+        const total = (this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0);
+        return total.toFixed(2);
+      };
+      const quantity = sum('quantity');
+      const subtotal = sum('subtotal');
+      this.quantityTotal = quantity;
+      this.subtotalTotal = subtotal;
+      const foot = {quantity, subtotal};
+      if (this.showCustomerFilter) {
+        foot.customerCode = '合计';
+      } else if (this.showProductCols) {
+        foot.productCode = '合计';
+      } else {
+        foot.unitPrice = '合计';
+      }
+      return [foot];
+    }
   },
   methods: {
-    ...mapMutations(['pushTab']),
-    footerMethod({columns, data}) {
-      let quantityTotal = 0;
-      let subtotalTotal = 0;
-      columns.forEach((column) => {
-        if (column.property && ['quantity', 'subtotal'].includes(column.property)) {
-
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (column.property === 'quantity') {
-              if (rd) {
-                quantityTotal += Number(rd || 0);
-              }
-            } else if (column.property === 'subtotal') {
-              if (rd) {
-                subtotalTotal += Number(rd || 0);
-              }
-            }
-          });
-        }
-      })
-      this.quantityTotal = quantityTotal.toFixed(2);
-      this.subtotalTotal = subtotalTotal.toFixed(2);
-
-      // 创建与列数相同长度的数组，默认填充空字符串
-      const footerRow = new Array(columns.length).fill('');
-
-      // 找到quantity和subtotal列的索引位置
-      columns.forEach((column, index) => {
-        if (column.property === 'quantity') {
-          footerRow[index] = quantityTotal.toFixed(2);
-        } else if (column.property === 'subtotal') {
-          footerRow[index] = subtotalTotal.toFixed(2);
-        }
-      });
-
-      return [footerRow];
-
-      // let newVar = ["", "", "", "", quantityTotal.toFixed(2), subtotalTotal.toFixed(2)];
-      // return [newVar];
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
+    },
+    printEvent() {
+      window.print();
     },
     doSearch() {
-      this.pagination.page = 1;
-      if(!this.params.salesGroup){
+      if (!this.params.salesGroup) {
         MessagePlugin.error("请选择汇总条件~");
-        return
+        return;
       }
       this.params.salesGroupSearch = this.params.salesGroup;
+      this.pagination.page = 1;
       this.loadList();
     },
     exportData() {
@@ -234,10 +252,7 @@ export default {
         MessagePlugin.warning('没有可导出的数据');
         return;
       }
-
       try {
-        loading.open('正在导出...');
-        // 准备导出数据
         const exportData = this.dataList.map(item => ({
           '客户编码': item.customerCode,
           '客户名称': item.customerName,
@@ -249,51 +264,22 @@ export default {
           '数量': item.quantity,
           '销售收入': item.subtotal
         }));
-
-        // 如果有合计行，添加到导出数据中
         exportData.push({
           '单价': '合计',
           '数量': this.quantityTotal,
           '销售收入': this.subtotalTotal
         });
-
-        // 创建工作簿和工作表
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
-
-        // 设置标题行样式
-        ws['!cols'] = [
-          { wch: 10 }, // 客户编码
-          { wch: 15 }, // 客户名称
-          {wch: 12}, // 产品编码
-          {wch: 20}, // 产品名称
-          { wch: 10 }, // 销售单位
-          { wch: 12 }, // 仓库名称
-          { wch: 10 }, // 单价
-          { wch: 10 }, // 数量
-          { wch: 12 }  // 销售收入
-        ];
-        XLSX.utils.book_append_sheet(wb, ws, '销售明细');
-
-        // 导出文件
-        const fileName = `销售汇总报表_${manba().format('YYYY-MM-DD')}.xlsx`;
-        XLSX.writeFile(wb, fileName);
-
+        XLSX.utils.book_append_sheet(wb, ws, '销售汇总');
+        XLSX.writeFile(wb, `销售汇总报表_${manba().format('YYYY-MM-DD')}.xlsx`);
         MessagePlugin.success('导出成功');
       } catch (error) {
         console.error('导出错误:', error);
         MessagePlugin.error('导出失败');
-      } finally {
-        LoadingPlugin(false);
       }
     },
-    loadList(type = true) {
-      this.loading = true;
-      SalesReport.salesSummary(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results || [];
-        this.pagination.total = total;
-      }).finally(() => this.loading = false);
-
+    loadSelect() {
       Promise.all([
         Customer.select(),
         Warehouse.select(),
@@ -306,40 +292,68 @@ export default {
         this.productList = results[2].data || [];
         this.productCategoryList = results[3].data || [];
         this.customerCategoryList = results[4].data || [];
-      }).finally(() => LoadingPlugin(false));
+      });
     },
-    handleSalesGroupChange(value) {
-      console.log('汇总条件已更改:', value);
+    loadList() {
+      this.loading = true;
+      SalesReport.salesSummary(this.queryParams).then(({data: {results, total}}) => {
+        this.dataList = results || [];
+        this.pagination.total = total;
+      }).finally(() => this.loading = false);
+    },
+    handleSalesGroupChange() {
       this.params.customerIds = [];
       this.params.warehouseIds = [];
       this.params.productIds = [];
       this.params.productCategoryIds = [];
       this.params.customerCategoryIds = [];
-      //强制更新视图
-      this.$forceUpdate();
     },
   },
   created() {
+    this.loadSelect();
     this.loadList();
   }
 }
 </script>
 
 <style scoped>
-.filter-row {
-  border-top: 1px solid #eee;
-  background-color: #fff;
-}
-
-.h-input-group {
+.simple-page {
+  height: 100%;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  margin: 4px 0;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.h-input-addon {
-  white-space: nowrap;
-  padding: 0 8px;
-  color: #666;
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
 }
 </style>

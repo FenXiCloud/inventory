@@ -1,20 +1,25 @@
 <template>
-  <vxe-table row-id="id"
-             height="auto"
-             @checkbox-change="checkBoxChange"
-             @checkbox-all="checkBoxChange"
-             :checkbox-config="{labelField: 'name',checkMethod:checkMethod, checkRowKeys: grantMenu}"
-             :tree-config="{transform:true,expandAll:true,rowField: 'id', parentField: 'parentId'}"
-             ref="table"
-             :data="dataList"
-             highlight-hover-row
-             :row-config="{useKey:true}"
-             :stripe="false"
-             :loading="loading">
-    <vxe-column title="菜单模块" width="100" align="center" field="menuModule" :formatter="({ cellValue })=>{return {MERCHANT:'集团视角',CUSTOM:'客户视角',SUPPLIER:'货商视角'}[cellValue]}"/>
-    <vxe-column title="菜单分组" width="100" align="center" field="menuGroup" :formatter="({ cellValue })=>{return {MERCHANT:'集团菜单',STORE:'门店菜单'}[cellValue]}"/>
-    <vxe-column type="checkbox" title="名称" field="name" tree-node/>
-  </vxe-table>
+  <div class="grant-panel">
+    <div class="grant-panel__tip">勾选后自动保存模块授权</div>
+    <div class="grant-panel__table">
+      <vxe-table row-id="id"
+                 height="auto"
+                 @checkbox-change="checkBoxChange"
+                 @checkbox-all="checkBoxChange"
+                 :checkbox-config="{labelField: 'name',checkMethod:checkMethod, checkRowKeys: grantMenu}"
+                 :tree-config="{transform:true,expandAll:true,rowField: 'id', parentField: 'parentId'}"
+                 ref="table"
+                 :data="dataList"
+                 highlight-hover-row
+                 :row-config="{useKey:true}"
+                 :stripe="false"
+                 :loading="loading">
+        <vxe-column title="菜单模块" width="100" align="center" field="menuModule" :formatter="({ cellValue })=>{return {MERCHANT:'集团视角',CUSTOM:'客户视角',SUPPLIER:'货商视角'}[cellValue]}"/>
+        <vxe-column title="菜单分组" width="100" align="center" field="menuGroup" :formatter="({ cellValue })=>{return {MERCHANT:'集团菜单',STORE:'门店菜单'}[cellValue]}"/>
+        <vxe-column type="checkbox" title="名称" field="name" tree-node/>
+      </vxe-table>
+    </div>
+  </div>
 </template>
 
 <script>
@@ -106,3 +111,30 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.grant-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 420px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.grant-panel__tip {
+  flex-shrink: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #646a73;
+  border-bottom: 1px solid #e7e7e7;
+  background: #fafbfc;
+}
+
+.grant-panel__table {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+</style>
+

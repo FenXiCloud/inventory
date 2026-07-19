@@ -1,6 +1,6 @@
 <template>
-  <div class="modal-column">
-    <div class="modal-column-full-body">
+  <div class="page-column">
+    <div class="page-column-full-body">
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px" style="font-size: 16px !important;">供货商：{{ form.supplierName }}</label>
@@ -20,7 +20,7 @@
           :footer-method="footerMethod"
           :data="productData">
         <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
-        <vxe-column title="产品信息" width="300">
+        <vxe-column title="产品信息" min-width="300">
           <template #default="{row}">
             <div class="flex">
               <div class="flex1 ml-8px">
@@ -42,20 +42,20 @@
       </vxe-table>
       <div class="mt-10px"></div>
       <div class="filler-panel">
-        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+        <div class="filler-item">
           <label class="mr-16px  w-80px">备注说明：</label>
           <span>{{ form.remarks }}</span>
         </div>
       </div>
       <div class="filler-panel">
-        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+        <div class="filler-item">
           <span class="ml-8px"> 优惠率：{{ form.discountRate }}</span>
           <span class="ml-8px"> 优惠金额：¥ {{ form.discountAmount }}</span>
           <span class="ml-8px"> 优惠后金额：¥ {{ form.finalAmount }}</span>
         </div>
       </div>
     </div>
-    <div class="modal-column-between bg-white-color  border">
+    <div class="page-column-footer modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading">
         取消
       </Button>

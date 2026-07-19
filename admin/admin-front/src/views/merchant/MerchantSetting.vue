@@ -1,7 +1,7 @@
 <template>
-  <div class="flex" style="flex-direction: column;height: 100%;overflow-x: hidden">
-    <div class="flex-1">
-      <component :is="setting" :merchant="merchant" class="h-full flex flex-column" style="background: #f3f6f8;"/>
+  <div class="merchant-setting">
+    <div class="merchant-setting__body">
+      <component :is="setting" :merchant="merchant" class="merchant-setting__page"/>
     </div>
     <t-tabs v-model="setting" class="tabs-custom">
       <t-tab-panel v-for="item in settings" :key="item.key" :value="item.key" :label="item.title" />
@@ -26,7 +26,11 @@ export default {
   name: "MerchantSetting",
   components: {MerchantModuleGrant, AdminList, RoleList, AccountBookList},
   props: {
-    merchant: Object
+    merchant: Object,
+    defaultSetting: {
+      type: String,
+      default: 'AdminList'
+    }
   },
   emits: {
     close: null,
@@ -40,7 +44,7 @@ export default {
   },
   data() {
     return {
-      setting: 'AccountBookList',
+      setting: this.defaultSetting || 'AdminList',
       opened: true,
       settings: [{
         key: "AccountBookList",
@@ -60,22 +64,70 @@ export default {
 }
 </script>
 <style scoped>
+.merchant-setting {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 70vh;
+  min-height: 520px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.merchant-setting__body {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.merchant-setting__page {
+  display: block !important;
+  width: 100% !important;
+  min-width: 100%;
+  height: 100%;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.merchant-setting__page :deep(.simple-page),
+.merchant-setting__page :deep(.frame-page),
+.merchant-setting__page :deep(.t-panel) {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.merchant-setting__page :deep(.simple-page__table) {
+  min-height: 280px;
+}
+
+.merchant-setting__page :deep(.vxe-table),
+.merchant-setting__page :deep(.vxe-table--render-wrapper),
+.merchant-setting__page :deep(.vxe-table--main-wrapper) {
+  width: 100% !important;
+}
+
 .tabs-custom {
+  flex-shrink: 0;
+  width: 100%;
   background-color: #f5f5f5;
   border-top: 1px solid #d3d3d3;
 }
 
-.tabs-custom .t-tabs__nav-item {
+.tabs-custom :deep(.t-tabs__nav-item) {
   padding: 12px 16px;
   line-height: 1;
   font-size: 15px;
 }
 
-.tabs-custom .t-tabs__nav-item:hover {
+.tabs-custom :deep(.t-tabs__nav-item:hover) {
   color: #3d74ff;
 }
 
-.tabs-custom .t-tabs__nav-item.t-is-active {
+.tabs-custom :deep(.t-tabs__nav-item.t-is-active) {
   color: #ffffff;
   background-color: #3d74ff;
 }

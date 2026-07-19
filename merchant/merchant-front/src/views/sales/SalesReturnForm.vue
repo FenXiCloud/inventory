@@ -1,6 +1,6 @@
 <template>
-  <div class="modal-column">
-    <div class="modal-column-full-body">
+  <div class="page-column">
+    <div class="page-column-full-body">
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px" style="font-size: 16px !important;">客户:</label>
@@ -155,13 +155,13 @@
       </vxe-table>
       <div class="mt-10px"></div>
       <div class="filler-panel" v-if="type==='edit'">
-        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+        <div class="filler-item">
           <label class="mr-16px  w-100px">单据编号：</label>
           <Input v-model="form.orderNo" readonly/>
         </div>
       </div>
       <div class="filler-panel">
-        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+        <div class="filler-item">
           <label class="mr-16px  w-100px">优惠率(%)：</label>
           <vxe-input v-model.number="form.discountRate" @blur="discountRateComputeFinalAmount" type="float" min="0"
                      :controls="false">
@@ -177,14 +177,14 @@
         </div>
       </div>
       <div class="filler-panel">
-        <div class="filler-item" style="flex: 1;margin: 5px 0 !important;">
+        <div class="filler-item">
           <label class="mr-16px  w-100px">备注说明：</label>
-          <Input placeholder="请输入备注" maxlength="150" style="width: 90%" v-model="form.remarks"/>
+          <Input placeholder="请输入备注" maxlength="150"  v-model="form.remarks"/>
         </div>
       </div>
 
     </div>
-    <div class="modal-column-between bg-white-color  border">
+    <div class="page-column-footer modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading">
         取消
       </Button>

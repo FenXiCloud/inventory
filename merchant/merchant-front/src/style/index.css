@@ -579,6 +579,85 @@ pre {
   max-height: calc(100vh - 180px);
 }
 
+/* Tab 整页表单/详情：撑满内容区，不受弹窗 max-height 限制 */
+.page-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: var(--td-bg-color-container, #fff);
+}
+
+.page-column-full-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.page-column-footer {
+  flex-shrink: 0;
+  overflow: hidden;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f5f5f5;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* 表单底部备注/优惠区 */
+.filler-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  gap: 8px 16px;
+  margin-top: 8px;
+  box-sizing: border-box;
+}
+
+.filler-item {
+  display: flex;
+  align-items: center;
+  flex: 1 1 100%;
+  min-width: 0;
+  margin: 5px 0 !important;
+  box-sizing: border-box;
+  gap: 0 8px;
+}
+
+.filler-item > label {
+  flex-shrink: 0;
+}
+
+.filler-item > *:not(label):not(span) {
+  flex: 1 1 auto;
+  min-width: 80px;
+  width: auto !important;
+}
+
+/* 列表/报表工具栏筛选换行 */
+.toolbar-tools-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 列表分页条 */
+.list-pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .import-explain {
   background: #f5f6f8;
   border-radius: 2px;

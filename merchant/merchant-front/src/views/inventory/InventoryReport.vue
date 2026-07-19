@@ -1,38 +1,60 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
-        <Button @click="excel" color="primary">导出</Button>
-      </template>
-      <template #tools>
-        <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">仓库：</span>
-          <Select v-model="params.warehouseIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
-                  titleName="name" :datas="warehouseList"/>
-        </div>
-        <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">产品：</span>
-          <Select v-model="params.productIds" :filterable="true" :multiple="true" class="w-120px" keyName="id"
-                  titleName="name" :datas="productList"/>
-        </div>
-        <div class="h-input-group h-table-checkbox-wrap">
-          <span class="h-input-addon ml-8px">产品类别：</span>
-          <Select v-model="params.productCategoryIds" :filterable="true" :multiple="true" keyName="id" titleName="name"
-                  class="w-120px"
-                  :datas="productCategoryList"/>
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">日期：</span>
-          <DatePicker v-model="dateRange.start" :clearable="false"></DatePicker>
-        </div>
-        <Search v-model.trim="params.filter"
-                show-search-button class="w-360px ml-8px"
-                placeholder="请输入产品编号/名称/类别/规格" @search="doSearch">
-          <t-icon name="search" />
-        </Search>
-      </template>
-    </vxe-toolbar>
-    <div class="flex1">
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="excel">导 出</t-button>
+        <t-select
+            v-model="params.warehouseIds"
+            :options="warehouseList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            multiple
+            placeholder="仓库"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.productIds"
+            :options="productList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            multiple
+            placeholder="产品"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.productCategoryIds"
+            :options="productCategoryList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            multiple
+            placeholder="产品类别"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-date-picker
+            v-model="dateRange.start"
+            :clearable="false"
+            allow-input
+            placeholder="日期"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-input
+            v-model="params.filter"
+            clearable
+            placeholder="请输入产品编号/名称/类别/规格"
+            style="width: 260px; background: #fff; border-radius: 4px"
+            @enter="doSearch"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
+          </template>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
+    </div>
+    <div class="simple-page__table">
       <vxe-table row-id="id"
                  ref="table"
                  height="auto"
@@ -67,18 +89,17 @@
         </vxe-colgroup>
       </vxe-table>
     </div>
-    <div class="flex justify-between items-center pt-5px">
-      <vxe-pager perfect @page-change="loadList(false)"
-                 v-model:current-page="pagination.page"
-                 v-model:page-size="pagination.pageSize"
-                 :total="pagination.total"
-                 :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
-        <template #left>
-          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
-                      :loading="loading"></vxe-button>
-        </template>
-      </vxe-pager>
+    <div class="simple-page__pager">
+      <span class="simple-page__total">总金额：{{ amountTotal }}元</span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
@@ -133,7 +154,7 @@ export default {
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
         start: this.dateRange.start,
@@ -143,6 +164,11 @@ export default {
   },
   methods: {
     ...mapMutations(['pushTab']),
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
+    },
     footerMethod({columns, data}) {
       let sums = ["合计", "", "", "", "", ""];
       let propertyNames = [];
@@ -351,3 +377,45 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
+}
+</style>

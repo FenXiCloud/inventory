@@ -1,6 +1,7 @@
 <template>
-  <div style="display: flex;flex-direction: column;height: calc(100vh - 55px)">
-    <div class="flex-1">
+  <div class="grant-panel">
+    <div class="grant-panel__tip">勾选后自动保存授权，无需额外确认</div>
+    <div class="grant-panel__table">
       <vxe-table row-id="id"
                  height="auto"
                  @checkbox-change="checkBoxChange"
@@ -99,3 +100,30 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.grant-panel {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 55px);
+  min-height: 420px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.grant-panel__tip {
+  flex-shrink: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #646a73;
+  border-bottom: 1px solid #e7e7e7;
+  background: #fafbfc;
+}
+
+.grant-panel__table {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+</style>
+

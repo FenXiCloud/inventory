@@ -1,92 +1,64 @@
 <template>
-  <div class="frame-page" style="margin: 0">
-    <div class="h-panel">
-      <div class="h-panel-body">
-        <div class="table-toolbar">
-          <div class="table-toolbar-left">
-            <div class="h-input-group">
-              <Input
-                id="name"
-                v-model="params.username"
-                class="flex-1"
-                placeholder="请输入用户名"
-              />
-              <span class="h-input-addon" @click="doSearch" :loading="loading"
-                ><t-icon name="search" /></span>
-            </div>
-          </div>
-          <div class="table-toolbar-right">
-            <Button @click="synchronization()" color="primary"
-              >同步钉钉用户</Button
-            >
-            <Button @click="showForm()" color="primary">新 增</Button>
-          </div>
-        </div>
-        <vxe-table
-          row-id="id"
-          ref="table"
-          :data="dataList"
-          highlight-hover-row
-          show-overflow
-          :row-config="{ height: 48 }"
-          :column-config="{ resizable: true }"
-          :loading="loading"
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="synchronization()">同步钉钉用户</t-button>
+        <t-button theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
+        <t-input
+            v-model="params.username"
+            clearable
+            placeholder="请输入用户名"
+            style="width: 240px; border-radius: 4px"
+            @enter="doSearch"
         >
-          <vxe-column type="seq" width="60" title="#"/>
-          <vxe-column title="账号" field="username" />
-          <vxe-column title="姓名" field="name" />
-          <vxe-column title="电话" field="mobile" />
-          <vxe-column title="角色" field="roleName" />
-          <vxe-column
-            title="默认用户"
-            field="systemDefault"
-            width="100"
-            align="center"
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
+          </template>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
+    </div>
+
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="auto"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+      >
+        <template #ops="{ row }">
+          <t-space size="small">
+            <t-link theme="primary" @click="resetPassword(row)"><t-icon name="lock-on"/></t-link>
+            <t-link theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
+            <t-link v-if="!row.systemDefault" theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
+          </t-space>
+        </template>
+        <template #systemDefault="{ row }">
+          <t-tag :theme="row.systemDefault ? 'primary' : 'warning'" variant="light">
+            {{ row.systemDefault ? '是' : '否' }}
+          </t-tag>
+        </template>
+        <template #enabled="{ row }">
+          <t-tag
+              v-if="!row.systemDefault"
+              :theme="row.enabled ? 'primary' : 'danger'"
+              variant="light"
+              style="cursor: pointer"
+              @click="trigger(row)"
           >
-            <template #default="{ row: { systemDefault } }">
-              <Tag color="primary" v-if="systemDefault">是</Tag>
-              <Tag color="yellow" v-else>否</Tag>
-            </template>
-          </vxe-column>
-          <vxe-column title="状态" field="enabled" width="100" align="center">
-            <template #default="{ row }">
-              <template v-if="!row.systemDefault">
-                <Tag color="primary" v-if="row.enabled" @click="trigger(row)"
-                  >启用</Tag
-                >
-                <Tag color="red" v-else @click="trigger(row)">禁用</Tag>
-              </template>
-              <template v-else>
-                <Tag color="primary" v-if="row.enabled">启用</Tag>
-                <Tag color="red" v-else>禁用</Tag>
-              </template>
-            </template>
-          </vxe-column>
-          <vxe-column title="操作" align="center" width="200">
-            <template #default="{ row }">
-              <div class="flex items-center justify-center">
-                <t-icon
-                  name="lock-on"
-                  class="primary-color ml-10px"
-                  @click="resetPassword(row)"
-                />
-                <t-icon
-                  name="edit"
-                  class="primary-color ml-10px"
-                  @click="showForm(row)"
-                />
-                <template v-if="!row.systemDefault">
-                  <t-icon
-                    name="delete"
-                    class="primary-color ml-10px"
-                    @click="doRemove(row)"
-                  />
-                </template>
-              </div>
-            </template>
-          </vxe-column>
-        </vxe-table>
-      </div>
+            {{ row.enabled ? '启用' : '禁用' }}
+          </t-tag>
+          <t-tag v-else :theme="row.enabled ? 'primary' : 'danger'" variant="light">
+            {{ row.enabled ? '启用' : '禁用' }}
+          </t-tag>
+        </template>
+      </t-table>
     </div>
   </div>
 </template>
@@ -107,7 +79,6 @@ import {h} from 'vue';
  */
 export default {
   name: 'AdminList',
-  components: { AdminForm },
   data() {
     return {
       loading: false,
@@ -116,29 +87,28 @@ export default {
         username: null,
         phone: null
       },
-      checkedRows: [],
       dataList: [],
-      pagination: {
-        page: 1,
-        size: 20,
-        total: 0
-      },
-      param: [
-        { title: '启用', key: 'enabled' },
-        { title: '禁用', key: 'disabled' }
+      columns: [
+        {colKey: 'ops', title: '操作', width: 120, fixed: 'left', align: 'center'},
+        {colKey: 'username', title: '账号', minWidth: 120},
+        {colKey: 'name', title: '姓名', minWidth: 120},
+        {colKey: 'mobile', title: '电话', minWidth: 120},
+        {colKey: 'roleName', title: '角色', minWidth: 120},
+        {colKey: 'systemDefault', title: '默认用户', width: 100, align: 'center'},
+        {colKey: 'enabled', title: '状态', width: 90, align: 'center', fixed: 'right'}
       ]
     };
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {});
+      return Object.assign({}, this.params);
     }
   },
   methods: {
     synchronization() {
       this.loading = true;
       Admin.addUserByDingDing()
-        .then(({ data }) => {
+        .then(({data}) => {
           // this.dataList = data;
         })
         .finally(() => (this.loading = false));
@@ -164,19 +134,12 @@ export default {
     loadList() {
       this.loading = true;
       Admin.list(this.queryParams)
-        .then(({ data }) => {
+        .then(({data}) => {
           this.dataList = data;
         })
         .finally(() => (this.loading = false));
     },
-    pageChange() {
-      this.loadList();
-    },
-    tableCheck() {
-      this.checkedRows = this.$refs.table.getCheckboxRecords();
-    },
     doSearch() {
-      this.pagination.page = 1;
       this.loadList();
     },
     doRemove(row) {
@@ -208,7 +171,7 @@ export default {
         title: '系统提示',
         content: `确认要「${enabled ? '启用' : '禁用'}」用户：${row.name}?`,
         onConfirm: () => {
-          Admin.save({ id: row.id, enabled }).then(() => {
+          Admin.save({id: row.id, enabled}).then(() => {
             MessagePlugin.success('操作成功~');
             this.loadList();
           });
@@ -221,3 +184,28 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+</style>

@@ -1,85 +1,52 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">单据日期:</span>
-          <DateRangePicker
-            v-model="dateRange"
-            @confirm="doSearch"
-          ></DateRangePicker>
-        </div>
-      </template>
-    </vxe-toolbar>
-    <div class="flex1">
-      <vxe-table
-        row-id="id"
-        ref="table"
-        height="auto"
-        :data="dataList"
-        highlight-hover-row
-        show-overflow
-        show-footer
-        :footer-method="footerMethod"
-        :row-config="{ height: 48 }"
-        :column-config="{ resizable: true }"
-        :sort-config="{ remote: true }"
-        :loading="loading"
-      >
-        <!-- <vxe-column type="checkbox" width="40" align="center" /> -->
-        <!-- <vxe-column title="id" field="id"> </vxe-column> -->
-        <vxe-column
-          title="操作类型"
-          field="accountFlowType"
-          align="center"
-          width="130"
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-date-range-picker
+            v-model="dateRangeValue"
+            clearable
+            allow-input
+            placeholder="单据日期"
+            style="width: 260px; border-radius: 4px"
         />
-        <vxe-column title="金额" field="amount" align="amount" width="130" />
-        <vxe-column title="收入" field="income" align="center" width="130" />
-        <vxe-column title="支出" field="spending" align="center" width="200" />
-        <vxe-column
-          title="交易对方名称"
-          field="correspondentsName"
-          min-width="120"
+        <t-select
+            v-model="params.accountId"
+            :options="accountList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
+            placeholder="选择账户"
+            style="width: 180px; border-radius: 4px"
         />
-        <vxe-column
-          title="收付款人名称"
-          field="amountOperatorName"
-          min-width="120"
-        />
-        <vxe-column title="交易前余额" field="balanceBefore" min-width="120" />
-        <vxe-column title="交易后余额" field="balanceAfter" min-width="120" />
-        <vxe-column title="创建时间" field="createdAt" min-width="120" />
-        <vxe-column title="备注" field="remarks" width="120" />
-      </vxe-table>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
     </div>
-    <div class="justify-between items-center pt-5px">
-      <vxe-pager
-        perfect
-        @page-change="loadList(false)"
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :layouts="[
-          'PrevJump',
-          'PrevPage',
-          'Number',
-          'NextPage',
-          'NextJump',
-          'Sizes',
-          'Total'
-        ]"
-      >
-        <template #left>
-          <vxe-button
-            @click="loadList(false)"
-            type="text"
-            size="mini"
-            icon="vxe-icon-refresh"
-            :loading="loading"
-          ></vxe-button>
-        </template>
-      </vxe-pager>
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+          :foot-data="footData"
+      />
+    </div>
+    <div class="simple-page__pager">
+      <span class="simple-page__total">收入：{{ incomeTotal }} / 支出：{{ spendingTotal }}</span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
@@ -87,87 +54,142 @@
 import manba from 'manba';
 import { mapMutations } from 'vuex';
 import AccountFlow from '@js/api/fund/AccountFlow';
-const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-dd');
-const endTime = manba().endOf(manba.DAY).format('YYYY-MM-dd');
+import Account from '@js/api/fund/Account';
+
+const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-DD');
+const endTime = manba().endOf(manba.DAY).format('YYYY-MM-DD');
 
 export default {
   name: 'cashBankStatements',
   data() {
     return {
       dataList: [],
+      accountList: [],
       pagination: {
         page: 1,
         pageSize: 20,
         total: 0
       },
       loading: false,
-      params: {},
-      dateRange: {
-        start: manba(startTime).format('YYYY-MM-dd'),
-        end: manba(endTime).format('YYYY-MM-dd')
-      }
+      incomeTotal: '0.00',
+      spendingTotal: '0.00',
+      params: {
+        accountId: null
+      },
+      dateRangeValue: [startTime, endTime],
+      columns: [
+        { colKey: 'accountName', title: '账户', width: 130, align: 'center', ellipsis: true },
+        { colKey: 'accountFlowType', title: '操作类型', width: 130, align: 'center' },
+        { colKey: 'amount', title: '金额', width: 110, align: 'right' },
+        { colKey: 'income', title: '收入', width: 110, align: 'right' },
+        { colKey: 'spending', title: '支出', width: 110, align: 'right' },
+        { colKey: 'correspondentsName', title: '交易对方名称', minWidth: 120, ellipsis: true },
+        { colKey: 'amountOperatorName', title: '收付款人名称', minWidth: 120, ellipsis: true },
+        { colKey: 'balanceBefore', title: '交易前余额', minWidth: 120, align: 'right' },
+        { colKey: 'balanceAfter', title: '交易后余额', minWidth: 120, align: 'right' },
+        { colKey: 'createdAt', title: '创建时间', minWidth: 160, ellipsis: true },
+        { colKey: 'remarks', title: '备注', width: 120, ellipsis: true },
+      ]
     };
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      const [start, end] = this.dateRangeValue || [];
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        startTime: this.dateRange.start,
-        endTime: this.dateRange.end
+        startTime: start || null,
+        endTime: end || null
       });
+    },
+    footData() {
+      const sum = (key) => {
+        const total = (this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0);
+        return total.toFixed(2);
+      };
+      return [{
+        accountName: '合计',
+        amount: sum('amount'),
+        income: sum('income'),
+        spending: sum('spending'),
+      }];
     }
   },
   methods: {
     ...mapMutations(['pushTab']),
-    footerMethodFormat({ columns, data }, list, totalName) {
-      // 初始化合计行，默认所有列为空字符串
-      const footerRow = new Array(columns.length).fill('');
-
-      // 设置第一列为“合计”
-      footerRow[0] = '合计';
-
-      // 遍历列，仅对需要合计的字段进行计算
-      columns.forEach((column, index) => {
-        if (list.includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            const value = parseFloat(row[column.property]);
-            if (!isNaN(value)) {
-              total += value;
-            }
-          });
-          footerRow[index] = total.toFixed(2); // 将合计值放入对应位置
-
-          this[totalName] = total;
-        }
-      });
-
-      // this.form.collectionAmount = this.calcCollectionAmount();
-
-      return [footerRow]; // 返回二维数组用于渲染 footer
-    },
-    footerMethod({ columns, data }) {
-      // return this.footerMethodFormat({ columns, data }, ['amount'], 'totalTb1');
-      return [[]];
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
     },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
     },
-
-    loadList(type = true) {
+    loadAccount() {
+      Account.select().then(({ data }) => {
+        this.accountList = data || [];
+      });
+    },
+    loadList() {
       this.loading = true;
       AccountFlow.list(this.queryParams)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
           this.pagination.total = total;
+          const incomeTotal = this.dataList.reduce((acc, row) => acc + Number(row.income || 0), 0);
+          const spendingTotal = this.dataList.reduce((acc, row) => acc + Number(row.spending || 0), 0);
+          this.incomeTotal = incomeTotal.toFixed(2);
+          this.spendingTotal = spendingTotal.toFixed(2);
         })
         .finally(() => (this.loading = false));
     }
   },
   created() {
+    this.loadAccount();
     this.loadList();
   }
 };
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
+}
+</style>

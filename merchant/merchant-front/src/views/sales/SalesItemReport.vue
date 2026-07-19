@@ -1,119 +1,139 @@
 <template>
-  <div class="frame-page flex flex-column">
-
-
-    <div class="filter-row flex flex-wrap gap-8px p-10px bg-white-color border-b">
-      <div class="h-input-group">
-        <Button @click="exportData" color="primary">导 出</Button>
-        <Button @click="printEvent">打 印</Button>
-      </div>
-
-      <div class="h-input-group">
-        <Select v-model="params.salesType" class="w-80px" :datas="{all:'全部',out:'销货',return:'退货'}" placeholder="业务类别："/>
-      </div>
-      <div class="h-input-group">
-        <span class="h-input-addon ml-8px">订单日期：</span>
-        <DateRangePicker v-model="dateRange" ></DateRangePicker>
-      </div>
-      <div class="h-input-group">
-        <span class="h-input-addon ml-8px">客户：</span>
-        <Select :multiple="true" :datas="customerList" keyName="id" titleName="name"
-                v-model="params.customerIds" placeholder="请选择客户"  />
-      </div>
-      <div class="h-input-group">
-        <span class="h-input-addon">客户类别：</span>
-        <Select :multiple="true" :datas="customerCategoryList" keyName="id" titleName="name"
-                v-model="params.customerCategoryIds" placeholder="请选择类别"/>
-      </div>
-      <div class="h-input-group">
-        <span class="h-input-addon">仓库：</span>
-        <Select :multiple="true" v-model="params.warehouseIds"  keyName="id" titleName="name"
-                :datas="warehouseList" placeholder="请选择仓库"/>
-      </div>
-      <div class="h-input-group">
-        <span class="h-input-addon ml-8px">产品：</span>
-        <Select :multiple="true" v-model="params.productIds" keyName="id" titleName="name" :datas="productList"
-                placeholder="请选择产品"/>
-      </div>
-      <div class="h-input-group">
-        <span class="h-input-addon">产品类别：</span>
-        <Select :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
-                v-model="params.productCategoryIds" placeholder="请选择类别"/>
-      </div>
-      <div class="h-input-group">
-        <Search v-model.trim="params.filter"
-                show-search-button
-                placeholder="请输入订单号" @search="doSearch">
-          <t-icon name="search" />
-        </Search>
-      </div>
-    </div>
-    <div class="flex1">
-      <vxe-table row-id="id"
-                 ref="tableRef"
-                 height="auto"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 show-footer
-                 :footer-method="footerMethod"
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :sort-config="{remote:true}"
-                 :loading="loading">
-<!--        <vxe-column type="checkbox" width="40" align="center"/>-->
-        <vxe-column title="销售日期" field="orderDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="orderNo" width="200"/>
-        <vxe-column title="业务类别" field="salesType" width="200" :formatter="formatOrderType"/>
-        <vxe-column title="客户编码" field="customerCode" min-width="120"/>
-        <vxe-column title="客户" field="customerName" min-width="120"/>
-        <vxe-column title="客户类别" field="customerCategoryId" min-width="120">
-          <template #default="{row}">
-            {{ customerCategoryList.find(item => item.id === row.customerCategoryId)?.name || '-' }}
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="exportData">导 出</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="printEvent">打 印</t-button>
+        <t-select
+            v-model="params.salesType"
+            :options="salesTypeOptions"
+            placeholder="业务类别"
+            style="width: 120px; border-radius: 4px"
+        />
+        <t-date-range-picker
+            v-model="dateRangeValue"
+            clearable
+            allow-input
+            placeholder="订单日期"
+            style="width: 260px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.customerIds"
+            :options="customerList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="请选择客户"
+            style="width: 180px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.customerCategoryIds"
+            :options="customerCategoryList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="客户类别"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.warehouseIds"
+            :options="warehouseList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="请选择仓库"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.productIds"
+            :options="productList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="请选择产品"
+            style="width: 180px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.productCategoryIds"
+            :options="productCategoryList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="产品类别"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-input
+            v-model="params.filter"
+            clearable
+            placeholder="请输入订单号"
+            style="width: 200px; background: #fff; border-radius: 4px"
+            @enter="doSearch"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
           </template>
-        </vxe-column>
-
-        <vxe-column title="产品编码" field="productCode" width="100"/>
-        <vxe-column title="产品名称" field="productName" width="100"/>
-        <vxe-column title="产品类别" field="productCategoryName" width="100"/>
-        <vxe-column title="规格型号" field="specification" width="100"/>
-        <vxe-column title="销售单位" field="unitName" width="100"/>
-        <vxe-column title="仓库名称" field="warehouseName" width="100"/>
-        <vxe-column title="数量" field="quantity" width="100"/>
-        <vxe-column title="单价" field="unitPrice" width="100"/>
-        <!--        <vxe-column title="折扣金额" field="discountValue" width="120"/>-->
-        <vxe-column title="销售收入" field="subtotal" width="120"/>
-      </vxe-table>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
     </div>
-    <div class="flex justify-between items-center pt-5px">
-      <vxe-pager perfect @page-change="loadList(false)"
-                 v-model:current-page="pagination.page"
-                 v-model:page-size="pagination.pageSize"
-                 :total="pagination.total"
-                 :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
-        <template #left>
-<!--          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>-->
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
-                      :loading="loading"></vxe-button>
+
+    <div class="simple-page__table">
+      <t-table
+          ref="tableRef"
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+          :foot-data="footData"
+      >
+        <template #salesType="{ row }">
+          {{ formatSalesType(row.salesType) }}
         </template>
-      </vxe-pager>
+        <template #customerCategoryId="{ row }">
+          {{ customerCategoryList.find(item => item.id === row.customerCategoryId)?.name || '-' }}
+        </template>
+      </t-table>
+    </div>
+
+    <div class="simple-page__pager">
+      <span class="simple-page__total"></span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
+
 <script>
 import manba from "manba";
-import {mapMutations} from "vuex";
 import SalesReport from "@js/api/sales/SalesReport";
 import Customer from "@js/api/basic/Customer";
-import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
 import * as XLSX from 'xlsx';
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import CustomerCategory from "@js/api/basic/CustomerCategory";
 import ProductCategory from "@js/api/basic/ProductCategory";
 
-const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
-const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
+const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
+const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
 
 export default {
   name: "SalesItemReport",
@@ -121,8 +141,6 @@ export default {
     return {
       dataList: [],
       loading: false,
-      amountTotal: 0,
-      totalParams: {},
       pagination: {
         page: 1,
         pageSize: 20,
@@ -130,90 +148,91 @@ export default {
       },
       params: {
         filter: null,
-        state: null,
-        sortCol: null,
-        sort: null,
-        salesType: 'out'
+        salesType: 'out',
+        customerIds: [],
+        customerCategoryIds: [],
+        warehouseIds: [],
+        productIds: [],
+        productCategoryIds: [],
       },
       customerList: [],
       warehouseList: [],
       productList: [],
       customerCategoryList: [],
-      productCategoryList:[],
-      dateRange: {
-        start: manba(startTime).format("YYYY-MM-dd"),
-        end: manba(endTime).format("YYYY-MM-dd")
-      },
-      quantityTotal:null,
-      subtotalTotal:null
+      productCategoryList: [],
+      dateRangeValue: [startTime, endTime],
+      salesTypeOptions: [
+        {label: '全部', value: 'all'},
+        {label: '销货', value: 'out'},
+        {label: '退货', value: 'return'},
+      ],
+      columns: [
+        {colKey: 'orderDate', title: '销售日期', width: 120, align: 'center'},
+        {colKey: 'orderNo', title: '订单编号', minWidth: 150, ellipsis: true},
+        {colKey: 'salesType', title: '业务类别', width: 90, align: 'center'},
+        {colKey: 'customerCode', title: '客户编码', minWidth: 110, ellipsis: true},
+        {colKey: 'customerName', title: '客户', minWidth: 120, ellipsis: true},
+        {colKey: 'customerCategoryId', title: '客户类别', minWidth: 110, ellipsis: true},
+        {colKey: 'productCode', title: '产品编码', minWidth: 110, ellipsis: true},
+        {colKey: 'productName', title: '产品名称', minWidth: 120, ellipsis: true},
+        {colKey: 'productCategoryName', title: '产品类别', minWidth: 110, ellipsis: true},
+        {colKey: 'specification', title: '规格型号', width: 100, ellipsis: true},
+        {colKey: 'unitName', title: '销售单位', width: 90, align: 'center'},
+        {colKey: 'warehouseName', title: '仓库名称', minWidth: 110, ellipsis: true},
+        {colKey: 'quantity', title: '数量', width: 90, align: 'right'},
+        {colKey: 'unitPrice', title: '单价', width: 90, align: 'right'},
+        {colKey: 'subtotal', title: '销售收入', width: 110, align: 'right'},
+      ]
     }
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      const [start, end] = this.dateRangeValue || [];
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
+        start: start || null,
+        end: end || null,
       })
     },
+    footData() {
+      const sum = (key) => {
+        const total = (this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0);
+        return total.toFixed(2);
+      };
+      return [{
+        orderDate: '合计',
+        quantity: sum('quantity'),
+        subtotal: sum('subtotal'),
+      }];
+    }
   },
   methods: {
-    ...mapMutations(['pushTab']),
-    formatOrderType({ cellValue }) {
-      if (cellValue === 'return') {
-        return '退货';
-      }
-      if (cellValue === 'out') {
-        return '销货';
-      }
-      return cellValue || '销货'; // 如果 cellValue 为空，则返回默认值 '销货'
+    formatSalesType(value) {
+      if (value === 'return') return '退货';
+      if (value === 'out') return '销货';
+      return value || '销货';
     },
-    footerMethod({columns, data}) {
-      let quantityTotal = 0;
-      let subtotalTotal = 0;
-      columns.forEach((column) => {
-        if (column.property && ['quantity', 'subtotal'].includes(column.property)) {
-
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (column.property === 'quantity') {
-              if (rd) {
-                quantityTotal += Number(rd || 0);
-              }
-            } else if (column.property === 'subtotal') {
-              if (rd) {
-                subtotalTotal += Number(rd || 0);
-              }
-            }
-          });
-        }
-      })
-      this.quantityTotal = quantityTotal.toFixed(2);
-      this.subtotalTotal = subtotalTotal.toFixed(2);
-      return [["", "", "", "", "", "", "", "", "", "", "", "", quantityTotal.toFixed(2), "", subtotalTotal.toFixed(2)]];
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
     },
-
-    printEvent () {
-      const $table = this.$refs.tableRef
-      if ($table) {
-        $table.print()
-      }
+    printEvent() {
+      window.print();
     },
-
     exportData() {
       if (this.dataList.length === 0) {
         MessagePlugin.warning('没有可导出的数据');
         return;
       }
-
       try {
-        loading.open('正在导出...');
-        // 准备导出数据
+        const quantityTotal = this.footData[0].quantity;
+        const subtotalTotal = this.footData[0].subtotal;
         const exportData = this.dataList.map(item => ({
           '销售日期': item.orderDate,
           '订单编号': item.orderNo,
-          '业务类别': this.params.salesType === 'return' ? '退货' : '销货',
+          '业务类别': this.formatSalesType(item.salesType),
           '客户': item.customerName,
           '产品编码': item.productCode,
           '产品名称': item.productName,
@@ -223,61 +242,30 @@ export default {
           '单价': item.unitPrice,
           '销售收入': item.subtotal
         }));
-
-        // 如果有合计行，添加到导出数据中
         exportData.push({
           '销售日期': '合计',
-          '数量': this.quantityTotal,
-          '销售收入': this.subtotalTotal
+          '数量': quantityTotal,
+          '销售收入': subtotalTotal
         });
-
-        // 创建工作簿和工作表
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
-
-        // 设置标题行样式
-        ws['!cols'] = [
-          { wch: 12 }, // 销售日期
-          { wch: 30 }, // 订单编号
-          { wch: 10 }, // 业务类别
-          { wch: 15 }, // 客户
-          {wch: 12}, // 产品编码
-          {wch: 20}, // 产品名称
-          { wch: 10 }, // 销售单位
-          { wch: 12 }, // 仓库名称
-          { wch: 10 }, // 数量
-          { wch: 10 }, // 单价
-          { wch: 12 }  // 销售收入
-        ];
         XLSX.utils.book_append_sheet(wb, ws, '销售明细');
-
-        // 导出文件
-        const fileName = `销售明细报表_${manba().format('YYYY-MM-DD')}.xlsx`;
-        XLSX.writeFile(wb, fileName);
-
+        XLSX.writeFile(wb, `销售明细报表_${manba().format('YYYY-MM-DD')}.xlsx`);
         MessagePlugin.success('导出成功');
       } catch (error) {
         console.error('导出错误:', error);
         MessagePlugin.error('导出失败');
-      } finally {
-        LoadingPlugin(false);
       }
     },
     doSearch() {
-      this.pagination.page = 1;
-      if(!this.params.salesType){
+      if (!this.params.salesType) {
         MessagePlugin.error("请选择业务类型~");
-        return
+        return;
       }
+      this.pagination.page = 1;
       this.loadList();
     },
-    loadList(type = true) {
-      this.loading = true;
-      SalesReport.salesItem(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results || [];
-        this.pagination.total = total;
-      }).finally(() => this.loading = false);
-
+    loadSelect() {
       Promise.all([
         Customer.select(),
         Warehouse.select(),
@@ -290,30 +278,61 @@ export default {
         this.productList = results[2].data || [];
         this.customerCategoryList = results[3].data || [];
         this.productCategoryList = results[4].data || [];
-
-      }).finally(() => LoadingPlugin(false));
+      });
+    },
+    loadList() {
+      this.loading = true;
+      SalesReport.salesItem(this.queryParams).then(({data: {results, total}}) => {
+        this.dataList = results || [];
+        this.pagination.total = total;
+      }).finally(() => this.loading = false);
     },
   },
   created() {
+    this.loadSelect();
     this.loadList();
   }
 }
 </script>
+
 <style scoped>
-.filter-row {
-  border-top: 1px solid #eee;
-  background-color: #fff;
-}
-
-.h-input-group {
+.simple-page {
+  height: 100%;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  margin: 4px 0;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.h-input-addon {
-  white-space: nowrap;
-  padding: 0 8px;
-  color: #666;
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
 }
 </style>

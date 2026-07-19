@@ -1,93 +1,56 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <vxe-table
-        row-id="id"
-        ref="table"
-        :data="dataList"
-        highlight-hover-row
-        show-overflow
-        show-footer
-        :footer-method="footerMethod"
-        :row-config="{ height: 48 }"
-        :column-config="{ resizable: true }"
-        :sort-config="{ remote: true }"
-        :loading="loading"
-      >
-        <vxe-column type="checkbox" width="40" align="center" />
-
-        <vxe-column title="订单编号" field="salesOrderNo" width="200" />
-        <vxe-column title="业务类别" field="businessType">
-          <template v-if="URL == 'OrderReceipt'" #default="{ row }">
-            <div v-if="row.businessType == 1">销售出库单</div>
-            <div v-if="row.businessType == 2">期初余额</div>
-          </template>
-          <template v-else-if="URL == 'OrderPayment'" #default="{ row }">
-            <div v-if="row.businessType == 1">采购入库单</div>
-            <div v-if="row.businessType == 2">期初余额</div>
-          </template>
-        </vxe-column>
-
-        <vxe-column
-          title="单据日期"
-          field="businessDate"
-          align="center"
-          width="130"
+      <t-table
+          row-key="rowKey"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="360px"
+          table-layout="fixed"
+          :data="tableData"
+          :columns="columns"
+          :loading="loading"
+          :selected-row-keys="selectedRowKeys"
+          :foot-data="footData"
+          @select-change="onSelectChange"
+      />
+      <div class="modal-pager">
+        <t-pagination
+            v-model:current="pagination.page"
+            v-model:page-size="pagination.pageSize"
+            :total="pagination.total"
+            :show-jumper="true"
+            :show-page-size="true"
+            :page-size-options="[5, 10, 20]"
+            :popup-props="{ attach: 'body' }"
+            @change="onPageChange"
         />
-        <vxe-column title="单据金额" field="documentAmount" width="120" />
-        <vxe-column title="已核销金额" field="verifiedAmount" width="120" />
-        <vxe-column title="未核销金额" field="unverifiedAmount" width="120" />
-        <!-- <vxe-column title="客户地址" field="finalAmount" width="120" />
-        <vxe-column title="业务员" field="finalAmount" width="120" />
-        <vxe-column title="备注" field="finalAmount" width="120" /> -->
-      </vxe-table>
-      <!-- <div class="flex justify-between items-center pt-5px"> -->
-      <vxe-pager
-        perfect
-        @page-change="loadList(false)"
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :layouts="[
-          'PrevJump',
-          'PrevPage',
-          'Number',
-          'NextPage',
-          'NextJump',
-          'Sizes',
-          'Total'
-        ]"
-      >
-      </vxe-pager>
-      <!-- </div> -->
+      </div>
     </div>
-
     <div class="modal-column-between">
-      <Button @click="$emit('close')" :loading="loading"> 取消 </Button>
-      <Button color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
 
 <script>
 /**
- * @功能描述: 账户FORM
+ * @功能描述: 收付款源单选择
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-
 import { MessagePlugin } from 'tdesign-vue-next';
 import OrderReceipt from '@js/api/fund/OrderReceipt';
 import OrderPayment from '@js/api/fund/OrderPayment';
-import { add, objectEach } from 'xe-utils';
-// import {CopyObj} from "@common/utils";
 
 export default {
   name: 'sourceForm',
+  emits: { close: null, success: null },
   props: {
     params: Object,
     URL: {
@@ -97,16 +60,14 @@ export default {
   },
   data() {
     const now = new Date();
-    const year = now.getFullYear(); // 获取年份
-    const month = now.getMonth() + 1; // 获取月份（0-11，需要+1）
-    const day = now.getDate(); // 获取日期
-
-    // 格式化为 "YYYY-MM-DD"
-    const today = `${year}-${month < 10 ? '0' + month : month}-${
-      day < 10 ? '0' + day : day
-    }`;
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const today = `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
     return {
       dataList: [],
+      selectedRowKeys: [],
+      selectedRows: [],
       openingBalance: {
         salesOrderId: '-1',
         salesOrderNo: '期初余额',
@@ -117,64 +78,116 @@ export default {
         unverifiedAmount: 0
       },
       loading: false,
-      model: {},
-      validationRules: {},
       pagination: {
         page: 1,
         pageSize: 5,
         total: 0
-      }
+      },
+      columns: [
+        { colKey: 'row-select', type: 'multiple', width: 46 },
+        { colKey: 'salesOrderNo', title: '订单编号', width: 200, ellipsis: true },
+        { colKey: 'businessTypeText', title: '业务类别', width: 120, align: 'center' },
+        { colKey: 'businessDate', title: '单据日期', width: 130, align: 'center' },
+        { colKey: 'documentAmount', title: '单据金额', width: 120, align: 'right' },
+        { colKey: 'verifiedAmount', title: '已核销金额', width: 120, align: 'right' },
+        { colKey: 'unverifiedAmount', title: '未核销金额', width: 120, align: 'right' },
+      ]
     };
   },
-  methods: {
-    loadList() {
-      const apiMap = {
-        OrderReceipt,
-        OrderPayment
+  computed: {
+    tableData() {
+      return (this.dataList || []).map((row, index) => {
+        let businessTypeText = '-';
+        if (this.URL === 'OrderReceipt') {
+          businessTypeText = row.businessType == 2 ? '期初余额' : '销售出库单';
+        } else if (this.URL === 'OrderPayment') {
+          businessTypeText = row.businessType == 2 ? '期初余额' : '采购入库单';
+        }
+        return {
+          ...row,
+          businessTypeText,
+          rowKey: `${row.salesOrderNo || row.salesOrderId || 'row'}_${index}`
+        };
+      });
+    },
+    footData() {
+      const sum = (key) => {
+        const total = (this.selectedRows || []).reduce((acc, row) => acc + Number(row[key] || 0), 0);
+        return total.toFixed(2);
       };
+      return [{
+        salesOrderNo: `已选 ${this.selectedRows.length} 条`,
+        documentAmount: sum('documentAmount'),
+        verifiedAmount: sum('verifiedAmount'),
+        unverifiedAmount: sum('unverifiedAmount'),
+      }];
+    }
+  },
+  methods: {
+    onSelectChange(keys, { selectedRowData }) {
+      this.selectedRowKeys = keys;
+      this.selectedRows = selectedRowData || [];
+    },
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
+    },
+    loadList() {
+      const apiMap = { OrderReceipt, OrderPayment };
       const apiModule = apiMap[this.URL];
       this.loading = true;
-      console.log(apiModule, 'apiModule');
-
-      let params = {};
+      this.selectedRowKeys = [];
+      this.selectedRows = [];
       this.openingBalance.documentAmount = this.params.balance;
       this.openingBalance.unverifiedAmount = this.params.balance;
+
+      const params = {
+        page: this.pagination.page,
+        pageSize: this.pagination.pageSize
+      };
       if (this.URL === 'OrderReceipt') {
-        params.customerId = this.params.customerId; // 客户ID
+        params.customerId = this.params.customerId;
       } else if (this.URL === 'OrderPayment') {
-        params.supplierId = this.params.supplierId; // 供应商ID
+        params.supplierId = this.params.supplierId;
       }
-      params.page = this.pagination.page;
-      params.pageSize = this.pagination.pageSize;
 
       apiModule
         .writeOffTheOrder(params)
         .then(({ data: { results, total } }) => {
-          this.dataList = results || [];
-          this.dataList = [this.openingBalance, ...this.dataList];
-
-          this.pagination.total = total;
+          this.dataList = [this.openingBalance, ...(results || [])];
+          this.pagination.total = (total || 0) + 1;
         })
         .finally(() => (this.loading = false));
     },
     confirm() {
-      let checkList = this.$refs.table.getCheckboxRecords().map((item) => {
+      if (!this.selectedRows.length) {
+        return MessagePlugin.warning('请至少选择一条源单');
+      }
+      const checkList = this.selectedRows.map((item) => {
+        const row = { ...item };
         if (this.URL === 'OrderPayment') {
-          item.businessId = item.salesOrderId;
-          item.businessNo = item.salesOrderNo;
+          row.businessId = row.salesOrderId;
+          row.businessNo = row.salesOrderNo;
         }
-
-        delete item.id;
-        return item;
+        delete row.id;
+        delete row.rowKey;
+        delete row.businessTypeText;
+        return row;
       });
-      console.log(checkList, 'checkListClonecheckListClonecheckListClone');
       this.$emit('success', checkList);
     }
   },
   created() {
     this.loadList();
-
-    // this.orderPayment
   }
 };
 </script>
+
+<style scoped>
+.modal-pager {
+  padding: 10px 0 0;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>

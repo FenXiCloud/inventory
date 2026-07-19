@@ -1,55 +1,68 @@
 <template>
-    <div class="frame-page flex flex-column">
-      <vxe-toolbar>
-        <template #buttons>
-          <Search v-model.trim="params.name"
-                  show-search-button class="w-360px"
-                  placeholder="请输入名称" @search="doSearch">
-            <t-icon name="search" />
-          </Search>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
+        <t-input
+            v-model.trim="params.name"
+            clearable
+            placeholder="请输入名称"
+            style="width: 240px; border-radius: 4px"
+            @enter="doSearch"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
+          </template>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
+    </div>
+
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="auto"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+      >
+        <template #startDate="{ row }">
+          {{ formatMonth(row.startDate) }}
         </template>
-        <template #tools>
-          <Button @click="showForm()" color="primary">新 增</Button>
+        <template #enabled="{ row }">
+          <t-tag
+              :theme="row.enabled ? 'primary' : 'danger'"
+              variant="light"
+              style="cursor:pointer"
+              @click="trigger(row)"
+          >
+            {{ row.enabled ? '启用' : '禁用' }}
+          </t-tag>
         </template>
-      </vxe-toolbar>
-      <div class="flex1">
-        <vxe-table row-id="id"
-                   ref="table"
-                   :data="dataList"
-                   highlight-hover-row
-                   show-overflow
-                   :loading="loading">
-          <vxe-column type="seq" width="60" align="center"/>
-          <vxe-column title="名称" field="name" min-width="150"/>
-          <vxe-column title="启用日期" field="startDate" width="120" formatter="formatMonth"/>
-          <vxe-column title="状态" field="enabled" width="80" align="center" >
-            <template #default="{row}">
-              <Tag color="primary" v-if="row.enabled" @click="trigger(row)" class="cursor-pointer">启用</Tag>
-              <Tag color="red" v-else @click="trigger(row)" class="cursor-pointer">禁用</Tag>
-            </template>
-          </vxe-column>
-          <vxe-column title="操作" align="center" width="300" fixed="right">
-            <template #default="{row}">
-              <div class="flex items-center justify-center">
-                <span class=" primary-color text-hover ml-10px" @click="showForm(row)" size="s">编辑</span>
-                <span class=" primary-color text-hover ml-10px" @click="showConfigForm(row)" size="s">参数设置</span>
-              </div>
-            </template>
-          </vxe-column>
-        </vxe-table>
-        <div class="flex justify-between items-center pt-5px">
-          <div></div>
-          <vxe-pager perfect @page-change="loadList()"
-                     v-model:current-page="pagination.page"
-                     v-model:page-size="pagination.pageSize"
-                     :total="pagination.total"
-                     :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'FullJump', 'Total']">
-            <template #left>
-              <vxe-button @click="loadList(false)" type="text" size="mini" icon="fa fa-refresh"
-                          :loading="loading"></vxe-button>
-            </template>
-          </vxe-pager>
-        </div>
+        <template #ops="{ row }">
+          <t-space size="small">
+            <t-link theme="primary" @click="showForm(row)">编辑</t-link>
+            <t-link theme="primary" @click="showConfigForm(row)">参数设置</t-link>
+          </t-space>
+        </template>
+      </t-table>
+    </div>
+
+    <div class="simple-page__pager">
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
@@ -61,7 +74,6 @@ import AccountBookForm from "./AccountBookForm.vue";
 import SystemConfigForm from "./SystemConfigForm.vue";
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
-
 
 export default {
   name: "AccountBookList",
@@ -84,25 +96,35 @@ export default {
       merchantList: [],
       pagination: {
         page: 1,
-        size: 20,
+        pageSize: 20,
         total: 0
       },
       param: [
         {title: '启用', key: 'enabled'},
         {title: '禁用', key: 'disabled'},
+      ],
+      columns: [
+        {colKey: 'name', title: '名称', minWidth: 150, ellipsis: true},
+        {colKey: 'startDate', title: '启用日期', width: 120},
+        {colKey: 'enabled', title: '状态', width: 90, align: 'center'},
+        {colKey: 'ops', title: '操作', width: 180, fixed: 'right', align: 'center'}
       ]
-
     }
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
-        pageSize: this.pagination.size
+        pageSize: this.pagination.pageSize
       })
     }
   },
   methods: {
+    formatMonth(value) {
+      if (!value) return '';
+      const str = String(value);
+      return str.length >= 7 ? str.substring(0, 7) : str;
+    },
     showForm(accountBook) {
       let dialogId = openDialog({
         header: "组织信息",
@@ -144,7 +166,9 @@ export default {
         this.pagination.total = data.total;
       }).finally(() => this.loading = false);
     },
-    pageChange() {
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
       this.loadList();
     },
     doSearch() {
@@ -182,3 +206,38 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+}
+</style>

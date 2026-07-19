@@ -56,7 +56,7 @@
 <script>
 import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
 import FinanceVoucherTemplate from "@js/api/setting/FinanceVoucherTemplate";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import {ObjectUtil} from "../../js/common/utils";
 
 export default {
@@ -107,32 +107,33 @@ export default {
       }
     },
     confirm() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        const filter = this.templateData.filter(item => {
-          return !ObjectUtil.isEmpty(item.subjectId)
-        });
-        if (filter && filter.length === 0) {
-          message("请添加会计科目～");
-          return;
-        }
-        const details = [];
-        filter.forEach(item => {
-          details.push({
-            subjectId: item.subjectId,
-            subjectName: item.subjectName,
-            subjectCode: item.subjectCode,
-            balanceDirection: item.balanceDirection,
-            auxiliaryAccounting: item.auxiliaryAccounting
+      this.$refs.form.validate().then((res) => {
+        if (res === true || res.result === true) {
+          const filter = this.templateData.filter(item => {
+            return !ObjectUtil.isEmpty(item.subjectId)
           });
-        });
-        this.model.details = details;
-        this.loading = true;
-        FinanceVoucherTemplate.save(this.model).then(() => {
-          message("保存成功~");
-          this.$emit('success');
-        }).finally(() => this.loading = false);
-      }
+          if (filter && filter.length === 0) {
+            MessagePlugin.success("请添加会计科目～");
+            return;
+          }
+          const details = [];
+          filter.forEach(item => {
+            details.push({
+              subjectId: item.subjectId,
+              subjectName: item.subjectName,
+              subjectCode: item.subjectCode,
+              balanceDirection: item.balanceDirection,
+              auxiliaryAccounting: item.auxiliaryAccounting
+            });
+          });
+          this.model.details = details;
+          this.loading = true;
+          FinanceVoucherTemplate.save(this.model).then(() => {
+            MessagePlugin.success("保存成功~");
+            this.$emit('success');
+          }).finally(() => this.loading = false);
+        }
+      }).catch(() => {});
     },
     init() {
       FinanceAccountLink.loadVoucherWord().then(({data}) => {

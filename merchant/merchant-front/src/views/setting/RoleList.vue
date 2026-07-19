@@ -1,12 +1,12 @@
 <template>
   <div class="frame-page" style="margin: 0">
-    <div class="h-panel">
+    <div>
       <div class="h-panel-body">
         <div class="table-toolbar">
           <div class="table-toolbar-left">
-            <div class="h-input-group">
+            <div>
               <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入角色名称"/>
-              <span class="h-input-addon" @click="doSearch" :loading="loading"><i class="h-icon-search"></i></span>
+              <span @click="doSearch" :loading="loading"><t-icon name="search" /></span>
             </div>
           </div>
           <div class="table-toolbar-right">
@@ -33,8 +33,8 @@
             <template #default="{row}">
               <div class="flex items-center justify-center" v-if="!row.systemDefault">
                 <span class="primary-color text-hover" @click="showGrantMenu(row)">可用菜单</span>
-                <i class="primary-color h-icon-edit ml-10px" @click="showForm(row)"></i>
-                <i class="primary-color h-icon-trash ml-10px" @click="doRemove(row)"></i>
+                <t-icon name="edit" class="primary-color ml-10px" @click="showForm(row)" />
+                <t-icon name="delete" class="primary-color ml-10px" @click="doRemove(row)" />
               </div>
             </template>
           </vxe-column>
@@ -49,8 +49,8 @@
 import Role from "@js/api/setting/Role";
 import RoleForm from "./RoleForm.vue";
 import GrantMenu from "./GrantMenu.vue";
-import {confirm, message} from "heyui.ext";
-import {layer} from "@layui/layer-vue";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
+import {openDialog, openDrawer, closeDialog} from '@common/dialog';
 import {h} from "vue";
 
 /**
@@ -88,34 +88,34 @@ export default {
   methods: {
     showForm(entity) {
       let type = 0;
-      let layerId = layer.open({
-        title: "角色信息",
-        shadeClose: false,
+      let dialogId = openDialog({
+        header: "角色信息",
+        closeOnOverlayClick: false,
         closeBtn: false,
-        area: ['400px', '230px'],
-        content: h(RoleForm, {
+        width: '400px',
+        body: h(RoleForm, {
           entity, type,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.doSearch();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
     },
     showGrantMenu(entity) {
-      let layerId = layer.drawer({
-        title: entity.name + "-可用菜单",
-        area: ['40vw', '100vh'],
-        content: h(GrantMenu, {
+      let dialogId = openDrawer({
+        header: entity.name + "-可用菜单",
+        size: '40vw',
+        body: h(GrantMenu, {
           entity,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
@@ -138,12 +138,12 @@ export default {
       this.loadList();
     },
     doRemove(row) {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认删除角色：${row.name}?`,
         onConfirm: () => {
           Role.remove(row.id).then(() => {
-            message("删除成功~");
+            MessagePlugin.success("删除成功~");
             this.loadList();
           })
         }

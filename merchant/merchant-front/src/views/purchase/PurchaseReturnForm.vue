@@ -202,13 +202,13 @@
 </template>
 <script>
 
-import {confirm, loading, message} from "heyui.ext";
+import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import manba from "manba";
 import {CopyObj} from "@common/utils";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapState} from "vuex";
-import {layer} from "@layui/layer-vue";
+import {openDrawer, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import PurchaseReturnOrderSelect from "@views/purchase/PurchaseReturnOrderSelect.vue";
 import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
@@ -279,23 +279,23 @@ export default {
     },
     selectPurchaseOrder(entity) {
       if (!this.form.supplierId) {
-        message.error("请选择供货商~");
+        MessagePlugin.error("请选择供货商~");
         return
       }
-      let layerId = layer.drawer({
-        title: "请选择采购入库单",
-        shadeClose: false,
+      let dialogId = openDrawer({
+        header: "请选择采购入库单",
+        closeOnOverlayClick: false,
         closeBtn: false,
-        area: ['1200px', '100vh'],
-        content: h(PurchaseReturnOrderSelect, {
+        size: '1200px',
+        body: h(PurchaseReturnOrderSelect, {
           supplierId: this.supplierId,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: (params) => {
             console.log(params)
             this.loadToInbound(params);
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
         }),
       });
@@ -429,22 +429,22 @@ export default {
 
     //保存订单
     saveOrder(type) {
-      loading("保存中....");
+      LoadingPlugin(true);
       if (!this.form.supplierId) {
-        message.error("请选择购货商~");
-        loading.close()
+        MessagePlugin.error("请选择购货商~");
+        LoadingPlugin(false)
         return
       }
       let productData = this.productData.filter(c => c.quantity > 0);
       if (productData.length <= 0) {
-        message.error("请选择产品~");
-        loading.close()
+        MessagePlugin.error("请选择产品~");
+        LoadingPlugin(false)
         return
       }
       let warehouse = this.productData.filter(c => c.warehouseId === null);
       if (warehouse.length > 0) {
-        message.error("请选择仓库~");
-        loading.close()
+        MessagePlugin.error("请选择仓库~");
+        LoadingPlugin(false)
         return
       }
       PurchaseReturn.save({
@@ -454,7 +454,7 @@ export default {
         purchaseReturnItemList: productData
       }).then((success) => {
         if (success) {
-          message("保存成功~");
+          MessagePlugin.success("保存成功~");
           this.clearForm()
           //保存
           if (type === 'save') {
@@ -462,7 +462,7 @@ export default {
           }
         }
       }).finally(() =>
-          loading.close());
+          LoadingPlugin(false));
     },
 
     //清除Form
@@ -488,7 +488,7 @@ export default {
         this.productData = [{isNew: true}];
       } else if (e.id !== this.form.supplierId) {
         if (this.productData.length > 1) {
-          confirm({
+          DialogPlugin.confirm({
             title: "系统提示",
             content: `修改供货商后，将清除已选择的产品数据，确定修改？`,
             onConfirm: () => {
@@ -574,12 +574,12 @@ export default {
     //审核
     approved() {
       let ids = [this.form.id]
-      confirm({
+      DialogPlugin.confirm({
         title: "审核提示",
         content: `确认审核该订单?`,
         onConfirm: () => {
           PurchaseReturn.approved('已审核', ids).then(() => {
-            message("操作成功~");
+            MessagePlugin.success("操作成功~");
             this.closeWindow();
           })
         }
@@ -599,7 +599,7 @@ export default {
     },
   },
   beforeDestroy() {
-    confirm({
+    DialogPlugin.confirm({
       title: "系统提示",
       content: `确认?`,
       onConfirm: () => {
@@ -608,7 +608,7 @@ export default {
     })
   },
   created() {
-    loading("加载中....");
+    LoadingPlugin(true);
     Promise.all([
       Supplier.select(),
       Warehouse.select()
@@ -631,7 +631,7 @@ export default {
           this.productData = purchaseReturnItemList || [];
         })
       }
-    }).finally(() => loading.close());
+    }).finally(() => LoadingPlugin(false));
   },
 }
 </script>

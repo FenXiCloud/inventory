@@ -7,10 +7,11 @@
 import AppFrame from '@views/app/AppFrame';
 import { mapState } from 'vuex';
 import Login from './Login';
+import DDLogin from './DDLogin';
 import * as dd from 'dingtalk-jsapi';
 
 export default {
-  components: { Login, AppFrame },
+  components: { Login, DDLogin, AppFrame },
   data() {
     return {
       showLogin: true

@@ -1,65 +1,58 @@
 <template>
   <div class="frame-page" style="margin: 0">
-    <div class="h-panel">
-      <div class="h-panel-body">
-        <div class="table-toolbar">
-          <div class="table-toolbar-left">
-            <label for="name" class="mr-10px">商户名称</label>
-            <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入商户名称"/>
-            <Button color="primary" :loading="loading" @click="doSearch">查询</Button>
-          </div>
-          <div class="table-toolbar-right">
-            <Button @click="showForm()" color="primary">添加</Button>
-          </div>
+    <div class="t-panel p-16px">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <label for="name" class="mr-10px">商户名称</label>
+          <t-input id="name" v-model="params.name" class="flex-1" placeholder="请输入商户名称"/>
+          <t-button theme="primary" :loading="loading" @click="doSearch">查询</t-button>
         </div>
-        <vxe-table row-id="id"
-                   ref="table"
-                   :data="dataList"
-                   highlight-hover-row
-                   show-overflow
-                   :row-config="{height: 48}"
-                   :loading="loading">
-          <vxe-column field="id" width="60" title="ID"/>
-          <vxe-column title="商户编码" field="code" width="280"/>
-          <vxe-column title="商户名称" field="name" >
-            <template #default="{row}">
-              <span @click="doConfig(row)" class="text-hover primary-color"> <i class="h-icon-edit"></i> {{ row.name }}</span>
-            </template>
-          </vxe-column>
-          <vxe-column title="联系人" field="contact" width="100"/>
-          <vxe-column title="联系人电话" field="mobile" width="130"/>
-          <vxe-column title="服务时间" field="serviceDate" align="center" width="200">
-            <template #default="{row}">
-              {{ row.serviceStartDate }} - {{ row.serviceEndDate }}
-            </template>
-          </vxe-column>
-          <vxe-column title="创建时间" field="createdAt" align="center" width="150"/>
-          <vxe-column title="状态" field="enabled" align="center" width="100">
-            <template #default="{row}">
-              <Tag color="primary" v-if="row.enabled" @click="trigger(row)">启用</Tag>
-              <Tag color="red" v-else @click="trigger(row)">禁用</Tag>
-            </template>
-          </vxe-column>
-          <vxe-column title="操作" align="center" width="100">
-            <template #default="{row}">
-              <div class="flex items-center justify-center">
-                <span class=" primary-color text-hover ml-10px" @click="showForm(row)" size="s">编辑</span>
-              </div>
-            </template>
-          </vxe-column>
-        </vxe-table>
-        <Pagination align="right" class="mt-16px" v-model="pagination" @change="pageChange" small/>
+        <div class="toolbar-right">
+          <t-button @click="showForm()" theme="primary">添加</t-button>
+        </div>
       </div>
+      <vxe-table row-id="id"
+                 ref="table"
+                 :data="dataList"
+                 highlight-hover-row
+                 show-overflow
+                 :row-config="{height: 48}"
+                 :loading="loading">
+        <vxe-column field="id" width="60" title="ID"/>
+        <vxe-column title="商户编码" field="code" width="280"/>
+        <vxe-column title="商户名称" field="name" >
+          <template #default="{row}">
+            <span @click="showForm(row)" class="text-hover primary-color"><t-icon name="edit" /> {{ row.name }}</span>
+          </template>
+        </vxe-column>
+        <vxe-column title="联系人" field="contact" width="100"/>
+        <vxe-column title="联系人电话" field="mobile" width="130"/>
+        <vxe-column title="创建时间" field="createdAt" align="center" width="150"/>
+        <vxe-column title="状态" field="enabled" align="center" width="100">
+          <template #default="{row}">
+            <t-tag theme="primary" v-if="row.enabled" @click="trigger(row)">启用</t-tag>
+            <t-tag theme="danger" v-else @click="trigger(row)">禁用</t-tag>
+          </template>
+        </vxe-column>
+        <vxe-column title="操作" align="center" width="100">
+          <template #default="{row}">
+            <div class="flex items-center justify-center">
+              <span class=" primary-color text-hover ml-10px" @click="showForm(row)">编辑</span>
+            </div>
+          </template>
+        </vxe-column>
+      </vxe-table>
+      <t-pagination class="mt-16px" v-model:current="pagination.page" :total="pagination.total" :page-size="pagination.size" @change="pageChange" size="small"/>
     </div>
   </div>
 </template>
 
 <script>
 import Merchant from "@js/api/Merchant";
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 import MerchantForm from "@/views/merchant/MerchantForm";
 import MerchantSetting from "@/views/merchant/MerchantSetting";
-import {layer} from "@layui/layer-vue";
+import {DrawerPlugin} from "tdesign-vue-next";
 import {h} from "vue";
 
 /**
@@ -86,10 +79,6 @@ export default {
         size: 20,
         total: 0
       },
-      param: [
-        {title: '启用', key: 'enabled'},
-        {title: '禁用', key: 'disabled'},
-      ]
     }
   },
   computed: {
@@ -107,83 +96,72 @@ export default {
   },
   methods: {
     showForm(merchant) {
-      let layerId = layer.open({
-        title: "商户信息",
-        shadeClose: false,
+      const dialog = DialogPlugin({
+        header: "商户信息",
+        closeOnOverlayClick: false,
         closeBtn: false,
-        area: ['800px', '600px'],
-        content: h(MerchantForm, {
+        footer: false,
+        width: '800px',
+        body: h(MerchantForm, {
           merchant,
-          onClose: () => {
-            layer.close(layerId);
-          },
+          onClose: () => dialog.hide(),
           onSuccess: () => {
             this.doSearch();
-            layer.close(layerId);
+            dialog.hide();
           }
         })
       });
-    }
-    ,
+    },
     loadList() {
       this.loading = true;
       Merchant.list(this.queryParams).then(({data}) => {
         this.dataList = data.results;
         this.pagination.total = data.total;
       }).finally(() => this.loading = false);
-    }
-    ,
+    },
     pageChange() {
       this.loadList();
-    }
-    ,
+    },
     tableCheck() {
       this.checkedRows = this.$refs.table.getCheckboxRecords();
-    }
-    ,
+    },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
-    }
-    ,
+    },
     doConfig(merchant) {
-      layer.open({
-        title: merchant.name,
-        area: ['800px', '600px'],
-        content: h(MerchantSetting, {
-          merchant
-        })
+      DrawerPlugin({
+        header: merchant.name,
+        size: '800px',
+        body: h(MerchantSetting, { merchant })
       });
-    }
-    ,
+    },
     doRemove(row) {
-      confirm({
-        title: "系统提示",
-        content: `确认删除商户：${row.name}?`,
+      DialogPlugin.confirm({
+        header: "系统提示",
+        body: `确认删除商户：${row.name}?`,
         onConfirm: () => {
           Merchant.remove(row.id).then(() => {
-            message("删除成功~");
+            MessagePlugin.success("删除成功~");
             this.loadList();
           })
         }
       })
-    }
-    ,
+    },
     trigger(row) {
       let enabled = !row.enabled;
-      confirm({
-        title: "系统提示",
-        content: `确认要「${enabled ? "启用" : "禁用"}」商户：${row.name}?`,
+      DialogPlugin.confirm({
+        header: "系统提示",
+        body: `确认要「${enabled ? "启用" : "禁用"}」商户：${row.name}?`,
         onConfirm: () => {
           Merchant.save({id: row.id, enabled}).then(() => {
-            message("操作成功~");
+            MessagePlugin.success("操作成功~");
             this.loadList();
           })
         }
       })
     }
-  }
-  ,
+  },
   created() {
     this.loadList();
   }

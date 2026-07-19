@@ -60,9 +60,9 @@
 
 <script>
 import CodeRule from "@js/api/setting/CodeRule";
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 import CodeRuleForm from "./CodeRuleForm.vue";
-import {layer} from "@layui/layer-vue";
+import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 
 export default {
@@ -143,18 +143,18 @@ export default {
         }
       }
 
-      let layerId = layer.open({
-        title: "规则编码",
-        shadeClose: false,
-        area: ['50vw', 'auto'],
-        content: h(CodeRuleForm, {
+      let dialogId = openDialog({
+        header: "规则编码",
+        closeOnOverlayClick: false,
+        width: '50vw',
+        body: h(CodeRuleForm, {
           CodeRule,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.doSearch();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
@@ -169,12 +169,12 @@ export default {
       this.loadList();
     },
     doRemove(row) {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认删除规则：${row.name}?`,
         onConfirm: () => {
           CodeRule.remove(row.id).then(() => {
-            message("删除成功~");
+            MessagePlugin.success("删除成功~");
             this.doSearch();
           })
         }
@@ -183,13 +183,13 @@ export default {
     trigger(row) {
       let systemDefault = !row.systemDefault;
       let documentType = row.documentType;
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认要「${systemDefault ? "启用" : "禁用"}」规则：${row.name}?`,
         onConfirm: () => {
           CodeRule.save({id: row.id,systemDefault: systemDefault,documentType: documentType}).then((success) => {
             console.log(success);
-            message("操作成功~");
+            MessagePlugin.success("操作成功~");
             this.loadList();
           })
         }

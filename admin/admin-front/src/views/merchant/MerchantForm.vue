@@ -1,46 +1,35 @@
 <template>
   <div class="m-16px">
-    <Form ref="form" :model="model" :rules="validationRules" mode="block">
-      <FormItem label="商户名称" required prop="name">
-        <Input placeholder="请输入商户名称" v-model="model.name"/>
-      </FormItem>
+    <t-form ref="form" :data="model" :rules="rules" label-align="right">
+      <t-form-item label="商户名称" name="name">
+        <t-input placeholder="请输入商户名称" v-model="model.name"/>
+      </t-form-item>
       <div class="flex">
-        <FormItem label="联系人姓名"  prop="linkman" class="flex-1 mr-16px">
-          <Input placeholder="请输入联系人姓名" v-model="model.linkman"/>
-        </FormItem>
-        <FormItem label="联系人电话"  prop="mobile" class="flex-1">
-          <Input placeholder="请输入联系人常用手机号" v-model="model.phone"/>
-        </FormItem>
+        <t-form-item label="联系人姓名" name="linkman" class="flex-1 mr-16px">
+          <t-input placeholder="请输入联系人姓名" v-model="model.linkman"/>
+        </t-form-item>
+        <t-form-item label="联系人电话" name="mobile" class="flex-1">
+          <t-input placeholder="请输入联系人常用手机号" v-model="model.phone"/>
+        </t-form-item>
       </div>
       <div class="flex">
-        <FormItem label="邮箱" prop="email" class="flex-1 mr-16px">
-          <Input placeholder="请输入联系人常用邮箱" v-model="model.email"/>
-        </FormItem>
-        <FormItem label="地址" prop="address" class="flex-1">
-          <Input placeholder="请输入地址" v-model="model.address"/>
-        </FormItem>
+        <t-form-item label="邮箱" name="email" class="flex-1 mr-16px">
+          <t-input placeholder="请输入联系人常用邮箱" v-model="model.email"/>
+        </t-form-item>
+        <t-form-item label="地址" name="address" class="flex-1">
+          <t-input placeholder="请输入地址" v-model="model.address"/>
+        </t-form-item>
       </div>
-      <div class="flex">
-        <FormItem label="服务开始日期"  prop="serviceStartDate" class="flex-1 mr-16px">
-          <DatePicker v-model="model.serviceStartDate" format="YYYY-MM" type="month" :clearable="false"/>
-        </FormItem>
-        <FormItem label="服务结束日期"  prop="serviceEndDate" class="flex-1">
-          <DatePicker v-model="model.serviceEndDate" format="YYYY-MM" type="month" :clearable="false"/>
-        </FormItem>
-      </div>
-    </Form>
+    </t-form>
   </div>
-  <div class="layui-layer-btn layui-layer-btn-r">
-    <Button icon="fa fa-close" @click="$emit('close')" :loading="loading">
-      取消
-    </Button>
-    <Button icon="fa fa-save" color="primary" @click="confirm" :loading="loading">
-      保存
-    </Button>
+  <div class="dialog-footer">
+    <t-button @click="$emit('close')" :loading="loading">取消</t-button>
+    <t-button theme="primary" @click="confirm" :loading="loading">保存</t-button>
   </div>
 </template>
 
-<script>/**
+<script>
+/**
  * <p>****************************************************************************</p>
  * <p><b>Copyright © 2010-2022 soho team All Rights Reserved<b></p>
  * <ul style="margin:15px;">
@@ -52,7 +41,7 @@
  * <p>****************************************************************************</p>
  */
 import Merchant from "@js/api/Merchant";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import {CopyObj} from "@common/utils";
 
 export default {
@@ -76,24 +65,23 @@ export default {
         name: null,
         phone: null,
         startCheckDate: null,
-        serviceStartDate: null,
-        serviceEndDate: null,
       },
-      validationRules: {
-        mobile: ['phone']
+      rules: {
+        name: [{ required: true, message: '请输入商户名称', trigger: 'blur' }],
       }
     }
   },
   methods: {
     confirm() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        Merchant.save(this.model).then(() => {
-          message("保存成功~");
-          this.$emit('success');
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.form.validate().then((result) => {
+        if (result === true) {
+          this.loading = true;
+          Merchant.save(this.model).then(() => {
+            MessagePlugin.success("保存成功~");
+            this.$emit('success');
+          }).finally(() => this.loading = false);
+        }
+      });
     }
   },
   created() {
@@ -101,3 +89,14 @@ export default {
   }
 }
 </script>
+
+<style>
+.dialog-footer {
+  text-align: right;
+  padding: 12px 16px;
+  border-top: 1px solid #e7e7e7;
+}
+.dialog-footer .t-button {
+  margin-left: 8px;
+}
+</style>

@@ -1,44 +1,55 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
-        <Button @click="showCustomerLevelForm()" color="primary">新 增</Button>
-      </template>
-      <template #tools>
-        <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入名称"/>
-        <Button color="primary" :loading="loading" @click="searchCustomerLevel()">查询</Button>
-      </template>
-    </vxe-toolbar>
-  <div class="flex1">
-      <vxe-table row-id="id"
-                 ref="table"
-                 :data="customerLevelDataList"
-                 highlight-hover-row
-                 show-overflow
-                 stripe
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :loading="loading">
-        <vxe-column type="seq" width="60" title="#"/>
-        <vxe-column title="名称" field="name"/>
-        <vxe-column title="操作" align="center" width="150">
-          <template #default="{row}">
-            <i class="primary-color h-icon-edit ml-10px" @click="showCustomerLevelForm(row)"></i>
-            <i class="primary-color h-icon-trash ml-10px" v-if="!row.systemDefault"
-               @click="deleteCustomerLevel(row)"></i>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="showCustomerLevelForm()">新 增</t-button>
+        <t-input
+            v-model="params.name"
+            clearable
+            placeholder="请输入名称"
+            style="width: 240px; border-radius: 4px"
+            @enter="searchCustomerLevel"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="searchCustomerLevel"/>
           </template>
-        </vxe-column>
-      </vxe-table>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="searchCustomerLevel">查询</t-button>
+      </t-space>
+    </div>
+
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="customerLevelDataList"
+          :columns="columns"
+          :loading="loading"
+      >
+        <template #ops="{ row }">
+          <t-space size="small">
+            <t-link theme="primary" @click="showCustomerLevelForm(row)"><t-icon name="edit"/></t-link>
+            <t-link v-if="!row.systemDefault" theme="primary" @click="deleteCustomerLevel(row)">
+              <t-icon name="delete"/>
+            </t-link>
+          </t-space>
+        </template>
+      </t-table>
     </div>
   </div>
 </template>
 
 <script>
-import CustomerLevel from "@js/api/basic/CustomerLevel";
-import CustomerLevelForm from "./CustomerLevelForm.vue";
-import {confirm, message} from "heyui.ext";
-import {layer} from "@layui/layer-vue";
-import {h} from "vue";
+import CustomerLevel from '@js/api/basic/CustomerLevel';
+import CustomerLevelForm from '@views/basic/CustomerLevelForm.vue';
+import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {openDialog, closeDialog} from '@common/dialog';
+import {h} from 'vue';
 
 /**
  * @功能描述: 客户级别
@@ -48,33 +59,31 @@ import {h} from "vue";
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 export default {
-  name: "CustomersLevelList",
+  name: 'CustomerLevelList',
   data() {
     return {
       loading: false,
       customerLevelDataList: [],
-      params: {
-        name: null,
-      },
-    }
+      params: {name: ''},
+      columns: [
+        {colKey: 'ops', title: '操作', width: 90, fixed: 'left', align: 'center'},
+        {colKey: 'name', title: '名称', minWidth: 200, ellipsis: true}
+      ]
+    };
   },
   methods: {
-
     showCustomerLevelForm(entity) {
-      let type = 0;
-      let layerId = layer.open({
-        title: "客户等级",
-        shadeClose: false,
+      const dialogId = openDialog({
+        header: '客户等级',
+        closeOnOverlayClick: false,
         closeBtn: false,
-        area: ['300px', '230px'],
-        content: h(CustomerLevelForm, {
-          entity, type,
-          onClose: () => {
-            layer.close(layerId);
-          },
+        width: '400px',
+        body: h(CustomerLevelForm, {
+          entity: entity || null,
+          onClose: () => closeDialog(dialogId),
           onSuccess: () => {
             this.searchCustomerLevel();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
@@ -84,25 +93,55 @@ export default {
     },
     loadCustomerLevel() {
       this.loading = true;
-      CustomerLevel.list(this.params).then(({data}) => {
-        this.customerLevelDataList = data;
-      }).finally(() => this.loading = false);
+      const query = {};
+      if (this.params.name) query.name = this.params.name;
+      CustomerLevel.list(query)
+        .then(({data}) => {
+          this.customerLevelDataList = Array.isArray(data) ? data : [];
+        })
+        .finally(() => (this.loading = false));
     },
     deleteCustomerLevel(row) {
-      confirm({
-        title: "系统提示",
+      DialogPlugin.confirm({
+        title: '系统提示',
         content: `确认删除：${row.name}?`,
         onConfirm: () => {
           CustomerLevel.delete(row.id).then(() => {
-            message("删除成功~");
+            MessagePlugin.success('删除成功~');
             this.loadCustomerLevel();
-          })
+          });
         }
-      })
+      });
     }
   },
   created() {
     this.loadCustomerLevel();
   }
-}
+};
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+</style>

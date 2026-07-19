@@ -5,10 +5,10 @@
         <Button @click="excel" color="primary">导出</Button>
       </template>
       <template #tools>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+        <Search v-model.trim="params.filter"
                 show-search-button class="w-360px ml-8px"
                 placeholder="请输入产品名称/单据编号" @search="doSearch">
-          <i class="h-icon-search"/>
+          <t-icon name="search" />
         </Search>
       </template>
     </vxe-toolbar>
@@ -186,7 +186,7 @@
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
           <!--          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>-->
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>
@@ -197,7 +197,7 @@
 import manba from "manba";
 import InventoryItem from "@js/api/inventory/InventoryItem";
 import {mapMutations} from "vuex";
-import {loading} from "heyui.ext";
+import {LoadingPlugin} from "tdesign-vue-next";
 import Product from "@js/api/basic/Product";
 import ProductCategory from "@js/api/basic/ProductCategory";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -313,7 +313,7 @@ export default {
       this.loadList();
     },
     loadDict(callback) {
-      loading("加载中....");
+      LoadingPlugin(true);
       Promise.all([Product.select(), Warehouse.select(), Supplier.select(), ProductCategory.select(), Customer.select()])
           .then((results) => {
             this.productList = results[0].data || [];
@@ -323,7 +323,7 @@ export default {
             this.customerList = results[4].data || [];
             callback();
           })
-          .finally(() => loading.close());
+          .finally(() => LoadingPlugin(false));
     },
     loadList(type = true) {
       this.loading = true;

@@ -7,24 +7,23 @@
       </div>
       <div class="bg">
         <div class="form">
-          <Form
+          <t-form
               ref="loginForm"
-              :model="form"
+              :data="form"
               :rules="rules"
               class="login-form"
-              mode="block">
+              label-align="top">
             <div class="wel">管理中心</div>
-            <FormItem label="账号" prop="username">
-              <template v-slot:label> 账号</template>
-              <Input type="text" v-model="form.username" autocomplete="off" placeholder="请输入登录账号"/>
-            </FormItem>
-            <FormItem label="密码" prop="password">
-              <Input type="password" v-model="form.password" autocomplete="off" @keyup.enter="submitForm" placeholder="请输入密码"/>
-            </FormItem>
-            <FormItem :showLabel="false">
-              <Button :loading="loading" class="login-form-btn" color="primary" @click="submitForm">登 录</Button>
-            </FormItem>
-          </Form>
+            <t-form-item label="账号" name="username">
+              <t-input type="text" v-model="form.username" autocomplete="off" placeholder="请输入登录账号"/>
+            </t-form-item>
+            <t-form-item label="密码" name="password">
+              <t-input type="password" v-model="form.password" autocomplete="off" @keyup.enter="submitForm" placeholder="请输入密码"/>
+            </t-form-item>
+            <t-form-item>
+              <t-button :loading="loading" class="login-form-btn" theme="primary" block @click="submitForm">登 录</t-button>
+            </t-form-item>
+          </t-form>
         </div>
       </div>
     </div>
@@ -34,7 +33,7 @@
 <script>
 
 import {Login} from "@js/api/App";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 
 export default {
   name: "Login",
@@ -46,25 +45,27 @@ export default {
         password: null
       },
       rules: {
-        required: ['username', 'password'],
+        username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+        password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
       }
     }
   },
   methods: {
     submitForm() {
-      let validResult = this.$refs.loginForm.valid();
-      if (validResult.result) {
-        this.loading = true;
-        Login(this.form).then(({success}) => {
-          if (success) {
-            localStorage.setItem("admin_cache_username", this.form.username);
-            message("登录成功~");
-            window.location.replace("/");
-          }
-        }).finally(() => {
-          this.loading = false;
-        });
-      }
+      this.$refs.loginForm.validate().then((result) => {
+        if (result === true) {
+          this.loading = true;
+          Login(this.form).then(({success}) => {
+            if (success) {
+              localStorage.setItem("admin_cache_username", this.form.username);
+              MessagePlugin.success("登录成功~");
+              window.location.replace("/");
+            }
+          }).finally(() => {
+            this.loading = false;
+          });
+        }
+      });
     }
   },
   created() {
@@ -75,8 +76,7 @@ export default {
   }
 }
 </script>
-<style scoped lang="less">
-
+<style scoped>
 .login {
   background: url("@/assets/login-bg.jpg") no-repeat;
   height: 100vh;
@@ -86,112 +86,77 @@ export default {
   align-items: center;
   background-size: cover;
   background-position: center;
+}
 
-  &-form {
-    margin: 20px 20px 20px;
+.login-form {
+  margin: 20px;
+}
 
-    &-btn {
-      width: 100%;
-      margin-top: 10px;
-    }
+.login-form-btn {
+  width: 100%;
+  margin-top: 10px;
+  height: 40px;
+}
 
-    &-action {
-      width: 100%;
-      font-size: 12px;
-      color: @primary-color;
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-    }
-  }
+.login .wel {
+  color: #3d74ff;
+  font-weight: bold;
+  letter-spacing: 5px;
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  text-align: center;
+}
 
-  .login-form {
-    .login-form-btn {
-      height: 40px;
-    }
-  }
+.login .bg1 {
+  width: 100%;
+  height: 237px;
+  background: #3d74ff;
+  opacity: 0.6;
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  margin: auto;
+}
 
+.login .bg {
+  position: absolute;
+  left: 56%;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  margin: auto;
+  z-index: 1;
+  border-radius: 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
-  .img {
-    width: 100%;
-    position: absolute;
-    left: 0;
-    right: 0;
-    margin: 0 auto;
-    z-index: -1;
-  }
+.login .bg .form {
+  width: 400px;
+  background: #fff;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.4);
+}
 
-  .wel {
-    color: @primary-color;
-    font-weight: bold;
-    letter-spacing: 5px;
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-    text-align: center;
-  }
+.login .gyl {
+  width: 530px;
+  height: 237px;
+  color: #FFFFFF;
+  font-size: 65px;
+  position: absolute;
+  left: 15%;
+  top: 11%;
+  bottom: 0;
+  margin: auto;
+}
 
-  .bg1 {
-    width: 100%;
-    height: 237px;
-    background: @primary-color;
-    opacity: 0.6;
-    position: absolute;
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    margin: auto;
-  }
-
-  .bg {
-    position: absolute;
-    left: 56%;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    margin: auto;
-    z-index: 1;
-    border-radius: 5px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    .form {
-      width: 400px;
-      background: #fff;
-      box-shadow: 0 0 50px rgba(0, 0, 0, 0.4);
-    }
-  }
-
-  .gyl {
-    width: 530px;
-    height: 237px;
-    color: #FFFFFF;
-    font-size: 65px;
-    position: absolute;
-    left: 15%;
-    top: 11%;
-    bottom: 0;
-    margin: auto;
-  }
-
-  .gy2 {
-    color: #fff;
-    margin-left: 6px;
-    font-size: 18px;
-    text-align: center;
-    margin-top: 10px;
-  }
-
-  .btn {
-    position: absolute;
-    top: 16rem;
-    right: 2.5rem;
-    border: none;
-    color: #fff;
-    width: 18.825rem;
-    text-align: center;
-    text-indent: 0;
-  }
+.login .gy2 {
+  color: #fff;
+  margin-left: 6px;
+  font-size: 18px;
+  text-align: center;
+  margin-top: 10px;
 }
 </style>

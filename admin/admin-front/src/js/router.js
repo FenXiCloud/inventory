@@ -1,5 +1,5 @@
 import {createRouter, createWebHistory} from 'vue-router'
-import {loadingBar} from "heyui.ext";
+import {LoadingPlugin} from "tdesign-vue-next";
 
 const routes = [
 	{
@@ -12,43 +12,32 @@ const routes = [
 		path: '/',
 		name: 'AppFrame',
 		component: () => import('@/views/app/AppFrame'),
+		redirect: '/merchant',
 		children: [
-			{
-				path: '',
-				name: 'DashboardMain',
-				component: () => import('@/views/dashboard/DashboardMain'),
-				meta: {title: '桌面', icon: 'icon-monitor'}
-			},
 			{
 				path: 'merchant',
 				name: 'MerchantList',
 				component: () => import('@/views/merchant/MerchantList'),
-				meta: {title: '商户管理', icon: 'icon-monitor'}
+				meta: {title: '商户管理'}
 			},
 			{
 				path: 'menu',
 				name: 'MenuList',
 				component: () => import('@/views/menu/MenuList'),
-				meta: {title: '菜单管理', icon: 'icon-monitor'}
+				meta: {title: '菜单管理'}
 			},
 			{
 				path: 'user',
 				name: 'UserList',
 				component: () => import('@/views/user/UserList'),
-				meta: {title: '管理员管理', icon: 'icon-monitor'}
-			},
-			{
-				path: 'wechat/setting',
-				name: 'WechatSetting',
-				component: () => import('@/views/wechat/WechatSetting'),
-				meta: {title: '微信设置', icon: 'icon-monitor'}
+				meta: {title: '账号管理'}
 			},
 			{
 				path: 'account',
 				name: 'AccountBasic',
 				component: () => import('@/views/common/AccountBasic'),
-				meta: {title: '账号信息', icon: 'icon-monitor'}
-			},
+				meta: {title: '个人信息'}
+			}
 		]
 	}, {
 		path: '/permission/error',
@@ -62,24 +51,21 @@ const router = createRouter({
 	routes
 })
 
-let isFirstRouter = true;
-
 router.beforeEach((to, from, next) => {
-	loadingBar.start();
+	LoadingPlugin(true);
 	if (to.meta && to.meta.title) {
 		document.title = to.meta.title + ' - 进销存';
 	} else {
 		document.title = '进销存';
 	}
-	isFirstRouter = false;
 	next();
 });
 
 router.afterEach(() => {
-	loadingBar.success();
+	LoadingPlugin(false);
 	document.documentElement.scrollTop = 0;
 	document.body.scrollTop = 0;
-	let layoutContent = document.querySelector('.h-layout-content');
+	let layoutContent = document.querySelector('.t-layout__content');
 	if (layoutContent) {
 		layoutContent.scrollTop = 0;
 	}

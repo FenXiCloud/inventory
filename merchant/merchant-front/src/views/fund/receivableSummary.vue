@@ -178,7 +178,7 @@
             @click="loadList(false)"
             type="text"
             size="mini"
-            icon="h-icon-refresh"
+            icon="vxe-icon-refresh"
             :loading="loading"
           ></vxe-button>
         </template>

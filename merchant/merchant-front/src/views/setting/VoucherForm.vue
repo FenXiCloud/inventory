@@ -28,7 +28,7 @@
             <span class="text-hover blue-color font-bold">备注</span>
             <template #content>
               <div style="width: 200px; padding: 20px">
-                <textarea placeholder="请输入备注内容" v-model="form.remark" v-autosize rows="3"
+                <textarea placeholder="请输入备注内容" v-model="form.remark" rows="3"
                           style="width: 100%;"></textarea>
               </div>
             </template>
@@ -47,7 +47,7 @@ import VoucherTable from "@/views/common/VoucherTable.vue";
 import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
 import {mapState} from 'vuex';
 import manba from "manba";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import FinanceVoucher from "@js/api/setting/FinanceVoucher";
 
 export default {
@@ -119,12 +119,12 @@ export default {
     },
     save(next) {
       if (!this.form.code) {
-        message.warn("亲，请输入编号！");
+        MessagePlugin.warning("亲，请输入编号！");
         return
       }
 
       if (!this.voucherItems.length) {
-        message.warn("亲，第1行不能为空！");
+        MessagePlugin.warning("亲，第1行不能为空！");
         return
       }
 
@@ -133,7 +133,7 @@ export default {
       }
 
       if (this.voucherTable.jfTotal != this.voucherTable.dfTotal) {
-        message.warn("亲，借贷不平衡！");
+        MessagePlugin.warning("亲，借贷不平衡！");
         return
       }
 
@@ -144,7 +144,7 @@ export default {
       //   createMember: this.user.id
       // })).then(({success, data}) => {
       //   this.loading = false;
-      //   message.warn("亲，保存成功！");
+      //   MessagePlugin.warning("亲，保存成功！");
       //   this.$emit('success', data);
       // }).catch(() => {
       //   this.loading = false;
@@ -160,7 +160,7 @@ export default {
       }
 
       if (row > -1) {
-        message.warn(`亲，第${row}行，请输入${name}！`);
+        MessagePlugin.warning(`亲，第${row}行，请输入${name}！`);
         return true;
       }
     },

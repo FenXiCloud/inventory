@@ -9,10 +9,10 @@
             <span class="h-input-addon ml-8px">订单日期：</span>
             <DateRangePicker v-model="dateRange"></DateRangePicker>
           </div>
-          <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+          <Search v-model.trim="params.filter"
                   show-search-button class="w-360px ml-8px"
                   placeholder="请输入订单号" @search="doSearch">
-            <i class="h-icon-search"/>
+            <t-icon name="search" />
           </Search>
         </template>
       </vxe-toolbar>
@@ -47,7 +47,7 @@
                  :layouts="[ 'PrevPage', 'Number', 'NextPage',  'Sizes', 'Total']">
         <template #left>
           <span class="mr-12px text-14px">合计金额：{{ amountTotal }}元</span>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>
@@ -65,7 +65,7 @@
 <script>
 import manba from "manba";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -124,7 +124,7 @@ export default {
         // 这里可以触发成功事件并传递数据
         this.$emit('success', params);
       } else {
-        message.error("未选择数据~");
+        MessagePlugin.error("未选择数据~");
       }
     },
     footerMethod({columns, data}) {

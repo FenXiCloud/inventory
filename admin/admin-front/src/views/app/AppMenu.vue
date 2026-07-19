@@ -1,33 +1,36 @@
 <template>
   <div class="app-menu">
-    <AppLogo/>
-    <Menu :datas="menus" :mode="menuMode" @clickItem="trigger" ref="menu" :className="`h-menu-${theme}`"></Menu>
-    <!--    <div class="app-menu-mask" @click="hideMenu"></div>-->
-  </div>
-  <div>
-    <AppHead/>
+    <AppLogo class="app-logo"/>
+    <t-menu :value="activeMenu" :collapsed="false" theme="dark" width="232px" @change="onMenuChange">
+      <template v-for="menu in menus" :key="menu.key">
+        <t-menu-item v-if="!menu.children || !menu.children.length" :value="menu.key">
+          <template #icon><t-icon v-if="menu.icon" :name="menu.icon"/></template>
+          {{ menu.title }}
+        </t-menu-item>
+        <t-submenu v-else :value="menu.key" :title="menu.title">
+          <template #icon><t-icon v-if="menu.icon" :name="menu.icon"/></template>
+          <t-menu-item v-for="child in menu.children" :key="child.key" :value="child.key">
+            {{ child.title }}
+          </t-menu-item>
+        </t-submenu>
+      </template>
+    </t-menu>
   </div>
 </template>
 
 <script>
 import AppLogo from "@/views/app/AppLogo";
-import AppHead from "@/views/app/AppHead";
 import {mapState} from 'vuex';
 
-/**
- * @功能描述: 菜单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 export default {
   name: "AppMenu",
   props: {
     theme: String
   },
   data() {
-    return {};
+    return {
+      activeMenu: null,
+    };
   },
   watch: {
     $route() {
@@ -41,10 +44,7 @@ export default {
     this.init();
   },
   computed: {
-    ...mapState(['siderCollapsed', 'menus']),
-    menuMode() {
-      return this.siderCollapsed ? 'collapse' : 'vertical';
-    }
+    ...mapState(['menus']),
   },
   methods: {
     init() {
@@ -52,57 +52,42 @@ export default {
     },
     menuSelect() {
       if (this.$route.name) {
-        this.$refs.menu.select(this.$route.name);
+        this.activeMenu = this.$route.name;
       }
     },
-    trigger(data) {
-      if (data.children.length > 0) return;
-      this.$router.push({name: data.key});
-    },
-    hideMenu() {
-      this.$store.commit('updateSiderCollapse', true);
+    onMenuChange(value) {
+      this.$router.push({name: value});
     }
   },
   components: {
-    AppLogo,
-    AppHead
+    AppLogo
   }
 }
 </script>
-<style lang="less" scoped>
+<style scoped>
 .app-menu {
-  .h-menu {
-    font-size: 14px;
+  font-size: 14px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
 
-    .h-menu-li-selected {
-      .h-menu-show:after {
-        width: 4px;
-      }
-    }
+.app-menu .app-logo {
+  flex-shrink: 0;
+}
 
-    > li > .h-menu-show {
-      font-size: 15px;
+.app-menu .t-menu {
+  flex: 1;
+  overflow-y: auto;
+  border-right: none;
+}
 
-      .h-menu-show-icon {
-        font-size: 20px;
-      }
+.app-menu .t-menu::-webkit-scrollbar {
+  width: 4px;
+}
 
-      .h-menu-show-desc {
-        transition: opacity 0.1s cubic-bezier(0.645, 0.045, 0.355, 1), width 0.1s cubic-bezier(0.645, 0.045, 0.355, 1);
-      }
-    }
-  }
-
-  .h-menu.h-menu-size-collapse > .h-menu-li > .h-menu-show {
-    padding-left: 24px;
-
-    .h-menu-show-icon {
-      font-size: 20px;
-    }
-  }
-
-  .h-menu.h-menu-white {
-    color: rgb(49, 58, 70);
-  }
+.app-menu .t-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
 }
 </style>

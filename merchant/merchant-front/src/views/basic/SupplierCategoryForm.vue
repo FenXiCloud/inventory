@@ -1,59 +1,64 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules">
-        <FormItem label="名称" required prop="name">
-          <Input placeholder="请输入名称" v-model="model.name"/>
-        </FormItem>
-      </Form>
+      <t-form
+          ref="form"
+          :data="model"
+          :rules="rules"
+          layout="vertical"
+          label-align="top"
+      >
+        <t-form-item label="名称" name="name">
+          <t-input v-model="model.name" placeholder="请输入分类名称" :maxlength="32"/>
+        </t-form-item>
+      </t-form>
     </div>
     <div class="modal-column-between">
-      <Button @click="$emit('close')" :loading="loading">
-        取消
-      </Button>
-      <Button color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
 
 <script>
-
-import SupplierCategory from "@js/api/basic/SupplierCategory";
-import {message} from "heyui.ext";
-import {CopyObj} from "@common/utils";
+import SupplierCategory from '@js/api/basic/SupplierCategory';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {CopyObj} from '@common/utils';
 
 export default {
-  name: "SupplierCategoryForm",
+  name: 'SupplierCategoryForm',
+  emits: {close: null, success: null},
   props: {
-    entity: Object,
+    entity: Object
   },
   data() {
     return {
       loading: false,
       model: {
         id: null,
-        name: null,
-        code: null,
+        name: null
       },
-      validationRules: {}
-    }
+      rules: {
+        name: [{required: true, message: '请输入分类名称', type: 'error'}]
+      }
+    };
   },
   methods: {
     confirm() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
+      this.$refs.form.validate().then((result) => {
+        if (result !== true) return;
         this.loading = true;
-        SupplierCategory.save(this.model).then(() => {
-          message("保存成功~");
-          this.$emit('success');
-        }).finally(() => this.loading = false);
-      }
+        SupplierCategory.save(this.model)
+          .then(() => {
+            MessagePlugin.success('保存成功~');
+            this.$emit('success');
+          })
+          .finally(() => (this.loading = false));
+      }).catch(() => {});
     }
   },
   created() {
     CopyObj(this.model, this.entity);
   }
-}
+};
 </script>

@@ -22,7 +22,7 @@
 
 <script>
 import Role from "@js/api/Role";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import Menu from "@js/api/Menu";
 
 /**
@@ -53,7 +53,7 @@ export default {
 
       this.loading = true;
       Role.roleGrant(this.entity.id, merchantMenu).then(() => {
-        message("授权成功~");
+        MessagePlugin.success("授权成功~");
       }).finally(() => this.loading = false);
     },
     loadData() {
@@ -87,7 +87,7 @@ export default {
 }
 </script>
 
-<style scoped lang="less">
+<style scoped>
 .m-cus-menu {
   height: calc(100vh - 150px);
   overflow: hidden;

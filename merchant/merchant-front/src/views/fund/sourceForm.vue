@@ -80,7 +80,7 @@
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 
-import { message } from 'heyui.ext';
+import { MessagePlugin } from 'tdesign-vue-next';
 import OrderReceipt from '@js/api/fund/OrderReceipt';
 import OrderPayment from '@js/api/fund/OrderPayment';
 import { add, objectEach } from 'xe-utils';

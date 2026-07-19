@@ -11,43 +11,43 @@
       </div>
       <div class="section login-bg">
         <div class="login-form">
-          <Form ref="loginForm" :model="form" :labelWidth="70" :rules="rules">
+          <t-form ref="loginForm" :data="form" :rules="rules" label-width="70px" @submit.prevent>
             <div class="wel">&nbsp;<span></span></div>
-            <FormItem>
-              <template v-slot:label>
+            <t-form-item name="username">
+              <template #label>
                 <span class="white-color">账 号:</span>
               </template>
-              <Input
+              <t-input
                 type="text"
                 style="border-radius: 3px"
                 v-model="form.username"
                 autocomplete="off"
                 placeholder="请输入登录账号"
               />
-            </FormItem>
-            <FormItem>
-              <template v-slot:label>
+            </t-form-item>
+            <t-form-item name="password">
+              <template #label>
                 <span class="white-color">密 码:</span>
               </template>
-              <Input
+              <t-input
                 type="password"
                 style="border-radius: 3px"
                 v-model="form.password"
                 autocomplete="off"
-                @keyup.enter="submitForm"
+                @enter="submitForm"
                 placeholder="请输入密码"
               />
-            </FormItem>
-            <FormItem>
-              <Button
+            </t-form-item>
+            <t-form-item>
+              <t-button
                 :loading="loading"
                 class="login-form-btn"
-                color="primary"
+                theme="primary"
+                block
                 @click="submitForm"
-                >登 录</Button
-              >
-            </FormItem>
-          </Form>
+              >登 录</t-button>
+            </t-form-item>
+          </t-form>
         </div>
       </div>
       <div class="login-footer">
@@ -68,7 +68,7 @@
 
 <script>
 import { Login, loginByBumer } from '@js/api/App';
-import { message } from 'heyui.ext';
+import { MessagePlugin } from 'tdesign-vue-next';
 
 export default {
   name: 'Login',
@@ -82,44 +82,50 @@ export default {
         password: null
       },
       rules: {
-        required: ['username', 'password']
+        username: [{ required: true, message: '请输入登录账号', trigger: 'blur' }],
+        password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
       }
     };
   },
 
   methods: {
     loginByMobile() {
-      // 获取当前页面的 URL 查询参数
       const search = window.location.search;
-
-      // 创建 URLSearchParams 对象
       const params = new URLSearchParams(search);
-
-      // 获取特定键的值
       const mobile = params.get('mobile');
 
       if (!mobile) return;
-      loginByBumer({ mobile }).then(({ success, data: { account } }) => {
-        message('登录成功~');
-        window.location.replace('/');
+      loginByBumer({ mobile }).then(({ success }) => {
+        if (success) {
+          MessagePlugin.success('登录成功');
+          window.location.replace('/');
+        }
       });
     },
     submitForm() {
-      let validResult = this.$refs.loginForm.valid();
-      if (validResult.result) {
-        this.loading = true;
-        Login(this.form)
-          .then(({ success, data: { account } }) => {
-            if (success) {
-              message('登录成功~');
-              localStorage.setItem('m_cache_username', this.form.username);
-              window.location.replace('/');
-            }
-          })
-          .finally(() => {
-            this.loading = false;
-          });
-      }
+      this.$refs.loginForm.validate().then((res) => {
+        if (res === true || (res && res.result === true)) {
+          this.loading = true;
+          Login(this.form)
+            .then(({ success }) => {
+              if (success) {
+                MessagePlugin.success('登录成功');
+                localStorage.setItem('m_cache_username', this.form.username);
+                window.location.replace('/');
+              }
+            })
+            .catch((err) => {
+              if (err && err.msg) {
+                MessagePlugin.error(err.msg);
+              }
+            })
+            .finally(() => {
+              this.loading = false;
+            });
+        }
+      }).catch(() => {
+        // 表单校验失败，TDesign 会自动显示字段错误
+      });
     }
   },
   created() {

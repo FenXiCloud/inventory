@@ -200,8 +200,8 @@
 </template>
 <script>
 import manba from 'manba';
-import { confirm, loading, message } from 'heyui.ext';
-import { layer } from '@layui/layer-vue';
+import { DialogPlugin, LoadingPlugin, MessagePlugin } from 'tdesign-vue-next';
+import {openDialog, closeDialog} from '@common/dialog';
 import { h } from 'vue';
 import AccountTransfer from '@js/api/fund/AccountTransfer';
 import Account from '@js/api/fund/Account';
@@ -363,21 +363,21 @@ export default {
         orderStatus: orderStatus,
         approvedBy: this.$store.state.user.admin.id
       };
-      confirm({
+      DialogPlugin.confirm({
         content: `确定审核订单？`,
         onConfirm: () => {
           AccountTransfer.batchAudit(params)
             .then((success) => {
               if (success) {
                 if (orderStatus === '已审核') {
-                  message.success('审核成功');
+                  MessagePlugin.success('审核成功');
                 } else {
-                  message.success('反审核成功');
+                  MessagePlugin.success('反审核成功');
                 }
                 this.loadList(); // Refresh the list
               }
             })
-            .finally(() => loading.close());
+            .finally(() => LoadingPlugin(false));
         }
       });
     },
@@ -453,11 +453,11 @@ export default {
       };
 
       if (!this.tableData.length || !this.tableData[0].fromAccountId) {
-        return message.error('请选择转出账户');
+        return MessagePlugin.error('请选择转出账户');
       } else if (!this.tableData.length || !this.tableData[0].toAccountId) {
-        return message.error('请选择转入账户');
+        return MessagePlugin.error('请选择转入账户');
       } else if (!this.tableData.length || !this.tableData[0].amount) {
-        return message.error('请输入金额');
+        return MessagePlugin.error('请输入金额');
       }
       console.log(params);
 
@@ -512,7 +512,7 @@ export default {
       this.loading = true;
       AccountTransfer.addEdit(params)
         .then(() => {
-          message('提交成功~');
+          MessagePlugin.success('提交成功~');
           this.clerarData();
           if (type == 'save') {
             this.historyForm();
@@ -603,21 +603,21 @@ export default {
 
     showForm(entity) {
       let type = 0;
-      let layerId = layer.open({
-        title: '新增职员',
-        shadeClose: false,
+      let dialogId = openDialog({
+        header: '新增职员',
+        closeOnOverlayClick: false,
         closeBtn: false,
-        area: ['600px', '480px'],
-        content: h(OrderStaffForm, {
+        width: '600px',
+        body: h(OrderStaffForm, {
           entity,
           type,
           onClose: () => {
             console.log(this.$refs.selectRef);
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadOrderStaff();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });

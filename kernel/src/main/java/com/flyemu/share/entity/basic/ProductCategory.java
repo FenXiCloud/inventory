@@ -47,8 +47,8 @@ public class ProductCategory {
     @Comment("排序号")
     private Long sort;
 
-    @Comment("是否叶子节点")
-    @ColumnDefault("b'1'")
+    @Comment("是否末级（分类下有产品时为 true，无产品时可继续创建下级）")
+    @ColumnDefault("b'0'")
     @Column(nullable = false)
     private Boolean leaf;
 

@@ -1,9 +1,11 @@
 <template>
   <div class="flex" style="flex-direction: column;height: 100%;overflow-x: hidden">
-    <div class="flex-1 h-0px">
+    <div class="flex-1">
       <component :is="setting" :merchant="merchant" class="h-full flex flex-column" style="background: #f3f6f8;"/>
     </div>
-    <Tabs :datas="settings" v-model="setting" class-name="h-tabs-custom"></Tabs>
+    <t-tabs v-model="setting" class="tabs-custom">
+      <t-tab-panel v-for="item in settings" :key="item.key" :value="item.key" :label="item.title" />
+    </t-tabs>
   </div>
 </template>
 
@@ -22,7 +24,7 @@ import AccountBookList from "@/views/merchant/accountBook/AccountBookList.vue";
 
 export default {
   name: "MerchantSetting",
-  components: {MerchantModuleGrant, AdminList, RoleList,AccountBookList},
+  components: {MerchantModuleGrant, AdminList, RoleList, AccountBookList},
   props: {
     merchant: Object
   },
@@ -49,7 +51,7 @@ export default {
       }, {
         key: "RoleList",
         title: "商户角色"
-      },{
+      }, {
         key: "MerchantModuleGrant",
         title: "模块授权"
       }]
@@ -57,24 +59,24 @@ export default {
   }
 }
 </script>
-<style lang="less">
-.h-tabs-custom {
-  background-color: @gray2-color;
-  border-top: @border;
+<style scoped>
+.tabs-custom {
+  background-color: #f5f5f5;
+  border-top: 1px solid #d3d3d3;
+}
 
-  > .h-tabs-item {
-    padding: 12px 16px;
-    line-height: 1;
-    font-size: 15px;
+.tabs-custom .t-tabs__nav-item {
+  padding: 12px 16px;
+  line-height: 1;
+  font-size: 15px;
+}
 
-    &:hover {
-      color: @primary-color;
-    }
+.tabs-custom .t-tabs__nav-item:hover {
+  color: #3d74ff;
+}
 
-    &.h-tabs-selected {
-      color: @white-color;
-      background-color: #3d74ff;
-    }
-  }
+.tabs-custom .t-tabs__nav-item.t-is-active {
+  color: #ffffff;
+  background-color: #3d74ff;
 }
 </style>

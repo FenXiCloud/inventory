@@ -147,7 +147,7 @@
   </div>
 </template>
 <script>
-import {confirm, loading, message} from "heyui.ext";
+import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import manba from "manba";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -344,7 +344,7 @@ export default {
       CostAdjustment.save(params)
           .then(({success, data}) => {
             if (success) {
-              message("保存成功~");
+              MessagePlugin.success("保存成功~");
               setTimeout(() => {
                 if (type === "increase") {
                   this.clearForm();
@@ -370,33 +370,33 @@ export default {
               }, 300);
             }
           })
-          .finally(() => loading.close());
+          .finally(() => LoadingPlugin(false));
     },
     //校验提交表单
     validatorsForm(filterCostAdjustmentData) {
       if (filterCostAdjustmentData.length === 0) {
         throw new Error("请填写操作数据~")
       }
-      loading("保存中....");
+      LoadingPlugin(true);
       let productData = filterCostAdjustmentData.filter((c) => this.isEmpty(c.productId));
       console.info("productData:", productData)
       if (productData.length > 0) {
-        loading.close();
+        LoadingPlugin(false);
         throw new Error("请选择产品~")
       }
       let warehouse = filterCostAdjustmentData.filter((c) => this.isEmpty(c.warehouseId));
       if (warehouse.length > 0) {
-        loading.close();
+        LoadingPlugin(false);
         throw new Error("请选择仓库~")
       }
       let adjustmentAmount = filterCostAdjustmentData.filter((c) => this.isEmpty(c.adjustmentAmount) || Number(c.adjustmentAmount) === 0);
       if (adjustmentAmount.length > 0) {
-        loading.close();
+        LoadingPlugin(false);
         throw new Error("请填写调整金额~")
       }
       let totalCost = filterCostAdjustmentData.filter((c) => (c.totalCost + c.adjustmentAmount) <= 0);
       if (totalCost.length > 0) {
-        loading.close();
+        LoadingPlugin(false);
         throw new Error("调整后金额不能小于等于零~")
       }
     },
@@ -524,7 +524,7 @@ export default {
               callback();
             }
           })
-          .finally(() => loading.close());
+          .finally(() => LoadingPlugin(false));
     },
     //初始化表单
     initIncreaseForm() {
@@ -556,17 +556,17 @@ export default {
         id = res.data.id;
       }
       const params = {id, type: operateType};
-      loading("审核中....");
+      LoadingPlugin(true);
       CostAdjustment.approve(params)
           .then((success) => {
             if (success) {
-              message("审核成功~");
+              MessagePlugin.success("审核成功~");
               setTimeout(() => {
                 this.loadEditForm(id);
               }, 300);
             }
           })
-          .finally(() => loading.close());
+          .finally(() => LoadingPlugin(false));
     },
     closeWindow() {
       this.closeSelfTab(this.index);
@@ -578,7 +578,7 @@ export default {
     },
   },
   beforeDestroy() {
-    confirm({
+    DialogPlugin.confirm({
       title: "系统提示",
       content: `确认?`,
       onConfirm: () => {
@@ -586,7 +586,7 @@ export default {
     });
   },
   created() {
-    loading("加载中....");
+    LoadingPlugin(true);
     this.loadDict(() => {
       //订单详情/编辑订单
       if (this.costAdjustmentId) {

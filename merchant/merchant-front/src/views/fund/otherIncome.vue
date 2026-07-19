@@ -22,7 +22,7 @@
             @change="selectOrderStaff($event)"
           >
             <!-- <template #bottom>
-              <Button no-border icon="h-icon-plus" @click="addOrderStaff()"
+              <Button no-border icon="add" @click="addOrderStaff()"
                 >新建</Button
               >
             </template> -->
@@ -96,7 +96,7 @@
             @click="loadList(false)"
             type="text"
             size="mini"
-            icon="h-icon-refresh"
+            icon="vxe-icon-refresh"
             :loading="loading"
           ></vxe-button>
         </template>
@@ -111,7 +111,7 @@ import OrderStaff from '@js/api/basic/OrderStaff';
 import AccountFlow from '@js/api/fund/AccountFlow';
 import Supplier from '@js/api/basic/Supplier';
 import Warehouse from '@js/api/basic/Warehouse';
-import { loading } from 'heyui.ext';
+import { LoadingPlugin } from 'tdesign-vue-next';
 import Product from '@js/api/basic/Product';
 import ProductCategory from '@js/api/basic/ProductCategory';
 import SupplierCategory from '@js/api/basic/SupplierCategory';

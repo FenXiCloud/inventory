@@ -25,10 +25,9 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import {HomeView} from "@js/api/App";
-import {mapMutations, mapState} from "vuex";
+import {mapState} from "vuex";
 import manba from "manba";
-import {layer} from "@layui/layer-vue";
+import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import AccountBookForm from "@views/setting/AccountBookForm.vue";
 
@@ -37,62 +36,45 @@ export default {
   data() {
     return {
       date: manba().format("YYYY-MM-dd"),
-      dateTitle: manba().format("YYYY年MM月dd日"),
     }
   },
   computed: {
-    ...mapState(['user', 'accountBooks',]),
+    ...mapState(['user', 'accountBooks']),
   },
   methods: {
-    ...mapMutations(['newTab']),
     addAccountBook() {
-      let layerId = layer.open({
-        title: "请先添加账套信息",
-        shadeClose: false,
+      let dialogId = openDialog({
+        header: "请先添加账套信息",
+        closeOnOverlayClick: false,
         closeBtn: false,
-        area: ['50vw', 'auto'],
-        content: h(AccountBookForm, {
+        width: '50vw',
+        body: h(AccountBookForm, {
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             window.location.replace("/");
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
-    },
-    homeView() {
-      this.loading = true;
-      Promise.all([
-        HomeView()
-      ]).then((results) => {
-        // this.inAmount = results[0].data.inAmount;
-      }).finally(() => this.loading = false);
-    },
-    trigger(data) {
-      this.newTab(data.key);
-      this.$router.push({name: data.key});
     },
   },
   created() {
     if (!this.accountBooks || this.accountBooks === null) {
       this.addAccountBook()
     }
-    this.homeView();
   }
 }
 </script>
 
 <style scoped lang="less">
 .card-header {
-  padding: 16px 16px;
-  //padding-top: 0 !important;
+  padding: 16px;
   color: #000;
-  //border-radius: 3px;
   text-align: center;
   display: flex;
-  background-color: @white-color;
+  background-color: #fff;
 }
 
 .common-card__footer-order {
@@ -137,7 +119,7 @@ export default {
     margin-left: 10px;
     width: 44px;
     height: 44px;
-    background: @bg-green-color;
+    background: #2ba471;
     border-radius: 50%;
   }
 }

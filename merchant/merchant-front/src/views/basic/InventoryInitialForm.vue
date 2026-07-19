@@ -115,7 +115,7 @@
 <script>
 import InventoryInitial from "@js/api/basic/InventoryInitial";
 import {mapMutations, mapState} from "vuex";
-import {loading, message} from "heyui.ext";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
 import Unit from "@js/api/basic/Unit";
@@ -249,7 +249,7 @@ export default {
 
     checkHttp(requestData) {
       if (requestData.length === 0) {
-        message.error("请选择产品~");
+        MessagePlugin.error("请选择产品~");
         return false
       }
       let quantityFlag = false
@@ -276,23 +276,23 @@ export default {
         }
       })
       if (productFlag) {
-        message.error("请选择产品~");
+        MessagePlugin.error("请选择产品~");
         return false
       }
       if (warehouseFlag) {
-        message.error("请选择仓库~");
+        MessagePlugin.error("请选择仓库~");
         return false
       }
       if (quantityFlag) {
-        message.error("请填写数量~");
+        MessagePlugin.error("请填写数量~");
         return false
       }
       if (unitPriceFlag) {
-        message.error("请填写单价~");
+        MessagePlugin.error("请填写单价~");
         return false
       }
       if (subtotalFlag) {
-        message.error("金额不能为空~");
+        MessagePlugin.error("金额不能为空~");
         return false
       }
       return true
@@ -318,7 +318,7 @@ export default {
     },
   },
   created() {
-    //loading("加载中....");
+    //LoadingPlugin(true);
     if (this.inventoryInitialId) {
       this.editForm();
     }else{
@@ -336,7 +336,7 @@ export default {
       this.productList.forEach(item => {
         item.name = `${item.code}--${item.name}`;
       });
-    }).finally(() => loading.close());
+    }).finally(() => LoadingPlugin(false));
   }
 }
 </script>

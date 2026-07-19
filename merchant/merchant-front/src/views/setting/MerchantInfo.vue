@@ -40,7 +40,7 @@
  */
 import {mapState} from "vuex"
 import {clone} from "xe-utils"
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import Merchant from "@js/api/setting/Merchant";
 
 export default {
@@ -60,13 +60,14 @@ export default {
   },
   methods: {
     doSave() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        Merchant.save(this.merchant).then(() => {
-          message("保存成功,重新登录后生效~");
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.form.validate().then((res) => {
+        if (res === true || res.result === true) {
+          this.loading = true;
+          Merchant.save(this.merchant).then(() => {
+            MessagePlugin.success("保存成功,重新登录后生效~");
+          }).finally(() => this.loading = false);
+        }
+      }).catch(() => {});
     }
   },
   created() {

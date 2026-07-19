@@ -2,10 +2,10 @@
     <div class="frame-page flex flex-column">
       <vxe-toolbar>
         <template #buttons>
-          <Search v-model.trim="params.name" search-button-theme="h-btn-default"
+          <Search v-model.trim="params.name"
                   show-search-button class="w-360px"
                   placeholder="请输入名称" @search="doSearch">
-            <i class="h-icon-search"/>
+            <t-icon name="search" />
           </Search>
         </template>
         <template #tools>
@@ -56,10 +56,10 @@
 
 <script>
 import AccountBook from "@js/api/setting/AccountBook";
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 import AccountBookForm from "./AccountBookForm.vue";
 import SystemConfigForm from "./SystemConfigForm.vue";
-import {layer} from "@layui/layer-vue";
+import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 
 
@@ -104,35 +104,35 @@ export default {
   },
   methods: {
     showForm(accountBook) {
-      let layerId = layer.open({
-        title: "组织信息",
-        shadeClose: false,
-        area: ['50vw', 'auto'],
-        content: h(AccountBookForm, {
+      let dialogId = openDialog({
+        header: "组织信息",
+        closeOnOverlayClick: false,
+        width: '50vw',
+        body: h(AccountBookForm, {
           accountBook,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.doSearch();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
     },
     showConfigForm(accountBook) {
-      let layerId = layer.open({
-        title: "参数设置",
-        shadeClose: false,
-        area: ['800px', '600px'],
-        content: h(SystemConfigForm, {
+      let dialogId = openDialog({
+        header: "参数设置",
+        closeOnOverlayClick: false,
+        width: '800px',
+        body: h(SystemConfigForm, {
           accountBook,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.doSearch();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
@@ -152,12 +152,12 @@ export default {
       this.loadList();
     },
     doRemove(row) {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认删除账套：${row.name}?`,
         onConfirm: () => {
           AccountBook.remove(row.id).then(() => {
-            message("删除成功~");
+            MessagePlugin.success("删除成功~");
             this.doSearch();
           })
         }
@@ -165,12 +165,12 @@ export default {
     },
     trigger(row) {
       let enabled = !row.enabled;
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认要「${enabled ? "启用" : "禁用"}」账套：${row.name}?`,
         onConfirm: () => {
           AccountBook.save({id: row.id, enabled}).then(() => {
-            message("操作成功~");
+            MessagePlugin.success("操作成功~");
             this.loadList();
           })
         }

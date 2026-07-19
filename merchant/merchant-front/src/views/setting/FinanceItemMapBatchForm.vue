@@ -69,7 +69,7 @@ import FinanceItemMap from "@js/api/setting/FinanceItemMap";
 import Customer from "@js/api/basic/Customer";
 import Product from "@js/api/basic/Product";
 import Supplier from "@js/api/basic/Supplier";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import {ObjectUtil} from "@js/common/utils";
 
 export default {
@@ -106,7 +106,7 @@ export default {
   methods: {
     confirm() {
       if (this.templateData.length === 0) {
-        message.info("请添加数据~");
+        MessagePlugin.info("请添加数据~");
         return;
       }
       const filter = this.templateData.filter((item) => {
@@ -120,12 +120,12 @@ export default {
         item.categoryName = this.model.categoryName;
       });
       if (flag) {
-        message("请选择辅助项～");
+        MessagePlugin.success("请选择辅助项～");
         return;
       }
       this.loading = true;
       FinanceItemMap.batchSave(filter).then(() => {
-        message("保存成功~");
+        MessagePlugin.success("保存成功~");
         this.$emit('success');
       }).finally(() => this.loading = false);
     },

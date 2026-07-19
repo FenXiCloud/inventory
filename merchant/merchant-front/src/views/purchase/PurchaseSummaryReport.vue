@@ -71,7 +71,7 @@
                  :total="pagination.total"
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>
@@ -84,7 +84,7 @@ import {mapMutations} from "vuex";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
-import {loading, message} from "heyui.ext";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import PurchaseReport from "@js/api/purchase/PurchaseReport";
 import ProductCategory from "@js/api/basic/ProductCategory";
 import SupplierCategory from "@js/api/basic/SupplierCategory";
@@ -129,7 +129,7 @@ export default {
   computed: {
     queryParams() {
       if (!this.groupValues || this.groupValues.length == 0) {
-        message.error("请统计字段~");
+        MessagePlugin.error("请统计字段~");
       }
       if (this.groupValues) {
         this.isProduct = this.groupValues.find(item => item === 'product');
@@ -185,7 +185,7 @@ export default {
         this.productList = results[2].data || [];
         this.productCategoryList = results[3].data || [];
         this.supplierCategoryList = results[4].data || [];
-      }).finally(() => loading.close());
+      }).finally(() => LoadingPlugin(false));
     },
     loadList(type = true) {
       this.loading = true;

@@ -7,10 +7,10 @@
         <Button @click="auditsForm('antiAudits')">反审核</Button>
       </template>
       <template #tools>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+        <Search v-model.trim="params.filter"
                 show-search-button class="w-360px ml-8px"
                 placeholder="请输入单据编号/仓库名称/制单人" @search="doSearch">
-          <i class="h-icon-search"/>
+          <t-icon name="search" />
         </Search>
       </template>
     </vxe-toolbar>
@@ -88,7 +88,7 @@
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
           <!-- <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span> -->
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>
@@ -99,7 +99,7 @@
 import manba from "manba";
 import InventoryTransfer from "@js/api/inventory/InventoryTransfer";
 import {mapMutations} from "vuex";
-import {confirm, loading, message} from "heyui.ext";
+import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 
@@ -190,13 +190,13 @@ export default {
     auditsForm(type) {
       const selectRecords = this.$refs.table.getCheckboxRecords();
       if (!selectRecords || selectRecords.length === 0) {
-        message.warn("请选择要操作的数据~");
+        MessagePlugin.warning("请选择要操作的数据~");
         return;
       }
       if (type === "audits") {
         const filterRecords = selectRecords.filter(item => item.orderStatus === "未审核");
         if (!filterRecords || filterRecords.length === 0) {
-          message.warn("请选择状态为未审核的数据，进行审核~");
+          MessagePlugin.warning("请选择状态为未审核的数据，进行审核~");
           return;
         }
         const ids = filterRecords.map(item => {
@@ -207,23 +207,23 @@ export default {
           type: "AUDITS",
         };
         console.info(filterRecords, ids);
-        loading("审核中....");
+        LoadingPlugin(true);
         InventoryTransfer.approves(params)
             .then((success) => {
               if (success) {
-                message("审核成功~");
+                MessagePlugin.success("审核成功~");
                 this.$refs.table.clearCheckboxRow();
                 this.loadList();
               }
             })
-            .finally(() => loading.close());
+            .finally(() => LoadingPlugin(false));
         return;
       }
       if (type === "antiAudits") {
         console.info("selectRecords:", selectRecords);
         const filterRecords = selectRecords.filter(item => item.orderStatus === "已审核");
         if (!filterRecords || filterRecords.length === 0) {
-          message.warn("请选择状态为已审核的数据，进行审核~");
+          MessagePlugin.warning("请选择状态为已审核的数据，进行审核~");
           return;
         }
         const ids = filterRecords.map(item => {
@@ -234,26 +234,26 @@ export default {
           type: "ANTI_AUDIT",
         };
         console.info(filterRecords, ids);
-        loading("反审核中....");
+        LoadingPlugin(true);
         InventoryTransfer.approves(params)
             .then((success) => {
               if (success) {
-                message("反审核成功~");
+                MessagePlugin.success("反审核成功~");
                 this.$refs.table.clearCheckboxRow();
                 this.loadList();
               }
             })
-            .finally(() => loading.close());
+            .finally(() => LoadingPlugin(false));
       }
     },
     doRemove({id}) {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `是否删除当前数据?`,
         onConfirm: () => {
           InventoryTransfer.delete(id).then(({data}) => {
             console.log(data);
-            message.success("操作成功～");
+            MessagePlugin.success("操作成功～");
             this.loadList();
           });
         },
@@ -263,14 +263,14 @@ export default {
       return ['未审核'].includes(row.orderStatus);
     },
     loadDict(callback) {
-      loading("加载中....");
+      LoadingPlugin(true);
       Promise.all([Product.select(), Warehouse.select()])
           .then((results) => {
             this.productList = results[0].data || [];
             this.warehouseList = results[1].data || [];
             callback();
           })
-          .finally(() => loading.close());
+          .finally(() => LoadingPlugin(false));
     },
   },
   created() {

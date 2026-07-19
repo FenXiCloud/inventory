@@ -74,7 +74,7 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import PriceRecord from "@js/api/basic/PriceRecord";
 
 export default {
@@ -111,7 +111,7 @@ export default {
       PriceRecord.productSave({
         product: this.model,
       }).then(() => {
-        message("保存成功~");
+        MessagePlugin.success("保存成功~");
         this.$emit('close');
       }).finally(() => this.loading = false);
     },
@@ -126,7 +126,7 @@ export default {
 }
 </script>
 <style lang="less">
-.goods-form .h-form .h-form-item {
+.goods-form .t-form .t-form-item {
   padding-bottom: 15px !important;
 }
 </style>

@@ -10,7 +10,6 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import jakarta.persistence.*;
 import java.io.Serializable;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -54,12 +53,6 @@ public class Merchant implements Serializable {
 
     @Comment("电话号码")
     private String mobile;
-
-    @Comment("服务开始时间")
-    private LocalDate serviceStartDate;
-
-    @Comment("服务结束时间")
-    private LocalDate serviceEndDate;
 
     @Comment("存货计价方式")
     private CostingMethod costingMethod;

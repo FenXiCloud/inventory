@@ -41,10 +41,10 @@
                 v-model="params.productCategoryIds" placeholder="请选择类别"/>
       </div>
       <div class="h-input-group">
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+        <Search v-model.trim="params.filter"
                 show-search-button
                 placeholder="请输入订单号" @search="doSearch">
-          <i class="h-icon-search"/>
+          <t-icon name="search" />
         </Search>
       </div>
     </div>
@@ -93,7 +93,7 @@
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
 <!--          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>-->
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>
@@ -105,7 +105,7 @@ import manba from "manba";
 import {mapMutations} from "vuex";
 import SalesReport from "@js/api/sales/SalesReport";
 import Customer from "@js/api/basic/Customer";
-import {loading, message} from "heyui.ext";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import * as XLSX from 'xlsx';
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -203,7 +203,7 @@ export default {
 
     exportData() {
       if (this.dataList.length === 0) {
-        message.warn('没有可导出的数据');
+        MessagePlugin.warning('没有可导出的数据');
         return;
       }
 
@@ -255,18 +255,18 @@ export default {
         const fileName = `销售明细报表_${manba().format('YYYY-MM-DD')}.xlsx`;
         XLSX.writeFile(wb, fileName);
 
-        message.success('导出成功');
+        MessagePlugin.success('导出成功');
       } catch (error) {
         console.error('导出错误:', error);
-        message.error('导出失败');
+        MessagePlugin.error('导出失败');
       } finally {
-        loading.close();
+        LoadingPlugin(false);
       }
     },
     doSearch() {
       this.pagination.page = 1;
       if(!this.params.salesType){
-        message.error("请选择业务类型~");
+        MessagePlugin.error("请选择业务类型~");
         return
       }
       this.loadList();
@@ -291,7 +291,7 @@ export default {
         this.customerCategoryList = results[3].data || [];
         this.productCategoryList = results[4].data || [];
 
-      }).finally(() => loading.close());
+      }).finally(() => LoadingPlugin(false));
     },
   },
   created() {

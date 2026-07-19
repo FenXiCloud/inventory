@@ -39,7 +39,7 @@
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 import Admin from "@js/api/setting/Admin";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import {CopyObj} from "@common/utils";
 import Role from "@js/api/setting/Role";
 
@@ -70,14 +70,15 @@ export default {
   },
   methods: {
     confirm() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        Admin.save(this.model).then(() => {
-          message("保存成功~");
-          this.$emit('success');
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.form.validate().then((res) => {
+        if (res === true || res.result === true) {
+          this.loading = true;
+          Admin.save(this.model).then(() => {
+            MessagePlugin.success("保存成功~");
+            this.$emit('success');
+          }).finally(() => this.loading = false);
+        }
+      }).catch(() => {});
     },
   },
   created() {

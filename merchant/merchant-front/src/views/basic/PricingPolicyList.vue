@@ -1,54 +1,47 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <div align="center">
-      <Tabs :datas="param" v-model="selected" @change="change"></Tabs>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-tabs v-model="selected" style="flex: 1" @change="onTabChange">
+        <t-tab-panel value="销售价格取数" label="销售价格取数"/>
+        <t-tab-panel value="采购价格取数" label="采购价格取数"/>
+      </t-tabs>
+      <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">刷新</t-button>
     </div>
 
-    <vxe-toolbar>
-      <template #buttons>
-
-      </template>
-      <template #tools>
-        <Button color="primary" :loading="loading" @click="doSearch">刷新</Button>
-      </template>
-    </vxe-toolbar>
-    <div class="flex1">
-      <vxe-table row-id="id"
-                 ref="table"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 stripe
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :loading="loading">
-        <vxe-column type="seq" width="40" title="#"/>
-        <vxe-column title="取数来源" field="policySource" width="150"/>
-        <vxe-column title="应用说明" field="remarks"/>
-        <vxe-column title="状态" field="enabled" width="120" align="center">
-          <template #default="{row}">
-            <Switch v-model="row.enabled" @change="toggleStatus(row)"></Switch>
-          </template>
-        </vxe-column>
-        <vxe-column title="操作" align="center" width="150">
-          <template #default="{row}">
-            <span class="primary-color  text-hover ml-10px" @click="moveUp(row)">上移</span>
-            <span class="primary-color  text-hover ml-10px" @click="moveDown(row)">下移</span>
-          </template>
-        </vxe-column>
-      </vxe-table>
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+      >
+        <template #ops="{ row }">
+          <t-space size="small">
+            <t-link theme="primary" @click="moveUp(row)">上移</t-link>
+            <t-link theme="primary" @click="moveDown(row)">下移</t-link>
+          </t-space>
+        </template>
+        <template #enabled="{ row }">
+          <t-switch v-model="row.enabled" @change="() => toggleStatus(row)"/>
+        </template>
+      </t-table>
     </div>
-    <div class="flex justify-center items-center p-15px bg-white-color border">
-      <Button color="primary" @click="saveOrder" :loading="loading">
-        保存
-      </Button>
+
+    <div class="simple-page__footer">
+      <t-button theme="primary" style="border-radius: 4px" :loading="loading" @click="saveOrder">保存</t-button>
     </div>
   </div>
 </template>
 
 <script>
-import PricingPolicy from "@js/api/basic/PricingPolicy";
-import {confirm, message} from "heyui.ext";
+import PricingPolicy from '@js/api/basic/PricingPolicy';
+import {MessagePlugin} from 'tdesign-vue-next';
 
 /**
  * @功能描述: 价格策略
@@ -58,26 +51,24 @@ import {confirm, message} from "heyui.ext";
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 export default {
-  name: "PricingPolicyList",
+  name: 'PricingPolicyList',
   data() {
     return {
       loading: false,
       dataList: [],
-      param: {
-        module1: '销售价格取数',
-        module2: '采购价格取数',
-        // module3: '异常成本处理'
-      },
       selected: '销售价格取数',
-      params: {
-        policyType: '销售价格取数',
-      }
-    }
+      params: {policyType: '销售价格取数'},
+      columns: [
+        {colKey: 'ops', title: '操作', width: 120, fixed: 'left', align: 'center'},
+        {colKey: 'policySource', title: '取数来源', width: 160},
+        {colKey: 'remarks', title: '应用说明', minWidth: 200, ellipsis: true},
+        {colKey: 'enabled', title: '状态', width: 100, align: 'center', fixed: 'right'}
+      ]
+    };
   },
   methods: {
-    change(data) {
-      console.log(data)
-      this.params.policyType = data.title;
+    onTabChange(value) {
+      this.params.policyType = value;
       this.loadList();
     },
     doSearch() {
@@ -85,68 +76,80 @@ export default {
     },
     loadList() {
       this.loading = true;
-      PricingPolicy.list(this.params).then(({data}) => {
-        this.dataList = data;
-      }).finally(() => this.loading = false);
+      PricingPolicy.list(this.params)
+        .then(({data}) => {
+          this.dataList = Array.isArray(data) ? data : [];
+        })
+        .finally(() => (this.loading = false));
     },
-    doRemove(row) {
-      confirm({
-        title: "系统提示",
-        content: `确认删除：${row.name}?`,
-        onConfirm: () => {
-          PricingPolicy.remove(row.id).then(() => {
-            message("删除成功~");
-            this.loadList();
-          })
-        }
-      })
-    },
-    moveUp(row){
-      const index = this.dataList.findIndex(item => item.id === row.id);
+    moveUp(row) {
+      const index = this.dataList.findIndex((item) => item.id === row.id);
       if (index <= 0) {
-        message("已经是第一条数据了");
+        MessagePlugin.warning('已经是第一条数据了');
         return;
       }
-      // 创建新数组并交换位置
       const newList = [...this.dataList];
       [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
       this.dataList = newList;
-
     },
-    moveDown(row){
-      const index = this.dataList.findIndex(item => item.id === row.id);
+    moveDown(row) {
+      const index = this.dataList.findIndex((item) => item.id === row.id);
       if (index >= this.dataList.length - 1) {
-        message("已经是最后一条数据了");
+        MessagePlugin.warning('已经是最后一条数据了');
         return;
       }
-      // 创建新数组并交换位置
       const newList = [...this.dataList];
       [newList[index], newList[index + 1]] = [newList[index + 1], newList[index]];
       this.dataList = newList;
     },
-    saveOrder(){
-      //保存排序
-      PricingPolicy.sort({
-        dataList: this.dataList
-      }).then(() => {
-        message("保存成功");
+    saveOrder() {
+      PricingPolicy.sort({dataList: this.dataList}).then(() => {
+        MessagePlugin.success('保存成功');
       });
     },
-    toggleStatus(row) {
-      console.log("row",row.enabled)
-      // PricingPolicy.toggleStatus({
-      //   id: row.id,
-      //   enabled: row.enabled
-      // }).then(() => {
-      //   message("状态修改成功");
-      // }).catch(() => {
-      //   // 如果失败，回滚状态
-      //   row.enabled = !row.enabled;
-      // });
+    toggleStatus() {
+      // 与原逻辑一致：仅本地切换，随排序一并保存
     }
   },
   created() {
     this.loadList();
   }
-}
+};
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+}
+</style>

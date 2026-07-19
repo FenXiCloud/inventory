@@ -6,24 +6,17 @@ export default createStore({
 		siderCollapsed: false,
 		user: {},
 		menus: [],
-		currentTab: 'DashboardMain',
+		currentTab: 'MerchantList',
 	},
 	mutations: {
 		updateMenus(state, data) {
 			state.menus = getMenus(data);
-			state.menuKeys = data;
 		},
 		updateAccount(state, data) {
 			state.user = data;
 		},
 		updateSiderCollapse(state, isShow) {
-			setTimeout(() => {
-				state.pageResizeCount += 1;
-			}, 600);
 			state.siderCollapsed = isShow;
-		},
-		updateMsgCount(state, data) {
-			state.msgCount = data;
 		}
 	},
 	actions: {

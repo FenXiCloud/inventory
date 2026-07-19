@@ -1,27 +1,24 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules">
-        <FormItem label="编码" prop="code" required>
-          <Input
-              placeholder="请输入分类编码"
-              :disabled="model.id"
-              v-model="model.code"
-          />
-        </FormItem>
-        <FormItem label="名称" required prop="name">
-          <Input placeholder="请输入分类名称" v-model="model.name" />
-        </FormItem>
-        <FormItem label="排序" required prop="sort">
-          <Input placeholder="请输入排序" v-model="model.sort" />
-        </FormItem>
-      </Form>
+      <t-form
+          ref="form"
+          :data="model"
+          :rules="rules"
+          layout="vertical"
+          label-align="top"
+      >
+        <t-form-item label="名称" name="name">
+          <t-input v-model="model.name" placeholder="请输入分类名称" :maxlength="32" clearable/>
+        </t-form-item>
+        <t-form-item label="排序" name="sort">
+          <t-input-number v-model="model.sort" theme="normal" :min="0" style="width: 100%"/>
+        </t-form-item>
+      </t-form>
     </div>
     <div class="modal-column-between">
-      <Button @click="$emit('close')" :loading="loading"> 取消 </Button>
-      <Button color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
@@ -35,15 +32,12 @@
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 import ProductCategory from '@js/api/basic/ProductCategory';
-import {message} from 'heyui.ext';
+import {MessagePlugin} from 'tdesign-vue-next';
 import {CopyObj} from '@common/utils';
 
 export default {
   name: 'ProductCategoryForm',
-  emits: {
-    close: null,
-    success: null
-  },
+  emits: ['close', 'success'],
   props: {
     productCategory: Object,
     parent: Object
@@ -59,25 +53,30 @@ export default {
         path: null,
         sort: 1
       },
-      validationRules: {}
+      rules: {
+        name: [{required: true, message: '请输入分类名称', type: 'error', trigger: 'blur'}],
+        sort: [{required: true, message: '请输入排序', type: 'error'}]
+      }
     };
   },
   methods: {
     confirm() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
+      this.$refs.form.validate().then((result) => {
+        if (result !== true) return;
         this.loading = true;
         ProductCategory.save(this.model)
-            .then(() => {
-              message('保存成功~');
-              this.$emit('success');
-            })
-            .finally(() => (this.loading = false));
-      }
+          .then(() => {
+            MessagePlugin.success('保存成功~');
+            this.$emit('success');
+          })
+          .finally(() => (this.loading = false));
+      }).catch(() => {});
     }
   },
   created() {
-    CopyObj(this.model, this.productCategory);
+    if (this.productCategory) {
+      CopyObj(this.model, this.productCategory);
+    }
     if (this.parent) {
       this.model.pid = this.parent.id;
     }

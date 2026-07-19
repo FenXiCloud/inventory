@@ -114,7 +114,7 @@
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
 <!--          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>-->
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>
@@ -126,7 +126,7 @@ import manba from "manba";
 import {mapMutations} from "vuex";
 import SalesReport from "@js/api/sales/SalesReport";
 import Customer from "@js/api/basic/Customer";
-import {loading, message} from "heyui.ext";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import * as XLSX from "xlsx";
@@ -223,7 +223,7 @@ export default {
     doSearch() {
       this.pagination.page = 1;
       if(!this.params.salesGroup){
-        message.error("请选择汇总条件~");
+        MessagePlugin.error("请选择汇总条件~");
         return
       }
       this.params.salesGroupSearch = this.params.salesGroup;
@@ -231,7 +231,7 @@ export default {
     },
     exportData() {
       if (this.dataList.length === 0) {
-        message.warn('没有可导出的数据');
+        MessagePlugin.warning('没有可导出的数据');
         return;
       }
 
@@ -279,12 +279,12 @@ export default {
         const fileName = `销售汇总报表_${manba().format('YYYY-MM-DD')}.xlsx`;
         XLSX.writeFile(wb, fileName);
 
-        message.success('导出成功');
+        MessagePlugin.success('导出成功');
       } catch (error) {
         console.error('导出错误:', error);
-        message.error('导出失败');
+        MessagePlugin.error('导出失败');
       } finally {
-        loading.close();
+        LoadingPlugin(false);
       }
     },
     loadList(type = true) {
@@ -306,7 +306,7 @@ export default {
         this.productList = results[2].data || [];
         this.productCategoryList = results[3].data || [];
         this.customerCategoryList = results[4].data || [];
-      }).finally(() => loading.close());
+      }).finally(() => LoadingPlugin(false));
     },
     handleSalesGroupChange(value) {
       console.log('汇总条件已更改:', value);

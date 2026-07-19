@@ -76,7 +76,7 @@
 </template>
 <script>
 
-import {confirm, loading, message} from "heyui.ext";
+import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import manba from "manba";
 import {CopyObj} from "@common/utils";
 import {mapState} from "vuex";
@@ -162,12 +162,12 @@ export default {
 
     backApproved() {
       let ids = [this.form.id]
-      confirm({
+      DialogPlugin.confirm({
         title: "反审核提示",
         content: `本次反审核此订单?`,
         onConfirm: () => {
           PurchaseReturn.approved('已保存', ids).then(() => {
-            message("操作成功~");
+            MessagePlugin.success("操作成功~");
             this.closeWindow();
           })
         }
@@ -187,7 +187,7 @@ export default {
     },
   },
   beforeDestroy() {
-    confirm({
+    DialogPlugin.confirm({
       title: "系统提示",
       content: `确认?`,
       onConfirm: () => {
@@ -196,7 +196,7 @@ export default {
     })
   },
   created() {
-    loading("加载中....");
+    LoadingPlugin(true);
     PurchaseReturn.load(this.orderId).then(({data: {purchaseReturn, purchaseReturnItemList}}) => {
       if (purchaseReturn) {
         CopyObj(this.form, purchaseReturn);
@@ -206,7 +206,7 @@ export default {
         }
       }
       this.productData = purchaseReturnItemList || [];
-    }).finally(() => loading.close())
+    }).finally(() => LoadingPlugin(false))
   }
 }
 </script>

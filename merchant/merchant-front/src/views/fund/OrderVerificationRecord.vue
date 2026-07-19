@@ -30,13 +30,12 @@
         </div>
         <Search
           v-model.trim="params.orderNo"
-          search-button-theme="h-btn-default"
           show-search-button
           class="w-280px ml-8px"
           placeholder="请输入单据号"
           @search="doSearch"
         >
-          <i class="h-icon-search" />
+          <t-icon name="search" />
         </Search>
       </template>
     </vxe-toolbar>
@@ -122,7 +121,7 @@
             @click="loadList(false)"
             type="text"
             size="mini"
-            icon="h-icon-refresh"
+            icon="vxe-icon-refresh"
             :loading="loading"
           ></vxe-button>
         </template>
@@ -134,7 +133,7 @@
 import manba from "manba";
 import SalesOrder from "@js/api/sales/SalesOrder";
 import { mapMutations } from "vuex";
-import { confirm, loading, message } from "heyui.ext";
+import { DialogPlugin, LoadingPlugin, MessagePlugin } from "tdesign-vue-next";
 import Verification from "@js/api/fund/Verification";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import Customer from "@js/api/basic/Customer";
@@ -230,14 +229,14 @@ export default {
         ids = row.id;
       }
       if (!ids) {
-        return message.error('请选择至少一个订单');
+        return MessagePlugin.error('请选择至少一个订单');
       }
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认删除?`,
         onConfirm: () => {
           Verification.remove({ id: ids }).then(() => {
-            message("删除成功~");
+            MessagePlugin.success("删除成功~");
             this.loadList();
           });
         },
@@ -247,10 +246,10 @@ export default {
       const selectedRows = this.getCheckboxRecordsIds();
       console.log(selectedRows, this.$store.state.user.admin.id);
       if (!selectedRows) {
-        message.error("请选择至少一个单据进行审核");
+        MessagePlugin.error("请选择至少一个单据进行审核");
         return;
       }
-      confirm({
+      DialogPlugin.confirm({
         content: `确定批量审核单据？`,
         onConfirm: () => {
           const orderIds = selectedRows;
@@ -263,14 +262,14 @@ export default {
             .then((success) => {
               if (success) {
                 if (orderStatus === "已审核") {
-                  message.success("批量审核成功");
+                  MessagePlugin.success("批量审核成功");
                 } else {
-                  message.success("批量反审核成功");
+                  MessagePlugin.success("批量反审核成功");
                 }
                 this.loadList(); // Refresh the list
               }
             })
-            .finally(() => loading.close());
+            .finally(() => LoadingPlugin(false));
         },
       });
     },

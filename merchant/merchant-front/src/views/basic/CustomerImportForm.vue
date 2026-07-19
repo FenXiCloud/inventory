@@ -18,8 +18,8 @@
         <div class="filler-item" style="flex: 1;margin: 5px 0px!important;">
           <label class="mr-16px  w-110px">选择上传文件：</label>
           <Button color="primary" :loading="loading" @click="$refs.file.click()">选择文件</Button>
-          <span class="ml-10px" v-if="file"> {{ fileName }}  <i @click="file =null"
-                                                                class="h-icon-error text-hover ml-10px"></i> </span>
+          <span class="ml-10px" v-if="file"> {{ fileName }}  <t-icon @click="file =null"
+                                                                name="close" class="text-hover ml-10px" /></span>
           <input type="file" style="visibility: hidden;" @change="fileChange($event)" ref="file"
                  accept="application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
         </div>
@@ -37,7 +37,7 @@
 </template>
 
 <script>
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import Customer from "@js/api/basic/Customer";
 
 
@@ -65,7 +65,7 @@ export default {
       if (this.file && this.file.size > (4 * 1024 * 1024)) {
         this.file = null;
         this.$refs.file.value = '';
-        message.error("一次最大导入4MB数据...");
+        MessagePlugin.error("一次最大导入4MB数据...");
       }
     },
     importData() {
@@ -81,7 +81,7 @@ export default {
           this.$refs.file.value = '';
         });
       } else {
-        message.error("请选择上传的文件...");
+        MessagePlugin.error("请选择上传的文件...");
       }
     }
   }

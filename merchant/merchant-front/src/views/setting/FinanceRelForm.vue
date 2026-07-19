@@ -42,7 +42,7 @@
 
 <script>
 
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
 import {mapState} from "vuex";
 import {ObjectUtil} from "../../js/common/utils";
@@ -81,14 +81,15 @@ export default {
   },
   methods: {
     confirm() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        FinanceAccountLink.save(this.model).then(() => {
-          message("保存成功~");
-          this.$emit('success');
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.form.validate().then((res) => {
+        if (res === true || res.result === true) {
+          this.loading = true;
+          FinanceAccountLink.save(this.model).then(() => {
+            MessagePlugin.success("保存成功~");
+            this.$emit('success');
+          }).finally(() => this.loading = false);
+        }
+      }).catch(() => {});
     },
     changeSets(item) {
       this.model.financeAccountName = item.companyName
@@ -109,15 +110,15 @@ export default {
       const {url, financeAccount, financePassword} = this.model;
       console.info("relatedClick:", url, financeAccount, financePassword);
       if (ObjectUtil.isEmpty(url)) {
-        message("请输入财务软件URL～");
+        MessagePlugin.success("请输入财务软件URL～");
         return;
       }
       if (ObjectUtil.isEmpty(financeAccount)) {
-        message("请输入财务软件账号～");
+        MessagePlugin.success("请输入财务软件账号～");
         return;
       }
       if (ObjectUtil.isEmpty(financePassword)) {
-        message("请输入财务软件密码～");
+        MessagePlugin.success("请输入财务软件密码～");
         return;
       }
       FinanceAccountLink.loadAccountSetsList({

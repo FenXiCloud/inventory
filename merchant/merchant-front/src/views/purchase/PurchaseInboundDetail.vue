@@ -70,7 +70,7 @@
 </template>
 <script>
 
-import {confirm, loading, message,} from "heyui.ext";
+import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import manba from "manba";
 import {CopyObj} from "@common/utils";
 import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
@@ -132,12 +132,12 @@ export default {
 
     backApproved() {
       let ids = [this.form.id]
-      confirm({
+      DialogPlugin.confirm({
         title: "反审核提示",
         content: `本次反审核此订单?`,
         onConfirm: () => {
           PurchaseInbound.approved('已保存', ids).then(() => {
-            message("操作成功~");
+            MessagePlugin.success("操作成功~");
             this.closeWindow();
           })
         }
@@ -158,7 +158,7 @@ export default {
   },
 
   created() {
-    loading("加载中....");
+    LoadingPlugin(true);
     //订单详情
     if (this.orderId) {
       PurchaseInbound.load(this.orderId).then(({data: {purchaseInbound, purchaseInboundItemList}}) => {
@@ -166,7 +166,7 @@ export default {
           CopyObj(this.form, purchaseInbound);
         }
         this.productData = purchaseInboundItemList || [];
-      }).finally(() => loading.close());
+      }).finally(() => LoadingPlugin(false));
     }
   },
 }

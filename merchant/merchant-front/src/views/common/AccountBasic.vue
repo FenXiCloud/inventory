@@ -40,7 +40,7 @@
 
 import {mapState} from "vuex"
 import {clone} from "xe-utils"
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import Admin from "@js/api/setting/Admin";
 
 export default {
@@ -70,22 +70,24 @@ export default {
   },
   methods: {
     doSave() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        Admin.save(this.admin).then(() => {
-          message("保存成功,重新登录后生效~");
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.form.validate().then((res) => {
+        if (res === true || res.result === true) {
+          this.loading = true;
+          Admin.save(this.admin).then(() => {
+            MessagePlugin.success("保存成功,重新登录后生效~");
+          }).finally(() => this.loading = false);
+        }
+      }).catch(() => {});
     },
     doChange() {
-      let validResult = this.$refs.pform.valid();
-      if (validResult.result) {
-        this.loading = true;
-        Admin.updatePassword(this.passwordForm).then(() => {
-          message("保存成功,重新登录时生效~");
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.pform.validate().then((res) => {
+        if (res === true || res.result === true) {
+          this.loading = true;
+          Admin.updatePassword(this.passwordForm).then(() => {
+            MessagePlugin.success("保存成功,重新登录时生效~");
+          }).finally(() => this.loading = false);
+        }
+      }).catch(() => {});
     }
   },
   created() {

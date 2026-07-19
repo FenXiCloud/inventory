@@ -1,35 +1,38 @@
 <template>
   <div class="frame-page">
-    <div class="h-panel">
-      <div class="h-panel-body">
-        <Tabs :datas="tabs" v-model="tab"/>
-        <Form v-if="tab==='base'" class="mt-16px w-400px" mode="block" ref="form" :model="userForm"
-              :rules="validationRules">
-          <FormItem label="用户名">
-            <Input v-model="userForm.username" disabled/>
-          </FormItem>
-          <FormItem label="姓名" prop="name">
-            <Input v-model="userForm.name"/>
-          </FormItem>
-          <FormItem>
-            <Button @click="doSave" :loading="loading" icon="fa fa-save" color="primary">保 存</Button>
-          </FormItem>
-        </Form>
-        <Form v-if="tab==='safe'" class="mt-16px w-400px" mode="block" ref="pform" :model="passwordForm"
-              :rules="validationRules">
-          <FormItem label="原密码" prop="oldPassword">
-            <Input v-model="passwordForm.oldPassword"/>
-          </FormItem>
-          <FormItem label="新密码" prop="newPassword">
-            <Input v-model="passwordForm.newPassword"/>
-          </FormItem>
-          <FormItem label="确认新密码" prop="confirmPassword">
-            <Input v-model="passwordForm.confirmPassword"/>
-          </FormItem>
-          <FormItem>
-            <Button @click="doChange" :loading="loading" icon="fa fa-save" color="primary">修 改 密 码</Button>
-          </FormItem>
-        </Form>
+    <div class="t-panel">
+      <div class="t-panel-body p-16px">
+        <t-tabs v-model="tab">
+          <t-tab-panel value="base" label="基本信息" />
+          <t-tab-panel value="safe" label="安全设置" />
+        </t-tabs>
+        <t-form v-if="tab==='base'" class="mt-16px w-400px" ref="form" :data="userForm"
+              :rules="baseRules" label-align="right">
+          <t-form-item label="用户名">
+            <t-input v-model="userForm.username" disabled/>
+          </t-form-item>
+          <t-form-item label="姓名" name="name">
+            <t-input v-model="userForm.name"/>
+          </t-form-item>
+          <t-form-item>
+            <t-button @click="doSave" :loading="loading" theme="primary">保 存</t-button>
+          </t-form-item>
+        </t-form>
+        <t-form v-if="tab==='safe'" class="mt-16px w-400px" ref="pform" :data="passwordForm"
+              :rules="pwdRules" label-align="right">
+          <t-form-item label="原密码" name="oldPassword">
+            <t-input type="password" v-model="passwordForm.oldPassword"/>
+          </t-form-item>
+          <t-form-item label="新密码" name="newPassword">
+            <t-input type="password" v-model="passwordForm.newPassword"/>
+          </t-form-item>
+          <t-form-item label="确认新密码" name="confirmPassword">
+            <t-input type="password" v-model="passwordForm.confirmPassword"/>
+          </t-form-item>
+          <t-form-item>
+            <t-button @click="doChange" :loading="loading" theme="primary">修 改 密 码</t-button>
+          </t-form-item>
+        </t-form>
       </div>
     </div>
   </div>
@@ -45,7 +48,7 @@
  */
 import {mapState} from "vuex"
 import {clone} from "xe-utils"
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import User from "@js/api/User";
 
 export default {
@@ -57,39 +60,42 @@ export default {
     return {
       loading: false,
       tab: 'base',
-      tabs: {
-        base: '基本信息',
-        safe: '安全设置',
-      },
       userForm: {},
       passwordForm: {
         oldPassword: null,
         newPassword: null,
         confirmPassword: null
       },
-      validationRules: {
-        required: ['name', 'oldPassword', 'newPassword', 'confirmPassword'],
-      }
+      baseRules: {
+        name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+      },
+      pwdRules: {
+        oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
+        newPassword: [{ required: true, message: '请输入新密码', trigger: 'blur' }],
+        confirmPassword: [{ required: true, message: '请输入确认新密码', trigger: 'blur' }],
+      },
     }
   },
   methods: {
     doSave() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        User.save(this.userForm).then(() => {
-          message("保存成功,重新登录后生效~");
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.form.validate().then((result) => {
+        if (result === true) {
+          this.loading = true;
+          User.save(this.userForm).then(() => {
+            MessagePlugin.success("保存成功,重新登录后生效~");
+          }).finally(() => this.loading = false);
+        }
+      });
     },
     doChange() {
-      let validResult = this.$refs.pform.valid();
-      if (validResult.result) {
-        this.loading = true;
-        User.updatePassword(this.passwordForm).then(() => {
-          message("保存成功,重新登录时生效~");
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.pform.validate().then((result) => {
+        if (result === true) {
+          this.loading = true;
+          User.updatePassword(this.passwordForm).then(() => {
+            MessagePlugin.success("保存成功,重新登录时生效~");
+          }).finally(() => this.loading = false);
+        }
+      });
     }
   },
   created() {

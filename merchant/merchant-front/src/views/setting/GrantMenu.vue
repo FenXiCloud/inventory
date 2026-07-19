@@ -23,7 +23,7 @@
 
 <script>
 import Role from "@js/api/setting/Role";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import {mapState} from "vuex";
 import Menu from "@js/api/setting/Menu";
 
@@ -58,7 +58,7 @@ export default {
 
       this.loading = true;
       Role.saveMenuRole(this.entity.id, menus).then(() => {
-        message("授权成功~");
+        MessagePlugin.success("授权成功~");
       }).finally(() => this.loading = false);
     },
     checkRequire() {

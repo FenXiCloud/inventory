@@ -24,13 +24,12 @@
 
         <Search
           v-model.trim="params.keyword"
-          search-button-theme="h-btn-default"
           show-search-button
           class="w-280px ml-8px"
           placeholder="请输入客户名称或订单编号"
           @search="doSearch"
         >
-          <i class="h-icon-search" />
+          <t-icon name="search" />
         </Search>
       </template>
     </vxe-toolbar> -->
@@ -163,7 +162,7 @@
             @click="loadList(false)"
             type="text"
             size="mini"
-            icon="h-icon-refresh"
+            icon="vxe-icon-refresh"
             :loading="loading"
           ></vxe-button>
         </template>
@@ -174,7 +173,7 @@
 <script>
 import manba from 'manba';
 import { mapMutations } from 'vuex';
-import { confirm, loading, message } from 'heyui.ext';
+import { DialogPlugin, LoadingPlugin, MessagePlugin } from 'tdesign-vue-next';
 import Customer from '@js/api/basic/Customer';
 import AccountTransfer from '@js/api/fund/AccountTransfer';
 
@@ -249,7 +248,7 @@ export default {
         .then((results) => {
           this.customerList = results[0].data || [];
         })
-        .finally(() => loading.close());
+        .finally(() => LoadingPlugin(false));
     },
     getCheckboxRecordsIds() {
       return this.$refs.table
@@ -265,14 +264,14 @@ export default {
         ids = row.id;
       }
       if (!ids) {
-        return message.error('请选择至少一个订单');
+        return MessagePlugin.error('请选择至少一个订单');
       }
-      confirm({
+      DialogPlugin.confirm({
         title: '系统提示',
         content: `确认删除?`,
         onConfirm: () => {
           AccountTransfer.remove({ id: ids }).then(() => {
-            message('删除成功~');
+            MessagePlugin.success('删除成功~');
             this.loadList();
           });
         }
@@ -282,10 +281,10 @@ export default {
       const selectedRows = this.getCheckboxRecordsIds();
       console.log(selectedRows, this.$store.state.user.admin.id);
       if (!selectedRows) {
-        message.error('请选择至少一个订单');
+        MessagePlugin.error('请选择至少一个订单');
         return;
       }
-      confirm({
+      DialogPlugin.confirm({
         content: `确定审核订单？`,
         onConfirm: () => {
           const orderIds = selectedRows;
@@ -298,14 +297,14 @@ export default {
             .then((success) => {
               if (success) {
                 if (orderStatus === '已审核') {
-                  message.success('审核成功');
+                  MessagePlugin.success('审核成功');
                 } else {
-                  message.success('反审核成功');
+                  MessagePlugin.success('反审核成功');
                 }
                 this.loadList(); // Refresh the list
               }
             })
-            .finally(() => loading.close());
+            .finally(() => LoadingPlugin(false));
         }
       });
     },

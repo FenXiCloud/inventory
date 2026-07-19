@@ -95,6 +95,7 @@ public class ProductService extends AbsService {
 
     private final InventoryItemRepository inventoryItemRepository;
     private final CodeRuleService codeRuleService;
+    private final ProductCategoryService productCategoryService;
 
     private final static QCustomerLevel qCustomerLevel = QCustomerLevel.customerLevel;
 
@@ -112,6 +113,7 @@ public class ProductService extends AbsService {
     @Transactional
     public void save(ProductForm productForm, Long merchantId, Long accountBookId) {
         Product product = productForm.getProduct();
+        productCategoryService.assertCanBindProduct(product.getProductCategoryId(), merchantId, accountBookId);
         if (product.getEnableMultiUnit()) {
             Assert.isTrue(CollUtil.isNotEmpty(product.getAuxiliaryUnitPrices()), "开启多单位,必须选择一个副单位");
             Set<Long> checkUnit = new HashSet<>();
@@ -122,8 +124,10 @@ public class ProductService extends AbsService {
                 }
             }
         }
+        Long previousCategoryId = null;
         if (product.getId() != null) {
             Product original = productRepository.getById(product.getId());
+            previousCategoryId = original.getProductCategoryId();
 
             if (original.getEnableMultiUnit()) {
                 List<Long> unitIds;
@@ -286,6 +290,12 @@ public class ProductService extends AbsService {
         inventoryItem.setCreatedBy(-1L);
         inventoryItem.setFirstSort(true);
         inventoryItemRepository.save(inventoryItem);
+
+        // 末级状态按分类下是否有产品刷新
+        productCategoryService.refreshLeafByProducts(product.getProductCategoryId(), merchantId, accountBookId);
+        if (previousCategoryId != null && !previousCategoryId.equals(product.getProductCategoryId())) {
+            productCategoryService.refreshLeafByProducts(previousCategoryId, merchantId, accountBookId);
+        }
     }
 
     /**
@@ -376,8 +386,11 @@ public class ProductService extends AbsService {
             throw new ServiceException("该商品已存在成本调整单,不能删除");
         }
 
+        Product deleting = productRepository.getById(productsId);
+        Long categoryId = deleting.getProductCategoryId();
         jqf.delete(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(productsId).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).execute();
         jqf.delete(qProduct).where(qProduct.id.eq(productsId).and(qProduct.merchantId.eq(merchantId)).and(qProduct.accountBookId.eq(accountBookId))).execute();
+        productCategoryService.refreshLeafByProducts(categoryId, merchantId, accountBookId);
     }
     private final static QInventory qInventory = QInventory.inventory;
     public List<ProductDto> select(Long merchantId, Long accountBookId,Long productCategoryId,Long warehouseId) {

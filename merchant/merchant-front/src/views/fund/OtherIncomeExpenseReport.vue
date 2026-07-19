@@ -12,10 +12,10 @@
           <span class="h-input-addon ml-8px">订单日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+        <Search v-model.trim="params.filter"
                 show-search-button class="w-360px ml-8px"
                 placeholder="请输入订单号/客户名称" @search="doSearch">
-          <i class="h-icon-search"/>
+          <t-icon name="search" />
         </Search>
       </template>
     </vxe-toolbar>
@@ -60,7 +60,7 @@
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
           <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>

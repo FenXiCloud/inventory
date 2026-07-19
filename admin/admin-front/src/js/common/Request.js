@@ -1,5 +1,5 @@
 import axios from 'axios';
-import {loadingBar, message} from "heyui.ext";
+import {MessagePlugin, LoadingPlugin} from "tdesign-vue-next";
 
 axios.defaults.headers.common = {
 	'X-Requested-With': 'XMLHttpRequest',
@@ -106,7 +106,7 @@ let request = {
 		let that = this;
 		params = Object.assign({}, defaultParam, params);
 		return new Promise((resolve, reject) => {
-			loadingBar.start();
+			LoadingPlugin(true);
 			return axios.request(params).then((response) => {
 				that.deleteRequest(params.url);
 
@@ -114,11 +114,11 @@ let request = {
 				let status = response.status;
 				if (status !== 200) {
 					if (status === 500) {
-						message.error('后台异常');
+						MessagePlugin.error('后台异常');
 						reject();
 						return
 					} else if (status === 404) {
-						message.error('请求不存在');
+						MessagePlugin.error('请求不存在');
 						reject();
 						return
 					} else if (status === 403) {
@@ -132,7 +132,7 @@ let request = {
 					if (data.success) {
 						resolve(data);
 					} else {
-						data.msg && message.error(data.msg);
+						data.msg && MessagePlugin.error(data.msg);
 						if (data.code === 403) {
 							window.location.replace("/");
 						}
@@ -147,7 +147,7 @@ let request = {
 					success: false
 				});
 			}).finally(() => {
-				loadingBar.success();
+				LoadingPlugin(false);
 			});
 		});
 	}

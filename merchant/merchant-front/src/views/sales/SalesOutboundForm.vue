@@ -249,13 +249,13 @@
 </template>
 <script>
 
-import {confirm, loading, message} from "heyui.ext";
+import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import manba from "manba";
 import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapMutations, mapState} from "vuex";
 import Product from "@js/api/basic/Product";
-import {layer} from "@layui/layer-vue";
+import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import SalesOrderSelect from "@views/sales/SalesOrderSelect.vue";
 import Unit from "@js/api/basic/Unit";
@@ -311,19 +311,19 @@ export default {
     //添加或编辑Form
     addOrEditForm(entity) {
       if (!this.form.customerId) {
-        message.error("请选择客户~");
+        MessagePlugin.error("请选择客户~");
         return
       }
-      let layerId = layer.open({
-        title: "请选择销售订单",
-        shadeClose: false,
+      let dialogId = openDialog({
+        header: "请选择销售订单",
+        closeOnOverlayClick: false,
         closeBtn: false,
-        area: ['1000px', '600px'],
-        content: h(SalesOrderSelect, {
+        width: '1000px',
+        body: h(SalesOrderSelect, {
           // 传递参数到子组件
           customerId: this.customerId,  // 客户ID
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: (params) => {  // 添加参数接收
             // 处理选中的订单数据
@@ -332,7 +332,7 @@ export default {
             this.handleSelectedOrders(params);
 
             //this.doSearch();
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
         }),
       });
@@ -517,15 +517,15 @@ export default {
     checkHttp() {
       console.log("this.productData.length",this.productData.length)
       if (this.productData.length === 0) {
-        message.error("请选择产品~");
-        loading.close()
+        MessagePlugin.error("请选择产品~");
+        LoadingPlugin(false)
         return false
       }
       if (this.productData.length === 1) {
         let item = this.productData[0]
         if (item.isNew) {
-          message.error("请选择产品~");
-          loading.close()
+          MessagePlugin.error("请选择产品~");
+          LoadingPlugin(false)
           return false
         }
       }
@@ -540,35 +540,35 @@ export default {
         }
         if (item.quantity === 0 || !item.quantity) {
           quantityFlag = true
-          loading.close()
+          LoadingPlugin(false)
         }
         if (item.unitPrice === 0 || !item.unitPrice) {
           unitPriceFlag = true
-          loading.close()
+          LoadingPlugin(false)
         }
         if (item.subtotal === 0 || !item.subtotal) {
           subtotalFlag = true
-          loading.close()
+          LoadingPlugin(false)
         }
         if (!item.warehouseId) {
           warehouseFlag = true
-          loading.close()
+          LoadingPlugin(false)
         }
       })
       if (quantityFlag) {
-        message.error("请填写数量~");
+        MessagePlugin.error("请填写数量~");
         return false
       }
       if (unitPriceFlag) {
-        message.error("请填写单价~");
+        MessagePlugin.error("请填写单价~");
         return false
       }
       if (subtotalFlag) {
-        message.error("金额不能为空~");
+        MessagePlugin.error("金额不能为空~");
         return false
       }
       if (warehouseFlag) {
-        message.error("请选择仓库~");
+        MessagePlugin.error("请选择仓库~");
         return false
       }
       return true
@@ -576,17 +576,17 @@ export default {
 
     auditOrder(orderStatus){
       if (!this.form.customerId) {
-        message.error("请选择客户~");
-        loading.close()
+        MessagePlugin.error("请选择客户~");
+        LoadingPlugin(false)
         return
       }
       if (!this.checkHttp()) {
         return
       }
-      confirm({
+      DialogPlugin.confirm({
         content: `确定审核订单？`,
         onConfirm: () => {
-          loading("保存中....");
+          LoadingPlugin(true);
           let salesOutbound ={
             id: this.form.id,
             orderStatus: orderStatus
@@ -595,12 +595,12 @@ export default {
             salesOutbound: salesOutbound,
           }).then((success) => {
             if (success) {
-              message("审核成功~");
+              MessagePlugin.success("审核成功~");
               this.closeWindow()
             }
           }).catch(() => {
           }).finally(() => {
-            loading.close()
+            LoadingPlugin(false)
           });
         }
       })
@@ -609,17 +609,17 @@ export default {
     //保存订单
     saveOrder(saveType) {
       if (!this.form.customerId) {
-        message.error("请选择客户~");
-        loading.close()
+        MessagePlugin.error("请选择客户~");
+        LoadingPlugin(false)
         return
       }
       if (!this.checkHttp()) {
         return
       }
-      confirm({
+      DialogPlugin.confirm({
         content: `确定保存订单？`,
         onConfirm: () => {
-          loading("保存中....");
+          LoadingPlugin(true);
           let productData = this.productData.filter(c => c.quantity > 0);
           SalesOutbound.save({
             salesOutbound: Object.assign(this.form),
@@ -627,7 +627,7 @@ export default {
             selectSalesOrderIdList:this.selectSalesOrderIdList
           }).then((success) => {
             if (success) {
-              message("保存成功~");
+              MessagePlugin.success("保存成功~");
               this.clearForm();
               //保存
               if(saveType === 'save'){
@@ -636,7 +636,7 @@ export default {
 
             }
           }).finally(() =>
-              loading.close()
+              LoadingPlugin(false)
           );
         }
       })
@@ -678,7 +678,7 @@ export default {
         this.productData = [{isNew: true}];
       } else if (e.id !== this.form.customerId) {
         if (this.productData.length > 1) {
-          confirm({
+          DialogPlugin.confirm({
             title: "系统提示",
             content: `修改客户后，将清除已选择的产品数据，确定修改？`,
             onConfirm: () => {
@@ -802,7 +802,7 @@ export default {
     }
   },
   beforeDestroy() {
-    confirm({
+    DialogPlugin.confirm({
       title: "系统提示",
       content: `确认?`,
       onConfirm: () => {
@@ -811,7 +811,7 @@ export default {
     })
   },
   created() {
-    loading("加载中....");
+    LoadingPlugin(true);
     Promise.all([
       Customer.select(),
       Warehouse.select(),
@@ -845,7 +845,7 @@ export default {
           this.productData.push({isNew: true});
         });
       }
-    }).finally(() => loading.close());
+    }).finally(() => LoadingPlugin(false));
   },
 }
 </script>

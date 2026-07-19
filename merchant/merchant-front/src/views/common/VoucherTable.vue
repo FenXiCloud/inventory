@@ -28,7 +28,8 @@
     </table>
     <table class="body" cellspacing="0" cellpadding="0">
       <tbody>
-      <tr class="trDetails" v-for="(d,i) in details" :key="i" :data-idx="i">
+      <tr class="trDetails" v-for="(d,i) in details" :key="i" :data-idx="i"
+          @mouseenter="onRowEnter(i, $event)" @mouseleave="onRowLeave">
         <td class="tdZhaoyao tdInput">
           <div class="display" v-if="!d.zyEdit" @click="doEdit(d,'zy',i)">{{ d.data.summary }}</div>
           <DropdownCustom v-show="d.zyEdit" ref="zyDropdown" trigger="manual" :toggle-icon="false" style="width: 100%"
@@ -146,17 +147,36 @@
       </tr>
       </tbody>
     </table>
-    <i class="action fa fa-times-circle" @click="removeItem()"></i>
-    <i class="action fa fa-plus-circle" @click="addItem()"></i>
+    <i class="action fa fa-plus-circle" v-show="actionPos.visible"
+       :style="{ left: actionPos.leftPlus + 'px', top: actionPos.top + 'px', display: 'inline-block' }"
+       @mouseenter="actionPinned = true" @mouseleave="actionPinned = false; hideActions()"
+       @click="addItem()"></i>
+    <i class="action fa fa-times-circle" v-show="actionPos.visible"
+       :style="{ left: actionPos.leftMinus + 'px', top: actionPos.top + 'px', display: 'inline-block' }"
+       @mouseenter="actionPinned = true" @mouseleave="actionPinned = false; hideActions()"
+       @click="removeItem()"></i>
   </div>
 </template>
 
 <script>
-import jQuery from 'jquery';
 import Decimal from 'decimal.js';
 import Pinyin from 'chinese-to-pinyin';
 import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
 import FinanceVoucher from "@js/api/setting/FinanceVoucher";
+
+function getDropdownRef(vm, type, idx) {
+  const refs = vm.$refs[`${type}Dropdown`];
+  if (!refs) return null;
+  return Array.isArray(refs) ? refs[idx] : refs;
+}
+
+function qs(sel, root = document) {
+  return root.querySelector(sel);
+}
+
+function qsa(sel, root = document) {
+  return Array.from(root.querySelectorAll(sel));
+}
 
 const detail = {
   zyEdit: false,
@@ -198,7 +218,9 @@ export default {
   name: "VoucherTable",
   props: {
     value: Object,
+    modelValue: Object,
   },
+  emits: ['input', 'update:modelValue'],
   data() {
     return {
       details: [{
@@ -224,6 +246,7 @@ export default {
         data: {summary: ''}
       }, {zyEdit: false, kmEdit: false, jfEdit: false, dfEdit: false, auxiliary: false, data: {summary: ''}}],
       hoverIdx: -1,
+      actionPos: { visible: false, top: 0, leftPlus: 0, leftMinus: 0 },
       voucherSelect: [],
       summarySelect: [],
       auxiliaryAccounting: [],
@@ -235,7 +258,8 @@ export default {
       auxiliaryAccountingData: {},
       currentEdit: null,
       jfTotal: 0,
-      dfTotal: 0
+      dfTotal: 0,
+      actionPinned: false
     }
   },
   computed: {
@@ -320,17 +344,19 @@ export default {
         this.currentEdit = {row, type, idx};
 
         this.$nextTick(() => {
-          let keMuTxt = jQuery(`textarea#${type}${idx}`);
-          keMuTxt.focus().select();
-          if (type === 'km') {
-            keMuTxt.val(row.data.subjectName);
-            if (row.data.subject && row.data.subject.auxiliaryAccounting) {
-              this.details[idx]['auxiliary'] = true;
+          const el = document.getElementById(`${type}${idx}`);
+          if (el) {
+            if (type === 'km') {
+              el.value = row.data.subjectName || '';
+              if (row.data.subject && row.data.subject.auxiliaryAccounting) {
+                this.details[idx].auxiliary = true;
+              }
             }
+            el.focus();
+            if (typeof el.select === 'function') el.select();
           }
-          jQuery(".h-input", `#${type}${idx}`).focus().select();
-          jQuery(`#${type}${idx}`).focus().select();
-          this.$refs[`${type}Dropdown`][idx].show();
+          const dropdown = getDropdownRef(this, type, idx);
+          dropdown && dropdown.show();
         });
       });
     },
@@ -356,16 +382,14 @@ export default {
 
         this.calculateBalance(row.data.subjectId);
 
-        //如果有单位则需要计算单价
         if (row.data.unit && row.data.num > 0) {
           let money = debitAmount || creditAmount;
           this.details[idx].data['price'] = Number((money / row.data.num).toFixed(2));
         }
 
-        let dropdown = this.$refs[`${type}Dropdown`][idx];
+        const dropdown = getDropdownRef(this, type, idx);
         dropdown && dropdown.hide();
-        //关闭辅助项输入
-        this.details[idx]['auxiliary'] = false;
+        this.details[idx].auxiliary = false;
 
         if (doNext) {
           if (type === 'jf' && row.data.debitAmount) {
@@ -376,6 +400,27 @@ export default {
             this.lastNext(idx);
           }
         }
+      }
+    },
+    onRowEnter(i, e) {
+      this.hoverIdx = i;
+      const tr = e.currentTarget;
+      const parent = this.$el;
+      const trRect = tr.getBoundingClientRect();
+      const parentRect = parent.getBoundingClientRect();
+      this.actionPos = {
+        visible: true,
+        top: trRect.top - parentRect.top + 25,
+        leftPlus: trRect.left - parentRect.left - 14,
+        leftMinus: trRect.left - parentRect.left + 960
+      };
+    },
+    onRowLeave() {
+      if (!this.actionPinned) this.hideActions();
+    },
+    hideActions() {
+      if (!this.actionPinned) {
+        this.actionPos = { ...this.actionPos, visible: false };
       }
     },
     lastNext(idx) {
@@ -435,8 +480,10 @@ export default {
     },
     chooseSummary(d, summary, idx) {
       d.data.summary = summary;
-      jQuery(`textarea#zy${idx}`).val(this.currentEdit.row.data.summary);
-      this.$refs.zyDropdown[idx].hide();
+      const el = document.getElementById(`zy${idx}`);
+      if (el) el.value = this.currentEdit.row.data.summary;
+      const dropdown = getDropdownRef(this, 'zy', idx);
+      dropdown && dropdown.hide();
     },
     chooseSubject(d, subject, idx) {
       console.log(subject);
@@ -464,7 +511,8 @@ export default {
           this.details[idx]['auxiliary'] = true;
           this.currentEdit['auxiliary'] = true;
         });
-        jQuery(`textarea#km${idx}`).val(this.currentEdit.row.data.subjectName);
+        const el = document.getElementById(`km${idx}`);
+        if (el) el.value = this.currentEdit.row.data.subjectName || '';
       } else {
         this.endEdit(d, 'km', idx, true);
       }
@@ -504,15 +552,23 @@ export default {
       });
     },
     showInput(e) {
-      let target = jQuery(e.target);
-      target.hide();
-      target.next().show().focus().select();
+      const span = e.target;
+      const input = span.nextElementSibling;
+      span.style.display = 'none';
+      if (input) {
+        input.style.display = '';
+        input.focus();
+        if (typeof input.select === 'function') input.select();
+      }
     },
     hideInput(e, row) {
-      let target = jQuery(e.target);
-      target.hide();
-      target.prev().show();
-      let inputs = target.closest('.num').find('.numInput');
+      const input = e.target;
+      const span = input.previousElementSibling;
+      input.style.display = 'none';
+      if (span) span.style.display = '';
+      const numRoot = input.closest('.num');
+      const inputs = numRoot ? qsa('.numInput', numRoot) : [];
+      if (inputs.length < 2) return;
       switch (row.direction) {
         case '借':
           row['debitAmount'] = FormatNum(Number(inputs[0].value) * Number(inputs[1].value));
@@ -569,97 +625,98 @@ export default {
         this.details[idx] = Object.assign({}, detail, {data: item});
       });
     },
+    editMeta(el) {
+      const edit = el && el.closest ? el.closest('.edit') : null;
+      if (!edit) return {};
+      return {
+        type: edit.dataset.type,
+        index: Number(edit.dataset.index)
+      };
+    },
     bindEnterTabKeydownEvt() {
-      let that = this;
-      jQuery(".trDetails").off("keyup", ".edit");
-      jQuery(".trDetails").off("keydown", ".edit");
-      jQuery(".trDetails").off("blur", ".jf,.df");
+      const table = this.$el && this.$el.querySelector('table.body');
+      if (!table || table._voucherBound) return;
+      table._voucherBound = true;
+      const that = this;
 
-      jQuery(".trDetails").on("blur", ".jf,.df", (e) => {
-        let {type, index} = jQuery(e.target).closest('.edit').data();
-        this.endEdit(that.details[index], type, index, false);
-      });
+      table.addEventListener('blur', (e) => {
+        if (!e.target.classList.contains('jf') && !e.target.classList.contains('df')) return;
+        const {type, index} = that.editMeta(e.target);
+        if (type == null || isNaN(index)) return;
+        that.endEdit(that.details[index], type, index, false);
+      }, true);
 
-      jQuery(".trDetails").on("keyup", ".edit", function (e) {
-        let {type, index} = jQuery(e.target).closest('.edit').data();
-        //贷方等于号输入处理
-        if ((e.keyCode === 187 || e.code === "Equal" || e.code === "NumpadEqual" || e.key === "=") && (type === 'jf' || type === 'df')) {
+      table.addEventListener('keyup', (e) => {
+        if (!e.target.classList.contains('edit') && !e.target.closest('.edit')) return;
+        const {type, index} = that.editMeta(e.target);
+        if ((e.keyCode === 187 || e.code === 'Equal' || e.code === 'NumpadEqual' || e.key === '=') && (type === 'jf' || type === 'df')) {
           e.preventDefault();
-          let details = Array.from(that.details);
+          let details = that.details;
           let totalCredit = 0, totalDebit = 0;
           details.forEach((value, i) => {
             if (index !== i) {
               let creditAmount = Number(value.data.creditAmount), debitAmount = Number(value.data.debitAmount);
-              if (!isNaN(creditAmount)) {
-                totalCredit += creditAmount;
-              }
-              if (!isNaN(debitAmount)) {
-                totalDebit += debitAmount;
-              }
+              if (!isNaN(creditAmount)) totalCredit += creditAmount;
+              if (!isNaN(debitAmount)) totalDebit += debitAmount;
             }
           });
-
           if (type === 'jf' && totalCredit !== 0) {
             details[index].data.debitAmount = FormatNum(totalCredit - totalDebit);
             details[index].data.creditAmount = 0;
-            e.target.value = details[index].data.debitAmount.toFixed(2);
+            e.target.value = Number(details[index].data.debitAmount).toFixed(2);
           } else if (type === 'df' && totalDebit !== 0) {
             details[index].data.creditAmount = FormatNum(totalDebit - totalCredit);
             details[index].data.debitAmount = 0;
-            e.target.value = details[index].data.creditAmount.toFixed(2);
+            e.target.value = Number(details[index].data.creditAmount).toFixed(2);
           }
-
-          that.$set(that, 'details', details);
-          return false;
         }
       });
 
-      jQuery(".trDetails").on("keydown", ".edit", function (e) {
-        let {type, index} = jQuery(e.target).closest('.edit').data();
+      table.addEventListener('keydown', (e) => {
+        if (!e.target.classList.contains('edit') && !e.target.closest('.edit')) return;
+        const {type, index} = that.editMeta(e.target);
+        if (type == null || isNaN(index)) return;
+
         if (e.keyCode === 13 || e.keyCode === 9) {
           e.preventDefault();
           if (type === 'km') {
-            jQuery('li.subjects-item-select', `#subjects${index}`).click();
+            const sel = qs(`#subjects${index} li.subjects-item-select`);
+            if (sel) sel.click();
             return;
           }
           if (type === 'zy') {
-            let select = jQuery(`.summary-item-select`, `#summary${index}`);
-            if (select.length) {
-              that.$set(that.details[index].data, 'summary', select.text());
+            const select = qs(`#summary${index} .summary-item-select`);
+            if (select) {
+              that.details[index].data.summary = select.textContent.trim();
             }
           }
           that.endEdit(that.details[index], type, index, true);
-          return false;
+          return;
         }
 
         if (e.keyCode === 38 || e.keyCode === 40) {
           e.preventDefault();
           if (type === 'km' || type === 'zy') {
-            let idPre = type === 'km' ? "subjects" : "summary";
-            let subjects = jQuery(`#${idPre}${index}`);
-            let select = jQuery(`.${idPre}-item-select`, subjects);
-
-            if (!select.length) {
-              subjects.children().first().addClass(`${idPre}-item-select`);
-              return false;
+            const idPre = type === 'km' ? 'subjects' : 'summary';
+            const list = qs(`#${idPre}${index}`);
+            if (!list) return;
+            let select = qs(`.${idPre}-item-select`, list);
+            if (!select) {
+              const first = list.querySelector('li');
+              if (first) first.classList.add(`${idPre}-item-select`);
+              return;
             }
-
-            let next = select.prev('li');
-            if (e.keyCode === 40) {
-              next = select.next('li');
-            }
-
-            if (next.length) {
-              next.addClass(`${idPre}-item-select`);
-              select.removeClass(`${idPre}-item-select`);
-              let i = next.data('index');
+            let next = e.keyCode === 40 ? select.nextElementSibling : select.previousElementSibling;
+            if (next && next.tagName === 'LI') {
+              next.classList.add(`${idPre}-item-select`);
+              select.classList.remove(`${idPre}-item-select`);
+              const i = Number(next.dataset.index);
               if (i > 7) {
-                let top = subjects.parent().scrollTop();
-                subjects.parent().scrollTop(top + 22)
+                const scroller = list.parentElement;
+                if (scroller) scroller.scrollTop = scroller.scrollTop + 22;
               }
             }
           }
-          return false;
         }
       });
     },
@@ -746,57 +803,42 @@ export default {
       deep: true,
       handler() {
         this.calculationOfTotal();
-        this.$emit("input", {
+        const payload = {
           voucherItems: this.voucherItems,
           jfTotal: this.jfTotal || null,
           dfTotal: this.dfTotal || null
-        });
+        };
+        this.$emit('update:modelValue', payload);
+        this.$emit('input', payload);
       }
     }
   },
   mounted() {
-    let that = this;
+    this._onAppClick = (e) => {
+      const t = e.target;
+      if (!t) return;
+      if (t.classList.contains('display')
+          || t.classList.contains('subjects-item')
+          || t.closest('.auxiliary')
+          || t.closest('.tdInput')
+          || t.closest('.t-popup')
+          || t.closest('.compat-dropdown-content')) {
+        return;
+      }
+      if (this.currentEdit) {
+        this.endEdit(this.currentEdit.row, this.currentEdit.type, this.currentEdit.idx);
+      }
+    };
     this.$nextTick(() => {
-      jQuery('table.body').on("mouseover", 'tr.trDetails:not(.total)', function () {
-        that.hoverIdx = jQuery(this).data('idx');
-        let offset = jQuery(this).offset();
-        let offsetParent = jQuery(this).offsetParent().offset();
-
-        jQuery('i.fa-plus-circle').css({
-          left: offset.left - offsetParent.left - 14,
-          top: offset.top - offsetParent.top + 25,
-          display: 'inline-block'
-        }).show();
-        jQuery('i.fa-times-circle').css({
-          left: offset.left - offsetParent.left + 960,
-          top: offset.top - offsetParent.top + 25,
-          display: 'inline-block'
-        }).show();
-      }).on("mouseleave", 'tr.trDetails', function () {
-        jQuery("i.action[class!='show']").hide();
-      });
-
-      jQuery('i.action').hover(function () {
-        jQuery(this).addClass('show').css({display: 'inline-block'});
-      }, function () {
-        jQuery(this).removeClass('show').hide();
-      });
-
-      jQuery("#app").click((e) => {
-        if (!jQuery(e.target).hasClass('display')
-            && !jQuery(e.target).hasClass('subjects-item')
-            && !jQuery(e.target).closest('.auxiliary').length
-            && !jQuery(e.target).closest('.tdInput').length
-            && !jQuery(e.target).closest('.h-dropdown').length
-            && this.currentEdit) {
-          this.endEdit(this.currentEdit.row, this.currentEdit.type, this.currentEdit.idx)
-        }
-      });
-
+      const app = document.getElementById('app');
+      if (app) app.addEventListener('click', this._onAppClick);
       this.bindEnterTabKeydownEvt();
     });
-
     this.loadVoucherSelect();
+  },
+  beforeUnmount() {
+    const app = document.getElementById('app');
+    if (app && this._onAppClick) app.removeEventListener('click', this._onAppClick);
   }
 }
 </script>
@@ -870,7 +912,7 @@ export default {
         font-weight: bold;
       }
 
-      .h-icon-error {
+      .error-icon {
         right: 55px;
         top: 20px;
       }
@@ -965,7 +1007,7 @@ export default {
     display: none;
 
     &:hover {
-      color: @primary-color;
+      color: #0052d9;
     }
   }
 
@@ -992,14 +1034,14 @@ export default {
     white-space: nowrap;
 
     &:hover {
-      background: @primary-color;
-      color: @white-color;
+      background: #0052d9;
+      color: #fff;
     }
   }
 
   &-item-select {
-    background: @primary-color;
-    color: @white-color;
+    background: #0052d9;
+    color: #fff;
   }
 }
 

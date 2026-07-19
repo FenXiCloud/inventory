@@ -29,7 +29,7 @@ import FinanceItemMap from "@js/api/setting/FinanceItemMap";
 import Customer from "@js/api/basic/Customer";
 import Product from "@js/api/basic/Product";
 import Supplier from "@js/api/basic/Supplier";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import {ObjectUtil} from "../../js/common/utils";
 
 export default {
@@ -63,14 +63,15 @@ export default {
   watch: {},
   methods: {
     confirm() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        FinanceItemMap.save(this.model).then(() => {
-          message("保存成功~");
-          this.$emit('success');
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.form.validate().then((res) => {
+        if (res === true || res.result === true) {
+          this.loading = true;
+          FinanceItemMap.save(this.model).then(() => {
+            MessagePlugin.success("保存成功~");
+            this.$emit('success');
+          }).finally(() => this.loading = false);
+        }
+      }).catch(() => {});
     },
     init() {
       const categoryId = this.categoryId;

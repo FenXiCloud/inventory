@@ -16,10 +16,10 @@
         </template>
         <template #tools>
           <Stamp v-if="approved"/>
-          <Search v-if="!form.id" v-model.trim="form.filter" search-button-theme="h-btn-default"
+          <Search v-if="!form.id" v-model.trim="form.filter"
                   show-search-button class="w-360px ml-8px"
                   placeholder="请输入产品编号/产品名称" @search="doSearch">
-            <i class="h-icon-search"/>
+            <t-icon name="search" />
           </Search>
         </template>
       </vxe-toolbar>
@@ -100,12 +100,7 @@
         <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
       </div>
     </div>
-    <Modal v-model="opened" hasCloseIcon>
-      <div slot="header">
-        <div>
-          生成盘点单据
-        </div>
-      </div>
+    <t-dialog v-model:visible="opened" header="生成盘点单据" :footer="false" width="360px">
       <div class="mt-10px">
         <div class="h-full flex justify-center items-center flex-column" v-if="inbounds.length > 0">
           <Button color="primary" @click="generatedInbounds" :loading="loading">盘盈单</Button>
@@ -114,11 +109,11 @@
           <Button color="primary" @click="generatedOutbounds" :loading="loading">盘亏单</Button>
         </div>
       </div>
-    </Modal>
+    </t-dialog>
   </div>
 </template>
 <script>
-import {confirm, loading, message} from "heyui.ext";
+import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import manba from "manba";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -240,7 +235,7 @@ export default {
       StockTake.save(params)
           .then(({success, data}) => {
             if (success) {
-              message("保存成功~");
+              MessagePlugin.success("保存成功~");
               this.clearForm();
               setTimeout(() => {
                 if (type === "increase") {
@@ -267,7 +262,7 @@ export default {
               }, 300);
             }
           })
-          .finally(() => loading.close());
+          .finally(() => LoadingPlugin(false));
     },
     // 打开生成盘点单
     openGeneratedModal() {
@@ -296,10 +291,10 @@ export default {
       if (filterStockTakeData.length === 0) {
         throw new Error("请填写操作数据~")
       }
-      loading("保存中....");
+      LoadingPlugin(true);
       let quantity = filterStockTakeData.filter((c) => this.isEmpty(c.actualQuantity));
       if (quantity.length > 0) {
-        loading.close();
+        LoadingPlugin(false);
         throw new Error("请填写盘点库存~")
       }
     },
@@ -440,7 +435,7 @@ export default {
     },
     //加载字典
     loadDict(callback) {
-      loading("加载中....");
+      LoadingPlugin(true);
       Promise.all([Product.select(), Warehouse.select()])
           .then((results) => {
             this.productList = results[0].data || [];
@@ -454,7 +449,7 @@ export default {
               callback();
             }
           })
-          .finally(() => loading.close());
+          .finally(() => LoadingPlugin(false));
     },
     //初始化表单
     initIncreaseForm() {
@@ -486,18 +481,18 @@ export default {
         id = res.data.id;
       }
       const params = {id, type: operateType};
-      loading("审核中....");
+      LoadingPlugin(true);
       StockTake.approve(params)
           .then((success) => {
             if (success) {
-              message("审核成功~");
+              MessagePlugin.success("审核成功~");
               setTimeout(() => {
                 this.loadEditForm(id);
                 this.getInventoryList();
               }, 300);
             }
           })
-          .finally(() => loading.close());
+          .finally(() => LoadingPlugin(false));
     },
     closeWindow() {
       this.closeSelfTab(this.index);
@@ -562,7 +557,7 @@ export default {
     }
   },
   beforeDestroy() {
-    confirm({
+    DialogPlugin.confirm({
       title: "系统提示",
       content: `确认?`,
       onConfirm: () => {
@@ -570,7 +565,7 @@ export default {
     });
   },
   created() {
-    loading("加载中....");
+    LoadingPlugin(true);
     this.loadDict(() => {
       //订单详情/编辑订单
       if (this.stockTakeId) {

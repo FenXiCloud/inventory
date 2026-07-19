@@ -18,10 +18,10 @@
           <Select class="w-178px" filterable :datas="customerList" keyName="id" titleName="name"
                   v-model="params.customerId" placeholder="请选择客户"  />
         </div>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+        <Search v-model.trim="params.filter"
                 show-search-button class="w-280px ml-8px"
                 placeholder="请输入订单号" @search="doSearch">
-          <i class="h-icon-search"/>
+          <t-icon name="search" />
         </Search>
       </template>
     </vxe-toolbar>
@@ -67,7 +67,7 @@
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
           <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>
@@ -78,7 +78,7 @@
 import manba from "manba";
 import SalesOrder from "@js/api/sales/SalesOrder";
 import {mapMutations} from "vuex";
-import {confirm, loading, message} from "heyui.ext";
+import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -154,11 +154,11 @@ export default {
       const selectedRows = this.$refs.table.getCheckboxRecords();
       console.log(selectedRows);
       if (selectedRows.length === 0) {
-        message.error("请选择至少一个订单进行审核");
+        MessagePlugin.error("请选择至少一个订单进行审核");
         return;
       }
 
-      confirm({
+      DialogPlugin.confirm({
         content: `确定批量审核订单？`,
         onConfirm: () => {
           const orderIds = selectedRows.map(row => row.id);
@@ -169,26 +169,26 @@ export default {
           SalesOutbound.batchAudit(params).then((success) => {
             if (success) {
               if(orderStatus === '已审核'){
-                message.success("批量审核成功");
+                MessagePlugin.success("批量审核成功");
               }else{
-                message.success("批量反审核成功");
+                MessagePlugin.success("批量反审核成功");
               }
               this.loadList(); // Refresh the list
             }
           }).finally(() =>
-              loading.close()
+              LoadingPlugin(false)
           );
         }
       })
     },
     doRemove(row) {
       console.log(row)
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认删除：${row.orderNo}?`,
         onConfirm: () => {
           SalesOutbound.remove(row.id).then(() => {
-            message("删除成功~");
+            MessagePlugin.success("删除成功~");
             this.loadList();
           })
         }
@@ -244,7 +244,7 @@ export default {
         Customer.select(),
       ]).then((results) => {
         this.customerList = results[0].data || [];
-      }).finally(() => loading.close());
+      }).finally(() => LoadingPlugin(false));
     },
   },
   created() {

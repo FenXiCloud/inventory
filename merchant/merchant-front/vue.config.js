@@ -6,9 +6,6 @@
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 const path = require('path');
-const webpack = require('webpack');
-const nodePolyfillPlugin = require('node-polyfill-webpack-plugin');
-const globalVars = require('./src/style/var.js');
 
 module.exports = {
     pages: {
@@ -16,13 +13,6 @@ module.exports = {
             title: "纷析云",
             entry: 'src/main.js',
             chunks: ['chunk-vendors', 'chunk-common', 'index']
-        }
-    },
-    css: {
-        loaderOptions: {
-            less: {
-                lessOptions: {globalVars}
-            }
         }
     },
     productionSourceMap: false,
@@ -42,20 +32,30 @@ module.exports = {
         resolve: {
             alias: {
                 '@': path.resolve(__dirname, 'src/'),
-                '@components': path.resolve(__dirname, 'src/components/'),
                 '@views': path.resolve(__dirname, 'src/views/'),
                 '@common': path.resolve(__dirname, 'src/js/common/'),
-                '@js': path.resolve(__dirname, 'src/js/')
+                '@js': path.resolve(__dirname, 'src/js/'),
+                // manba → dayjs 兼容实现
+                'manba': path.resolve(__dirname, 'src/js/common/manba.js')
             },
             fallback: {
                 fs: false,
                 crypto: false
-            },
+            }
         },
         externals: {
             './cptable': 'var cptable'
-        },
-        plugins: [new webpack.ProvidePlugin({}), new nodePolyfillPlugin()]
+        }
+    },
+    css: {
+        loaderOptions: {
+            sass: {
+                api: 'modern',
+                sassOptions: {
+                    quietDeps: true
+                }
+            }
+        }
     },
     pluginOptions: {
         windicss: {}

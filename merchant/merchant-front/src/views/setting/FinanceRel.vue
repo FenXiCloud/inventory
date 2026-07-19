@@ -36,7 +36,7 @@
         <div class="flex w-900px" style="text-align: center;margin: 0 auto">
           <div class="w-150px p-10px bg-gray4-color br" @click="showForm()">
             <div class="pt-20px">
-              <Icon type="h-icon-link" :size="40"/>
+              <t-icon name="link" :size="40" />
             </div>
             <div class="p-10px" style="font-weight: bold">关联财务帐套</div>
             <div class="pb-20px" style="text-align: left;color: gray;font-size: small">
@@ -44,22 +44,22 @@
             </div>
           </div>
           <div class="m-10px icon-center">
-            <Icon type="h-icon-right" :size="50" color="gainsboro"/>
+            <t-icon name="chevron-right" :size="50" color="gainsboro" />
           </div>
           <div class="w-150px p-10px bg-gray4-color br" @click="templateConfig">
             <div class="pt-20px">
-              <Icon type="h-icon-setting" :size="40"/>
+              <t-icon name="setting" :size="40" />
             </div>
             <div class="p-10px" style="font-weight: bold">进销存凭证模板</div>
             <div class="pb-20px" style="text-align: left;color: gray;font-size: small">检查确定进销存核算参数的设置
             </div>
           </div>
           <div class="m-10px icon-center ">
-            <Icon type="h-icon-right" :size="50" color="gainsboro"/>
+            <t-icon name="chevron-right" :size="50" color="gainsboro" />
           </div>
           <div class="w-150px p-10px bg-gray4-color br" @click="itemMapping">
             <div class="pt-20px">
-              <Icon type="h-icon-setting" :size="40"/>
+              <t-icon name="setting" :size="40" />
             </div>
             <div class="p-10px" style="font-weight: bold">进销存辅助资料</div>
             <div class="pb-20px" style="text-align: left;color: gray;font-size: small">
@@ -67,11 +67,11 @@
             </div>
           </div>
           <div class="m-10px icon-center">
-            <Icon type="h-icon-right" :size="50" color="gainsboro"/>
+            <t-icon name="chevron-right" :size="50" color="gainsboro" />
           </div>
           <div class="w-150px p-10px bg-gray4-color br" @click="toVoucher">
             <div class="pt-20px">
-              <Icon type="h-icon-check" :size="40"/>
+              <t-icon name="check" :size="40" />
             </div>
             <div class="p-10px" style="font-weight: bold">生成凭证</div>
             <div class="pb-20px" style="text-align: left;color: gray;font-size: small">选择进销存单据生成凭证</div>
@@ -83,7 +83,7 @@
 </template>
 
 <script>
-import {layer} from "@layui/layer-vue";
+import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import FinanceRelForm from "./FinanceRelForm.vue";
 import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
@@ -108,68 +108,67 @@ export default {
   methods: {
     ...mapMutations(['pushTab']),
     toVoucher() {
-      let layerId = layer.open({
-        offset: ['50px', 'auto'],
-        title: "订单凭证",
-        shadeClose: false,
-        area: ['100%', '600px'],
-        content: h(Voucher, {
+      let dialogId = openDialog({
+        header: "订单凭证",
+        closeOnOverlayClick: false,
+        width: '100%',
+        body: h(Voucher, {
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
     },
     itemMapping() {
-      let layerId = layer.open({
-        title: "辅助项映射",
-        shadeClose: false,
-        area: ['1200px', '600px'],
-        content: h(FinanceItemMap, {
+      let dialogId = openDialog({
+        header: "辅助项映射",
+        closeOnOverlayClick: false,
+        width: '1200px',
+        body: h(FinanceItemMap, {
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
     },
     templateConfig() {
-      let layerId = layer.open({
-        title: "凭证模板设置",
-        shadeClose: false,
-        area: ['1200px', '600px'],
-        content: h(VoucherTemplate, {
+      let dialogId = openDialog({
+        header: "凭证模板设置",
+        closeOnOverlayClick: false,
+        width: '1200px',
+        body: h(VoucherTemplate, {
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
     },
     showForm(id) {
-      let layerId = layer.open({
-        title: "关联财务软件",
-        shadeClose: false,
-        area: ['600px', '600px'],
-        content: h(FinanceRelForm, {
+      let dialogId = openDialog({
+        header: "关联财务软件",
+        closeOnOverlayClick: false,
+        width: '600px',
+        body: h(FinanceRelForm, {
           id,
           type: ObjectUtil.isEmpty(id) ? this.dataList && this.dataList.length > 0 ? 'load' : 'add' : 'edit',
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });

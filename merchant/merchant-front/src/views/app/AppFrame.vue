@@ -1,73 +1,52 @@
 <template>
-  <Layout class="app-frame" :siderCollapsed="siderCollapsed" siderFixed>
-    <Sider theme="dark" style="overflow: unset;!important;">
+  <t-layout class="app-frame">
+    <t-aside width="150px">
       <AppMenu theme="dark"/>
-    </Sider>
-    <Layout headerFixed>
-      <HHeader theme="white">
+    </t-aside>
+    <t-layout>
+      <t-header height="60px">
         <AppHead/>
-      </HHeader>
+      </t-header>
       <SysTabs :homePage="currentTab"/>
-      <Content>
-        <div class="app-frame-content h-full p-20px pt-20px">
+      <t-content class="app-main-content">
+        <div class="app-page-pane" v-show="'DashboardMain'===currentTab">
           <Suspense>
-            <component is="DashboardMain" v-show="'DashboardMain'===currentTab"/>
+            <component is="DashboardMain"/>
             <template #fallback>
-              <div class="bg-white-color h-full flex justify-center items-center flex-column">
-                <div class="mb-16px">
-                  <div class="loading" data-v-79c34abf="">
-                    <div data-v-79c34abf=""></div>
-                    <div data-v-79c34abf=""></div>
-                    <div data-v-79c34abf=""></div>
-                    <div data-v-79c34abf=""></div>
-                    <div data-v-79c34abf=""></div>
-                  </div>
-                </div>
-                <div>页面加载中,请稍后...</div>
-              </div>
+              <t-loading text="页面加载中,请稍后..."/>
             </template>
           </Suspense>
-          <template v-for="(tab,index) in tabs">
-            <Suspense>
-              <template v-if="tab.keepAlive !== undefined && !tab.keepAlive">
-                <component class="h-full bg-white-color" v-if="tab.key===currentTab" :is="tab.key" v-bind="tab.params" :index="index" :pro="tab.params"/>
-              </template>
-              <template v-else>
-                <component class="h-full bg-white-color" v-show="tab.key===currentTab" :is="tab.key" v-bind="tab.params" :index="index" :pro="tab.params"/>
-              </template>
-              <!-- 加载中状态 -->
-              <template #fallback>
-                <div class="bg-white-color h-full flex justify-center items-center flex-column">
-                  <div class="mb-16px">
-                    <div class="loading" data-v-79c34abf="">
-                      <div data-v-79c34abf=""></div>
-                      <div data-v-79c34abf=""></div>
-                      <div data-v-79c34abf=""></div>
-                      <div data-v-79c34abf=""></div>
-                      <div data-v-79c34abf=""></div>
-                    </div>
-                  </div>
-                  <div>页面加载中,请稍后...</div>
-                </div>
-              </template>
-            </Suspense>
-          </template>
         </div>
-        <HFooter>
-          <AppFooter/>
-        </HFooter>
-      </Content>
-    </Layout>
-  </Layout>
+        <div
+            v-for="(tab,index) in tabs"
+            :key="tab.key"
+            class="app-page-pane"
+            v-show="tab.key === currentTab"
+        >
+          <Suspense>
+            <component
+                v-if="tab.keepAlive === false ? tab.key === currentTab : true"
+                :is="tab.key"
+                v-bind="tab.params"
+                :index="index"
+                :pro="tab.params"
+            />
+            <template #fallback>
+              <t-loading text="页面加载中,请稍后..."/>
+            </template>
+          </Suspense>
+        </div>
+      </t-content>
+    </t-layout>
+  </t-layout>
 </template>
 
 <script>
 import AppHead from "@views/app/AppHead";
 import AppMenu from "@views/app/AppMenu";
-import AppFooter from "@views/app/AppFooter";
 import SysTabs from "@views/common/sys-tabs";
 import {mapState} from "vuex";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 
 /**
  * @功能描述: FRAME
@@ -78,7 +57,7 @@ import {message} from "heyui.ext";
  */
 export default {
   name: "AppFrame",
-  components: {SysTabs, AppFooter, AppMenu, AppHead},
+  components: {SysTabs, AppMenu, AppHead},
   computed: {
     ...mapState(['siderCollapsed', 'currentTab', 'tabs'])
   },
@@ -88,7 +67,7 @@ export default {
       window.location.reload();
       return false;
     } else {
-      message.error(args.message);
+      MessagePlugin.error(args.message);
       return true;
     }
   }

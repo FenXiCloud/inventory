@@ -1,61 +1,86 @@
 <template>
-  <div class="modal-column">
+  <div class="modal-column supplier-form">
     <div class="modal-column-full-body">
-      <Form
-        ref="form"
-        :model="model"
-        :rules="validationRules"
-        mode="twocolumn"
-        :label-width="110"
+      <t-form
+          ref="form"
+          :data="model"
+          :rules="rules"
+          layout="vertical"
+          label-align="top"
+          scroll-to-first-error="smooth"
       >
-        <FormItem label="编码" prop="code">
-          <Input
-            placeholder="请输入编码"
-            :disabled="model.id"
-            v-model="model.code"
-          />
-        </FormItem>
-        <FormItem label="名称" required prop="name">
-          <Input placeholder="请输入名称" v-model="model.name" />
-        </FormItem>
-        <FormItem label="联系人" prop="linkman">
-          <Input placeholder="联系人" v-model="model.contact" />
-        </FormItem>
-        <FormItem label="电话" prop="phone">
-          <Input placeholder="电话" v-model="model.phone" />
-        </FormItem>
+        <t-row :gutter="[16, 8]">
+          <t-col :span="6">
+            <t-form-item label="编码" name="code">
+              <t-input
+                  v-model="model.code"
+                  placeholder="请输入编码，不填自动生成"
+                  :disabled="!!model.id"
+              />
+            </t-form-item>
+          </t-col>
+          <t-col :span="6">
+            <t-form-item label="名称" name="name">
+              <t-input v-model="model.name" placeholder="请输入货商名称"/>
+            </t-form-item>
+          </t-col>
 
-        <FormItem label="余额" required prop="balance">
-          <Input
-            placeholder="请输入余额"
-            type="number"
-            step="1"
-            min="1"
-            v-model="model.balance"
-          />
-        </FormItem>
-        <FormItem label="货商分类" required prop="supplierCategoryId" single>
-          <Select
-            :datas="supplierCategoryList"
-            keyName="id"
-            titleName="name"
-            v-model="model.supplierCategoryId"
-            placeholder="请选择货商分类"
-          />
-        </FormItem>
-        <FormItem label="是否启用" prop="enabled" single>
-          <Radio v-model="model.enabled" dict="enableRadios" />
-        </FormItem>
-        <FormItem label="地址" prop="address" single>
-          <Input placeholder="地址" v-model="model.address" />
-        </FormItem>
-      </Form>
+          <t-col :span="6">
+            <t-form-item label="货商分类" name="supplierCategoryId">
+              <t-select
+                  v-model="model.supplierCategoryId"
+                  :options="supplierCategoryList"
+                  :keys="{ value: 'id', label: 'name' }"
+                  filterable
+                  clearable
+                  placeholder="请选择货商分类"
+              />
+            </t-form-item>
+          </t-col>
+          <t-col :span="6">
+            <t-form-item label="余额" name="balance">
+              <t-input-number
+                  v-model="model.balance"
+                  theme="normal"
+                  :decimal-places="2"
+                  placeholder="请输入余额"
+                  style="width: 100%"
+              />
+            </t-form-item>
+          </t-col>
+
+          <t-col :span="6">
+            <t-form-item label="联系人" name="contact">
+              <t-input v-model="model.contact" placeholder="联系人"/>
+            </t-form-item>
+          </t-col>
+          <t-col :span="6">
+            <t-form-item label="电话" name="phone">
+              <t-input v-model="model.phone" placeholder="电话"/>
+            </t-form-item>
+          </t-col>
+
+          <t-col :span="6">
+            <t-form-item label="是否启用" name="enabled">
+              <t-radio-group v-model="model.enabled">
+                <t-radio :value="true">启用</t-radio>
+                <t-radio :value="false">禁用</t-radio>
+              </t-radio-group>
+            </t-form-item>
+          </t-col>
+
+          <t-col :span="12">
+            <t-form-item label="地址" name="address">
+              <t-input v-model="model.address" placeholder="地址"/>
+            </t-form-item>
+          </t-col>
+        </t-row>
+      </t-form>
     </div>
+
     <div class="modal-column-between">
-      <Button @click="$emit('close')" :loading="loading"> 取消 </Button>
-      <Button color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
@@ -68,64 +93,72 @@
  * @公司信息: 纷析云（杭州）科技有限公司
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
-import Supplier from "@js/api/basic/Supplier";
-import { message } from "heyui.ext";
-import { CopyObj } from "@common/utils";
-import SupplierCategory from "@js/api/basic/SupplierCategory";
-import { layer } from "@layui/layer-vue";
+import Supplier from '@js/api/basic/Supplier';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {CopyObj} from '@common/utils';
+import SupplierCategory from '@js/api/basic/SupplierCategory';
 
 export default {
-  name: "SupplierForm",
+  name: 'SupplierForm',
+  emits: {close: null, success: null},
   props: {
-    entity: Object,
+    entity: Object
   },
   data() {
     return {
       loading: false,
       supplierCategoryList: [],
       model: {
-        balance: null,
+        balance: 0,
         id: null,
         code: null,
         name: null,
-        linkman: null,
+        contact: null,
         phone: null,
         supplierCategoryId: null,
         address: null,
-        enabled: true,
+        enabled: true
       },
-      validationRules: {
-        balance: [{ required: true, message: "余额不能为空" }],
-      },
+      rules: {
+        name: [{required: true, message: '请输入货商名称', type: 'error'}],
+        supplierCategoryId: [{required: true, message: '请选择货商分类', type: 'error'}],
+        balance: [{required: true, message: '请输入余额', type: 'error'}]
+      }
     };
   },
   methods: {
     confirm() {
-      let validResult = this.$refs.form.valid();
-      
-      if (validResult.result) {
-        const num = Number(this.model.balance);
-        if (!Number.isInteger(num) || num < 1) {
-          return message("请输入有效的正整数");
+      this.$refs.form.validate().then((result) => {
+        if (result !== true) return;
+        if (Number(this.model.balance) < 0) {
+          MessagePlugin.warning('金额不可为负');
+          return;
         }
         this.loading = true;
         Supplier.save(this.model)
           .then(() => {
-            message("保存成功~");
-            this.$emit("success");
+            MessagePlugin.success('保存成功~');
+            this.$emit('success');
           })
           .finally(() => (this.loading = false));
-      }
-    },
+      }).catch(() => {});
+    }
   },
   created() {
-    // CopyObj(this.model, this.entity);
-    this.model = {...this.entity};
-    Promise.all([SupplierCategory.select()])
-      .then((results) => {
-        this.supplierCategoryList = results[0].data;
-      })
-      .finally(() => (this.loading = false));
-  },
+    CopyObj(this.model, this.entity);
+    SupplierCategory.select().then(({data}) => {
+      this.supplierCategoryList = data || [];
+    });
+  }
 };
 </script>
+
+<style scoped>
+.supplier-form :deep(.t-form__item) {
+  margin-bottom: 8px;
+}
+
+.supplier-form :deep(.t-form__label) {
+  padding-bottom: 4px !important;
+}
+</style>

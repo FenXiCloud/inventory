@@ -41,7 +41,7 @@
 
 <script>
 import SystemLog from "@js/api/setting/SystemLog";
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 
 
 export default {
@@ -87,12 +87,12 @@ export default {
       this.loadList();
     },
     doRemove(row) {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认删除规则：${row.name}?`,
         onConfirm: () => {
           SystemLog.remove(row.id).then(() => {
-            message("删除成功~");
+            MessagePlugin.success("删除成功~");
             this.doSearch();
           })
         }
@@ -100,12 +100,12 @@ export default {
     },
     trigger(row) {
       let enabled = !row.enabled;
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认要「${enabled ? "启用" : "禁用"}」规则：${row.name}?`,
         onConfirm: () => {
           SystemLog.save({id: row.id, enabled}).then(() => {
-            message("操作成功~");
+            MessagePlugin.success("操作成功~");
             this.loadList();
           })
         }

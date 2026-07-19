@@ -1,124 +1,154 @@
 <template>
-  <div class="frame-page flex flex-column">
-        <div class="table-toolbar">
-          <Button @click="showWarehouseForm()" color="primary">新 增</Button>
-          <div>
-            <Row :space-x="10">
-              <Cell width="50" class="flex items-center">
-                <Input id="name" v-model="params.name" class="flex-1" placeholder="请输入仓库名称"/>
-                <Button color="primary" :loading="loading" @click="searchWarehouse">查询</Button>
-              </Cell>
-            </Row>
-          </div>
-        </div>
-        <vxe-table row-id="id"
-                   ref="table"
-                   :row-config="{height: 48}"
-                   stripe
-                   :data="warehouseDataList"
-                   show-overflow
-                   :column-config="{resizable: true}"
-                   :loading="loading">
-          <vxe-column type="seq" width="60" align="center"/>
-          <vxe-column title="仓库编码" field="code" width="200"/>
-          <vxe-column title="仓库名称" field="name" width="300"/>
-          <vxe-column title="仓库地址" field="address"/>
-          <vxe-column title="默认" field="isDefault" width="120" align="center">
-            <template #default="{row:{systemDefault}}">
-              <Tag color="primary" v-if="systemDefault">是</Tag>
-              <Tag color="yellow" v-else>否</Tag>
-            </template>
-          </vxe-column>
-          <vxe-column title="状态" field="enabled" width="120" align="center">
-            <template #default="{row:{enabled}}">
-              <Tag color="primary" v-if="enabled">启用</Tag>
-              <Tag color="red" v-else>禁用</Tag>
-            </template>
-          </vxe-column>
-          <vxe-column title="操作" align="center" width="150">
-            <template #default="{row}">
-              <div class="flex items-center justify-center">
-                <i class="primary-color h-icon-edit ml-10px" @click="showWarehouseForm(row)"></i>
-                <i class="primary-color h-icon-trash ml-10px" @click="deleteWarehouse(row)"></i>
-              </div>
-            </template>
-          </vxe-column>
-        </vxe-table>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="showWarehouseForm()">新 增</t-button>
+        <t-input
+            v-model="params.name"
+            clearable
+            placeholder="请输入仓库名称"
+            style="width: 240px; border-radius: 4px"
+            @enter="searchWarehouse"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="searchWarehouse"/>
+          </template>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="searchWarehouse">查询</t-button>
+      </t-space>
+    </div>
+
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="auto"
+          :data="warehouseDataList"
+          :columns="columns"
+          :loading="loading"
+      >
+        <template #ops="{ row }">
+          <t-space size="small">
+            <t-link theme="primary" @click="showWarehouseForm(row)"><t-icon name="edit"/></t-link>
+            <t-link theme="primary" @click="deleteWarehouse(row)"><t-icon name="delete"/></t-link>
+          </t-space>
+        </template>
+        <template #systemDefault="{ row }">
+          <t-tag :theme="row.systemDefault ? 'primary' : 'warning'" variant="light">
+            {{ row.systemDefault ? '是' : '否' }}
+          </t-tag>
+        </template>
+        <template #enabled="{ row }">
+          <t-tag :theme="row.enabled ? 'primary' : 'danger'" variant="light">
+            {{ row.enabled ? '启用' : '禁用' }}
+          </t-tag>
+        </template>
+      </t-table>
+    </div>
   </div>
 </template>
 
 <script>
-import {layer} from "@layui/layer-vue";
-import {h} from "vue";
-import WarehouseForm from "@views/basic/WarehouseForm";
-import Warehouse from "@js/api/basic/Warehouse";
-import {confirm, message} from "heyui.ext";
-
+import {openDialog, closeDialog} from '@common/dialog';
+import {h} from 'vue';
+import WarehouseForm from '@views/basic/WarehouseForm';
+import Warehouse from '@js/api/basic/Warehouse';
+import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
 
 export default {
-  name: "WarehouseList",
+  name: 'WarehouseList',
   data() {
     return {
       loading: false,
-      params: {
-        name: '',
-      },
+      params: {name: ''},
       warehouseDataList: [],
-    }
+      columns: [
+        {colKey: 'ops', title: '操作', width: 90, fixed: 'left', align: 'center'},
+        {colKey: 'code', title: '仓库编码', width: 140},
+        {colKey: 'name', title: '仓库名称', minWidth: 160, ellipsis: true},
+        {colKey: 'address', title: '仓库地址', minWidth: 200, ellipsis: true},
+        {colKey: 'systemDefault', title: '默认', width: 90, align: 'center'},
+        {colKey: 'enabled', title: '状态', width: 90, align: 'center', fixed: 'right'}
+      ]
+    };
   },
   computed: {
-
     queryParams() {
-      return Object.assign(this.params, {})
+      return Object.assign({}, this.params);
     }
   },
   methods: {
     showWarehouseForm(warehouse = null) {
-      let layerId = layer.open({
-        title: "仓库信息",
-        shadeClose: false,
+      const dialogId = openDialog({
+        header: '仓库信息',
+        closeOnOverlayClick: false,
         closeBtn: false,
-        area: ['500px', '450px'],
-        content: h(WarehouseForm, {
+        width: '520px',
+        body: h(WarehouseForm, {
           warehouse,
-          onClose: () => {
-            layer.close(layerId);
-          },
+          onClose: () => closeDialog(dialogId),
           onSuccess: () => {
             this.searchWarehouse();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
     },
     loadWarehouse() {
       this.loading = true;
-      Warehouse.list(this.queryParams).then(({data}) => {
-        this.warehouseDataList = data;
-      }).finally(() => this.loading = false);
+      Warehouse.list(this.queryParams)
+        .then(({data}) => {
+          this.warehouseDataList = data || [];
+        })
+        .finally(() => (this.loading = false));
     },
     searchWarehouse() {
       this.loadWarehouse();
     },
     deleteWarehouse(row) {
-      confirm({
-        title: "系统提示",
+      DialogPlugin.confirm({
+        title: '系统提示',
         content: `确认删除：${row.name}?`,
         onConfirm: () => {
           Warehouse.delete(row.id).then(() => {
-            message("删除成功~");
+            MessagePlugin.success('删除成功~');
             this.searchWarehouse();
-          })
+          });
         }
-      })
+      });
     }
   },
   created() {
     this.loadWarehouse();
   }
-}
+};
 </script>
 
 <style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
 
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 </style>

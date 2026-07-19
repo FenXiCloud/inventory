@@ -1,0 +1,163 @@
+/* TDesign 原生样式补充：全局布局 */
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* 框架布局 */
+.app-frame {
+  height: 100vh;
+}
+
+.app-frame > .t-layout,
+.app-frame > .t-aside {
+  height: 100vh;
+}
+
+.app-frame .t-header {
+  background: var(--td-menu-dark-bg-color, #001529);
+  color: var(--td-text-color-anti, #fff);
+  padding: 0;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.app-frame .t-aside {
+  background: var(--td-menu-dark-bg-color, #001529);
+  flex-shrink: 0;
+  transition: width 0.2s;
+}
+
+.app-frame .t-content {
+  overflow: auto;
+  background-color: var(--td-bg-color-page);
+}
+
+.app-frame-content {
+  height: 100%;
+  overflow: auto;
+  background-color: var(--td-bg-color-page);
+  box-sizing: border-box;
+}
+
+/* 侧边菜单 */
+.app-menu {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-menu .app-logo {
+  flex-shrink: 0;
+  background: var(--td-menu-dark-bg-color, #001529);
+}
+
+.app-menu .t-menu {
+  flex: 1;
+  overflow-y: auto;
+  border-right: none;
+}
+
+
+/* 页面容器 */
+.frame-page {
+  height: 100%;
+  padding: 16px;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.frame-flex-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.frame-flex-header {
+  flex-shrink: 0;
+}
+
+.frame-flex-body {
+  flex: 1;
+  overflow: auto;
+}
+
+/* TDesign 面板组件 */
+.t-panel {
+  background: var(--td-bg-color-container);
+  border-radius: var(--td-radius-default, 6px);
+  box-shadow: var(--td-shadow-1, 0 1px 4px rgba(0, 0, 0, 0.04));
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.t-panel-body {
+  background: var(--td-bg-color-container);
+  border-radius: var(--td-radius-default, 6px);
+  box-shadow: var(--td-shadow-1, 0 1px 4px rgba(0, 0, 0, 0.04));
+  box-sizing: border-box;
+}
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-left {
+  flex: 1;
+}
+
+/* 常用辅助类 */
+.primary-color {
+  color: #3d74ff;
+}
+
+.text-hover {
+  cursor: pointer;
+}
+
+.text-hover:hover {
+  color: #3d74ff;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 0 0;
+  margin-top: 16px;
+  border-top: 1px solid var(--td-component-stroke);
+}
+
+/* 自定义菜单滚动 */
+.app-menu .t-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.app-menu .t-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+/* 禁止菜单弹出浮层（teleport 到 body，必须全局样式） */
+.t-menu__popup {
+  display: none !important;
+}

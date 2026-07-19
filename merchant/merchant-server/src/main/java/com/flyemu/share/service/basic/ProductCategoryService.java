@@ -13,17 +13,15 @@ import com.flyemu.share.repository.CategoryTreeRepository;
 import com.flyemu.share.repository.ProductCategoryRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.jpa.impl.JPAQuery;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.sql.rowset.serial.SerialException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * @功能描述: 商品分类
@@ -53,49 +51,47 @@ public class ProductCategoryService extends AbsService {
     public ProductCategory save(ProductCategory productCategory) {
 
         try {
-            if (StringUtils.isEmpty(productCategory.getCode())){
-                throw new SerialException("编码不能为空");
-            }
-            String path = "";
             if (productCategory.getPid() != null) {
-                ProductCategory parent = productCategoryRepository.getReferenceById(productCategory.getPid());
-                parent.setLeaf(false);
-                productCategoryRepository.save(parent);
-            }
-            BooleanBuilder builder = new BooleanBuilder();
-            builder.and(qProductCategory.merchantId.eq(productCategory.getMerchantId()))
-                    .and(qProductCategory.accountBookId.eq(productCategory.getAccountBookId()))
-                    .and(qProductCategory.code.eq(productCategory.getCode()));
-
-            if (productCategory.getId() != null) {
-                builder.and(qProductCategory.id.ne(productCategory.getId()));
-            }
-
-            Long count = jqf.select(qProductCategory.id.count())
-                    .from(qProductCategory)
-                    .where(builder)
-                    .fetchOne();
-
-            if (count != null && count > 0) {
-                throw new ServiceException("已存在相同编码的分类：" + productCategory.getCode());
+                assertCanAddChild(productCategory.getPid(), productCategory.getMerchantId(), productCategory.getAccountBookId());
             }
 
             if (productCategory.getId() != null) {
-                //更新
                 ProductCategory original = productCategoryRepository.getById(productCategory.getId());
-
+                // 编码已隐藏，更新时保留原编码
+                String originalCode = original.getCode();
                 BeanUtil.copyProperties(productCategory, original, CopyOptions.create().ignoreNullValue());
+                original.setCode(originalCode);
                 if (productCategory.getPid() == null) {
                     original.setPid(null);
-                    original.setLeaf(true);
                 }
+                // leaf 由分类下是否有产品决定，保存分类时不改写
+                original.setLeaf(hasProducts(original.getId(), original.getMerchantId(), original.getAccountBookId()));
                 return productCategoryRepository.save(original);
             }
 
-            productCategory.setLeaf(true);
+            // 前端不再录入编码，后台自动生成
+            if (StringUtils.isEmpty(productCategory.getCode())) {
+                productCategory.setCode("C" + System.currentTimeMillis());
+            } else {
+                BooleanBuilder builder = new BooleanBuilder();
+                builder.and(qProductCategory.merchantId.eq(productCategory.getMerchantId()))
+                        .and(qProductCategory.accountBookId.eq(productCategory.getAccountBookId()))
+                        .and(qProductCategory.code.eq(productCategory.getCode()));
+                Long count = jqf.select(qProductCategory.id.count())
+                        .from(qProductCategory)
+                        .where(builder)
+                        .fetchOne();
+                if (count != null && count > 0) {
+                    throw new ServiceException("已存在相同编码的分类：" + productCategory.getCode());
+                }
+            }
+
+            productCategory.setLeaf(false);
             productCategoryRepository.save(productCategory);
             return productCategory;
 
+        } catch (ServiceException e) {
+            throw e;
         } catch (Exception e) {
             log.error("ProductCategory", e);
             throw new ServiceException(e.getMessage());
@@ -122,23 +118,6 @@ public class ProductCategoryService extends AbsService {
             Assert.isFalse(count > 0, "该分类或其子分类已被商品使用，不能删除");
         }
 
-        if (productCategory.getPid() != null) {
-            long childCount = bqf.selectFrom(qProductCategory)
-                    .where(qProductCategory.pid.eq(productCategory.getPid())
-                            .and(qProductCategory.merchantId.eq(merchantId))
-                            .and(qProductCategory.accountBookId.eq(accountBookId)))
-                    .fetchCount();
-
-            if (childCount == 1) {
-                jqf.update(qProductCategory)
-                        .set(qProductCategory.leaf, true)
-                        .where(qProductCategory.id.eq(productCategory.getPid())
-                                .and(qProductCategory.merchantId.eq(merchantId))
-                                .and(qProductCategory.accountBookId.eq(accountBookId)))
-                        .execute();
-            }
-        }
-
         jqf.delete(qProductCategory)
                 .where(qProductCategory.id.eq(productsCategoryId)
                         .and(qProductCategory.merchantId.eq(merchantId))
@@ -151,8 +130,71 @@ public class ProductCategoryService extends AbsService {
         return bqf.selectFrom(qProductCategory).where(qProductCategory.merchantId.eq(merchantId).and(qProductCategory.id.eq(orgId))).fetchFirst();
     }
 
+    /**
+     * 下拉/树数据：leaf 实时按「分类下是否有产品」计算，不用库里旧值。
+     */
     public List<ProductCategory> select(Long merchantId, Long accountBookId) {
-        return bqf.selectFrom(qProductCategory).where(qProductCategory.merchantId.eq(merchantId).and(qProductCategory.accountBookId.eq(accountBookId))).orderBy(qProductCategory.sort.desc()).fetch();
+        List<ProductCategory> list = bqf.selectFrom(qProductCategory)
+                .where(qProductCategory.merchantId.eq(merchantId).and(qProductCategory.accountBookId.eq(accountBookId)))
+                .orderBy(qProductCategory.sort.desc())
+                .fetch();
+        Set<Long> withProducts = new HashSet<>(bqf.select(qProduct.productCategoryId)
+                .from(qProduct)
+                .where(qProduct.merchantId.eq(merchantId)
+                        .and(qProduct.accountBookId.eq(accountBookId))
+                        .and(qProduct.productCategoryId.isNotNull()))
+                .distinct()
+                .fetch());
+        list.forEach(c -> c.setLeaf(withProducts.contains(c.getId())));
+        return list;
+    }
+
+    public boolean hasProducts(Long categoryId, Long merchantId, Long accountBookId) {
+        if (categoryId == null) {
+            return false;
+        }
+        return bqf.selectFrom(qProduct)
+                .where(qProduct.productCategoryId.eq(categoryId)
+                        .and(qProduct.merchantId.eq(merchantId))
+                        .and(qProduct.accountBookId.eq(accountBookId)))
+                .fetchCount() > 0;
+    }
+
+    public boolean hasChildren(Long categoryId, Long merchantId, Long accountBookId) {
+        if (categoryId == null) {
+            return false;
+        }
+        return bqf.selectFrom(qProductCategory)
+                .where(qProductCategory.pid.eq(categoryId)
+                        .and(qProductCategory.merchantId.eq(merchantId))
+                        .and(qProductCategory.accountBookId.eq(accountBookId)))
+                .fetchCount() > 0;
+    }
+
+    /** 有产品的分类是末级，不允许再创建下级 */
+    public void assertCanAddChild(Long parentId, Long merchantId, Long accountBookId) {
+        Assert.notNull(parentId, "父级分类不能为空");
+        Assert.isFalse(hasProducts(parentId, merchantId, accountBookId), "该分类下已有产品，属于末级，不能创建下级");
+    }
+
+    /** 产品只能挂在无下级的分类上 */
+    public void assertCanBindProduct(Long categoryId, Long merchantId, Long accountBookId) {
+        Assert.notNull(categoryId, "请选择产品分类");
+        Assert.isFalse(hasChildren(categoryId, merchantId, accountBookId), "有下级的分类不能选择，请选择末级分类");
+    }
+
+    @Transactional
+    public void refreshLeafByProducts(Long categoryId, Long merchantId, Long accountBookId) {
+        if (categoryId == null) {
+            return;
+        }
+        boolean leaf = hasProducts(categoryId, merchantId, accountBookId);
+        jqf.update(qProductCategory)
+                .set(qProductCategory.leaf, leaf)
+                .where(qProductCategory.id.eq(categoryId)
+                        .and(qProductCategory.merchantId.eq(merchantId))
+                        .and(qProductCategory.accountBookId.eq(accountBookId)))
+                .execute();
     }
 
     public static class Query {

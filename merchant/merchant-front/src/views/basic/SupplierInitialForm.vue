@@ -85,7 +85,7 @@
 
 <script>
 import {mapMutations, mapState} from "vuex";
-import {loading, message} from "heyui.ext";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import Supplier from "@js/api/basic/Supplier";
 import SupplierInitial from "@js/api/basic/SupplierInitial";
 
@@ -196,7 +196,7 @@ export default {
 
     checkHttp(requestData) {
       if (requestData.length === 0) {
-        message.error("请选择货商");
+        MessagePlugin.error("请选择货商");
         return false
       }
       let quantityFlag = false
@@ -219,19 +219,19 @@ export default {
         }
       })
       if (customerFlag) {
-        message.error("请选择货商~");
+        MessagePlugin.error("请选择货商~");
         return false
       }
       if (quantityFlag) {
-        message.error("期初应收款~");
+        MessagePlugin.error("期初应收款~");
         return false
       }
       if (unitPriceFlag) {
-        message.error("期初预收款~");
+        MessagePlugin.error("期初预收款~");
         return false
       }
       if (subtotalFlag) {
-        message.error("期初余额为空~");
+        MessagePlugin.error("期初余额为空~");
         return false
       }
       return true
@@ -257,7 +257,7 @@ export default {
     },
   },
   created() {
-    //loading("加载中....");
+    //LoadingPlugin(true);
     if (this.supplierInitialId) {
       this.editForm();
     }else{
@@ -271,7 +271,7 @@ export default {
       this.supplierList.forEach(item => {
         item.name = `${item.code}--${item.name}`;
       });
-    }).finally(() => loading.close());
+    }).finally(() => LoadingPlugin(false));
   }
 }
 </script>

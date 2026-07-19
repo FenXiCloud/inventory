@@ -44,7 +44,7 @@
             @change="selectOrderStaff($event)"
           >
             <template #bottom>
-              <Button no-border icon="h-icon-plus" @click="addOrderStaff()"
+              <Button no-border icon="add" @click="addOrderStaff()"
                 >新建</Button
               >
             </template>
@@ -228,8 +228,8 @@
 </template>
 <script>
 import manba from 'manba';
-import { confirm, loading, message } from 'heyui.ext';
-import { layer } from '@layui/layer-vue';
+import { DialogPlugin, LoadingPlugin, MessagePlugin } from 'tdesign-vue-next';
+import {openDialog, closeDialog} from '@common/dialog';
 import { h } from 'vue';
 import OtherExpense from '@js/api/fund/OtherExpense';
 import Account from '@js/api/fund/Account';
@@ -391,21 +391,21 @@ export default {
         orderStatus: orderStatus,
         approvedBy: this.$store.state.user.admin.id
       };
-      confirm({
+      DialogPlugin.confirm({
         content: `确定审核订单？`,
         onConfirm: () => {
           OtherExpense.batchAudit(params)
             .then((success) => {
               if (success) {
                 if (orderStatus === '已审核') {
-                  message.success('审核成功');
+                  MessagePlugin.success('审核成功');
                 } else {
-                  message.success('反审核成功');
+                  MessagePlugin.success('反审核成功');
                 }
                 this.loadList(); // Refresh the list
               }
             })
-            .finally(() => loading.close());
+            .finally(() => LoadingPlugin(false));
         }
       });
     },
@@ -479,13 +479,13 @@ export default {
       };
 
       if (!this.form.supplierId) {
-        return message.error('请选择供应商');
+        return MessagePlugin.error('请选择供应商');
       } else if (!this.form.settlementAccountId) {
-        return message.error('请选择结算账户');
+        return MessagePlugin.error('请选择结算账户');
       } else if (!this.tableData.length || !this.tableData[0].accountTypeId) {
-        return message.error('请选择支出类别');
+        return MessagePlugin.error('请选择支出类别');
       } else if (!this.tableData.length || !this.tableData[0].amount) {
-        return message.error('请输入金额');
+        return MessagePlugin.error('请输入金额');
       }
 
       this.addEdit(type, params);
@@ -539,7 +539,7 @@ export default {
       this.loading = true;
       OtherExpense.addEdit(params)
         .then(() => {
-          message('提交成功~');
+          MessagePlugin.success('提交成功~');
           this.clerarData();
           if (type == 'save') {
             this.historyForm();
@@ -628,21 +628,21 @@ export default {
 
     showForm(entity) {
       let type = 0;
-      let layerId = layer.open({
-        title: '新增职员',
-        shadeClose: false,
+      let dialogId = openDialog({
+        header: '新增职员',
+        closeOnOverlayClick: false,
         closeBtn: false,
-        area: ['600px', '480px'],
-        content: h(OrderStaffForm, {
+        width: '600px',
+        body: h(OrderStaffForm, {
           entity,
           type,
           onClose: () => {
             console.log(this.$refs.selectRef);
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadOrderStaff();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });

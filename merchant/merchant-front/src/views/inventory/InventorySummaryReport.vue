@@ -25,10 +25,10 @@
           <span class="h-input-addon ml-8px">单据日期：</span>
           <DateRangePicker v-model="dateRange"></DateRangePicker>
         </div>
-        <Search v-model.trim="params.summaryFilter" search-button-theme="h-btn-default"
+        <Search v-model.trim="params.summaryFilter"
                 show-search-button class="w-360px ml-8px"
                 placeholder="请输入产品编码/产品名称" @search="doSearch">
-          <i class="h-icon-search"/>
+          <t-icon name="search" />
         </Search>
       </template>
     </vxe-toolbar>
@@ -122,7 +122,7 @@
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
           <!--          <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>-->
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>
@@ -133,7 +133,7 @@
 import manba from "manba";
 import InventoryItem from "@js/api/inventory/InventoryItem";
 import {mapMutations} from "vuex";
-import {loading, message} from "heyui.ext";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 import ProductCategory from "@js/api/basic/ProductCategory";
@@ -392,7 +392,7 @@ export default {
       });
     },
     loadDict(callback) {
-      loading("加载中....");
+      LoadingPlugin(true);
       Promise.all([Product.select(), Warehouse.select(), ProductCategory.select()])
           .then((results) => {
             this.productList = results[0].data || [];
@@ -400,7 +400,7 @@ export default {
             this.productCategoryList = results[2].data || [];
             callback();
           })
-          .finally(() => loading.close());
+          .finally(() => LoadingPlugin(false));
     },
     getAbsoluteValue(number) {
       if (number < 0) {
@@ -558,7 +558,7 @@ export default {
     },
     callExcel(dataList) {
       if (dataList.length < 0) {
-        message.warn("暂无数据～");
+        MessagePlugin.warning("暂无数据～");
         return;
       }
       let headList = [

@@ -45,7 +45,7 @@
   </div>
 </template>
 <script>
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 import Checkout from "@js/api/setting/Checkout";
 import manba from "manba";
 import {mapState} from 'vuex';
@@ -87,7 +87,7 @@ export default {
       if (this.billDate){
       Checkout.toCheck({checkDate:this.billDate}).then(({data,success})=>{
         if (success){
-          message("结账成功~");
+          MessagePlugin.success("结账成功~");
           this.$store.commit('updateAccountBook', data);
           window.location.replace("/");
         }
@@ -95,16 +95,16 @@ export default {
         this.loadList()
       })
       }else {
-        message.error("请选择结账时间")
+        MessagePlugin.error("请选择结账时间")
       }
     },
     antiCheckout() {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认要反结账吗?`,
         onConfirm: () => {
           Checkout.antiCheckout().then(({data}) => {
-            message("操作成功~");
+            MessagePlugin.success("操作成功~");
             this.$store.commit('updateAccountBook', data);
             this.loadList();
           })

@@ -1,25 +1,21 @@
 <template>
   <div class="m-16px">
-    <Form ref="form" :model="model" :rules="validationRules" :labelWidth="120" mode="twocolumn">
-      <FormItem label="名称" required prop="name">
-        <Input placeholder="请输入名称" v-model="model.name"/>
-      </FormItem>
-    </Form>
+    <t-form ref="form" :data="model" :rules="rules" label-width="120" label-align="right">
+      <t-form-item label="名称" name="name">
+        <t-input placeholder="请输入名称" v-model="model.name"/>
+      </t-form-item>
+    </t-form>
   </div>
-  <div class="layui-layer-btn layui-layer-btn-r">
-    <Button icon="fa fa-close" @click="$emit('close')" :loading="loading">
-      取消
-    </Button>
-    <Button icon="fa fa-save" color="primary" @click="confirm" :loading="loading">
-      保存
-    </Button>
+  <div class="dialog-footer">
+    <t-button @click="$emit('close')" :loading="loading">取消</t-button>
+    <t-button theme="primary" @click="confirm" :loading="loading">保存</t-button>
   </div>
 </template>
 
 <script>
 
 import AccountBook from "@js/api/AccountBook";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import {CopyObj} from "@common/utils";
 
 export default {
@@ -43,21 +39,22 @@ export default {
         phone: null,
         merchantId: null,
       },
-      validationRules: {
-        mobile: ['phone']
+      rules: {
+        name: [{ required: true, message: '请输入名称', trigger: 'blur' }],
       }
     }
   },
   methods: {
     confirm() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        AccountBook.save(this.model).then(() => {
-          message("保存成功~");
-          this.$emit('success');
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.form.validate().then((result) => {
+        if (result === true) {
+          this.loading = true;
+          AccountBook.save(this.model).then(() => {
+            MessagePlugin.success("保存成功~");
+            this.$emit('success');
+          }).finally(() => this.loading = false);
+        }
+      });
     },
   },
   created() {
@@ -66,3 +63,14 @@ export default {
   }
 }
 </script>
+
+<style>
+.dialog-footer {
+  text-align: right;
+  padding: 12px 16px;
+  border-top: 1px solid #e7e7e7;
+}
+.dialog-footer .t-button {
+  margin-left: 8px;
+}
+</style>

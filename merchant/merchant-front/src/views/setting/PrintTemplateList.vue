@@ -41,9 +41,9 @@
 
 <script>
 import PrintTemplate from "@js/api/setting/PrintTemplate";
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 import PrintTemplateForm from "./PrintTemplateForm.vue";
-import {layer} from "@layui/layer-vue";
+import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 
 
@@ -79,18 +79,18 @@ export default {
   },
   methods: {
     showForm(PrintTemplate) {
-      let layerId = layer.open({
-        title: "规则编码",
-        shadeClose: false,
-        area: ['50vw', 'auto'],
-        content: h(PrintTemplateForm, {
+      let dialogId = openDialog({
+        header: "规则编码",
+        closeOnOverlayClick: false,
+        width: '50vw',
+        body: h(PrintTemplateForm, {
           PrintTemplate,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.doSearch();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
@@ -108,12 +108,12 @@ export default {
       this.loadList();
     },
     doRemove(row) {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认删除规则：${row.name}?`,
         onConfirm: () => {
           PrintTemplate.remove(row.id).then(() => {
-            message("删除成功~");
+            MessagePlugin.success("删除成功~");
             this.doSearch();
           })
         }
@@ -121,12 +121,12 @@ export default {
     },
     trigger(row) {
       let enabled = !row.enabled;
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认要「${enabled ? "启用" : "禁用"}」规则：${row.name}?`,
         onConfirm: () => {
           PrintTemplate.save({id: row.id, enabled}).then(() => {
-            message("操作成功~");
+            MessagePlugin.success("操作成功~");
             this.loadList();
           })
         }

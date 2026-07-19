@@ -10,8 +10,6 @@
  * <p>****************************************************************************</p>
  */
 const path = require('path');
-const webpack = require('webpack');
-const globalVars = require('./src/style/var.js');
 
 module.exports = {
 	pages: {
@@ -19,13 +17,6 @@ module.exports = {
 			title: "纷析云进销存系统",
 			entry: 'src/main.js',
 			chunks: ['chunk-vendors', 'chunk-common', 'index']
-		}
-	},
-	css: {
-		loaderOptions: {
-			less: {
-				lessOptions: {globalVars}
-			}
 		}
 	},
 	productionSourceMap: false,
@@ -45,12 +36,20 @@ module.exports = {
 		resolve: {
 			alias: {
 				'@': path.resolve(__dirname, 'src/'),
-				'@components': path.resolve(__dirname, 'src/components/'),
 				'@common': path.resolve(__dirname, 'src/js/common/'),
 				'@js': path.resolve(__dirname, 'src/js/')
 			}
-		},
-		plugins: [new webpack.ProvidePlugin({})]
+		}
+	},
+	css: {
+		loaderOptions: {
+			sass: {
+				api: 'modern',
+				sassOptions: {
+					quietDeps: true
+				}
+			}
+		}
 	},
 	pluginOptions: {
 		windicss: {}

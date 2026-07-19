@@ -12,8 +12,7 @@
                 placeholder="请输入用户名"
               />
               <span class="h-input-addon" @click="doSearch" :loading="loading"
-                ><i class="h-icon-search"></i
-              ></span>
+                ><t-icon name="search" /></span>
             </div>
           </div>
           <div class="table-toolbar-right">
@@ -66,19 +65,22 @@
           <vxe-column title="操作" align="center" width="200">
             <template #default="{ row }">
               <div class="flex items-center justify-center">
-                <i
-                  class="primary-color h-icon-lock ml-10px"
+                <t-icon
+                  name="lock-on"
+                  class="primary-color ml-10px"
                   @click="resetPassword(row)"
-                ></i>
-                <i
-                  class="primary-color h-icon-edit ml-10px"
+                />
+                <t-icon
+                  name="edit"
+                  class="primary-color ml-10px"
                   @click="showForm(row)"
-                ></i>
+                />
                 <template v-if="!row.systemDefault">
-                  <i
-                    class="primary-color h-icon-trash ml-10px"
+                  <t-icon
+                    name="delete"
+                    class="primary-color ml-10px"
                     @click="doRemove(row)"
-                  ></i>
+                  />
                 </template>
               </div>
             </template>
@@ -92,8 +94,8 @@
 <script>
 import AdminForm from './AdminForm.vue';
 import Admin from '@js/api/setting/Admin';
-import {confirm, message} from 'heyui.ext';
-import {layer} from '@layui/layer-vue';
+import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 
 /**
@@ -142,19 +144,19 @@ export default {
         .finally(() => (this.loading = false));
     },
     showForm(entity) {
-      let layerId = layer.open({
-        title: '用户信息',
-        shadeClose: false,
+      let dialogId = openDialog({
+        header: '用户信息',
+        closeOnOverlayClick: false,
         closeBtn: false,
-        area: ['600px', '500px'],
-        content: h(AdminForm, {
+        width: '600px',
+        body: h(AdminForm, {
           entity,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.doSearch();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
@@ -178,36 +180,36 @@ export default {
       this.loadList();
     },
     doRemove(row) {
-      confirm({
+      DialogPlugin.confirm({
         title: '系统提示',
         content: `确认删除用户：${row.name}?`,
         onConfirm: () => {
           Admin.remove(row.id).then(() => {
-            message('删除成功~');
+            MessagePlugin.success('删除成功~');
             this.loadList();
           });
         }
       });
     },
     resetPassword(row) {
-      confirm({
+      DialogPlugin.confirm({
         title: '系统提示',
         content: `确认要重置【${row.name}】的登录密码?`,
         onConfirm: () => {
           Admin.resetPassword(row.id).then(() => {
-            message('重置成功~');
+            MessagePlugin.success('重置成功~');
           });
         }
       });
     },
     trigger(row) {
       let enabled = !row.enabled;
-      confirm({
+      DialogPlugin.confirm({
         title: '系统提示',
         content: `确认要「${enabled ? '启用' : '禁用'}」用户：${row.name}?`,
         onConfirm: () => {
           Admin.save({ id: row.id, enabled }).then(() => {
-            message('操作成功~');
+            MessagePlugin.success('操作成功~');
             this.loadList();
           });
         }

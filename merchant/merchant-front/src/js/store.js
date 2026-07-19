@@ -36,9 +36,6 @@ export default createStore({
       state.granted = account.granted || [];
     },
     updateSiderCollapse(state, isShow) {
-      setTimeout(() => {
-        state.pageResizeCount += 1;
-      }, 600);
       state.siderCollapsed = isShow;
     },
     newTab(state, key) {
@@ -48,10 +45,11 @@ export default createStore({
       state.currentTab = tab;
     },
     pushTab(state, tab) {
-      if (!state.tabs.map(val => val.key).includes(tab.key)) {
-        state.tabs.push(tab);
+      const key = tab.key;
+      if (!state.tabs.some(val => String(val.key) === String(key))) {
+        state.tabs.push({...tab, key});
       }
-      state.currentTab = tab.key;
+      state.currentTab = key;
     },
     clearTabs(state) {
       state.tabs = [];
@@ -72,12 +70,6 @@ export default createStore({
     },
     SET_TAB_DATA(state, data) {
       state.currentTabData = data;
-    },
-    SET_TAB_DATA_OUTBOUND(state, data) {
-      state.currentTabDataOutbound = data;
-    },
-    SET_TAB_DATA_RETURN(state, data) {
-      state.currentTabDataReturn = data;
     }
   },
   actions: {

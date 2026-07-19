@@ -93,7 +93,7 @@
 <script>
 import AccountBook from '@js/api/setting/AccountBook';
 import SystemConfig from '@js/api/setting/SystemConfig';
-import { message } from 'heyui.ext';
+import { MessagePlugin } from 'tdesign-vue-next';
 import { CopyObj } from '@common/utils';
 import manba from 'manba';
 
@@ -143,17 +143,17 @@ export default {
   },
   methods: {
     confirm() {
-      let validResult = this.$refs.form.valid();
-      console.log(validResult, this.model, 'validResult');
-      if (validResult.result) {
-        this.loading = true;
-        AccountBook.saveParameters(this.model)
-          .then(() => {
-            message('保存成功~');
-            this.$emit('success');
-          })
-          .finally(() => (this.loading = false));
-      }
+      this.$refs.form.validate().then((res) => {
+        if (res === true || res.result === true) {
+          this.loading = true;
+          AccountBook.saveParameters(this.model)
+            .then(() => {
+              MessagePlugin.success('保存成功~');
+              this.$emit('success');
+            })
+            .finally(() => (this.loading = false));
+        }
+      }).catch(() => {});
     },
     loadList() {
       this.loading = true;

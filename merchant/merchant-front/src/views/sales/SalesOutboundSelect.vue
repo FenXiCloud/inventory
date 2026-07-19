@@ -13,10 +13,10 @@
             <Select class="w-180px" filterable :datas="customerList" keyName="id" titleName="name"
                     v-model="params.customerId" placeholder="请选择客户"  readonly disabled/>
           </div>
-          <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+          <Search v-model.trim="params.filter"
                   show-search-button class="w-200px ml-8px"
                   placeholder="请输入订单号" @search="doSearch">
-            <i class="h-icon-search"/>
+            <t-icon name="search" />
           </Search>
         </template>
       </vxe-toolbar>
@@ -49,7 +49,7 @@
                    :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
           <template #left>
             <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-            <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+            <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                         :loading="loading"></vxe-button>
           </template>
         </vxe-pager>
@@ -68,7 +68,7 @@
 <script>
 import manba from "manba";
 import SalesOrder from "@js/api/sales/SalesOrder";
-import {confirm, loading, message} from "heyui.ext";
+import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import Customer from "@js/api/basic/Customer";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
 
@@ -126,7 +126,7 @@ export default {
       const selectedRows = this.$refs.table.getCheckboxRecords();
       console.log(selectedRows);
       if (selectedRows.length === 0) {
-        message.error("请选择至少一条订单");
+        MessagePlugin.error("请选择至少一条订单");
         return;
       }
       // 创建一个数组存储所有订单明细
@@ -194,7 +194,7 @@ export default {
         Customer.select(),
       ]).then((results) => {
         this.customerList = results[0].data || [];
-      }).finally(() => loading.close());
+      }).finally(() => LoadingPlugin(false));
     },
   },
   created() {

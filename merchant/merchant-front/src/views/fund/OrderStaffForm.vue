@@ -34,7 +34,7 @@
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 import Account from "@js/api/fund/Account";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import OrderReceipt from '@js/api/fund/OrderReceipt';
 import { add } from 'xe-utils';
 // import {CopyObj} from "@common/utils";
@@ -54,14 +54,15 @@ export default {
   },
   methods: {
     confirm() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        OrderReceipt.orderStaffAdd(this.model).then(() => {
-          message("保存成功~");
-          this.$emit('success');
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.form.validate().then((res) => {
+        if (res === true || res.result === true) {
+          this.loading = true;
+          OrderReceipt.orderStaffAdd(this.model).then(() => {
+            MessagePlugin.success("保存成功~");
+            this.$emit('success');
+          }).finally(() => this.loading = false);
+        }
+      }).catch(() => {});
     }
   },
   created() {

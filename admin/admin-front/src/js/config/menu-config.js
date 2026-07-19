@@ -1,26 +1,21 @@
 import {clone} from 'xe-utils';
 
 const fullMenus = [
-	// {
-	// 	title: '桌面',
-	// 	key: 'DashboardMain',
-	// 	icon: 'h-icon-home'
-	// },
 	{
 		title: '商户管理',
 		key: 'MerchantList',
-		icon: 'h-icon-users'
+		icon: 'usergroup'
 	},
 	{
 		title: '菜单管理',
 		key: 'MenuList',
-		icon: 'h-icon-star'
+		icon: 'star'
 	},
 	{
-		title: '管理员管理',
+		title: '账号管理',
 		key: 'UserList',
-		icon: 'h-icon-user'
-	},
+		icon: 'user'
+	}
 ];
 
 const getMenus = function (menuIdList = []) {

@@ -1,75 +1,82 @@
 <template>
-  <div class="frame-page flex flex-column">
-    <vxe-toolbar>
-      <template #buttons>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-select
+            v-model="params.priceSource"
+            :options="priceSourceOptions"
+            clearable
+            placeholder="价格来源"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.productIds"
+            :options="productList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="请选择产品"
+            style="width: 200px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.productCategoryIds"
+            :options="productCategoryList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="请选择类别"
+            style="width: 200px; border-radius: 4px"
+        />
+        <t-input
+            v-model="params.filter"
+            clearable
+            placeholder="请输入编码、名称"
+            style="width: 220px; border-radius: 4px"
+            @enter="doSearch"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
+          </template>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
+    </div>
 
-      </template>
-      <template #tools>
-<!--        <Input id="name" v-model="params.filter" class="flex-1" placeholder="请输入名称"/>-->
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="auto"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+      />
+    </div>
 
-        <Select v-model="params.priceSource" class="w-120px"
-                :datas="{产品价格资料:'产品价格资料',最近采购价格:'最近采购价格',最近销售价格:'最近销售价格'}"
-                placeholder="价格来源："/>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">产品：</span>
-          <Select class="w-178px" :multiple="true" filterable :datas="productList" keyName="id" titleName="name"
-                  v-model="params.productIds" placeholder="请选择产品"/>
-        </div>
-        <div class="h-input-group">
-          <span class="h-input-addon ml-8px">产品类别：</span>
-          <Select class="w-178px" :multiple="true" filterable :datas="productCategoryList" keyName="id" titleName="name"
-                  v-model="params.productCategoryIds" placeholder="请选择类别"  />
-        </div>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
-                show-search-button class="w-280px ml-8px"
-                placeholder="请输入编码、名称" @search="doSearch">
-          <i class="h-icon-search"/>
-        </Search>
-
-
-<!--        <Button color="primary" :loading="loading" @click="doSearch">查询</Button>-->
-      </template>
-    </vxe-toolbar>
-    <div class="flex1">
-      <vxe-table row-id="id"
-                 ref="table"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 stripe
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :loading="loading">
-        <vxe-column type="seq" width="40" title="#"/>
-        <vxe-column title="编码" field="productCode" align="left" width="100"/>
-        <vxe-column title="名称" field="productName" align="left"/>
-        <vxe-column title="产品类别" field="productCategory" align="left"/>
-        <vxe-column title="规格" field="specification" align="left"/>
-        <vxe-column title="单位" field="unitName" align="left"/>
-        <vxe-column title="价格" field="unitPrice" align="left"/>
-        <vxe-column title="价格类型" field="priceType" align="left"/>
-        <vxe-column title="价格来源" field="priceSource" align="left"/>
-        <vxe-column title="创建时间" field="orderDate" align="left"/>
-      </vxe-table>
-      <vxe-pager perfect @page-change="loadList(false)"
-                 v-model:current-page="pagination.page"
-                 v-model:page-size="pagination.pageSize"
-                 :total="pagination.total"
-                 :layouts="[ 'PrevPage', 'Number', 'NextPage', 'Sizes', 'Total']">
-        <template #left>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
-                      :loading="loading"></vxe-button>
-        </template>
-      </vxe-pager>
+    <div class="simple-page__pager">
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
 
 <script>
-import PriceRecord from "@js/api/basic/PriceRecord";
-import {loading} from "heyui.ext";
-import Product from "@js/api/basic/Product";
-import ProductCategory from "@js/api/basic/ProductCategory";
+import PriceRecord from '@js/api/basic/PriceRecord';
+import Product from '@js/api/basic/Product';
+import ProductCategory from '@js/api/basic/ProductCategory';
 
 /**
  * @功能描述: 价格记录表
@@ -79,62 +86,110 @@ import ProductCategory from "@js/api/basic/ProductCategory";
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 export default {
-  name: "PriceRecordList",
+  name: 'PriceRecordList',
   data() {
     return {
       loading: false,
       dataList: [],
       params: {
-        filter: null,
-        productId:null,
+        filter: '',
+        priceSource: null,
         productIds: [],
-        productCategoryIds: [],
+        productCategoryIds: []
       },
-      pagination: {
-        page: 1,
-        pageSize: 10,
-        total: 0
-      },
-      productList:[],
-      productCategoryList:[],
-    }
-  },
-  computed: {
-    //查询货商参数
-    queryParams() {
-      console.log("this.params", this.params)
-      const params = JSON.parse(JSON.stringify(this.params));
-      params.productIds = this.params.productIds.join(",");
-      params.productCategoryIds = this.params.productCategoryIds.join(",");
-      console.log("params", params)
-      return Object.assign(params, {
-        page: this.pagination.page,
-        pageSize: this.pagination.pageSize,
-      })
-    }
+      pagination: {page: 1, pageSize: 10, total: 0},
+      productList: [],
+      productCategoryList: [],
+      priceSourceOptions: [
+        {label: '产品价格资料', value: '产品价格资料'},
+        {label: '最近采购价格', value: '最近采购价格'},
+        {label: '最近销售价格', value: '最近销售价格'}
+      ],
+      columns: [
+        {colKey: 'productCode', title: '编码', width: 100},
+        {colKey: 'productName', title: '名称', minWidth: 140, ellipsis: true},
+        {colKey: 'productCategory', title: '产品类别', minWidth: 120, ellipsis: true},
+        {colKey: 'specification', title: '规格', width: 100, ellipsis: true},
+        {colKey: 'unitName', title: '单位', width: 80},
+        {colKey: 'unitPrice', title: '价格', width: 100},
+        {colKey: 'priceType', title: '价格类型', width: 100},
+        {colKey: 'priceSource', title: '价格来源', width: 120},
+        {colKey: 'orderDate', title: '创建时间', width: 160}
+      ]
+    };
   },
   methods: {
     doSearch() {
+      this.pagination.page = 1;
+      this.loadList();
+    },
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
       this.loadList();
     },
     loadList() {
       this.loading = true;
-      PriceRecord.list(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results || [];
-        this.pagination.total = total;
-      }).finally(() => this.loading = false);
-
-      Promise.all([
-        Product.select(),
-        ProductCategory.select(),
-      ]).then((results) => {
+      const query = {
+        page: this.pagination.page,
+        pageSize: this.pagination.pageSize,
+        productIds: (this.params.productIds || []).join(','),
+        productCategoryIds: (this.params.productCategoryIds || []).join(',')
+      };
+      if (this.params.filter) query.filter = this.params.filter;
+      if (this.params.priceSource) query.priceSource = this.params.priceSource;
+      PriceRecord.list(query)
+        .then(({data: {results, total}}) => {
+          this.dataList = results || [];
+          this.pagination.total = total || 0;
+        })
+        .finally(() => (this.loading = false));
+    },
+    loadOptions() {
+      Promise.all([Product.select(), ProductCategory.select()]).then((results) => {
         this.productList = results[0].data || [];
         this.productCategoryList = results[1].data || [];
-      }).finally(() => loading.close());
-    },
+      });
+    }
   },
   created() {
+    this.loadOptions();
     this.loadList();
   }
-}
+};
 </script>
+
+<style scoped>
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+}
+</style>

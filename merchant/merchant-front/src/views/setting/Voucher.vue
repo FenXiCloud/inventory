@@ -115,7 +115,7 @@
                        :total="pagination.total"
                        :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
               <template #left>
-                <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+                <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                             :loading="loading"></vxe-button>
               </template>
             </vxe-pager>
@@ -128,11 +128,11 @@
 
 <script>
 import manba from "manba";
-import {layer} from "@layui/layer-vue";
+import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import FinanceVoucher from "@js/api/setting/FinanceVoucher";
 import InventoryItem from "@js/api/inventory/InventoryItem";
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 import VoucherForm from "./VoucherForm.vue";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
@@ -212,20 +212,20 @@ export default {
   methods: {
     showForm(id) {
       console.info("showForm:", id)
-      let layerId = layer.open({
-        title: "选择生成凭证",
+      let dialogId = openDialog({
+        header: "选择生成凭证",
         offset: ['50px', 'auto'],
-        shadeClose: false,
-        area: ['90%', '600px'],
-        content: h(VoucherForm, {
+        closeOnOverlayClick: false,
+        width: '90%',
+        body: h(VoucherForm, {
           id,
           onClose: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
@@ -251,12 +251,12 @@ export default {
       }
     },
     doRemove(id) {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `是否删除当前数据?`,
         onConfirm: () => {
           FinanceVoucher.delete(id).then(({data}) => {
-            message.success("操作成功～");
+            MessagePlugin.success("操作成功～");
             this.loadList();
           });
         },
@@ -285,27 +285,27 @@ export default {
         orderName: record.productName,
       }).then((success) => {
         if (success) {
-          message("推送成功~");
+          MessagePlugin.success("推送成功~");
           this.loadList();
         }
       });
     },
     editVoucher(row, type) {
-      let layerId = layer.open({
-        title: "编辑凭证",
+      let dialogId = openDialog({
+        header: "编辑凭证",
         offset: 't',
-        shadeClose: false,
-        area: ['90%', '700px'],
-        content: h(VoucherForm, {
+        closeOnOverlayClick: false,
+        width: '90%',
+        body: h(VoucherForm, {
           voucherId: row.voucherId,
           type: type,
           onClose: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });

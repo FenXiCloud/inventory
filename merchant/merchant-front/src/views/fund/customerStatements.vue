@@ -122,7 +122,7 @@
             @click="loadList(false)"
             type="text"
             size="mini"
-            icon="h-icon-refresh"
+            icon="vxe-icon-refresh"
             :loading="loading"
           ></vxe-button>
         </template>
@@ -133,7 +133,7 @@
 <script>
 import manba from 'manba';
 import { mapMutations } from 'vuex';
-import { confirm, loading, message } from 'heyui.ext';
+import { DialogPlugin, LoadingPlugin, MessagePlugin } from 'tdesign-vue-next';
 import AccountFlow from '@js/api/fund/AccountFlow';
 import Customer from '@js/api/basic/Customer';
 
@@ -181,7 +181,7 @@ export default {
     doSearch() {
       this.pagination.page = 1;
       if (!this.params.customerId) {
-        return message.error('请选择客户进行查询~');
+        return MessagePlugin.error('请选择客户进行查询~');
       }
       this.loadList();
     },

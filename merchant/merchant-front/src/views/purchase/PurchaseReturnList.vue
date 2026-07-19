@@ -17,10 +17,10 @@
           <Select  :datas="supplierList" keyName="id" titleName="name"
                     v-model="params.supplierId" placeholder="请选择供货商"/>
         </div>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+        <Search v-model.trim="params.filter"
                 show-search-button class="w-360px ml-8px"
                 placeholder="请输入订单号" @search="doSearch">
-          <i class="h-icon-search"/>
+          <t-icon name="search" />
         </Search>
       </template>
     </vxe-toolbar>
@@ -71,7 +71,7 @@
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
           <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>
@@ -82,7 +82,7 @@
 import manba from "manba";
 import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 import {mapMutations} from "vuex";
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 import Supplier from "@js/api/basic/Supplier";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
@@ -178,22 +178,22 @@ export default {
       if (checkList.length) {
         let ids = checkList.filter(val => val.orderStatus == '已保存').map(val => val.id);
         if (ids.length) {
-          confirm({
+          DialogPlugin.confirm({
             title: "批量审核提示",
             content: `本次审核${ids.length}条?`,
             onConfirm: () => {
               PurchaseReturn.approved('已审核', ids).then(() => {
-                message("操作成功~");
+                MessagePlugin.success("操作成功~");
                 this.$refs.table.clearCheckboxRow()
                 this.loadList();
               })
             }
           })
         } else {
-          message.error("所选数据无需审核~");
+          MessagePlugin.error("所选数据无需审核~");
         }
       } else {
-        message.error("未选择数据~");
+        MessagePlugin.error("未选择数据~");
       }
     },
 
@@ -209,31 +209,31 @@ export default {
       if (checkList.length) {
         let ids = checkList.filter(val => val.orderStatus == '已审核').map(val => val.id);
         if (ids.length) {
-          confirm({
+          DialogPlugin.confirm({
             title: "批量反审核提示",
             content: `本次反审核${ids.length}条?`,
             onConfirm: () => {
               PurchaseReturn.approved('已保存', ids).then(() => {
-                message("操作成功~");
+                MessagePlugin.success("操作成功~");
                 this.$refs.table.clearCheckboxRow()
                 this.loadList();
               })
             }
           })
         } else {
-          message.error("所选数据无需反审核~");
+          MessagePlugin.error("所选数据无需反审核~");
         }
       } else {
-        message.error("未选择数据~");
+        MessagePlugin.error("未选择数据~");
       }
     },
     doRemove(row) {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `确认删除：${row.orderNo}?`,
         onConfirm: () => {
           PurchaseReturn.remove(row.id).then(() => {
-            message("删除成功~");
+            MessagePlugin.success("删除成功~");
             this.loadList();
           })
         }

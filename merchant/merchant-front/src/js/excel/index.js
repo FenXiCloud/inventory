@@ -1,5 +1,5 @@
 import {export_json_to_excel} from "@js/excel/export2Excel";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 
 /**
  * 通用excel导出方法

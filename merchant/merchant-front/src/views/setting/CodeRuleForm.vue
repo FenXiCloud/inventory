@@ -37,7 +37,7 @@
 <script>
 
 import CodeRule from "@js/api/setting/CodeRule";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 import {CopyObj} from "@common/utils";
 import manba from "manba";
 
@@ -135,20 +135,20 @@ export default {
     },
 
     confirm() {
-      let validResult = this.$refs.form.valid();
-      if (validResult.result) {
-        this.loading = true;
-        this.model.startDate = manba(this.model.startDate).format("YYYY-MM");
-        CodeRule.save(this.model).then((result) => {
-          if (result.success){
-            message("保存成功~");
-          }else {
-            message(result.msg);
-          }
-
-          this.$emit('success');
-        }).finally(() => this.loading = false);
-      }
+      this.$refs.form.validate().then((res) => {
+        if (res === true || res.result === true) {
+          this.loading = true;
+          this.model.startDate = manba(this.model.startDate).format("YYYY-MM");
+          CodeRule.save(this.model).then((result) => {
+            if (result.success){
+              MessagePlugin.success("保存成功~");
+            } else {
+              MessagePlugin.error(result.msg || '保存失败');
+            }
+            this.$emit('success');
+          }).finally(() => this.loading = false);
+        }
+      }).catch(() => {});
     },
     init() {
       // this.loading = true;

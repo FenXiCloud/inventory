@@ -30,7 +30,7 @@
  * <p>****************************************************************************</p>
  */
 import Menu from "@js/api/Menu";
-import {message} from "heyui.ext";
+import {MessagePlugin} from "tdesign-vue-next";
 
 export default {
   name: "MerchantModuleGrant",
@@ -65,7 +65,7 @@ export default {
       let merchantMenu = {menus: menus, merchants: [this.merchant.id]};
 
       Menu.grantMerchant(merchantMenu).then(() => {
-        message("授权成功~");
+        MessagePlugin.success("授权成功~");
       }).finally(() => this.loading = false);
     },
     checkRequire() {

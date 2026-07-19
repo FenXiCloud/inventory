@@ -33,11 +33,11 @@
 
 <script>
 
-import {layer} from "@layui/layer-vue";
+import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import TemplateConfigFrom from "./TemplateConfigFrom.vue";
 import FinanceVoucherTemplate from "@js/api/setting/FinanceVoucherTemplate";
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 
 export default {
   name: "VoucherTemplate",
@@ -49,18 +49,18 @@ export default {
   methods: {
     showForm(id) {
       console.info("showForm:", id)
-      let layerId = layer.open({
-        title: "凭证模板",
-        shadeClose: false,
-        area: ['800px', '600px'],
-        content: h(TemplateConfigFrom, {
+      let dialogId = openDialog({
+        header: "凭证模板",
+        closeOnOverlayClick: false,
+        width: '800px',
+        body: h(TemplateConfigFrom, {
           id,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
@@ -81,12 +81,12 @@ export default {
       })
     },
     doRemove(id) {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `是否删除当前数据?`,
         onConfirm: () => {
           FinanceVoucherTemplate.delete(id).then(({data}) => {
-            message.success("操作成功～");
+            MessagePlugin.success("操作成功～");
             this.loadList();
           });
         },

@@ -31,10 +31,10 @@
 
 <script>
 
-import {layer} from "@layui/layer-vue";
+import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import FinanceItemMap from "@js/api/setting/FinanceItemMap";
-import {confirm, message} from "heyui.ext";
+import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
 import FinanceItemMapForm from "./FinanceItemMapForm.vue";
 import FinanceItemMapBatchForm from "./FinanceItemMapBatchForm.vue";
 
@@ -55,37 +55,37 @@ export default {
   methods: {
     showForm(id) {
       console.info("showForm:", id)
-      let layerId = layer.open({
-        title: `${this.param[this.selected]}-辅助项映射设置`,
-        shadeClose: false,
-        area: ['800px', '600px'],
-        content: h(FinanceItemMapForm, {
+      let dialogId = openDialog({
+        header: `${this.param[this.selected]}-辅助项映射设置`,
+        closeOnOverlayClick: false,
+        width: '800px',
+        body: h(FinanceItemMapForm, {
           id,
           categoryId: this.selected,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
     },
     batchShowForm(id) {
-      let layerId = layer.open({
-        title: `${this.param[this.selected]}-辅助项映射设置`,
-        shadeClose: false,
-        area: ['800px', '600px'],
-        content: h(FinanceItemMapBatchForm, {
+      let dialogId = openDialog({
+        header: `${this.param[this.selected]}-辅助项映射设置`,
+        closeOnOverlayClick: false,
+        width: '800px',
+        body: h(FinanceItemMapBatchForm, {
           id,
           categoryId: this.selected,
           onClose: () => {
-            layer.close(layerId);
+            closeDialog(dialogId);
           },
           onSuccess: () => {
             this.loadList();
-            layer.close(layerId);
+            closeDialog(dialogId);
           }
         })
       });
@@ -97,12 +97,12 @@ export default {
       })
     },
     doRemove(id) {
-      confirm({
+      DialogPlugin.confirm({
         title: "系统提示",
         content: `是否删除当前数据?`,
         onConfirm: () => {
           FinanceItemMap.delete(id).then(({data}) => {
-            message.success("操作成功～");
+            MessagePlugin.success("操作成功～");
             this.loadList();
           });
         },

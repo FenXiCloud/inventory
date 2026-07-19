@@ -18,10 +18,10 @@
                 v-model="productIds" placeholder="请选择产品" :multiple="true"/>
         <Select class="ml-0px m-6px" :multiple="true" :datas="productCategoryList" keyName="id" titleName="name"
                 v-model="productCategoryIds" placeholder="请选择产品类别"/>
-        <Search v-model.trim="params.filter" search-button-theme="h-btn-default"
+        <Search v-model.trim="params.filter"
                 show-search-button class="w-260px ml-0px m-6px"
                 placeholder="请输入订单号/供货商名称" @search="doSearch">
-          <i class="h-icon-search"/>
+          <t-icon name="search" />
         </Search>
       </template>
     </vxe-toolbar>
@@ -76,7 +76,7 @@
                  :total="pagination.total"
                  :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
         <template #left>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="h-icon-refresh"
+          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
                       :loading="loading"></vxe-button>
         </template>
       </vxe-pager>
@@ -89,7 +89,7 @@ import {mapMutations} from "vuex";
 import PurchaseReport from "@js/api/purchase/PurchaseReport";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
-import {loading} from "heyui.ext";
+import {LoadingPlugin} from "tdesign-vue-next";
 import Product from "@js/api/basic/Product";
 import ProductCategory from "@js/api/basic/ProductCategory";
 import SupplierCategory from "@js/api/basic/SupplierCategory";
@@ -183,7 +183,7 @@ export default {
         this.productList = results[2].data || [];
         this.productCategoryList = results[3].data || [];
         this.supplierCategoryList = results[4].data || [];
-      }).finally(() => loading.close());
+      }).finally(() => LoadingPlugin(false));
     },
     loadList(type = true) {
       this.loading = true;

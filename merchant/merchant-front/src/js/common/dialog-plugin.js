@@ -1,25 +1,7 @@
 /**
- * TDesign DialogPlugin 兼容层：
- * 1. HeyUI 风格 title/content → TDesign header/body
- * 2. 确认后自动关闭（官方需手动 destroy）
+ * TDesign DialogPlugin 封装：确认后自动关闭（官方需手动 destroy）
  */
 import {DialogPlugin as RawDialogPlugin} from 'tdesign-vue-next';
-
-function normalize(options) {
-  if (!options || typeof options !== 'object') {
-    return options;
-  }
-  const opts = {...options};
-  if (opts.header == null && opts.title != null) {
-    opts.header = opts.title;
-  }
-  if (opts.body == null && opts.content != null) {
-    opts.body = opts.content;
-  }
-  delete opts.title;
-  delete opts.content;
-  return opts;
-}
 
 function closeDialog(dialog) {
   if (!dialog) return;
@@ -32,7 +14,7 @@ function closeDialog(dialog) {
 
 function wrapCreate(fn) {
   return (options, context) => {
-    const opts = normalize(options) || {};
+    const opts = options && typeof options === 'object' ? {...options} : {};
     const userOnConfirm = opts.onConfirm;
     let dialog;
 
@@ -43,7 +25,6 @@ function wrapCreate(fn) {
             closeDialog(dialog);
           })
           .catch((err) => {
-            // 失败时保持弹窗，便于重试
             throw err;
           });
     };

@@ -1,35 +1,38 @@
 <template>
   <div class="order-select">
     <div class="order-select__toolbar">
-      <Select
+      <t-select
           v-model="params.state"
           class="order-select__state"
-          :datas="{已保存:'未审核',已审核:'已审核'}"
+          :options="[{ value: '已保存', label: '未审核' }, { value: '已审核', label: '已审核' }]"
           placeholder="审核状态："
       />
       <span class="order-select__label">订单日期：</span>
-      <DateRangePicker v-model="dateRange"/>
+      <t-date-range-picker v-model="dateRange" clearable allow-input style="width: 260px; border-radius: 4px"/>
       <span class="order-select__label">客户：</span>
-      <Select
+      <t-select
           class="order-select__customer"
           filterable
-          :datas="customerList"
-          keyName="id"
-          titleName="name"
+          :options="customerList"
+          :keys="{ value: 'id', label: 'name' }"
           v-model="params.customerId"
           placeholder="请选择客户"
           readonly
           disabled
       />
-      <Search
+      <t-input
           v-model.trim="params.filter"
-          show-search-button
           class="order-select__search"
           placeholder="请输入订单号"
-          @search="doSearch"
+          clearable
+          style="width: 220px; border-radius: 4px"
+          @enter="doSearch"
       >
-        <t-icon name="search"/>
-      </Search>
+        <template #suffixIcon>
+          <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
+        </template>
+      </t-input>
+      <t-button theme="primary" variant="outline" style="border-radius: 4px" @click="doSearch">搜索</t-button>
     </div>
     <div class="order-select__table">
       <vxe-table
@@ -69,8 +72,8 @@
       />
     </div>
     <div class="order-select__footer">
-      <Button @click="$emit('close')" :loading="loading">取消</Button>
-      <Button color="primary" @click="batchSelect" :loading="loading">确认</Button>
+      <t-button @click="$emit('close')" :loading="loading">取消</t-button>
+      <t-button theme="primary" @click="batchSelect" :loading="loading">确认</t-button>
     </div>
   </div>
 </template>

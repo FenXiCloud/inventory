@@ -196,8 +196,8 @@ export default {
     },
     doRemove(row) {
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认删除规则：${row.name}?`,
+        header: "系统提示",
+        body: `确认删除规则：${row.name}?`,
         onConfirm: () => {
           CodeRule.remove(row.id).then(() => {
             MessagePlugin.success("删除成功~");
@@ -210,11 +210,10 @@ export default {
       let systemDefault = !row.systemDefault;
       let documentType = row.documentType;
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认要「${systemDefault ? "启用" : "禁用"}」规则：${row.name}?`,
+        header: "系统提示",
+        body: `确认要「${systemDefault ? "启用" : "禁用"}」规则：${row.name}?`,
         onConfirm: () => {
           CodeRule.save({id: row.id, systemDefault: systemDefault, documentType: documentType}).then((success) => {
-            console.log(success);
             MessagePlugin.success("操作成功~");
             this.loadList();
           })

@@ -32,9 +32,9 @@
           @mouseenter="onRowEnter(i, $event)" @mouseleave="onRowLeave">
         <td class="tdZhaoyao tdInput">
           <div class="display" v-if="!d.zyEdit" @click="doEdit(d,'zy',i)">{{ d.data.summary }}</div>
-          <DropdownCustom v-show="d.zyEdit" ref="zyDropdown" trigger="manual" :toggle-icon="false" style="width: 100%"
-                          equalWidth @hide="endEdit(d,'zy',i)">
-            <textarea class="h-input edit" data-type="zy" :data-index="i" :id="'zy'+i" @input="zyInput"></textarea>
+          <ManualPopup v-show="d.zyEdit" ref="zyDropdown" trigger="manual" style="width: 100%"
+                          equal-width @hide="endEdit(d,'zy',i)">
+            <textarea class="voucher-input edit" data-type="zy" :data-index="i" :id="'zy'+i" @input="zyInput"></textarea>
             <template #content>
               <div style="height: 180px;overflow-y: scroll;">
                 <ul class="summary" :id="`summary${i}`">
@@ -45,7 +45,7 @@
                 </ul>
               </div>
             </template>
-          </DropdownCustom>
+          </ManualPopup>
         </td>
         <td class="tdKemu tdInput">
           <div class="display" v-if="!d.kmEdit" @click="doEdit(d,'km',i)">
@@ -57,23 +57,23 @@
                 numFormat(balanceList[d.data.subjectId])
               }}</span>
           </div>
-          <Row v-if="d.data.unit || d.data.num" @click.stop="" class="num" type="flex" :space-x="10">
-            <Cell>数量:</Cell>
-            <Cell>
+          <div v-if="d.data.unit || d.data.num" @click.stop="" class="num voucher-flex-row">
+            <span>数量:</span>
+            <span>
               <span @click.stop="showInput" class="text-hover">{{ d.data.num || 0 }}</span>
               <input class="numInput" @blur.stop="hideInput($event,d.data)" @click="" style="display: none;"
                      v-model="d.data.num" @click.stop="" v-width="40">
-            </Cell>
-            <Cell>单价:</Cell>
-            <Cell>
+            </span>
+            <span>单价:</span>
+            <span>
               <span @click.stop="showInput" class="text-hover">{{ d.data.price || 0 }}</span>
               <input class="numInput" @blur.stop="hideInput($event,d.data)" style="display: none;"
                      v-model="d.data.price" @click.stop="" v-width="40">
-            </Cell>
-          </Row>
-          <DropdownCustom v-show="d.kmEdit" ref="kmDropdown" trigger="manual" :toggle-icon="false" style="width: 100%"
-                          equalWidth @hide="endEdit(d,'km',i)">
-            <textarea class="h-input edit" data-type="km" :data-index="i" :id="'km'+i" @input="kmInput"></textarea>
+            </span>
+          </div>
+          <ManualPopup v-show="d.kmEdit" ref="kmDropdown" trigger="manual" style="width: 100%"
+                          equal-width @hide="endEdit(d,'km',i)">
+            <textarea class="voucher-input edit" data-type="km" :data-index="i" :id="'km'+i" @input="kmInput"></textarea>
             <template #content>
               <div style="height: 180px;overflow-y: scroll;" v-if="!d.auxiliary">
                 <ul class="subjects" :id="`subjects${i}`">
@@ -84,50 +84,49 @@
                 </ul>
               </div>
               <div v-else class="auxiliary padding">
-                <Row v-if="auxiliaryAccounting[i]" v-for="item in auxiliaryAccounting[i]" type="flex" :space="10"
+                <div v-if="auxiliaryAccounting[i]" v-for="item in auxiliaryAccounting[i]" class="voucher-flex-row"
                      :key="item.id">
-<!--                  <Cell :flex="1" class="label">{{ item.name }}</Cell>-->
-                  <Cell v-width="180">
-                    <Select v-model="d.data[item.id]" v-if="auxiliaryAccountingData[d.data.subjectId]" type="object"
-                            className="auxiliary" keyName="id" titleName="name"
-                            :datas="auxiliaryAccountingData[d.data.subjectId]" :filterable="true"></Select>
-                  </Cell>
-                </Row>
+                  <div style="width: 180px">
+                    <t-select v-model="d.data[item.id]" v-if="auxiliaryAccountingData[d.data.subjectId]"
+                              class="auxiliary" :keys="{ value: 'id', label: 'name' }"
+                              :options="auxiliaryAccountingData[d.data.subjectId]" filterable clearable/>
+                  </div>
+                </div>
                 <div class="text-center margin-top">
-                  <Button color="primary" @click="fillAuxiliary(d,auxiliaryAccountingData[d.data.subjectId],i)">确认
-                  </Button>
+                  <t-button theme="primary" @click="fillAuxiliary(d,auxiliaryAccountingData[d.data.subjectId],i)">确认
+                  </t-button>
                 </div>
               </div>
             </template>
-          </DropdownCustom>
+          </ManualPopup>
         </td>
         <td class="tdJieFang tdInput">
           <div v-if="!d.jfEdit" class="display displayMoney" :class="{'red-color':d.data.debitAmount<0}"
                @click="doEdit(d,'jf',i)">
             <span @click.stop="doEdit(d,'jf',i)">{{ formatMoney(d.data.debitAmount) }}</span>
           </div>
-          <DropdownCustom v-show="d.jfEdit" ref="jfDropdown" placement="top" trigger="manual" :toggle-icon="false"
-                          style="width: 100%" equalWidth @hide="endEdit(d,'jf',i)">
-            <input max="999999999" min="-999999999" type="number" class="h-input jf edit" data-type="jf" :data-index="i"
+          <ManualPopup v-show="d.jfEdit" ref="jfDropdown" placement="top" trigger="manual"
+                          style="width: 100%" equal-width @hide="endEdit(d,'jf',i)">
+            <input max="999999999" min="-999999999" type="number" class="voucher-input jf edit" data-type="jf" :data-index="i"
                    :id="'jf'+i" v-model="d.data.debitAmount">
             <template #content>
               <div class="hoverNum">{{ numFormat(d.data.debitAmount) }}</div>
             </template>
-          </DropdownCustom>
+          </ManualPopup>
         </td>
         <td class="tdLast tdDaiFang tdInput">
           <div v-if="!d.dfEdit" class="display displayMoney" :class="{'red-color':d.data.creditAmount<0}"
                @click="doEdit(d,'df',i)">
             <span @click.stop="doEdit(d,'df',i)">{{ formatMoney(d.data.creditAmount) }}</span>
           </div>
-          <DropdownCustom v-show="d.dfEdit" ref="dfDropdown" placement="top" trigger="manual" :toggle-icon="false"
-                          style="width: 100%" equalWidth @hide="endEdit(d,'df',i)">
-            <input max="999999999" min="-999999999" :data-index="i" data-type="df" class="h-input df edit" :id="'df'+i"
+          <ManualPopup v-show="d.dfEdit" ref="dfDropdown" placement="top" trigger="manual"
+                          style="width: 100%" equal-width @hide="endEdit(d,'df',i)">
+            <input max="999999999" min="-999999999" :data-index="i" data-type="df" class="voucher-input df edit" :id="'df'+i"
                    v-model="d.data.creditAmount" step="">
             <template #content>
               <div class="hoverNum">{{ numFormat(d.data.creditAmount) }}</div>
             </template>
-          </DropdownCustom>
+          </ManualPopup>
         </td>
       </tr>
       <tr class="trDetails total">
@@ -163,7 +162,7 @@ import Decimal from 'decimal.js';
 import Pinyin from 'chinese-to-pinyin';
 import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
 import FinanceVoucher from "@js/api/setting/FinanceVoucher";
-
+import ManualPopup from '@/components/ManualPopup.vue';
 function getDropdownRef(vm, type, idx) {
   const refs = vm.$refs[`${type}Dropdown`];
   if (!refs) return null;
@@ -216,6 +215,7 @@ const ToPy = (name) => {
 
 export default {
   name: "VoucherTable",
+  components: { ManualPopup },
   props: {
     value: Object,
     modelValue: Object,
@@ -462,7 +462,6 @@ export default {
         this.summarySelect = JSON.parse(tmp2);
       }
       FinanceAccountLink.voucherSelect().then(({data}) => {
-        console.log(data);
         this.voucherSelect = data.data || [];
         localStorage.setItem("voucherSelect", JSON.stringify(data));
       });
@@ -486,7 +485,6 @@ export default {
       dropdown && dropdown.hide();
     },
     chooseSubject(d, subject, idx) {
-      console.log(subject);
       if (d.data.subjectId !== subject.id) {
         d.data = {
           subjectName: `${subject.code}-${subject.name}`,
@@ -503,7 +501,6 @@ export default {
       }
       //判断是否有辅助项目
       if (subject.auxiliaryAccounting) {
-        console.info("subject.auxiliaryAccounting:", subject.auxiliaryAccounting);
         this.auxiliaryAccounting[idx] = JSON.parse(subject.auxiliaryAccounting);
         this.loadAuxiliaryAccountingData(idx, subject);
         //开启辅助项输入
@@ -539,13 +536,31 @@ export default {
       }
     },
     fillAuxiliary(row, auxiliaryData, idx) {
-      console.info("auxiliary:", auxiliaryData);
       let title = "", rowData = row.data;
-      Object.keys(auxiliaryData).forEach(val => {
-        if (rowData[val]) {
-          title += '_' + rowData[val].code + "_" + rowData[val].name;
-        }
-      });
+      const categories = this.auxiliaryAccounting[idx] || [];
+      const optionList = Array.isArray(auxiliaryData)
+          ? auxiliaryData
+          : Object.values(auxiliaryData || {}).flatMap(v => Array.isArray(v) ? v : (v ? [v] : []));
+      const resolveSelected = (raw) => {
+        if (!raw) return null;
+        if (typeof raw === 'object') return raw;
+        return optionList.find(x => x && x.id === raw) || null;
+      };
+      if (categories.length) {
+        categories.forEach(cat => {
+          const selected = resolveSelected(rowData[cat.id]);
+          if (selected) {
+            title += '_' + selected.code + "_" + selected.name;
+          }
+        });
+      } else {
+        Object.keys(auxiliaryData || {}).forEach(val => {
+          const selected = resolveSelected(rowData[val]);
+          if (selected) {
+            title += '_' + selected.code + "_" + selected.name;
+          }
+        });
+      }
       this.endEdit(row, 'km', idx, true);
       this.$nextTick(() => {
         rowData['auxiliaryTitle'] = title;
@@ -822,7 +837,7 @@ export default {
           || t.closest('.auxiliary')
           || t.closest('.tdInput')
           || t.closest('.t-popup')
-          || t.closest('.compat-dropdown-content')) {
+          || t.closest('.manual-popup-content')) {
         return;
       }
       if (this.currentEdit) {
@@ -973,12 +988,12 @@ export default {
         }
       }
 
-      .h-autocomplete-show {
+      .voucher-autocomplete-show {
         border: none;
         border-radius: 0;
       }
 
-      .h-input {
+      .voucher-input {
         border: none;
         border-radius: 0;
         height: 60px !important;
@@ -986,11 +1001,11 @@ export default {
         width: 100% !important;
       }
 
-      textarea.h-input {
+      textarea.voucher-input {
         height: 60px !important;
       }
 
-      .h-dropdowncustom-show-content {
+      .voucher-popup-content {
         width: 100% !important;
       }
     }
@@ -1011,7 +1026,14 @@ export default {
     }
   }
 
-  .h-numberinput-show {
+  .voucher-flex-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .voucher-number-wrap {
     border-radius: 0;
 
     &.focusing {
@@ -1019,7 +1041,7 @@ export default {
       box-shadow: none;
     }
 
-    .h-input {
+    .voucher-input {
       font-size: 16px;
       font-weight: bold;
     }

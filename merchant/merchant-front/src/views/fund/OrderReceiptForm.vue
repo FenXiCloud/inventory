@@ -6,39 +6,37 @@
           <label class="mr-20px" style="font-size: 16px !important">
             <span style="color: red">*</span>客户：
           </label>
-          <Select
+          <t-select
             v-model="form.customerName"
             class="w-200px z-index-1"
-            :datas="customerDataList"
-            keyName="name"
-            titleName="name"
+            :options="customerDataList"
+            :keys="{ value: 'name', label: 'name' }"
             placeholder="请选择客户"
-            :filterable="true"
+            filterable
+            clearable
             :disabled="isAudited"
-            @change="selectCustomer($event)"
+            @change="selectCustomer"
           />
           <label class="mr-20px ml-16px" style="font-size: 16px !important">总欠款：</label>
-          <Input v-model="form.totalAmountsOwed" class="w-120px" disabled />
+          <t-input v-model="form.totalAmountsOwed" class="w-120px" disabled />
           <label class="mr-20px ml-16px" style="font-size: 16px !important">业务员：</label>
-          <Select
-            ref="selectRef"
-            style="z-index: 1"
-            v-model="form.orderStaffName"
-            class="w-140px"
-            :datas="orderStaffList"
-            keyName="name"
-            titleName="name"
-            placeholder="选择业务员"
-            :filterable="true"
-            :disabled="isAudited"
-            @change="selectOrderStaff($event)"
-          >
-            <template #bottom>
-              <Button no-border icon="add" @click="addOrderStaff()">新建</Button>
-            </template>
-          </Select>
+          <span style="display: inline-flex; align-items: center; z-index: 1">
+            <t-select
+              ref="selectRef"
+              v-model="form.orderStaffName"
+              class="w-140px"
+              :options="orderStaffList"
+              :keys="{ value: 'name', label: 'name' }"
+              placeholder="选择业务员"
+              filterable
+              clearable
+              :disabled="isAudited"
+              @change="selectOrderStaff"
+            />
+            <t-button v-if="!isAudited" variant="text" @click="addOrderStaff()">新建</t-button>
+          </span>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker
+          <t-date-picker
             class="w-140px"
             v-model="form.orderDate"
             :clearable="false"
@@ -146,8 +144,8 @@
 
       <vxe-toolbar>
         <template v-if="!isAudited" #tools>
-          <Button @click="sourceForm()">选择源单</Button>
-          <Button @click="autoMatic()">自动核销</Button>
+          <t-button @click="sourceForm()">选择源单</t-button>
+          <t-button @click="autoMatic()">自动核销</t-button>
         </template>
       </vxe-toolbar>
 
@@ -209,9 +207,9 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input
+          <t-input
             placeholder="请输入备注"
-            maxlength="150"
+            :maxlength="150"
             v-model="form.remarks"
             :disabled="isAudited"
           />
@@ -220,41 +218,40 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">整单折扣：</label>
-          <Input
+          <t-input
             type="number"
             v-model="form.discountRate"
-            min="0"
             :disabled="isAudited"
             @blur="changeDiscountRate"
           />
           <label class="ml-10px mr-16px w-100px">本单预收款：</label>
-          <Input disabled v-model="form.collectionAmount" />
+          <t-input disabled v-model="form.collectionAmount" />
           <div class="receipt-extra-actions">
-            <Button @click="historyForm()">历史单据</Button>
-            <Button :title="logContent">操作日志</Button>
+            <t-button @click="historyForm()">历史单据</t-button>
+            <t-button :title="logContent">操作日志</t-button>
           </div>
         </div>
       </div>
     </div>
 
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button :loading="loading" @click="closeWindow">取消</Button>
+      <t-button :loading="loading" @click="closeWindow">取消</t-button>
       <div>
         <template v-if="!isAudited">
-          <Button color="primary" :loading="loading" @click="saveForm('add')">保存并新增</Button>
-          <Button :loading="loading" @click="saveForm('save')">保存</Button>
-        <Button @click="doPrint" :loading="loading">打印</Button>
-          <Button
+          <t-button theme="primary" :loading="loading" @click="saveForm('add')">保存并新增</t-button>
+          <t-button :loading="loading" @click="saveForm('save')">保存</t-button>
+          <t-button @click="doPrint" :loading="loading">打印</t-button>
+          <t-button
             v-if="form.orderStatus == '已保存'"
             :loading="loading"
             @click="saveForm('audit', '已审核')"
-          >审核</Button>
+          >审核</t-button>
         </template>
-        <Button
+        <t-button
           v-else
           :loading="loading"
           @click="approved('已保存')"
-        >反审核</Button>
+        >反审核</t-button>
       </div>
     </div>
   </div>
@@ -403,7 +400,7 @@ export default {
     approved(orderStatus) {
       const isAnti = orderStatus === '已保存';
       DialogPlugin.confirm({
-        content: isAnti ? '确定反审核？' : '确定审核？',
+        body: isAnti ? '确定反审核？' : '确定审核？',
         onConfirm: () => {
           OrderReceipt.approved(orderStatus, this.form.id)
             .then((success) => {
@@ -461,9 +458,6 @@ export default {
     },
     saveForm(type = 'add', orderStatus = '已保存') {
       // this.type = type;
-      // console.log(
-      //   'saveForm----------------------------------------------------------'
-      // );
       let orderReceipt = {
         documentSource: 1,
         createdBy: this.user.admin.id,
@@ -477,7 +471,6 @@ export default {
         orderReceipt.approvedBy = this.user.admin.id;
         orderReceipt.approvedName = this.user.admin.name;
       }
-      // console.log(this.tableData2);
       const filterEmptyObjects = (arr) =>
         arr
           .map(({ _X_ROW_KEY, ...rest }) => rest)
@@ -501,8 +494,8 @@ export default {
       } else if (params.itemList?.length) {
         if (this.form.collectionAmount > 0) {
           DialogPlugin.confirm({
-            title: '系统提示',
-            content: `收款金额大于本次折扣后核销金额,是否仍要修改?`,
+            header: '系统提示',
+            body: `收款金额大于本次折扣后核销金额,是否仍要修改?`,
             onConfirm: () => {
               this.save(type, params);
             }
@@ -511,8 +504,8 @@ export default {
         }
         if (this.form.collectionAmount < 0) {
           DialogPlugin.confirm({
-            title: '系统提示',
-            content: `收款金额小于本次折扣后核销金额,是否仍要修改?`,
+            header: '系统提示',
+            body: `收款金额小于本次折扣后核销金额,是否仍要修改?`,
             onConfirm: () => {
               this.save(type, params);
             }
@@ -632,7 +625,8 @@ export default {
         .finally(() => (this.loading = false));
     },
 
-    selectCustomer(e) {
+    selectCustomer(value) {
+      const e = this.customerDataList.find((item) => item.name === value);
       this.form.customerId = e?.id || null;
       this.form.totalAmountsOwed = e?.balance || null;
 
@@ -640,7 +634,8 @@ export default {
         ...this.form
       };
     },
-    selectOrderStaff(e) {
+    selectOrderStaff(value) {
+      const e = this.orderStaffList.find((item) => item.name === value);
       this.form.orderStaffId = e?.id || null;
     },
     changeAccount(value, row) {
@@ -651,10 +646,8 @@ export default {
         row.settlementAccountId = selectedItem.id; // 设置 id
       }
 
-      console.log(row, 'changeAccount');
     },
     changePaymentMethod(value, row) {
-      console.log(value, 'changePaymentMethod');
       const selectedItem = this.paymentMethodList.find(
         (item) => item.name === value
       );
@@ -663,7 +656,6 @@ export default {
       }
     },
     addOrderStaff() {
-      document.getElementsByClassName('h-dropdown')[0].style.zIndex = 1;
       this.showForm();
     },
 
@@ -678,7 +670,6 @@ export default {
           entity,
           type,
           onClose: () => {
-            console.log(this.$refs.selectRef);
             closeDialog(dialogId);
           },
           onSuccess: () => {
@@ -733,7 +724,6 @@ export default {
         body: h(SourceForm, {
           params,
           onClose: () => {
-            console.log(this.$refs.selectRef);
             closeDialog(dialogId);
           },
           onSuccess: (checkList) => {
@@ -755,7 +745,6 @@ export default {
                 };
               });
 
-            console.log(this.tableData2, 'tableData2tableData2');
             // this.loadOrderStaff();
             closeDialog(dialogId);
           }
@@ -764,7 +753,6 @@ export default {
     }
   },
   created() {
-    console.log(this.orderId, this.type, 'orderIdorderId');
     if (this.orderId) {
       this.loadList();
     }

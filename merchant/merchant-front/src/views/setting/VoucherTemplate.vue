@@ -1,7 +1,7 @@
 <template>
   <div class="modal-column">
     <div>
-      <Button @click="showForm()" status="primary" class="float-right mt-4px mr-16px">新 增</Button>
+      <t-button theme="primary" class="float-right mt-4px mr-16px" @click="showForm()">新 增</t-button>
     </div>
     <div class="flex-1 p-16px">
       <div class="border p-8px mb-16px" v-for="(items,key) in dataList" :key="key">
@@ -12,8 +12,8 @@
             </div>
           </template>
           <template #tools>
-            <Button @click="showForm(items.id)" color="primary">编辑</Button>
-            <Button @click="doRemove(items.id)">删除</Button>
+            <t-button theme="primary" @click="showForm(items.id)">编辑</t-button>
+            <t-button @click="doRemove(items.id)">删除</t-button>
           </template>
         </vxe-toolbar>
         <div class="mt-16px">
@@ -49,7 +49,6 @@ export default {
   },
   methods: {
     showForm(id) {
-      console.info("showForm:", id)
       let dialogId = openDialog({
         header: "凭证模板",
         closeOnOverlayClick: false,
@@ -77,14 +76,13 @@ export default {
     },
     loadList() {
       FinanceVoucherTemplate.list({}).then(({data}) => {
-        console.log(data);
         this.dataList = data;
       })
     },
     doRemove(id) {
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `是否删除当前数据?`,
+        header: "系统提示",
+        body: `是否删除当前数据?`,
         onConfirm: () => {
           FinanceVoucherTemplate.delete(id).then(({data}) => {
             MessagePlugin.success("操作成功～");

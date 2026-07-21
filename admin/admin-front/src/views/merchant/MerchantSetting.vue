@@ -91,9 +91,7 @@ export default {
   box-sizing: border-box;
 }
 
-.merchant-setting__page :deep(.simple-page),
-.merchant-setting__page :deep(.frame-page),
-.merchant-setting__page :deep(.t-panel) {
+.merchant-setting__page :deep(.simple-page) {
   width: 100% !important;
   max-width: none !important;
   height: 100%;

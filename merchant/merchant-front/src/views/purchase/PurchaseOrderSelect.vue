@@ -2,16 +2,20 @@
   <div class="order-select">
     <div class="order-select__toolbar">
       <span class="order-select__label">订单日期：</span>
-      <DateRangePicker v-model="dateRange"/>
-      <Search
+      <t-date-range-picker v-model="dateRange" clearable allow-input style="width: 260px; border-radius: 4px"/>
+      <t-input
           v-model.trim="params.filter"
-          show-search-button
           class="order-select__search"
           placeholder="请输入订单编号"
-          @search="doSearch"
+          clearable
+          style="width: 220px; border-radius: 4px"
+          @enter="doSearch"
       >
-        <t-icon name="search"/>
-      </Search>
+        <template #suffixIcon>
+          <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
+        </template>
+      </t-input>
+      <t-button theme="primary" variant="outline" style="border-radius: 4px" @click="doSearch">搜索</t-button>
     </div>
     <div class="order-select__table">
       <vxe-table
@@ -53,8 +57,8 @@
       />
     </div>
     <div class="order-select__footer">
-      <Button @click="$emit('close')" :loading="loading">取消</Button>
-      <Button color="primary" @click="confirm" :loading="loading">确认</Button>
+      <t-button @click="$emit('close')" :loading="loading">取消</t-button>
+      <t-button theme="primary" @click="confirm" :loading="loading">确认</t-button>
     </div>
   </div>
 </template>

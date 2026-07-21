@@ -1,31 +1,33 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules">
-        <FormItem label="姓名" required prop="name">
-          <Input placeholder="请输入真实姓名" v-model="model.name"/>
-        </FormItem>
-        <FormItem label="手机号" required prop="mobile">
-          <Input placeholder="请输入常用手机号" v-model="model.mobile"/>
-        </FormItem>
-        <FormItem label="角色" prop="roleId" required>
-          <Select :datas="roleList" keyName="id" titleName="name" placeholder="请选择角色" v-model="model.roleId"/>
-        </FormItem>
-        <FormItem label="账号" prop="username">
-          <Input :readonly="!!model.id" placeholder="为空系统自动生成账号" v-model="model.username"/>
-        </FormItem>
-        <FormItem v-if="!model.id" label="密码" prop="password">
-          <Input type="password" placeholder="默认手机号后6位" v-model="model.password"/>
-        </FormItem>
-      </Form>
+      <t-form ref="form" :data="model" :rules="validationRules">
+        <t-form-item label="姓名" name="name">
+          <t-input placeholder="请输入真实姓名" v-model="model.name"/>
+        </t-form-item>
+        <t-form-item label="手机号" name="mobile">
+          <t-input placeholder="请输入常用手机号" v-model="model.mobile"/>
+        </t-form-item>
+        <t-form-item label="角色" name="roleId">
+          <t-select
+              :options="roleList"
+              :keys="{ value: 'id', label: 'name' }"
+              placeholder="请选择角色"
+              v-model="model.roleId"
+              clearable
+          />
+        </t-form-item>
+        <t-form-item label="账号" name="username">
+          <t-input :readonly="!!model.id" placeholder="为空系统自动生成账号" v-model="model.username"/>
+        </t-form-item>
+        <t-form-item v-if="!model.id" label="密码" name="password">
+          <t-input type="password" placeholder="默认手机号后6位" v-model="model.password"/>
+        </t-form-item>
+      </t-form>
     </div>
     <div class="modal-column-between">
-      <Button @click="$emit('close')" :loading="loading">
-        取消
-      </Button>
-      <Button color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
@@ -64,20 +66,21 @@ export default {
         mobile: null
       },
       validationRules: {
-        mobile: ['mobile']
+        name: [{ required: true, message: '请输入姓名', type: 'error', trigger: 'blur' }],
+        mobile: [{ required: true, message: '请输入手机号', type: 'error', trigger: 'blur' }],
+        roleId: [{ required: true, message: '请选择角色', type: 'error' }]
       }
     }
   },
   methods: {
     confirm() {
-      this.$refs.form.validate().then((res) => {
-        if (res === true || res.result === true) {
-          this.loading = true;
-          Admin.save(this.model).then(() => {
-            MessagePlugin.success("保存成功~");
-            this.$emit('success');
-          }).finally(() => this.loading = false);
-        }
+      this.$refs.form.validate().then((result) => {
+        if (result !== true) return;
+        this.loading = true;
+        Admin.save(this.model).then(() => {
+          MessagePlugin.success("保存成功~");
+          this.$emit('success');
+        }).finally(() => this.loading = false);
       }).catch(() => {});
     },
   },

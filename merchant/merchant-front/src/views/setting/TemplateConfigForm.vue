@@ -1,19 +1,31 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" mode="threecolumn" :rules="validationRules" :showErrorTip="true" :labelWidth="90">
-        <FormItem label="模板名称" prop="title">
-          <Input v-model="model.title"/>
-        </FormItem>
-        <FormItem label="模板类型" prop="type">
-          <Select :datas="documentTypeDataList" keyName="documentType" v-model="model.type" filterable
-                  titleName="documentType" placeholder="选择模板类型"/>
-        </FormItem>
-        <FormItem label="凭证字" prop="wordId">
-          <Select :datas="voucherWords" keyName="id" v-model="model.wordId" filterable :deletable="false"
-                  titleName="word" placeholder="选择凭证字"/>
-        </FormItem>
-      </Form>
+      <t-form ref="form" :data="model" :rules="validationRules" label-width="90px">
+        <t-form-item label="模板名称" name="title">
+          <t-input v-model="model.title"/>
+        </t-form-item>
+        <t-form-item label="模板类型" name="type">
+          <t-select
+              :options="documentTypeDataList"
+              :keys="{ value: 'documentType', label: 'documentType' }"
+              v-model="model.type"
+              filterable
+              clearable
+              placeholder="选择模板类型"
+          />
+        </t-form-item>
+        <t-form-item label="凭证字" name="wordId">
+          <t-select
+              :options="voucherWords"
+              :keys="{ value: 'id', label: 'word' }"
+              v-model="model.wordId"
+              filterable
+              :clearable="false"
+              placeholder="选择凭证字"
+          />
+        </t-form-item>
+      </t-form>
       <vxe-table size="mini" ref="xTable" border="border" show-overflow keep-source
                  :row-config="{ height: 40, isCurrent: true, isHover: true }"
                  show-footer stripe
@@ -29,26 +41,26 @@
         </vxe-column>
         <vxe-column title="会计科目" field="warehouseName">
           <template #default="scope">
-            <div class="h-input-group goodsSelect">
-              <Select :deletable="false" ref="ms" v-model="scope.row.subjectId" :datas="subjects" filterable
-                      placeholder="请选择会计科目" keyName="id" titleName="subjectName" @change="changeSubject(scope)">
-                <template v-slot:item="{ item }">
-                  <div>{{ item.subjectName }}</div>
-                </template>
-              </Select>
+            <div class="input-group goodsSelect">
+              <t-select
+                  :clearable="false"
+                  ref="ms"
+                  v-model="scope.row.subjectId"
+                  :options="subjects"
+                  filterable
+                  placeholder="请选择会计科目"
+                  :keys="{ value: 'id', label: 'subjectName' }"
+                  @change="changeSubject(scope)"
+              />
             </div>
           </template>
         </vxe-column>
         <vxe-column field="balanceDirection" title="借贷方向" width="100"></vxe-column>
       </vxe-table>
     </div>
-    <div class="modal-column-right">
-      <Button icon="fa fa-close" @click="$emit('close')" :loading="loading">
-        取消
-      </Button>
-      <Button icon="fa fa-save" color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+    <div class="modal-column-between">
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
@@ -146,7 +158,6 @@ export default {
         });
       });
       FinanceAccountLink.subject().then(({data}) => {
-        console.info("subjects:", data)
         this.subjects = data;
         this.subjects.forEach(subject => {
           subject.subjectName = `${subject.code}-${subject.name}`;
@@ -158,7 +169,6 @@ export default {
       const filter = this.subjects.filter((item) => {
         return item.id === subjectId
       });
-      console.log(filter[0])
       this.templateData[rowIndex].balanceDirection = filter[0].balanceDirection;
       this.templateData[rowIndex].subjectName = filter[0].subjectName;
       this.templateData[rowIndex].subjectCode = filter[0].code;

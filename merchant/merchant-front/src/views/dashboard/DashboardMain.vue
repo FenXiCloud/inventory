@@ -11,7 +11,7 @@
       </div>
     </div>
     <div class="dashboard__calendar">
-      <DatePicker v-model="date" :inline="true"/>
+      <t-date-picker v-model="date" mode="date" :clearable="false"/>
     </div>
   </div>
 </template>

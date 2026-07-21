@@ -1,35 +1,70 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules" :labelWidth="120">
-        <FormItem label="规则名称" required prop="name">
-          <Input placeholder="请输入规则名称" v-model="model.name"/>
-        </FormItem>
-        <FormItem label="规则前缀" required prop="prefix">
-          <Input placeholder="请输入规则前缀" v-model="model.prefix"/>
-        </FormItem>
-        <FormItem label="格式化" required prop="format">
-          <Select v-if="documentTypes.includes(model.documentType)"   placeholder="类别编码" v-model="model.format"    @change="formatValueChange" :datas="codeBusinessValueList"/>
-          <Select v-else  placeholder="请选择日期格式" v-model="model.format"    @change="formatValueChange" :datas="formatValueList"/>
-        </FormItem>
-        <FormItem label="流水号位数" required prop="serialNumberLength">
-          <Select placeholder="请输入流水号位数" v-model="model.serialNumberLength"  @change="serialNumberLengthValueChange" :datas="serialNumberLengthValueList"/>
-        </FormItem>
-        <FormItem label="起始值" required prop="startValue">
-          <NumberInput  placeholder="起始值" v-model="model.startValue" @blur="handleBlurForStartValue"  :min="0"/>
-        </FormItem>
-        <FormItem label="流水号清零" required prop="resetPeriod">
-          <Select placeholder="流水号清零" v-model="model.resetPeriod" :datas="resetPeriodValueList"/>
-        </FormItem>
-        <FormItem label="单据类型" required prop="documentType">
-          <Select placeholder="单据类型" v-model="model.documentType" :disabled = "documentTypeDisabled"  :datas="documentTypeValueList"/>
-        </FormItem>
-      </Form>
+      <t-form ref="form" :data="model" :rules="validationRules" label-width="120px">
+        <t-form-item label="规则名称" name="name">
+          <t-input placeholder="请输入规则名称" v-model="model.name"/>
+        </t-form-item>
+        <t-form-item label="规则前缀" name="prefix">
+          <t-input placeholder="请输入规则前缀" v-model="model.prefix"/>
+        </t-form-item>
+        <t-form-item label="格式化" name="format">
+          <t-select
+              v-if="documentTypes.includes(model.documentType)"
+              placeholder="类别编码"
+              v-model="model.format"
+              @change="formatValueChange"
+              :options="codeBusinessValueList"
+              :keys="{ value: 'key', label: 'title' }"
+              clearable
+          />
+          <t-select
+              v-else
+              placeholder="请选择日期格式"
+              v-model="model.format"
+              @change="formatValueChange"
+              :options="formatValueList"
+              :keys="{ value: 'key', label: 'title' }"
+              clearable
+          />
+        </t-form-item>
+        <t-form-item label="流水号位数" name="serialNumberLength">
+          <t-select
+              placeholder="请输入流水号位数"
+              v-model="model.serialNumberLength"
+              @change="serialNumberLengthValueChange"
+              :options="serialNumberLengthValueList"
+              :keys="{ value: 'key', label: 'title' }"
+              clearable
+          />
+        </t-form-item>
+        <t-form-item label="起始值" name="startValue">
+          <t-input-number placeholder="起始值" v-model="model.startValue" @blur="handleBlurForStartValue" :min="0"/>
+        </t-form-item>
+        <t-form-item label="流水号清零" name="resetPeriod">
+          <t-select
+              placeholder="流水号清零"
+              v-model="model.resetPeriod"
+              :options="resetPeriodValueList"
+              :keys="{ value: 'key', label: 'title' }"
+              clearable
+          />
+        </t-form-item>
+        <t-form-item label="单据类型" name="documentType">
+          <t-select
+              placeholder="单据类型"
+              v-model="model.documentType"
+              :disabled="documentTypeDisabled"
+              :options="documentTypeValueList"
+              :keys="{ value: 'key', label: 'title' }"
+              clearable
+          />
+        </t-form-item>
+      </t-form>
     </div>
-    <div class="modal-column-right">
-      <Button icon="fa fa-save" style="justify-content: right" color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+    <div class="modal-column-between">
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
@@ -121,11 +156,9 @@ export default {
     },
 
     formatValueChange(){
-       console.log("formatValueChange: "+this.model.format);
     },
 
     serialNumberLengthValueChange(){
-      console.log("formatValueChange: "+this.model.serialNumberLength);
       let startValue = parseInt(this.model.startValue);
       let serialNumberLength = parseInt(this.model.serialNumberLength);
       this.formatSerialNumber(startValue,serialNumberLength);

@@ -1,16 +1,6 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <!--      <Form ref="form" :model="model" :rules="validationRules" :showErrorTip="true" :labelWidth="130">-->
-      <!--        <FormItem label="财务软件辅助项" prop="financeId">-->
-      <!--          <Select :datas="financeItemMappings" keyName="id" v-model="model.financeId" filterable-->
-      <!--                  titleName="titleName" placeholder="选择财务软件辅助项" @change="changeMappings('financeId')"/>-->
-      <!--        </FormItem>-->
-      <!--        <FormItem label="进销存辅助项" prop="inventoryId">-->
-      <!--          <Select :datas="itemMappings" keyName="id" v-model="model.inventoryId" filterable-->
-      <!--                  titleName="titleName" placeholder="选择进销存辅助项" @change="changeMappings('inventoryId')"/>-->
-      <!--        </FormItem>-->
-      <!--      </Form>-->
       <vxe-table size="mini" ref="xTable" border="border" show-overflow keep-source
                  :row-config="{ height: 40, isCurrent: true, isHover: true }"
                  show-footer stripe
@@ -26,39 +16,41 @@
         </vxe-column>
         <vxe-column title="财务软件辅助项" field="warehouseName">
           <template #default="scope">
-            <div class="h-input-group goodsSelect">
-              <Select :deletable="false" ref="ms" v-model="scope.row.financeId" :datas="financeItemMappings" filterable
-                      placeholder="请选择财务软件辅助项" keyName="id" titleName="titleName"
-                      @change="changeMappings(scope,'financeId')">
-                <template v-slot:item="{ item }">
-                  <div>{{ item.titleName }}</div>
-                </template>
-              </Select>
+            <div class="input-group goodsSelect">
+              <t-select
+                  :clearable="false"
+                  ref="ms"
+                  v-model="scope.row.financeId"
+                  :options="financeItemMappings"
+                  filterable
+                  placeholder="请选择财务软件辅助项"
+                  :keys="{ value: 'id', label: 'titleName' }"
+                  @change="changeMappings(scope, 'financeId')"
+              />
             </div>
           </template>
         </vxe-column>
         <vxe-column title="进销存辅助项" field="warehouseName">
           <template #default="scope">
-            <div class="h-input-group goodsSelect">
-              <Select :deletable="false" ref="ms" v-model="scope.row.inventoryId" :datas="itemMappings" filterable
-                      placeholder="请选择进销存辅助项" keyName="id" titleName="titleName"
-                      @change="changeMappings(scope,'inventoryId')">
-                <template v-slot:item="{ item }">
-                  <div>{{ item.titleName }}</div>
-                </template>
-              </Select>
+            <div class="input-group goodsSelect">
+              <t-select
+                  :clearable="false"
+                  ref="ms"
+                  v-model="scope.row.inventoryId"
+                  :options="itemMappings"
+                  filterable
+                  placeholder="请选择进销存辅助项"
+                  :keys="{ value: 'id', label: 'titleName' }"
+                  @change="changeMappings(scope, 'inventoryId')"
+              />
             </div>
           </template>
         </vxe-column>
       </vxe-table>
     </div>
-    <div class="modal-column-right">
-      <Button icon="fa fa-close" @click="$emit('close')" :loading="loading">
-        取消
-      </Button>
-      <Button icon="fa fa-save" color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+    <div class="modal-column-between">
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
@@ -95,7 +87,8 @@ export default {
         financeName: null,
       },
       validationRules: {
-        required: ['inventoryId', 'financeId']
+        inventoryId: [{ required: true, message: '请选择进销存辅助项' }],
+        financeId: [{ required: true, message: '请选择财务软件辅助项' }]
       },
       itemMappings: [],
       financeItemMappings: [],

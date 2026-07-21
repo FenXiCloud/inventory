@@ -229,8 +229,8 @@ export default {
         return MessagePlugin.warning('请选择尚未生成凭证的单据');
       }
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认对选中的 ${rows.length} 张单据生成凭证？`,
+        header: '系统提示',
+        body: `确认对选中的 ${rows.length} 张单据生成凭证？`,
         onConfirm: () => {
           this.generating = true;
           FinanceVoucher.batch(rows.map((row) => this.toForm(row)))
@@ -247,8 +247,8 @@ export default {
     deleteOne(row) {
       if (!row.financeVoucherId) return;
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除凭证 ${row.voucherCode || ''}？`,
+        header: '系统提示',
+        body: `确认删除凭证 ${row.voucherCode || ''}？`,
         onConfirm: () => {
           FinanceVoucher.delete(row.financeVoucherId).then(() => {
             MessagePlugin.success('删除成功');
@@ -261,8 +261,8 @@ export default {
       const ids = this.voucheredSelected.map((row) => row.financeVoucherId);
       if (!ids.length) return;
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除选中的 ${ids.length} 条凭证记录？`,
+        header: '系统提示',
+        body: `确认删除选中的 ${ids.length} 条凭证记录？`,
         onConfirm: () => {
           FinanceVoucher.batchDelete(ids).then(() => {
             MessagePlugin.success('批量删除成功');

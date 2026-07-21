@@ -156,61 +156,7 @@ p {
   display: none !important;
 }
 
-/* 页面容器 */
-.frame-page {
-  height: 100%;
-  padding: 0;
-  overflow: auto;
-  box-sizing: border-box;
-}
-
-.frame-flex-page {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-/* TDesign 面板组件 */
-.t-panel {
-  background: var(--td-bg-color-container);
-  border-radius: var(--td-radius-default, 6px);
-  box-shadow: var(--td-shadow-1, 0 1px 4px rgba(0, 0, 0, 0.04));
-  padding: 16px;
-  box-sizing: border-box;
-}
-
-.t-panel-body {
-  background: var(--td-bg-color-container);
-  border-radius: var(--td-radius-default, 6px);
-  box-shadow: var(--td-shadow-1, 0 1px 4px rgba(0, 0, 0, 0.04));
-  box-sizing: border-box;
-}
-
-/* 工具栏 */
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  gap: 16px;
-}
-
-.toolbar-left,
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toolbar-left {
-  flex: 1;
-}
-
 /* 常用辅助类 */
-.primary-color {
-  color: #3d74ff;
-}
-
 .text-hover {
   cursor: pointer;
 }
@@ -223,15 +169,17 @@ p {
   cursor: pointer;
 }
 
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 0 0;
-  margin-top: 16px;
-  border-top: 1px solid var(--td-component-stroke);
+.text-hover-danger {
+  cursor: pointer;
 }
 
+.text-hover-danger:hover {
+  color: var(--td-error-color, #e34d59);
+}
+
+.font-bold {
+  font-weight: bold;
+}
 
 /* 自定义菜单滚动 */
 .app-menu .t-menu::-webkit-scrollbar {
@@ -334,17 +282,6 @@ p {
 }
 
 /* 表格相关 */
-.before-table {
-  border: 1px solid #e5e7eb;
-  border-top: none;
-  padding: 18px !important;
-  background: #fcfcfd !important;
-}
-
-.vxe-input-number {
-  width: 70px !important;
-}
-
 .vxe-table--render-default {
   color: #333639;
 }
@@ -361,34 +298,6 @@ p {
   height: 48px;
 }
 
-/* 表格工具栏 */
-.table-toolbar {
-  padding: 0 0 16px;
-  display: flex;
-  justify-content: space-between;
-  align-content: center;
-}
-
-.table-toolbar-left {
-  display: flex;
-  align-items: center;
-}
-
-.table-toolbar-right {
-  display: flex;
-  align-items: center;
-}
-
-.table-toolbar-right-icon {
-  font-weight: normal;
-  margin-left: 12px;
-  cursor: pointer;
-}
-
-.table-toolbar-right-icon:hover {
-  color: #3d74ff;
-}
-
 /* 页面加载 */
 blockquote {
   padding: 5px 0px 6px 10px;
@@ -398,74 +307,6 @@ blockquote {
   font-size: 14px;
   margin: 0 0 !important;
   display: flex;
-}
-
-.border-bottom {
-  border-bottom: 1px solid #eee;
-}
-
-.border-top {
-  border-top: 1px solid #eee;
-}
-
-.tnumber {
-  width: 100%;
-}
-
-/* 订单标签 */
-.order-tag {
-  padding: 3px 6px !important;
-  background: #3d74ff;
-  color: #fff;
-  font-size: 12px;
-  border-radius: 6px;
-}
-
-.order-tag-agent {
-  padding: 3px 6px !important;
-  background: #ff3d74;
-  color: #fff;
-  font-size: 12px;
-  border-radius: 6px;
-}
-
-.order-tag-purple {
-  padding: 3px 6px !important;
-  background: #4e26d5;
-  color: #fff;
-  font-size: 12px;
-  border-radius: 6px;
-}
-
-.order-tag-pc {
-  padding: 3px 6px !important;
-  background: #ffc83d;
-  color: #fff;
-  font-size: 12px;
-  border-radius: 6px;
-}
-
-.order-tag-gray {
-  padding: 3px 6px !important;
-  background: #999;
-  color: #fff;
-  font-size: 12px;
-  border-radius: 6px;
-}
-
-/* 字体大小 */
-.font12 { font-size: 12px !important; }
-.font13 { font-size: 13px !important; }
-.font14 { font-size: 14px !important; }
-.font15 { font-size: 15px !important; }
-.font16 { font-size: 16px !important; }
-.font18 { font-size: 18px !important; }
-.font20 { font-size: 20px !important; }
-.font22 { font-size: 22px !important; }
-.font28 { font-size: 28px !important; }
-
-.font-bold {
-  font-weight: bold;
 }
 
 /* 滚动条 */
@@ -482,11 +323,6 @@ blockquote {
 ::-webkit-scrollbar-thumb:hover {
   background-color: #3d74ff;
   border-radius: 12px;
-}
-
-/* 穿透 */
-.tooltip-index {
-  z-index: 9999999;
 }
 
 pre {
@@ -526,9 +362,7 @@ pre {
   overflow: hidden;
 }
 
-.t-dialog.app-dialog-flush .modal-column-btn,
-.t-dialog.app-dialog-flush .modal-column-between,
-.t-dialog.app-dialog-flush .modal-column-right {
+.t-dialog.app-dialog-flush .modal-column-between {
   border-radius: 0 0 var(--td-radius-large) var(--td-radius-large);
 }
 
@@ -543,34 +377,16 @@ pre {
   overflow: hidden;
 }
 
-.modal-column-btn,
 .modal-column-between {
   overflow: hidden;
   padding: 8px 16px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between !important;
   background-color: #f5f5f5;
   margin: 0;
   flex-shrink: 0;
 }
 
-.modal-column-right {
-  overflow: hidden;
-  padding: 8px 16px;
-  display: flex;
-  justify-content: right;
-  background-color: #f5f5f5;
-}
-
-.modal-column-between {
-  justify-content: space-between !important;
-}
-
-.modal-column-body {
-  max-height: 500px;
-}
-
-.modal-column-body,
 .modal-column-full-body {
   overflow-y: auto;
   padding: 16px;
@@ -643,21 +459,6 @@ pre {
   width: auto !important;
 }
 
-/* 列表/报表工具栏筛选换行 */
-.toolbar-tools-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-/* 列表分页条 */
-.list-pager {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .import-explain {
   background: #f5f6f8;
   border-radius: 2px;
@@ -666,145 +467,10 @@ pre {
   padding: 12px 20px 16px;
 }
 
-.error-page {
-  height: calc(100vh - 50px - 100px);
-  text-align: center;
-}
-
-.error-page .background-image {
-  height: 35vh;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  margin: 18vh auto 50px;
-}
-
-.error-page p {
-  font-size: 22px;
-  color: #3d74ff;
-  margin-bottom: 20vh;
-}
-
-.h-progress-text {
-  color: #94c441;
-  width: 50px;
-}
-
-/* HeyUI 迁移兼容：面板/输入组布局（业务页仍大量使用 h-* 类名） */
-.h-panel {
-  background: var(--td-bg-color-container);
-  border-radius: var(--td-radius-default, 6px);
-  box-shadow: var(--td-shadow-1, 0 1px 4px rgba(0, 0, 0, 0.04));
-  padding: 16px;
-  box-sizing: border-box;
-}
-
-.h-panel-body {
-  background: var(--td-bg-color-container);
-  border-radius: var(--td-radius-default, 6px);
-  box-sizing: border-box;
-}
-
-/* 列表页内嵌 h-panel 时去掉卡片感，避免白底叠白卡 */
-.frame-page > .h-panel,
-.frame-page .h-panel {
-  box-shadow: none;
-  padding: 0;
-  background: transparent;
-}
-
-.frame-page .h-panel-body {
-  padding: 0;
-  background: transparent;
-}
-
-/* 产品图上传占位（HeyUI uploader 残留） */
-.h-uploader-image-empty,
-.h-uploader-browse-button {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  border: 1px dashed var(--td-component-border, #dcdcdc);
-  border-radius: var(--td-radius-default, 6px);
-  background: var(--td-bg-color-secondarycontainer, #f3f3f3);
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-.h-uploader-image-empty:hover,
-.h-uploader-browse-button:hover {
-  border-color: var(--td-brand-color, #3d74ff);
-}
-
-.h-uploader-image {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-radius: inherit;
-}
-
-.h-uploader-image img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: cover;
-}
-
-.h-input-group {
+/* 表单内联输入组 */
+.input-group {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   vertical-align: middle;
-}
-
-.h-input-addon {
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  color: var(--td-text-color-secondary, #666);
-  font-size: 14px;
-}
-
-.h-table-checkbox-wrap {
-  margin-right: 8px;
-}
-
-/* HeyUI 图标 → Font Awesome（旧 iconfont 已删除） */
-[class^="h-icon-"],
-[class*=" h-icon-"] {
-  font-family: FontAwesome !important;
-  font-style: normal;
-  font-weight: normal;
-  speak: none;
-  display: inline-block;
-  text-decoration: inherit;
-  width: 1em;
-  text-align: center;
-  font-variant: normal;
-  text-transform: none;
-  line-height: 1em;
-  -webkit-font-smoothing: antialiased;
-}
-
-.h-icon-search:before { content: "\f002"; }
-.h-icon-edit:before { content: "\f044"; }
-.h-icon-trash:before { content: "\f1f8"; }
-.h-icon-refresh:before { content: "\f021"; }
-.h-icon-plus:before { content: "\f067"; }
-.h-icon-close:before { content: "\f00d"; }
-.h-icon-error:before { content: "\f057"; }
-.h-icon-link:before { content: "\f0c1"; }
-.h-icon-right:before { content: "\f105"; }
-.h-icon-setting:before { content: "\f013"; }
-.h-icon-check:before { content: "\f00c"; }
-.h-icon-info:before { content: "\f05a"; }
-
-.text-hover-danger {
-  cursor: pointer;
-}
-
-.text-hover-danger:hover {
-  color: var(--td-error-color, #e34d59);
 }

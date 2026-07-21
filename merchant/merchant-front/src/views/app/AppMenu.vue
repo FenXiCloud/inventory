@@ -54,7 +54,7 @@ import AppLogo from "@views/app/AppLogo";
 import {mapState, mapMutations} from 'vuex';
 import {pick} from "xe-utils";
 
-/** 一级菜单 key / 旧 h-icon → TDesign 图标名 */
+/** 一级菜单 key → TDesign 图标名 */
 const MENU_ICON_BY_KEY = {
   basic: 'root-list',
   Purchase: 'cart',
@@ -63,18 +63,6 @@ const MENU_ICON_BY_KEY = {
   Fund: 'wallet',
   Setting: 'setting',
   DashboardMain: 'dashboard'
-};
-
-const HEYUI_ICON_MAP = {
-  'h-icon-task': 'root-list',
-  'h-icon-plus': 'cart',
-  'h-icon-complete': 'shop',
-  'h-icon-check': 'layers',
-  'h-icon-bell': 'wallet',
-  'h-icon-setting': 'setting',
-  'h-icon-home': 'home',
-  'h-icon-user': 'user',
-  'h-icon-menu': 'view-list'
 };
 
 /**
@@ -115,11 +103,7 @@ export default {
       const key = menu.key || menu.id;
       if (key && MENU_ICON_BY_KEY[key]) return MENU_ICON_BY_KEY[key];
       const icon = menu.icon;
-      if (!icon) return 'app';
-      if (HEYUI_ICON_MAP[icon]) return HEYUI_ICON_MAP[icon];
-      if (!String(icon).startsWith('h-icon-') && !String(icon).startsWith('fa')) {
-        return icon;
-      }
+      if (icon && typeof icon === 'string' && !icon.startsWith('fa')) return icon;
       return 'app';
     },
     /** 悬浮菜单为 hover 触发，点击后鼠标仍在弹层上时不会自动收起，需主动关闭 */

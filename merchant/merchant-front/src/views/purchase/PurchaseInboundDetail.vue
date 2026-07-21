@@ -57,14 +57,14 @@
       </div>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading">
+      <t-button @click="closeWindow" :loading="loading">
         取消
-      </Button>
+      </t-button>
       <div>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="backApproved()" :loading="loading">
+        <t-button @click="backApproved()" :loading="loading">
           反审核
-        </Button>
+        </t-button>
       </div>
     </div>
   </div>
@@ -135,8 +135,8 @@ export default {
     backApproved() {
       let ids = [this.form.id]
       DialogPlugin.confirm({
-        title: "反审核提示",
-        content: `本次反审核此订单?`,
+        header: "反审核提示",
+        body: `本次反审核此订单?`,
         onConfirm: () => {
           PurchaseInbound.approved('已保存', ids).then(() => {
             MessagePlugin.success("操作成功~");
@@ -148,7 +148,6 @@ export default {
 
     //关闭窗口
     closeWindow() {
-      console.log("this.$store.state.currentTab", this.$store.state.currentTab)
       this.$store.commit('closeTabKey', this.$store.state.currentTab);
       this.$store.commit('newTab', "PurchaseInboundList");
       // 使用 nextTick 确保在 DOM 更新后执行

@@ -1,18 +1,22 @@
 <template>
   <div class="modal-column">
     <div class="mt-10px">
-      <Tabs :datas="param" v-model="selected" @change="changeTab"></Tabs>
+      <t-tabs v-model="selected" @change="changeTab">
+        <t-tab-panel value="0" label="客户" />
+        <t-tab-panel value="1" label="供应商" />
+        <t-tab-panel value="6" label="产品" />
+      </t-tabs>
     </div>
     <div class="mt-10px">
-      <Button @click="showForm()" status="primary" class="float-right mt-4px mr-16px">新 增</Button>
-      <Button @click="batchShowForm()" status="primary" class="float-right mt-4px mr-16px">批 量 新 增</Button>
+      <t-button theme="primary" class="float-right mt-4px mr-16px" @click="showForm()">新 增</t-button>
+      <t-button theme="primary" class="float-right mt-4px mr-16px" @click="batchShowForm()">批 量 新 增</t-button>
     </div>
     <div class="flex-1 p-16px">
       <div class="border p-8px mb-16px" v-for="(items,key) in dataList" :key="key">
         <vxe-toolbar>
           <template #tools>
-            <Button @click="showForm(items.id)" color="primary">编辑</Button>
-            <Button @click="doRemove(items.id)">删除</Button>
+            <t-button theme="primary" @click="showForm(items.id)">编辑</t-button>
+            <t-button @click="doRemove(items.id)">删除</t-button>
           </template>
         </vxe-toolbar>
         <div>
@@ -55,7 +59,6 @@ export default {
   },
   methods: {
     showForm(id) {
-      console.info("showForm:", id)
       let dialogId = openDialog({
         header: `${this.param[this.selected]}-辅助项映射设置`,
         closeOnOverlayClick: false,
@@ -93,14 +96,13 @@ export default {
     },
     loadList() {
       FinanceItemMap.list({categoryId: this.selected}).then(({data}) => {
-        console.log(data);
         this.dataList = data;
       })
     },
     doRemove(id) {
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `是否删除当前数据?`,
+        header: "系统提示",
+        body: `是否删除当前数据?`,
         onConfirm: () => {
           FinanceItemMap.delete(id).then(({data}) => {
             MessagePlugin.success("操作成功～");

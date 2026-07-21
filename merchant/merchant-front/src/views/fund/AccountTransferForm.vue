@@ -4,7 +4,7 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker
+          <t-date-picker
             class="w-140px"
             v-model="form.orderDate"
             :clearable="false"
@@ -143,37 +143,37 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input
+          <t-input
             placeholder="请输入备注"
-            maxlength="150"
+            :maxlength="150"
             v-model="form.remarks"
             :disabled="isAudited"
           />
           <div class="transfer-extra-actions">
-            <Button @click="historyForm()">历史单据</Button>
-            <Button :title="logContent">操作日志</Button>
+            <t-button @click="historyForm()">历史单据</t-button>
+            <t-button :title="logContent">操作日志</t-button>
           </div>
         </div>
       </div>
     </div>
 
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button :loading="loading" @click="closeWindow">取消</Button>
+      <t-button :loading="loading" @click="closeWindow">取消</t-button>
       <div>
         <template v-if="!isAudited">
-          <Button color="primary" :loading="loading" @click="saveForm('add')">保存并新增</Button>
-          <Button :loading="loading" @click="saveForm('save')">保存</Button>
-          <Button
+          <t-button theme="primary" :loading="loading" @click="saveForm('add')">保存并新增</t-button>
+          <t-button :loading="loading" @click="saveForm('save')">保存</t-button>
+          <t-button
             v-if="form.orderStatus == '已保存'"
             :loading="loading"
             @click="saveForm('audit', '已审核')"
-          >审核</Button>
+          >审核</t-button>
         </template>
-        <Button
+        <t-button
           v-else
           :loading="loading"
           @click="approved('已保存')"
-        >反审核</Button>
+        >反审核</t-button>
       </div>
     </div>
   </div>
@@ -312,7 +312,7 @@ export default {
     approved(orderStatus) {
       const isAnti = orderStatus === '已保存';
       DialogPlugin.confirm({
-        content: isAnti ? '确定反审核？' : '确定审核？',
+        body: isAnti ? '确定反审核？' : '确定审核？',
         onConfirm: () => {
           AccountTransfer.approved(orderStatus, this.form.id)
             .then((success) => {
@@ -468,19 +468,22 @@ export default {
         })
         .finally(() => (this.loading = false));
     },
-    selectCustomer(e) {
+    selectCustomer(value) {
+      const e = this.customerDataList.find((item) => item.name === value);
       this.form.customerId = e?.id || null;
       this.form = {
         ...this.form
       };
     },
-    selectAccounter(e) {
+    selectAccounter(value) {
+      const e = this.settlementAccount.find((item) => item.name === value);
       this.form.settlementAccountId = e?.id || null;
       this.form = {
         ...this.form
       };
     },
-    selectOrderStaff(e) {
+    selectOrderStaff(value) {
+      const e = this.orderStaffList.find((item) => item.name === value);
       this.form.orderStaffId = e?.id || null;
     },
     changeAccount(value, keyname, row) {
@@ -500,7 +503,6 @@ export default {
       }
     },
     addOrderStaff() {
-      document.getElementsByClassName('h-dropdown')[0].style.zIndex = 1;
       this.showForm();
     },
     showForm(entity) {

@@ -4,19 +4,20 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker v-model="form.transferDate" :disabled="isLocked"
-                      :option="{ start: accountBook.checkoutDate }"
-                      :clearable="false">
-          </DatePicker>
+          <t-date-picker v-model="form.transferDate" :disabled="isLocked"
+                         :disable-date="{ before: accountBook.checkoutDate }"
+                         :clearable="false"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">调出仓库：</label>
-          <Select class="w-178px" filterable required :datas="warehouseList" keyName="id" titleName="name"
-                  v-model="form.fromWarehouseId" placeholder="请选择调出仓库"
-                  :disabled="isLocked"
-                  @change="changeFromWarehouseId"/>
+          <t-select class="w-178px" filterable :options="warehouseList"
+                    :keys="{ value: 'id', label: 'name' }"
+                    v-model="form.fromWarehouseId" placeholder="请选择调出仓库"
+                    :disabled="isLocked" clearable
+                    @change="changeFromWarehouseId"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">调入仓库：</label>
-          <Select class="w-178px" filterable required :datas="warehouseList" keyName="id" titleName="name"
-                  v-model="form.toWarehouseId" placeholder="请选择调入仓库"
-                  :disabled="isLocked"/>
+          <t-select class="w-178px" filterable :options="warehouseList"
+                    :keys="{ value: 'id', label: 'name' }"
+                    v-model="form.toWarehouseId" placeholder="请选择调入仓库"
+                    :disabled="isLocked" clearable/>
         </template>
         <template #tools>
           <Stamp v-if="isAudited"/>
@@ -43,36 +44,10 @@
         <vxe-column field="productCode" title="产品编码" width="240"></vxe-column>
         <vxe-column field="productName" title="产品名称" min-width="350">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!isLocked">
-              <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable :equalWidth="false"
-                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="(e) => changeRow(scope, 'product', e)">
-                <template v-slot:top>
-                  <table class="h-table" style="width: 100%">
-                    <thead class="h-table-header">
-                    <tr>
-                      <td width="150" align="center">产品编号</td>
-                      <td width="150" align="center">产品图片</td>
-                      <td width="150" align="center">产品名称</td>
-                      <td width="150" align="center">产品类别</td>
-                      <td width="150" align="center">产品规格</td>
-                    </tr>
-                    </thead>
-                  </table>
-                </template>
-                <template v-slot:item="{ item }">
-                  <table>
-                    <tbody class="h-table-body-table">
-                    <tr>
-                      <td width="150" align="center">{{ item.code }}</td>
-                      <td width="150" align="center">{{ item.imageUrl }}</td>
-                      <td width="150" align="center">{{ item.name }}</td>
-                      <td width="150" align="center">{{ item.productCategoryName }}</td>
-                      <td width="150" align="center">{{ item.specification }}</td>
-                    </tr>
-                    </tbody>
-                  </table>
-                </template>
-              </Select>
+            <div class="input-group goodsSelect" v-if="!isLocked">
+              <t-select :clearable="false" ref="ms" v-model="scope.row.productId" :options="productList" filterable
+                        placeholder="输入编码/名称" :keys="{ value: 'id', label: 'customName' }"
+                        @change="(e) => changeRow(scope, 'product', e)"/>
             </div>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
@@ -103,23 +78,23 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="isLocked" placeholder="请输入备注" type="text" maxlength="150"
-                 style="width: 80%"
-                 v-model="form.remarks"/>
+          <t-input :disabled="isLocked" placeholder="请输入备注" maxlength="150"
+                   style="width: 80%"
+                   v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
         </div>
       </div>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading"> 取消</Button>
+      <t-button @click="closeWindow" :loading="loading"> 取消</t-button>
       <div>
-        <Button v-if="!isAudited && !looked" color="primary" @click="saveOrder('add')" :loading="loading">
+        <t-button v-if="!isAudited && !looked" theme="primary" @click="saveOrder('add')" :loading="loading">
           保存并新增
-        </Button>
-        <Button v-if="!isAudited && !looked" @click="saveOrder('save')" :loading="loading"> 保存</Button>
-        <Button @click="doPrint" :loading="loading"> 打印 </Button>
-        <Button v-if="form.id && !isAudited" @click="approved()" :loading="loading"> 审核</Button>
-        <Button v-if="isAudited" @click="backApproved()" :loading="loading"> 反审核</Button>
+        </t-button>
+        <t-button v-if="!isAudited && !looked" @click="saveOrder('save')" :loading="loading"> 保存</t-button>
+        <t-button @click="doPrint" :loading="loading"> 打印 </t-button>
+        <t-button v-if="form.id && !isAudited" @click="approved()" :loading="loading"> 审核</t-button>
+        <t-button v-if="isAudited" @click="backApproved()" :loading="loading"> 反审核</t-button>
       </div>
     </div>
   </div>
@@ -247,10 +222,11 @@ export default {
     changeRow({rowIndex}, type, selected) {
       switch (type) {
         case 'product': {
-          const selectedProduct = (selected && typeof selected === 'object') ? selected : null;
-          let value = selectedProduct
-              ? (selectedProduct.id ?? selectedProduct.productId)
-              : this.inventoryTransferData[rowIndex].productId;
+          let value = (selected && typeof selected === 'object')
+              ? (selected.id ?? selected.productId)
+              : (selected != null && typeof selected !== 'object'
+                  ? selected
+                  : this.inventoryTransferData[rowIndex].productId);
           if (value && typeof value === 'object') {
             value = value.id ?? value.productId;
           }
@@ -280,6 +256,9 @@ export default {
             }, 0);
             return;
           }
+          const selectedProduct = (selected && typeof selected === 'object' && selected.name)
+              ? selected
+              : (this.productList || []).find(p => p.id === value || p.productId === value);
           const applyProduct = (item) => {
             if (!item) return;
             this.inventoryTransferData[rowIndex].productName = item.name;
@@ -291,7 +270,7 @@ export default {
             this.inventoryTransferData[rowIndex].productUnitId = item.unitId;
             this.$forceUpdate();
           };
-          if (selectedProduct && selectedProduct.name) {
+          if (selectedProduct) {
             applyProduct(selectedProduct);
           } else {
             Product.list({id: value}).then(res => {
@@ -555,8 +534,8 @@ export default {
     },
     approved() {
       DialogPlugin.confirm({
-        title: "审核提示",
-        content: `确认审核该订单?`,
+        header: "审核提示",
+        body: `确认审核该订单?`,
         onConfirm: () => {
           return InventoryTransfer.approved('已审核', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");
@@ -567,8 +546,8 @@ export default {
     },
     backApproved() {
       DialogPlugin.confirm({
-        title: "反审核提示",
-        content: `确认反审核该订单?`,
+        header: "反审核提示",
+        body: `确认反审核该订单?`,
         onConfirm: () => {
           return InventoryTransfer.approved('已保存', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");

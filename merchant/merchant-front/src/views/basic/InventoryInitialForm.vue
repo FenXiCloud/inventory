@@ -29,13 +29,11 @@
             <span style="color: red">*</span>产品名称
           </template>
           <template #default="scope">
-            <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,scope.rowIndex)" :datas="productList" v-model="scope.row.productId"
-                      keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false" :disabled="this.type === 'edit'">
-                <template v-slot:item="{ item }">
-                  <div>{{ item.name }}</div>
-                </template>
-              </Select>
+            <div class="input-group goodsSelect" @keyup.stop="void(0)">
+              <t-select ref="ms" @change="selectProduct($event, scope.rowIndex)" :options="productList"
+                        v-model="scope.row.productId"
+                        :keys="{ value: 'id', label: 'name' }" filterable placeholder="输入编码/名称"
+                        :clearable="false" :disabled="type === 'edit'"/>
             </div>
           </template>
         </vxe-column>
@@ -54,9 +52,8 @@
             <span style="color: red">*</span>仓库
           </template>
           <template #default="{row,rowIndex}">
-            <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
-                    titleName="name" :disabled="this.type === 'edit'"
-            />
+            <t-select :clearable="false" v-model="row.warehouseId" :options="warehouseList" filterable
+                      :keys="{ value: 'id', label: 'name' }" :disabled="type === 'edit'"/>
           </template>
         </vxe-column>
         <vxe-column title="数量" field="quantity">
@@ -106,9 +103,9 @@
       </vxe-table>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading">取消</Button>
+      <t-button @click="closeWindow" :loading="loading">取消</t-button>
       <div>
-        <Button color="primary" @click="save" :loading="loading">保存</Button>
+        <t-button theme="primary" @click="save" :loading="loading">保存</t-button>
       </div>
     </div>
   </div>
@@ -188,8 +185,6 @@ export default {
 
     //选择产品
     selectProduct(item, index) {
-      console.log("item",item)
-      console.log("index",index)
       if(this.type === 'edit'){
         return
       }
@@ -220,7 +215,6 @@ export default {
           }, 100);
         })
       });
-      console.log("this.dataList",this.dataList);
       this.$forceUpdate();
     },//添加行或减少行
     adjustRows(type, index) {
@@ -244,7 +238,6 @@ export default {
       this.loading = true;
       InventoryInitial.batch(requestData).then(({data}) => {
         this.dataList = data;
-        console.log("data",data)
         this.closeWindow();
       }).finally(() => this.loading = false);
     },
@@ -260,7 +253,6 @@ export default {
       let warehouseFlag = false
       let productFlag = false
       requestData.map(item => {
-        console.log("item",item)
         if (item.quantity === 0 || !item.quantity) {
           quantityFlag = true
         }
@@ -310,7 +302,6 @@ export default {
     editForm(){
       InventoryInitial.load(this.inventoryInitialId).then(({data}) => {
         this.dataList[0] = data;
-        console.log("data",data)
       }).finally(() => this.loading = false);
     },
     initForm(){

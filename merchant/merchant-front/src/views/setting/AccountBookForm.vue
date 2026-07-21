@@ -1,35 +1,29 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form
+      <t-form
         ref="form"
-        :model="model"
+        :data="model"
         :rules="validationRules"
-        :labelWidth="120"
+        label-width="120px"
       >
-        <FormItem label="账套名称" required prop="name">
-          <Input placeholder="请输入账套名称" v-model="model.name" />
-        </FormItem>
-        <FormItem label="启用日期" required prop="startDate">
-          <DatePicker
+        <t-form-item label="账套名称" name="name">
+          <t-input placeholder="请输入账套名称" v-model="model.name" />
+        </t-form-item>
+        <t-form-item label="启用日期" name="startDate">
+          <t-date-picker
             v-model="model.startDate"
+            mode="month"
             format="YYYY-MM"
-            type="month"
+            value-type="YYYY-MM"
             :clearable="false"
           />
-        </FormItem>
-      </Form>
+        </t-form-item>
+      </t-form>
     </div>
-    <div class="modal-column-right">
-      <Button
-        icon="fa fa-save"
-        style="justify-content: right"
-        color="primary"
-        @click="confirm"
-        :loading="loading"
-      >
-        保存
-      </Button>
+    <div class="modal-column-between">
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
@@ -75,23 +69,23 @@ export default {
         password: null
       },
       validationRules: {
-        mobile: ['phone']
+        name: [{ required: true, message: '请输入账套名称', type: 'error', trigger: 'blur' }],
+        startDate: [{ required: true, message: '请选择启用日期', type: 'error' }]
       }
     };
   },
   methods: {
     confirm() {
-      this.$refs.form.validate().then((res) => {
-        if (res === true || res.result === true) {
-          this.loading = true;
-          this.model.startDate = manba(this.model.startDate).format('YYYY-MM');
-          AccountBook.save(this.model)
-            .then(() => {
-              MessagePlugin.success('保存成功~');
-              this.$emit('success');
-            })
-            .finally(() => (this.loading = false));
-        }
+      this.$refs.form.validate().then((result) => {
+        if (result !== true) return;
+        this.loading = true;
+        this.model.startDate = manba(this.model.startDate).format('YYYY-MM');
+        AccountBook.save(this.model)
+          .then(() => {
+            MessagePlugin.success('保存成功~');
+            this.$emit('success');
+          })
+          .finally(() => (this.loading = false));
       }).catch(() => {});
     },
     init() {

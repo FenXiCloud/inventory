@@ -222,8 +222,8 @@ export default {
         return;
       }
       DialogPlugin.confirm({
-        title: "批量审核提示",
-        content: `本次审核${ids.length}条?`,
+        header: "批量审核提示",
+        body: `本次审核${ids.length}条?`,
         onConfirm: () => {
           return SalesOrder.approved('已审核', ids).then(() => {
             MessagePlugin.success("操作成功~");
@@ -246,8 +246,8 @@ export default {
         return;
       }
       DialogPlugin.confirm({
-        title: "批量反审核提示",
-        content: `本次反审核${ids.length}条?`,
+        header: "批量反审核提示",
+        body: `本次反审核${ids.length}条?`,
         onConfirm: () => {
           return SalesOrder.approved('已保存', ids).then(() => {
             MessagePlugin.success("操作成功~");
@@ -259,8 +259,8 @@ export default {
     },
     doRemove(row) {
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认删除：${row.orderNo}?`,
+        header: "系统提示",
+        body: `确认删除：${row.orderNo}?`,
         onConfirm: () => {
           return SalesOrder.remove(row.id).then(() => {
             MessagePlugin.success("删除成功~");

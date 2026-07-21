@@ -115,8 +115,8 @@ export default {
     },
     antiCheckout() {
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认要反结账吗?`,
+        header: "系统提示",
+        body: `确认要反结账吗?`,
         onConfirm: () => {
           Checkout.antiCheckout().then(({data}) => {
             MessagePlugin.success("操作成功~");

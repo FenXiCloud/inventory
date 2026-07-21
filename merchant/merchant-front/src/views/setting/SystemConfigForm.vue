@@ -1,182 +1,152 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form
-        ref="form"
-        :model="model"
-        :rules="validationRules"
-        :labelWidth="140"
+      <t-form
+          ref="form"
+          :data="model"
+          :rules="rules"
+          label-width="140px"
+          :disabled="loading"
       >
-        <FormItem label="成本核算方法" required prop="costAccounting">
-          <Select
-            v-model="model.costAccounting"
-            :datas="accSelectParams"
-          ></Select>
-        </FormItem>
-        <FormItem label="可用库存允许为负" required prop="availableInventory">
-          <Select
-            v-model="model.availableInventory"
-            :datas="costAccSelectParams"
-          ></Select>
-        </FormItem>
-        <FormItem label="数量小数位" required prop="quantityDecimal">
-          <Input
-            type="number"
-            min="0"
-            max="8"
-            placeholder="请输入数量小数位"
-            v-model="model.quantityDecimal"
+        <t-form-item label="成本核算方法" name="costAccounting">
+          <t-select
+              v-model="model.costAccounting"
+              :options="costAccountingOptions"
+              placeholder="请选择"
+              clearable
+              style="width: 100%; border-radius: 4px"
           />
-        </FormItem>
-        <FormItem label="单价小数位" required prop="priceDecimal">
-          <Input
-            type="number"
-            min="0"
-            max="8"
-            placeholder="请输入数量小数位"
-            v-model="model.priceDecimal"
+        </t-form-item>
+        <t-form-item label="可用库存允许为负" name="availableInventory">
+          <t-select
+              v-model="model.availableInventory"
+              :options="availableInventoryOptions"
+              placeholder="请选择"
+              clearable
+              style="width: 100%; border-radius: 4px"
           />
-        </FormItem>
-      </Form>
+        </t-form-item>
+        <t-form-item label="数量小数位" name="quantityDecimal">
+          <t-input-number
+              v-model="model.quantityDecimal"
+              theme="column"
+              :min="0"
+              :max="8"
+              :decimal-places="0"
+              placeholder="0-8"
+              style="width: 100%"
+          />
+        </t-form-item>
+        <t-form-item label="单价小数位" name="priceDecimal">
+          <t-input-number
+              v-model="model.priceDecimal"
+              theme="column"
+              :min="0"
+              :max="8"
+              :decimal-places="0"
+              placeholder="0-8"
+              style="width: 100%"
+          />
+        </t-form-item>
+      </t-form>
     </div>
-    <div class="modal-column-right">
-      <Button
-        icon="fa fa-save"
-        style="justify-content: right"
-        color="primary"
-        @click="confirm"
-        :loading="loading"
-      >
-        保存
-      </Button>
+    <div class="modal-column-between">
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
-    <!-- <vxe-table
-      row-id="id"
-      ref="table"
-      :data="dataList"
-      highlight-hover-row
-      show-overflow
-      :loading="loading"
-    >
-      <vxe-column type="seq" width="60" align="center" />
-      <vxe-column title="成本核算方法" field="accountBookId" min-width="150" />
-      <vxe-column
-        title="可用库存允许为负"
-        field="costAccounting"
-        min-width="150"
-      >
-        <template #default="{ row }">
-          <Tag
-            color="primary"
-            v-if="row.accountBookId == 1"
-            @click="trigger(row)"
-            class="cursor-pointer"
-            >启用</Tag
-          >
-          <Tag color="red" v-else @click="trigger(row)" class="cursor-pointer"
-            >禁用</Tag
-          >
-        </template>
-      </vxe-column>
-      <vxe-column title="数量小数位" width="150" field="availableInventory" />
-      <vxe-column
-        title="单价小数位"
-        field="quantityDecimal"
-        width="150"
-        align="center"
-      >
-      </vxe-column>
-    </vxe-table> -->
   </div>
 </template>
 
 <script>
+/**
+ * @功能描述: 账套参数设置
+ * @公司官网: www.fenxi365.com
+ * @公司信息: 纷析云（杭州）科技有限公司
+ */
 import AccountBook from '@js/api/setting/AccountBook';
-import SystemConfig from '@js/api/setting/SystemConfig';
 import { MessagePlugin } from 'tdesign-vue-next';
-import { CopyObj } from '@common/utils';
-import manba from 'manba';
 
 export default {
   name: 'SystemConfigForm',
-  emits: {
-    close: null,
-    success: null
-  },
+  emits: ['close', 'success'],
   props: {
     accountBook: Object
   },
   data() {
     return {
-      accSelectParams: [
-        {
-          key: 1,
-          title: '移动平均法'
-        },
-        {
-          key: 2,
-          title: '先进先出法'
-        }
-      ],
-      costAccSelectParams: [
-        {
-          key: 1,
-          title: '是'
-        },
-        {
-          key: 2,
-          title: '否'
-        }
-      ],
-
       loading: false,
-      // dataList: [],
+      costAccountingOptions: [
+        { value: 1, label: '移动平均法' },
+        { value: 2, label: '先进先出法' }
+      ],
+      availableInventoryOptions: [
+        { value: 1, label: '是' },
+        { value: 2, label: '否' }
+      ],
       model: {
-        // accountBookId: null,
-        // costAccounting: null,
-        // availableInventory: null,
-        // quantityDecimal: null,
-        // id: null,
-        // priceDecimal: null
+        id: null,
+        accountBookId: null,
+        costAccounting: 1,
+        availableInventory: 2,
+        quantityDecimal: 2,
+        priceDecimal: 2
+      },
+      rules: {
+        costAccounting: [{ required: true, message: '请选择成本核算方法' }],
+        availableInventory: [{ required: true, message: '请选择是否允许库存为负' }],
+        quantityDecimal: [
+          { required: true, message: '请输入数量小数位' },
+          {
+            validator: (val) => val != null && val >= 0 && val <= 8,
+            message: '数量小数位须在 0~8 之间'
+          }
+        ],
+        priceDecimal: [
+          { required: true, message: '请输入单价小数位' },
+          {
+            validator: (val) => val != null && val >= 0 && val <= 8,
+            message: '单价小数位须在 0~8 之间'
+          }
+        ]
       }
     };
   },
   methods: {
     confirm() {
-      this.$refs.form.validate().then((res) => {
-        if (res === true || res.result === true) {
-          this.loading = true;
-          AccountBook.saveParameters(this.model)
-            .then(() => {
-              MessagePlugin.success('保存成功~');
-              this.$emit('success');
-            })
-            .finally(() => (this.loading = false));
-        }
+      this.$refs.form.validate().then((result) => {
+        if (result !== true) return;
+        this.loading = true;
+        AccountBook.saveParameters(this.model)
+          .then(() => {
+            MessagePlugin.success('保存成功~');
+            this.$emit('success');
+          })
+          .finally(() => (this.loading = false));
       }).catch(() => {});
     },
     loadList() {
+      if (!this.accountBook?.id) return;
       this.loading = true;
       AccountBook.getByAccountBookId({ id: this.accountBook.id })
         .then(({ data }) => {
-          console.log(data);
-          this.model = data;
-        })
-        .finally(() => (this.loading = false));
-    },
-    loadList22() {
-      this.loading = true;
-      SystemConfig.list(this.queryParams)
-        .then(({ data }) => {
-          console.log(data);
-          this.dataList = data;
+          if (data) {
+            this.model = {
+              id: data.id,
+              accountBookId: data.accountBookId,
+              costAccounting: data.costAccounting ?? 1,
+              availableInventory: data.availableInventory ?? 2,
+              quantityDecimal: data.quantityDecimal ?? 2,
+              priceDecimal: data.priceDecimal ?? 2
+            };
+          } else {
+            this.model.accountBookId = this.accountBook.id;
+          }
         })
         .finally(() => (this.loading = false));
     }
   },
   created() {
     this.loadList();
-    // CopyObj(this.model, this.accountBook);
   }
 };
 </script>

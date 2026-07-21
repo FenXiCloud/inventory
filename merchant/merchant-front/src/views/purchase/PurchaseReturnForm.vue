@@ -4,34 +4,32 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px" style="font-size: 16px !important;">供货商：</label>
-          <Select
+          <t-select
               class="w-300px"
               filterable
-              required
-              :datas="supplierList"
-              keyName="id"
-              titleName="name"
-              :deletable="false"
+              :options="supplierList"
+              :clearable="false"
               :disabled="isAudited"
               @change="changeSupplier($event)"
               v-model="supplierId"
               placeholder="请选择供货商"
-          />
+                :keys="{ value: 'id', label: 'name' }"
+              />
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">退货日期：</label>
-          <DatePicker
+          <t-date-picker
               v-model="form.returnDate"
-              :option="{start:accountBook.checkoutDate}"
+              :disable-date="{ before: accountBook.checkoutDate }"
               :clearable="false"
               :disabled="isAudited"
           />
-          <Button
+          <t-button
               v-if="type==='add' && !isAudited"
               @click="selectPurchaseOrder()"
-              color="primary"
+              theme="primary"
               style="margin-left: 20px"
           >
             选择源单
-          </Button>
+          </t-button>
         </template>
         <template #tools>
           <Stamp v-if="isAudited"/>
@@ -76,16 +74,15 @@
         <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
           <template #default="{row}">
             <template v-if="!row.isNew && !isAudited">
-              <Select
+              <t-select
                   v-if="row.auxiliaryUnitPrices"
-                  :deletable="false"
+                  :clearable="false"
                   @change="changeProductUnit($event,row)"
                   v-model="row.secondaryUnitId"
-                  :datas="row.auxiliaryUnitPrices"
+                  :options="row.auxiliaryUnitPrices"
                   filterable
                   placeholder="输入采购单位"
-                  keyName="unitId"
-                  titleName="unitName"
+                :keys="{ value: 'unitId', label: 'unitName' }"
               />
               <span v-else>{{ row.secondaryUnitName }}</span>
             </template>
@@ -95,14 +92,13 @@
         <vxe-column title="仓库" field="warehouse" align="center" width="120">
           <template #default="{row}">
             <template v-if="!row.isNew && !isAudited">
-              <Select
-                  :deletable="false"
+              <t-select
+                  :clearable="false"
                   v-model="row.warehouseId"
-                  :datas="warehouseList"
+                  :options="warehouseList"
                   filterable
-                  keyName="id"
-                  titleName="name"
                   @change="handleWarehouseChange(row, $event)"
+                :keys="{ value: 'id', label: 'name' }"
               />
             </template>
             <span v-else-if="!row.isNew">{{ warehouseName(row.warehouseId) }}</span>
@@ -236,34 +232,34 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">退货原因：</label>
-          <Input placeholder="请输入退货原因" maxlength="150" v-model="form.returnReason" :disabled="isAudited"/>
+          <t-input placeholder="请输入退货原因" maxlength="150" v-model="form.returnReason" :disabled="isAudited"/>
         </div>
       </div>
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input placeholder="请输入备注" maxlength="150" v-model="form.remarks" :disabled="isAudited"/>
+          <t-input placeholder="请输入备注" maxlength="150" v-model="form.remarks" :disabled="isAudited"/>
         </div>
       </div>
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">优惠率：</label>
-          <Input v-model="form.discountRate" @blur="changeDiscountRate" :disabled="isAudited"/>
+          <t-input v-model="form.discountRate" @blur="changeDiscountRate" :disabled="isAudited"/>
           <label class="ml-10px mr-16px w-80px">优惠金额：</label>
-          <Input v-model="form.discountAmount" @blur="changeDiscountAmount" :disabled="isAudited"/>
+          <t-input v-model="form.discountAmount" @blur="changeDiscountAmount" :disabled="isAudited"/>
           <label class="ml-16px mr-16px w-100px">本次退款：</label>
-          <Input v-model="form.refundAmount" @blur="changeRefundAmount" :disabled="isAudited"/>
+          <t-input v-model="form.refundAmount" @blur="changeRefundAmount" :disabled="isAudited"/>
         </div>
       </div>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading">取消</Button>
+      <t-button @click="closeWindow" :loading="loading">取消</t-button>
       <div>
-        <Button color="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</Button>
-        <Button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</Button>
-        <Button @click="doPrint" :loading="loading">打印</Button>
-        <Button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</Button>
-        <Button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</Button>
+        <t-button theme="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
+        <t-button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</t-button>
+        <t-button @click="doPrint" :loading="loading">打印</t-button>
+        <t-button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
+        <t-button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
       </div>
     </div>
   </div>
@@ -540,18 +536,20 @@ export default {
         this.productData.splice(index, 1);
       }
     },
-    changeSupplier(e) {
-      if (!e) {
+    changeSupplier(value) {
+      if (value == null || value === '') {
         this.form.supplierId = null;
         this.productData = [];
         this.inboundIds = [];
         return;
       }
+      const e = (this.supplierList || []).find((item) => String(item.id) === String(value));
+      if (!e) return;
       if (e.id !== this.form.supplierId) {
         if (this.productData.length > 0) {
           DialogPlugin.confirm({
-            title: "系统提示",
-            content: `修改供货商后，将清除已选择的产品数据，确定修改？`,
+            header: "系统提示",
+            body: `修改供货商后，将清除已选择的产品数据，确定修改？`,
             onConfirm: () => {
               this.productData = [];
               this.inboundIds = [];
@@ -580,9 +578,11 @@ export default {
       this.form.discountAmount = (this.allRefundAmount - this.form.refundAmount).toFixed(2);
       this.form.discountRate = this.allRefundAmount === 0 ? 0 : ((this.form.discountAmount / this.allRefundAmount) * 100).toFixed(2);
     },
-    changeProductUnit(item, row) {
+    changeProductUnit(value, row) {
+      const item = (row.auxiliaryUnitPrices || []).find((u) => String(u.unitId) === String(value));
+      if (!item) return;
       row.secondaryUnitName = item.unitName;
-      row.secondaryPrice = (item.price || 0).toFixed(2) || 0;
+      row.secondaryPrice = (item.unitPrice || item.price || 0).toFixed(2) || 0;
       row.conversionRate = item.conversionRate || 1;
       row.quantity = (row.secondaryQuantity * row.conversionRate).toFixed(2);
       row.subtotal = (row.secondaryQuantity * row.secondaryPrice).toFixed(2);
@@ -619,8 +619,8 @@ export default {
     },
     approved() {
       DialogPlugin.confirm({
-        title: "审核提示",
-        content: `确认审核该订单?`,
+        header: "审核提示",
+        body: `确认审核该订单?`,
         onConfirm: () => {
           return PurchaseReturn.approved('已审核', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");
@@ -631,8 +631,8 @@ export default {
     },
     backApproved() {
       DialogPlugin.confirm({
-        title: "反审核提示",
-        content: `确认反审核该订单?`,
+        header: "反审核提示",
+        body: `确认反审核该订单?`,
         onConfirm: () => {
           return PurchaseReturn.approved('已保存', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");

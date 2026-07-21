@@ -152,8 +152,8 @@ export default {
     },
     doRemove(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除：${row.customerName}?`,
+        header: '系统提示',
+        body: `确认删除：${row.customerName}?`,
         onConfirm: () => {
           CustomerInitial.remove(row.id).then(() => {
             MessagePlugin.success('删除成功~');
@@ -176,8 +176,8 @@ export default {
         return;
       }
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: '确定批量删除数据？',
+        header: '系统提示',
+        body: '确定批量删除数据？',
         onConfirm: () => {
           CustomerInitial.batchDelete({ids: this.selectedRowKeys}).then(() => {
             MessagePlugin.success('批量删除成功');

@@ -4,34 +4,32 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px" style="font-size: 16px !important;">供货商：</label>
-          <Select
+          <t-select
               class="w-300px"
               filterable
-              required
-              :datas="supplierList"
-              keyName="id"
-              titleName="name"
-              :deletable="false"
+              :options="supplierList"
+              :clearable="false"
               :disabled="isAudited"
               @change="changeSupplier($event)"
               v-model="supplierId"
               placeholder="请选择供货商"
-          />
+                :keys="{ value: 'id', label: 'name' }"
+              />
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">入库日期：</label>
-          <DatePicker
+          <t-date-picker
               v-model="form.inboundDate"
-              :option="{start:accountBook.checkoutDate}"
+              :disable-date="{ before: accountBook.checkoutDate }"
               :clearable="false"
               :disabled="isAudited"
           />
-          <Button
+          <t-button
               v-if="type==='add' && !isAudited"
               @click="selectPurchaseOrder()"
-              color="primary"
+              theme="primary"
               style="margin-left: 20px"
           >
             选择源单
-          </Button>
+          </t-button>
         </template>
         <template #tools>
           <Stamp v-if="isAudited"/>
@@ -69,45 +67,16 @@
         </vxe-column>
         <vxe-column title="产品信息" min-width="300">
           <template #default="{row,rowIndex}">
-            <div class="h-input-group goodsSelect" @keyup.stop="void(0)" v-if="!isAudited">
-              <Select
+            <div class="input-group goodsSelect" @keyup.stop="void(0)" v-if="!isAudited">
+              <t-select
                   ref="ms"
                   @change="selectProduct($event,rowIndex)"
                   v-model="row.productId"
-                  :datas="productList"
+                  :options="productList"
                   filterable
-                  :equalWidth="false"
                   placeholder="输入编码/名称"
-                  keyName="productId"
-                  titleName="productName"
-              >
-                <template v-slot:top>
-                  <table class="h-table" style="width: 100%">
-                    <thead class="h-table-header">
-                    <tr>
-                      <td width="150" align="center">编码</td>
-                      <td width="150" align="center">图片</td>
-                      <td width="150" align="center">名称</td>
-                      <td width="150" align="center">类别</td>
-                      <td width="150" align="center">规格</td>
-                    </tr>
-                    </thead>
-                  </table>
-                </template>
-                <template v-slot:item="{ item }">
-                  <table>
-                    <tbody class="h-table-body-table">
-                    <tr>
-                      <td width="150" align="center">{{ item.productCode }}</td>
-                      <td width="150" align="center">{{ item.imageUrl }}</td>
-                      <td width="150" align="center">{{ item.productName }}</td>
-                      <td width="150" align="center">{{ item.productCategoryName }}</td>
-                      <td width="150" align="center">{{ item.spec }}</td>
-                    </tr>
-                    </tbody>
-                  </table>
-                </template>
-              </Select>
+                :keys="{ value: 'productId', label: 'productName' }"
+              />
             </div>
             <div v-else>{{ row.productCode }}--{{ row.productName }}</div>
           </template>
@@ -115,16 +84,15 @@
         <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
           <template #default="{row}">
             <template v-if="!row.isNew && !isAudited">
-              <Select
+              <t-select
                   v-if="row.auxiliaryUnitPrices"
-                  :deletable="false"
+                  :clearable="false"
                   @change="changeProductUnit($event,row)"
                   v-model="row.secondaryUnitId"
-                  :datas="row.auxiliaryUnitPrices"
+                  :options="row.auxiliaryUnitPrices"
                   filterable
                   placeholder="输入采购单位"
-                  keyName="unitId"
-                  titleName="unitName"
+                :keys="{ value: 'unitId', label: 'unitName' }"
               />
               <span v-else>{{ row.secondaryUnitName }}</span>
             </template>
@@ -136,14 +104,13 @@
         <vxe-column title="仓库" field="warehouse" align="center" width="120">
           <template #default="{row}">
             <template v-if="!row.isNew && !isAudited">
-              <Select
-                  :deletable="false"
+              <t-select
+                  :clearable="false"
                   v-model="row.warehouseId"
-                  :datas="warehouseList"
+                  :options="warehouseList"
                   filterable
-                  keyName="id"
-                  titleName="name"
                   @change="handleWarehouseChange(row, $event)"
+                :keys="{ value: 'id', label: 'name' }"
               />
             </template>
             <span v-else-if="!row.isNew">{{ warehouseName(row.warehouseId) }}</span>
@@ -275,28 +242,28 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input placeholder="请输入备注" maxlength="150" v-model="form.remarks" :disabled="isAudited"/>
+          <t-input placeholder="请输入备注" maxlength="150" v-model="form.remarks" :disabled="isAudited"/>
         </div>
       </div>
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">优惠率：</label>
-          <Input v-model="form.discountRate" @blur="changeDiscountRate" :disabled="isAudited"/>
+          <t-input v-model="form.discountRate" @blur="changeDiscountRate" :disabled="isAudited"/>
           <label class="ml-10px mr-16px w-80px">优惠金额：</label>
-          <Input v-model="form.discountAmount" @blur="changeDiscountAmount" :disabled="isAudited"/>
+          <t-input v-model="form.discountAmount" @blur="changeDiscountAmount" :disabled="isAudited"/>
           <label class="ml-16px mr-16px w-100px">优惠后金额：</label>
-          <Input v-model="form.finalAmount" @blur="changeFinalAmount" :disabled="isAudited"/>
+          <t-input v-model="form.finalAmount" @blur="changeFinalAmount" :disabled="isAudited"/>
         </div>
       </div>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading">取消</Button>
+      <t-button @click="closeWindow" :loading="loading">取消</t-button>
       <div>
-        <Button color="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</Button>
-        <Button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</Button>
-        <Button @click="doPrint" :loading="loading">打印</Button>
-        <Button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</Button>
-        <Button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</Button>
+        <t-button theme="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
+        <t-button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</t-button>
+        <t-button @click="doPrint" :loading="loading">打印</t-button>
+        <t-button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
+        <t-button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
       </div>
     </div>
   </div>
@@ -509,7 +476,8 @@ export default {
         }
       });
     },
-    selectProduct(d, index) {
+    selectProduct(value, index) {
+      const d = (this.productList || []).find((item) => String(item.productId) === String(value));
       if (!d) return;
       const defaultWarehouseId = this.resolveDefaultWarehouseId();
       let g = {
@@ -611,26 +579,28 @@ export default {
         this.productData.splice(index, 1);
       }
     },
-    changeSupplier(e) {
-      if (!e) {
+    changeSupplier(value) {
+      if (value == null || value === '') {
         this.form.supplierId = null;
-        this.productData = [{isNew: true}];
+        this.productData = [{ isNew: true }];
         return;
       }
+      const e = (this.supplierList || []).find((item) => String(item.id) === String(value));
+      if (!e) return;
       if (e.id !== this.form.supplierId) {
         if (this.productData.length > 1) {
           DialogPlugin.confirm({
-            title: "系统提示",
-            content: `修改供货商后，将清除已选择的产品数据，确定修改？`,
+            header: '系统提示',
+            body: `修改供货商后，将清除已选择的产品数据，确定修改？`,
             onConfirm: () => {
-              this.productData = [{isNew: true}];
+              this.productData = [{ isNew: true }];
               this.form.supplierId = e.id;
               this.loadProductsBySupplier();
             }
           });
         } else {
           this.form.supplierId = e.id;
-          this.productData = [{isNew: true}];
+          this.productData = [{ isNew: true }];
           this.loadProductsBySupplier();
         }
       }
@@ -661,9 +631,11 @@ export default {
       this.form.discountAmount = (this.allFinalAmount - this.form.finalAmount).toFixed(2);
       this.form.discountRate = this.allFinalAmount === 0 ? 0 : ((this.form.discountAmount / this.allFinalAmount) * 100).toFixed(2);
     },
-    changeProductUnit(item, row) {
+    changeProductUnit(value, row) {
+      const item = (row.auxiliaryUnitPrices || []).find((u) => String(u.unitId) === String(value));
+      if (!item) return;
       row.secondaryUnitName = item.unitName;
-      row.secondaryPrice = (item.price || 0).toFixed(2) || 0;
+      row.secondaryPrice = (item.unitPrice || item.price || 0).toFixed(2) || 0;
       row.conversionRate = item.conversionRate || 1;
       row.quantity = (row.secondaryQuantity * row.conversionRate).toFixed(2);
       row.subtotal = (row.secondaryQuantity * row.secondaryPrice).toFixed(2);
@@ -700,8 +672,8 @@ export default {
     },
     approved() {
       DialogPlugin.confirm({
-        title: "审核提示",
-        content: `确认审核该订单?`,
+        header: "审核提示",
+        body: `确认审核该订单?`,
         onConfirm: () => {
           return PurchaseInbound.approved('已审核', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");
@@ -712,8 +684,8 @@ export default {
     },
     backApproved() {
       DialogPlugin.confirm({
-        title: "反审核提示",
-        content: `确认反审核该订单?`,
+        header: "反审核提示",
+        body: `确认反审核该订单?`,
         onConfirm: () => {
           return PurchaseInbound.approved('已保存', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");

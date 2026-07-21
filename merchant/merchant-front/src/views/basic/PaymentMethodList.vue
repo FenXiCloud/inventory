@@ -113,8 +113,8 @@ export default {
     },
     deletePaymentMethod(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除：${row.name}?`,
+        header: '系统提示',
+        body: `确认删除：${row.name}?`,
         onConfirm: () => {
           PaymentMethod.delete(row.id).then(() => {
             MessagePlugin.success('删除成功~');
@@ -126,8 +126,8 @@ export default {
     trigger(row) {
       const enabled = !row.enabled;
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认要「${enabled ? '启用' : '禁用'}」结算方式：${row.name}?`,
+        header: '系统提示',
+        body: `确认要「${enabled ? '启用' : '禁用'}」结算方式：${row.name}?`,
         onConfirm: () => {
           PaymentMethod.save({id: row.id, enabled}).then(() => {
             MessagePlugin.success('操作成功~');

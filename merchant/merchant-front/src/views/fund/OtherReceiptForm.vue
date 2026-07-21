@@ -6,46 +6,45 @@
           <label class="mr-20px" style="font-size: 16px !important">
             <span style="color: red">*</span>客户：
           </label>
-          <Select
+          <t-select
             v-model="form.customerName"
             class="w-200px z-index-1"
-            :datas="customerDataList"
-            keyName="name"
-            titleName="name"
+            :options="customerDataList"
+            :keys="{ value: 'name', label: 'name' }"
             placeholder="请选择客户"
-            :filterable="true"
+            filterable
+            clearable
             :disabled="isAudited"
-            @change="selectCustomer($event)"
+            @change="selectCustomer"
           />
           <label class="mr-20px ml-16px" style="font-size: 16px !important">业务员：</label>
-          <Select
-            ref="selectRef"
-            style="z-index: 1"
-            v-model="form.orderStaffName"
-            class="w-140px"
-            :datas="orderStaffList"
-            keyName="name"
-            titleName="name"
-            placeholder="选择业务员"
-            :filterable="true"
-            :disabled="isAudited"
-            @change="selectOrderStaff($event)"
-          >
-            <template #bottom>
-              <Button no-border icon="add" @click="addOrderStaff()">新建</Button>
-            </template>
-          </Select>
+          <span style="display: inline-flex; align-items: center; z-index: 1">
+            <t-select
+              ref="selectRef"
+              v-model="form.orderStaffName"
+              class="w-140px"
+              :options="orderStaffList"
+              :keys="{ value: 'name', label: 'name' }"
+              placeholder="选择业务员"
+              filterable
+              clearable
+              :disabled="isAudited"
+              @change="selectOrderStaff"
+            />
+            <t-button v-if="!isAudited" variant="text" @click="addOrderStaff()">新建</t-button>
+          </span>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker
+          <t-date-picker
             class="w-140px"
             v-model="form.orderDate"
             :clearable="false"
             :disabled="isAudited"
           />
           <label class="mr-20px ml-16px" style="font-size: 16px !important">收款到期日：</label>
-          <DatePicker
+          <t-date-picker
             class="w-140px"
             v-model="form.expirationDate"
+            clearable
             :disabled="isAudited"
           />
         </template>
@@ -130,9 +129,9 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input
+          <t-input
             placeholder="请输入备注"
-            maxlength="150"
+            :maxlength="150"
             v-model="form.remarks"
             :disabled="isAudited"
           />
@@ -143,51 +142,51 @@
           <label class="mr-16px w-80px">
             <span style="color: red">*</span>结算账户：
           </label>
-          <Select
+          <t-select
             v-model="form.settlementAccount"
             class="w-160px"
-            :datas="settlementAccount"
-            keyName="name"
-            titleName="name"
+            :options="settlementAccount"
+            :keys="{ value: 'name', label: 'name' }"
             placeholder="选择结算账户"
-            :filterable="true"
+            filterable
+            clearable
             :disabled="isAudited"
-            @change="selectAccounter($event)"
+            @change="selectAccounter"
           />
           <label class="ml-10px mr-16px w-90px">收款金额：</label>
-          <Input
+          <t-input
             class="w-120px"
             v-model="form.collectionAmount"
             :disabled="isAudited"
             @change="form.arrearsAmount = calcArrearsAmount()"
           />
           <label class="ml-10px mr-16px w-90px">本次欠款：</label>
-          <Input class="w-120px" disabled v-model="form.arrearsAmount" />
+          <t-input class="w-120px" disabled v-model="form.arrearsAmount" />
           <div class="receipt-extra-actions">
-            <Button @click="historyForm()">历史单据</Button>
-            <Button :title="logContent">操作日志</Button>
+            <t-button @click="historyForm()">历史单据</t-button>
+            <t-button :title="logContent">操作日志</t-button>
           </div>
         </div>
       </div>
     </div>
 
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button :loading="loading" @click="closeWindow">取消</Button>
+      <t-button :loading="loading" @click="closeWindow">取消</t-button>
       <div>
         <template v-if="!isAudited">
-          <Button color="primary" :loading="loading" @click="saveForm('add')">保存并新增</Button>
-          <Button :loading="loading" @click="saveForm('save')">保存</Button>
-          <Button
+          <t-button theme="primary" :loading="loading" @click="saveForm('add')">保存并新增</t-button>
+          <t-button :loading="loading" @click="saveForm('save')">保存</t-button>
+          <t-button
             v-if="form.orderStatus == '已保存'"
             :loading="loading"
             @click="saveForm('audit', '已审核')"
-          >审核</Button>
+          >审核</t-button>
         </template>
-        <Button
+        <t-button
           v-else
           :loading="loading"
           @click="approved('已保存')"
-        >反审核</Button>
+        >反审核</t-button>
       </div>
     </div>
   </div>
@@ -335,7 +334,7 @@ export default {
     approved(orderStatus) {
       const isAnti = orderStatus === '已保存';
       DialogPlugin.confirm({
-        content: isAnti ? '确定反审核？' : '确定审核？',
+        body: isAnti ? '确定反审核？' : '确定审核？',
         onConfirm: () => {
           OtherReceipt.approved(orderStatus, this.form.id)
             .then((success) => {
@@ -506,19 +505,22 @@ export default {
         .finally(() => (this.loading = false));
     },
 
-    selectCustomer(e) {
+    selectCustomer(value) {
+      const e = this.customerDataList.find((item) => item.name === value);
       this.form.customerId = e?.id || null;
       this.form = {
         ...this.form
       };
     },
-    selectAccounter(e) {
+    selectAccounter(value) {
+      const e = this.settlementAccount.find((item) => item.name === value);
       this.form.settlementAccountId = e?.id || null;
       this.form = {
         ...this.form
       };
     },
-    selectOrderStaff(e) {
+    selectOrderStaff(value) {
+      const e = this.orderStaffList.find((item) => item.name === value);
       this.form.orderStaffId = e?.id || null;
     },
     changeAccount(value, row) {
@@ -538,7 +540,6 @@ export default {
       }
     },
     addOrderStaff() {
-      document.getElementsByClassName('h-dropdown')[0].style.zIndex = 1;
       this.showForm();
     },
 

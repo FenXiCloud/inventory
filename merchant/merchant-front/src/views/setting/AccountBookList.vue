@@ -147,7 +147,7 @@ export default {
       let dialogId = openDialog({
         header: "参数设置",
         closeOnOverlayClick: false,
-        width: '800px',
+        width: '520px',
         body: h(SystemConfigForm, {
           accountBook,
           onClose: () => {
@@ -178,8 +178,8 @@ export default {
     },
     doRemove(row) {
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认删除账套：${row.name}?`,
+        header: "系统提示",
+        body: `确认删除账套：${row.name}?`,
         onConfirm: () => {
           AccountBook.remove(row.id).then(() => {
             MessagePlugin.success("删除成功~");
@@ -191,8 +191,8 @@ export default {
     trigger(row) {
       let enabled = !row.enabled;
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认要「${enabled ? "启用" : "禁用"}」账套：${row.name}?`,
+        header: "系统提示",
+        body: `确认要「${enabled ? "启用" : "禁用"}」账套：${row.name}?`,
         onConfirm: () => {
           AccountBook.save({id: row.id, enabled}).then(() => {
             MessagePlugin.success("操作成功~");

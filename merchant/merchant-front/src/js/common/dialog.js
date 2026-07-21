@@ -136,8 +136,8 @@ const DrawerHost = defineComponent({
 
 export function openDialog(options = {}) {
 	return mountHost(DialogHost, {
-		header: options.header ?? options.title,
-		body: options.body ?? options.content,
+		header: options.header,
+		body: options.body,
 		width: options.width ?? '520px',
 		placement: options.placement ?? 'center',
 		closeOnOverlayClick: options.closeOnOverlayClick ?? true,
@@ -147,9 +147,9 @@ export function openDialog(options = {}) {
 
 export function openDrawer(options = {}) {
 	return mountHost(DrawerHost, {
-		header: options.header ?? options.title,
-		body: options.body ?? options.content,
-		size: options.size ?? options.width ?? '40%',
+		header: options.header,
+		body: options.body,
+		size: options.size ?? '40%',
 		closeOnOverlayClick: options.closeOnOverlayClick ?? true
 	})
 }
@@ -159,5 +159,3 @@ export function closeDialog(id) {
 	if (inst) inst.close()
 }
 
-// 兼容旧命名
-export const closeDrawer = closeDialog

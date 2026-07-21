@@ -226,8 +226,8 @@ export default {
         }
         const ids = filterRecords.map(item => item.id);
         DialogPlugin.confirm({
-          title: "批量审核提示",
-          content: `本次审核${ids.length}条?`,
+          header: "批量审核提示",
+          body: `本次审核${ids.length}条?`,
           onConfirm: () => {
             return InventoryTransfer.approved('已审核', ids).then(() => {
               MessagePlugin.success("审核成功~");
@@ -246,8 +246,8 @@ export default {
         }
         const ids = filterRecords.map(item => item.id);
         DialogPlugin.confirm({
-          title: "批量反审核提示",
-          content: `本次反审核${ids.length}条?`,
+          header: "批量反审核提示",
+          body: `本次反审核${ids.length}条?`,
           onConfirm: () => {
             return InventoryTransfer.approved('已保存', ids).then(() => {
               MessagePlugin.success("反审核成功~");
@@ -283,8 +283,8 @@ export default {
     },
     doRemove({id}) {
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `是否删除当前数据?`,
+        header: "系统提示",
+        body: `是否删除当前数据?`,
         onConfirm: () => {
           return InventoryTransfer.remove(id).then(() => {
             MessagePlugin.success("操作成功～");

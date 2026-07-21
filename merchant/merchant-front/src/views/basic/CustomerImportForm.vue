@@ -17,7 +17,7 @@
       <div class="filler-panel">
         <div class="filler-item" style="flex: 1;margin: 5px 0px!important;">
           <label class="mr-16px  w-110px">选择上传文件：</label>
-          <Button color="primary" :loading="loading" @click="$refs.file.click()">选择文件</Button>
+          <t-button theme="primary" :loading="loading" @click="$refs.file.click()">选择文件</t-button>
           <span class="ml-10px" v-if="file"> {{ fileName }}  <t-icon @click="file =null"
                                                                 name="close" class="text-hover ml-10px" /></span>
           <input type="file" style="visibility: hidden;" @change="fileChange($event)" ref="file"
@@ -26,12 +26,12 @@
       </div>
     </div>
     <div class="modal-column-between">
-      <Button @click="$emit('close')" :loading="loading">
+      <t-button @click="$emit('close')" :loading="loading">
         取消
-      </Button>
-      <Button color="primary" :disabled="!file" @click="importData" :loading="loading">
+      </t-button>
+      <t-button theme="primary" :disabled="!file" @click="importData" :loading="loading">
         导 入
-      </Button>
+      </t-button>
     </div>
   </div>
 </template>
@@ -43,6 +43,7 @@ import Customer from "@js/api/basic/Customer";
 
 export default {
   name: "CustomerImportForm",
+  emits: ['close', 'success'],
   data() {
     return {
       loading: false,

@@ -62,89 +62,9 @@ body,
 }
 
 
-/* 页面容器 */
-.frame-page {
-  height: 100%;
-  padding: 16px;
-  overflow: auto;
-  box-sizing: border-box;
-}
-
-.frame-flex-page {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.frame-flex-header {
-  flex-shrink: 0;
-}
-
-.frame-flex-body {
-  flex: 1;
-  overflow: auto;
-}
-
-/* TDesign 面板组件 */
-.t-panel {
-  background: var(--td-bg-color-container);
-  border-radius: var(--td-radius-default, 6px);
-  box-shadow: var(--td-shadow-1, 0 1px 4px rgba(0, 0, 0, 0.04));
-  padding: 16px;
-  box-sizing: border-box;
-}
-
-.t-panel-body {
-  background: var(--td-bg-color-container);
-  border-radius: var(--td-radius-default, 6px);
-  box-shadow: var(--td-shadow-1, 0 1px 4px rgba(0, 0, 0, 0.04));
-  box-sizing: border-box;
-}
-
-/* 工具栏 */
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  gap: 16px;
-}
-
-.toolbar-left,
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toolbar-left {
-  flex: 1;
-}
-
 /* 常用辅助类 */
-.primary-color {
-  color: #3d74ff;
-}
-
-.text-hover {
-  cursor: pointer;
-}
-
-.text-hover:hover {
-  color: #3d74ff;
-}
-
 .cursor-pointer {
   cursor: pointer;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 0 0;
-  margin-top: 16px;
-  border-top: 1px solid var(--td-component-stroke);
 }
 
 /* 自定义菜单滚动 */

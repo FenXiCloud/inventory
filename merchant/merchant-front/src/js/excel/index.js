@@ -13,7 +13,6 @@ export function exportExcel(val, headList, filename) {
         const tHeader = headList.map(item => item.label); // 表格头部
         const filterVal = headList.map(item => item.key); // 展示数据里哪些字
         const data = val.map(v => filterVal.map(j => v[j]));
-        console.info("exportExcel", data);
         // 文件数据处理完成后自动下载
         export_json_to_excel({
             header: tHeader, // 表头
@@ -23,7 +22,6 @@ export function exportExcel(val, headList, filename) {
             bookType: "xlsx" // 文件后缀名
         });
     } catch (error) {
-        console.log(error);
     }
 }
 
@@ -42,7 +40,6 @@ export function exportExcelHeader(val, tHeader, headList, merges, initList, file
         const filterVal = headList.map(item => item.key); // 展示数据里哪些字
         const data = val.map(v => filterVal.map(j => v[j]));
         const exportData = initList.concat(data);
-        console.info("exportExcel", exportData);
         // 文件数据处理完成后自动下载
         export_json_to_excel({
             header: tHeader, // 表头
@@ -53,6 +50,5 @@ export function exportExcelHeader(val, tHeader, headList, merges, initList, file
             bookType: "xlsx" // 文件后缀名
         });
     } catch (error) {
-        console.log(error);
     }
 }

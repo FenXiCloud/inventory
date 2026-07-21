@@ -1,24 +1,34 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules" :showErrorTip="true" :labelWidth="130">
-        <FormItem label="财务软件辅助项" prop="financeId">
-          <Select :datas="financeItemMappings" keyName="id" v-model="model.financeId" filterable
-                  titleName="titleName" placeholder="选择财务软件辅助项" @change="changeMappings('financeId')"/>
-        </FormItem>
-        <FormItem label="进销存辅助项" prop="inventoryId">
-          <Select :datas="itemMappings" keyName="id" v-model="model.inventoryId" filterable
-                  titleName="titleName" placeholder="选择进销存辅助项" @change="changeMappings('inventoryId')"/>
-        </FormItem>
-      </Form>
+      <t-form ref="form" :data="model" :rules="validationRules" label-width="130px">
+        <t-form-item label="财务软件辅助项" name="financeId">
+          <t-select
+              :options="financeItemMappings"
+              :keys="{ value: 'id', label: 'titleName' }"
+              v-model="model.financeId"
+              filterable
+              clearable
+              placeholder="选择财务软件辅助项"
+              @change="changeMappings('financeId')"
+          />
+        </t-form-item>
+        <t-form-item label="进销存辅助项" name="inventoryId">
+          <t-select
+              :options="itemMappings"
+              :keys="{ value: 'id', label: 'titleName' }"
+              v-model="model.inventoryId"
+              filterable
+              clearable
+              placeholder="选择进销存辅助项"
+              @change="changeMappings('inventoryId')"
+          />
+        </t-form-item>
+      </t-form>
     </div>
-    <div class="modal-column-right">
-      <Button icon="fa fa-close" @click="$emit('close')" :loading="loading">
-        取消
-      </Button>
-      <Button icon="fa fa-save" color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+    <div class="modal-column-between">
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
@@ -76,7 +86,6 @@ export default {
     init() {
       const categoryId = this.categoryId;
       FinanceAccountLink.accountingCategory({ids: this.categoryId}).then(({data}) => {
-        console.info("categoryId", data)
         this.model.categoryType = data.data[0].categoryType;
         this.model.categoryId = data.data[0].id;
         this.model.categoryName = data.data[0].name;

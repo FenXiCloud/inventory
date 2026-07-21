@@ -6,22 +6,25 @@
           <label class="mr-20px ml-16px" style="font-size: 16px !important">盘点日期：</label>
           <label style="font-size: 15px !important">{{ form.checkDate }}</label>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">仓库：</label>
-          <Select class="w-178px" filterable :multiple="true" required :datas="warehouseList" keyName="id"
-                  titleName="name"
-                  v-model="form.warehouseIds" :placeholder="warehousePlaceholder"
-                  :disabled="isLocked || !!form.id"
-                  @change="changeWarehouseId"/>
+          <t-select class="w-178px" filterable multiple :options="warehouseList"
+                    :keys="{ value: 'id', label: 'name' }"
+                    v-model="form.warehouseIds" :placeholder="warehousePlaceholder"
+                    :disabled="isLocked || !!form.id" clearable
+                    @change="changeWarehouseId"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">产品：</label>
-          <Select class="w-178px mr-20px" filterable required :datas="productList" keyName="id" titleName="customName"
-                  v-model="form.productId" placeholder="请选择产品" :disabled="isLocked || !!form.id"/>
+          <t-select class="w-178px mr-20px" filterable :options="productList"
+                    :keys="{ value: 'id', label: 'customName' }"
+                    v-model="form.productId" placeholder="请选择产品" :disabled="isLocked || !!form.id" clearable/>
         </template>
         <template #tools>
           <Stamp v-if="isAudited"/>
-          <Search v-if="!form.id" v-model.trim="form.filter"
-                  show-search-button class="w-360px ml-8px"
-                  placeholder="请输入产品编号/产品名称" @search="doSearch">
-            <t-icon name="search" />
-          </Search>
+          <t-input v-if="!form.id" v-model.trim="form.filter"
+                   clearable class="w-360px ml-8px"
+                   placeholder="请输入产品编号/产品名称" @enter="doSearch">
+            <template #suffixIcon>
+              <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
+            </template>
+          </t-input>
         </template>
       </vxe-toolbar>
       <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border show-overflow keep-source
@@ -76,35 +79,35 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="isLocked" placeholder="请输入备注" type="text" maxlength="150"
-                 style="width: 80%"
-                 v-model="form.remarks"/>
+          <t-input :disabled="isLocked" placeholder="请输入备注" maxlength="150"
+                   style="width: 80%"
+                   v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
         </div>
       </div>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading"> 取消</Button>
+      <t-button @click="closeWindow" :loading="loading"> 取消</t-button>
       <div>
-        <Button v-if="!isAudited && !looked" color="primary" @click="saveOrder('add')" :loading="loading">
+        <t-button v-if="!isAudited && !looked" theme="primary" @click="saveOrder('add')" :loading="loading">
           保存并新增
-        </Button>
-        <Button color="primary" :disabled="form.generatedDisabled" @click="openGeneratedModal" :loading="loading">
+        </t-button>
+        <t-button theme="primary" :disabled="form.generatedDisabled" @click="openGeneratedModal" :loading="loading">
           生成盘点单据
-        </Button>
-        <Button v-if="!isAudited && !looked" @click="saveOrder('save')" :loading="loading">保存</Button>
-        <Button @click="doPrint" :loading="loading"> 打印 </Button>
-        <Button v-if="form.id && !isAudited && !looked" @click="approved()" :loading="loading"> 审核</Button>
-        <Button v-if="isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</Button>
+        </t-button>
+        <t-button v-if="!isAudited && !looked" @click="saveOrder('save')" :loading="loading">保存</t-button>
+        <t-button @click="doPrint" :loading="loading"> 打印 </t-button>
+        <t-button v-if="form.id && !isAudited && !looked" @click="approved()" :loading="loading"> 审核</t-button>
+        <t-button v-if="isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</t-button>
       </div>
     </div>
     <t-dialog v-model:visible="opened" header="生成盘点单据" :footer="false" width="360px">
       <div class="mt-10px">
-        <div class="h-full flex justify-center items-center flex-column" v-if="inbounds.length > 0">
-          <Button color="primary" @click="generatedInbounds" :loading="loading">盘盈单</Button>
+        <div class="flex justify-center items-center flex-column" v-if="inbounds.length > 0">
+          <t-button theme="primary" @click="generatedInbounds" :loading="loading">盘盈单</t-button>
         </div>
-        <div class="mt-10px h-full flex justify-center items-center flex-column" v-if="outbounds.length > 0">
-          <Button color="primary" @click="generatedOutbounds" :loading="loading">盘亏单</Button>
+        <div class="mt-10px flex justify-center items-center flex-column" v-if="outbounds.length > 0">
+          <t-button theme="primary" @click="generatedOutbounds" :loading="loading">盘亏单</t-button>
         </div>
       </div>
     </t-dialog>
@@ -362,7 +365,6 @@ export default {
       this.selectRowIndex = rowIndex;
     },
     tableCellClick({rowIndex}) {
-      console.info(rowIndex);
     },
     quantityInput({rowIndex}) {
       const row = this.stockTakeData?.[rowIndex];
@@ -453,8 +455,8 @@ export default {
         return;
       }
       DialogPlugin.confirm({
-        title: "审核提示",
-        content: `确认审核该订单?`,
+        header: "审核提示",
+        body: `确认审核该订单?`,
         onConfirm: () => {
           return StockTake.approved('已审核', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");
@@ -470,8 +472,8 @@ export default {
         return;
       }
       DialogPlugin.confirm({
-        title: "反审核提示",
-        content: `确认反审核该订单?`,
+        header: "反审核提示",
+        body: `确认反审核该订单?`,
         onConfirm: () => {
           return StockTake.approved('已保存', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");

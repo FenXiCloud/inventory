@@ -26,13 +26,11 @@
         </vxe-column>
         <vxe-column field="productName" title="货商名称" min-width="200">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectCustomer($event,scope.rowIndex)" :datas="supplierList" v-model="scope.row.supplierId"
-                      keyName="id" titleName="name" filterable placeholder="输入编码/名称" :deletable="false" :disabled="this.type === 'edit'">
-                <template v-slot:item="{ item }">
-                  <div>{{ item.name }}</div>
-                </template>
-              </Select>
+            <div class="input-group goodsSelect" @keyup.stop="void(0)">
+              <t-select ref="ms" @change="selectCustomer($event, scope.rowIndex)" :options="supplierList"
+                        v-model="scope.row.supplierId"
+                        :keys="{ value: 'id', label: 'name' }" filterable placeholder="输入编码/名称"
+                        :clearable="false" :disabled="type === 'edit'"/>
             </div>
           </template>
         </vxe-column>
@@ -77,9 +75,9 @@
       </vxe-table>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading">取消</Button>
+      <t-button @click="closeWindow" :loading="loading">取消</t-button>
       <div>
-        <Button color="primary" @click="save" :loading="loading">保存</Button>
+        <t-button theme="primary" @click="save" :loading="loading">保存</t-button>
       </div>
     </div>
   </div>
@@ -138,8 +136,6 @@ export default {
 
     //选择产品
     selectCustomer(item, index) {
-      console.log("item",item)
-      console.log("index",index)
       if(this.type === 'edit'){
         return
       }
@@ -167,7 +163,6 @@ export default {
           }, 100);
         })
       });
-      console.log("this.dataList",this.dataList);
       this.$forceUpdate();
     },//添加行或减少行
     adjustRows(type, index) {
@@ -191,7 +186,6 @@ export default {
       this.loading = true;
       SupplierInitial.batch(requestData).then(({data}) => {
         this.dataList = data;
-        console.log("data",data)
         this.closeWindow();
       }).finally(() => this.loading = false);
     },
@@ -206,7 +200,6 @@ export default {
       let subtotalFlag = false
       let customerFlag = false
       requestData.map(item => {
-        console.log("item",item)
         if (item.balanceBefore === 0 || !item.balanceBefore) {
           quantityFlag = true
         }
@@ -249,7 +242,6 @@ export default {
     editForm(){
       SupplierInitial.load(this.supplierInitialId).then(({data}) => {
         this.dataList[0] = data;
-        console.log("data",data)
       }).finally(() => this.loading = false);
     },
     initForm(){

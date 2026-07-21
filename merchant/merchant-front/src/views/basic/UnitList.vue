@@ -102,8 +102,8 @@ export default {
     },
     deleteUnit(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除单位：${row.name}?`,
+        header: '系统提示',
+        body: `确认删除单位：${row.name}?`,
         onConfirm: () => {
           Unit.delete(row.id).then(() => {
             MessagePlugin.success('删除成功~');

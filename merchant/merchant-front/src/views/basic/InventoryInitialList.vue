@@ -173,8 +173,8 @@ export default {
         return;
       }
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: '确定批量删除数据？',
+        header: '系统提示',
+        body: '确定批量删除数据？',
         onConfirm: () => {
           InventoryInitial.batchDelete({ids: this.selectedRowKeys}).then(() => {
             MessagePlugin.success('批量删除成功');
@@ -185,8 +185,8 @@ export default {
     },
     doRemove(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除：${row.productName}?`,
+        header: '系统提示',
+        body: `确认删除：${row.productName}?`,
         onConfirm: () => {
           InventoryInitial.remove(row.id).then(() => {
             MessagePlugin.success('删除成功~');

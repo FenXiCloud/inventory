@@ -214,8 +214,8 @@ export default {
     },
     deleteCustomerCategory(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除客户分类：${row.name}?`,
+        header: '系统提示',
+        body: `确认删除客户分类：${row.name}?`,
         onConfirm: () => {
           CustomerCategory.remove(row.id).then(() => {
             MessagePlugin.success('删除成功~');
@@ -255,8 +255,8 @@ export default {
     },
     deleteCustomer(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除客户：${row.name}?`,
+        header: '系统提示',
+        body: `确认删除客户：${row.name}?`,
         onConfirm: () => {
           Customer.delete(row.id).then(() => {
             MessagePlugin.success('删除成功~');

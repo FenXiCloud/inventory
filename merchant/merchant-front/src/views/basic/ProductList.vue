@@ -213,8 +213,8 @@ export default {
     trigger(row) {
       let enabled = !row.enabled;
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认要「${enabled ? "启用" : "禁用"}」名称：${row.name}?`,
+        header: "系统提示",
+        body: `确认要「${enabled ? "启用" : "禁用"}」名称：${row.name}?`,
         onConfirm: () => {
           Product.update({id: row.id, enabled}).then(() => {
             MessagePlugin.success("操作成功~");
@@ -246,8 +246,8 @@ export default {
     },
     deleteProductCategory(row) {
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认删除产品分类：${row.name}?`,
+        header: "系统提示",
+        body: `确认删除产品分类：${row.name}?`,
         onConfirm: () => {
           ProductCategory.remove(row.id).then(() => {
             MessagePlugin.success("删除成功~");
@@ -285,8 +285,8 @@ export default {
     },
     deleteProduct(row) {
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认删除产品：${row.name}?`,
+        header: "系统提示",
+        body: `确认删除产品：${row.name}?`,
         onConfirm: () => {
           Product.remove(row.id).then(() => {
             MessagePlugin.success("删除成功~");

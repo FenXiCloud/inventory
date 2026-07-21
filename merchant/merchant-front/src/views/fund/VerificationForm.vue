@@ -4,71 +4,68 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px" style="font-size: 16px !important">业务类型：</label>
-          <Select
-            :deletable="false"
+          <t-select
+            :clearable="false"
             v-model="form.type"
             class="w-140px z-index-1"
-            :datas="businessTypeList"
-            keyName="type"
-            titleName="name"
+            :options="businessTypeList"
+            :keys="{ value: 'type', label: 'name' }"
             placeholder="选择业务类型"
             :disabled="isAudited"
-            @change="selectBusinessType($event)"
+            @change="selectBusinessType"
           />
           <template v-if="form.type == '1'">
             <label class="mr-20px ml-16px" style="font-size: 16px !important">
               <span style="color: red">*</span>客户：
             </label>
-            <Select
-              :filterable="true"
+            <t-select
+              filterable
+              clearable
               v-model="form.personnelName"
               class="w-160px z-index-1"
-              :datas="customerDataList"
-              keyName="name"
-              titleName="name"
+              :options="customerDataList"
+              :keys="{ value: 'name', label: 'name' }"
               placeholder="选择客户"
               :disabled="isAudited"
-              @change="selectPerson($event)"
+              @change="selectPerson"
             />
           </template>
           <template v-else-if="form.type == '2'">
             <label class="mr-20px ml-16px" style="font-size: 16px !important">
               <span style="color: red">*</span>供应商：
             </label>
-            <Select
-              :filterable="true"
+            <t-select
+              filterable
+              clearable
               v-model="form.personnelName"
               class="w-160px z-index-1"
-              :datas="supplierDataList"
-              keyName="name"
-              titleName="name"
+              :options="supplierDataList"
+              :keys="{ value: 'name', label: 'name' }"
               placeholder="选择供应商"
               :disabled="isAudited"
-              @change="selectPerson($event)"
+              @change="selectPerson"
             />
           </template>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">业务员：</label>
-          <Select
-            :filterable="true"
-            ref="selectRef"
-            style="z-index: 1"
-            v-model="form.orderStaffName"
-            class="w-140px"
-            :datas="orderStaffList"
-            keyName="name"
-            titleName="name"
-            placeholder="选择业务员"
-            :disabled="isAudited"
-            @change="selectOrderStaff($event)"
-          >
-            <template #bottom>
-              <Button no-border icon="add" @click="addOrderStaff()">新建</Button>
-            </template>
-          </Select>
+          <span style="display: inline-flex; align-items: center; z-index: 1">
+            <t-select
+              filterable
+              clearable
+              ref="selectRef"
+              v-model="form.orderStaffName"
+              class="w-140px"
+              :options="orderStaffList"
+              :keys="{ value: 'name', label: 'name' }"
+              placeholder="选择业务员"
+              :disabled="isAudited"
+              @change="selectOrderStaff"
+            />
+            <t-button v-if="!isAudited" variant="text" @click="addOrderStaff()">新建</t-button>
+          </span>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">
             <span style="color: red">*</span>单据日期：
           </label>
-          <DatePicker
+          <t-date-picker
             class="w-140px"
             v-model="form.orderDate"
             :clearable="false"
@@ -82,8 +79,8 @@
 
       <vxe-toolbar>
         <template v-if="!isAudited" #tools>
-          <Button v-show="form.type == '1'" @click="sourceForm('预收')">选择预收单据</Button>
-          <Button v-show="form.type == '2'" @click="sourceForm('预付')">选择预付单据</Button>
+          <t-button v-show="form.type == '1'" @click="sourceForm('预收')">选择预收单据</t-button>
+          <t-button v-show="form.type == '2'" @click="sourceForm('预付')">选择预付单据</t-button>
         </template>
       </vxe-toolbar>
 
@@ -154,9 +151,9 @@
 
       <vxe-toolbar>
         <template v-if="!isAudited" #tools>
-          <Button v-show="form.type == '1'" @click="sourceForm('应收')">选择应收单据</Button>
-          <Button v-show="form.type == '2'" @click="sourceForm('应付')">选择应付单据</Button>
-          <Button @click="autoReconciliation">自动核销</Button>
+          <t-button v-show="form.type == '1'" @click="sourceForm('应收')">选择应收单据</t-button>
+          <t-button v-show="form.type == '2'" @click="sourceForm('应付')">选择应付单据</t-button>
+          <t-button @click="autoReconciliation">自动核销</t-button>
         </template>
       </vxe-toolbar>
 
@@ -231,37 +228,37 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input
+          <t-input
             placeholder="请输入备注"
-            maxlength="150"
+            :maxlength="150"
             v-model="form.remarks"
             :disabled="isAudited"
           />
           <div class="verification-extra-actions">
-            <Button @click="historyForm()">历史单据</Button>
-            <Button :title="logContent">操作日志</Button>
+            <t-button @click="historyForm()">历史单据</t-button>
+            <t-button :title="logContent">操作日志</t-button>
           </div>
         </div>
       </div>
     </div>
 
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button :loading="loading" @click="closeWindow">取消</Button>
+      <t-button :loading="loading" @click="closeWindow">取消</t-button>
       <div>
         <template v-if="!isAudited">
-          <Button color="primary" :loading="loading" @click="saveForm('add')">保存并新增</Button>
-          <Button :loading="loading" @click="saveForm('save')">保存</Button>
-          <Button
+          <t-button theme="primary" :loading="loading" @click="saveForm('add')">保存并新增</t-button>
+          <t-button :loading="loading" @click="saveForm('save')">保存</t-button>
+          <t-button
             v-if="form.orderStatus == '已保存'"
             :loading="loading"
             @click="saveForm('audit', '已审核')"
-          >审核</Button>
+          >审核</t-button>
         </template>
-        <Button
+        <t-button
           v-else
           :loading="loading"
           @click="approved('已保存')"
-        >反审核</Button>
+        >反审核</t-button>
       </div>
     </div>
   </div>
@@ -464,7 +461,7 @@ export default {
     approved(orderStatus) {
       const isAnti = orderStatus === '已保存';
       DialogPlugin.confirm({
-        content: isAnti ? '确定反审核？' : '确定审核？',
+        body: isAnti ? '确定反审核？' : '确定审核？',
         onConfirm: () => {
           OrderReceipt.approved(orderStatus, this.form.id)
             .then((success) => {
@@ -586,11 +583,13 @@ export default {
         })
         .finally();
     },
-    selectBusinessType($event) {
+    selectBusinessType(value) {
       this.clearData();
-      this.form.type = $event?.type;
+      this.form.type = value;
     },
-    selectPerson(e) {
+    selectPerson(value) {
+      const list = this.form.type == '1' ? this.customerDataList : this.supplierDataList;
+      const e = list.find((item) => item.name === value);
       this.form.personnelId = e?.id;
       this.customOrSupplierBalance = e?.balance;
       this.form = {
@@ -599,12 +598,12 @@ export default {
       this.tableData = [{}];
       this.tableData2 = [{}];
     },
-    selectOrderStaff(e) {
+    selectOrderStaff(value) {
+      const e = this.orderStaffList.find((item) => item.name === value);
       this.form.orderStaffId = e ? e.id : null;
       this.form.orderStaffName = e ? e.name : null;
     },
     addOrderStaff() {
-      document.getElementsByClassName('h-dropdown')[0].style.zIndex = 1;
       this.showForm();
     },
     showForm(entity) {

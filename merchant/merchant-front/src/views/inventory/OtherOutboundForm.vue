@@ -4,17 +4,18 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker v-model="form.orderDate" :disabled="isLocked"
-                      :option="{ start: accountBook.checkoutDate }"
-                      :clearable="false">
-          </DatePicker>
+          <t-date-picker v-model="form.orderDate" :disabled="isLocked"
+                         :disable-date="{ before: accountBook.checkoutDate }"
+                         :clearable="false"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">客户：</label>
-          <Select class="w-178px" filterable required :datas="customerList" keyName="id" titleName="name"
-                  v-model="form.customerId" placeholder="请选择客户" :disabled="isLocked"/>
+          <t-select class="w-178px" filterable :options="customerList"
+                    :keys="{ value: 'id', label: 'name' }"
+                    v-model="form.customerId" placeholder="请选择客户" :disabled="isLocked" clearable/>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">业务类型：</label>
-          <Select class="w-178px" filterable required :datas="outboundTypeList" keyName="id" titleName="name"
-                  :deletable="false" v-model="form.outboundType" :disabled="isLocked"
-                  placeholder="请选择业务类型"/>
+          <t-select class="w-178px" filterable :options="outboundTypeList"
+                    :keys="{ value: 'id', label: 'name' }"
+                    :clearable="false" v-model="form.outboundType" :disabled="isLocked"
+                    placeholder="请选择业务类型"/>
         </template>
         <template #tools>
           <Stamp v-if="isAudited"/>
@@ -41,36 +42,10 @@
         <vxe-column field="productCode" title="产品编码" width="100"></vxe-column>
         <vxe-column field="productName" title="产品名称" min-width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!isLocked">
-              <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable :equalWidth="false"
-                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="(e) => changeRow(scope, 'product', e)">
-                <template v-slot:top>
-                  <table class="h-table" style="width: 100%">
-                    <thead class="h-table-header">
-                    <tr>
-                      <td width="150" align="center">产品编号</td>
-                      <td width="150" align="center">产品图片</td>
-                      <td width="150" align="center">产品名称</td>
-                      <td width="150" align="center">产品类别</td>
-                      <td width="150" align="center">产品规格</td>
-                    </tr>
-                    </thead>
-                  </table>
-                </template>
-                <template v-slot:item="{ item }">
-                  <table>
-                    <tbody class="h-table-body-table">
-                    <tr>
-                      <td width="150" align="center">{{ item.code }}</td>
-                      <td width="150" align="center">{{ item.imageUrl }}</td>
-                      <td width="150" align="center">{{ item.name }}</td>
-                      <td width="150" align="center">{{ item.productCategoryName }}</td>
-                      <td width="150" align="center">{{ item.specification }}</td>
-                    </tr>
-                    </tbody>
-                  </table>
-                </template>
-              </Select>
+            <div class="input-group goodsSelect" v-if="!isLocked">
+              <t-select :clearable="false" ref="ms" v-model="scope.row.productId" :options="productList" filterable
+                        placeholder="输入编码/名称" :keys="{ value: 'id', label: 'customName' }"
+                        @change="(e) => changeRow(scope, 'product', e)"/>
             </div>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
@@ -86,13 +61,10 @@
         <vxe-column title="单位" field="productUnitName" width="90"/>
         <vxe-column title="仓库" field="warehouseName" width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!isLocked">
-              <Select :deletable="false" ref="ms" v-model="scope.row.warehouseId" :datas="warehouseList" filterable
-                      placeholder="请选择仓库" keyName="id" titleName="name" @change="(e) => changeRow(scope, 'warehouse', e)">
-                <template v-slot:item="{ item }">
-                  <div>{{ item.name }}</div>
-                </template>
-              </Select>
+            <div class="input-group goodsSelect" v-if="!isLocked">
+              <t-select :clearable="false" ref="ms" v-model="scope.row.warehouseId" :options="warehouseList" filterable
+                        placeholder="请选择仓库" :keys="{ value: 'id', label: 'name' }"
+                        @change="(e) => changeRow(scope, 'warehouse', e)"/>
             </div>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
@@ -127,26 +99,26 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="isLocked" placeholder="请输入备注" type="text" maxlength="150"
-                 style="width: 80%"
-                 v-model="form.remarks"/>
+          <t-input :disabled="isLocked" placeholder="请输入备注" maxlength="150"
+                   style="width: 80%"
+                   v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
         </div>
       </div>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading"> 取消</Button>
+      <t-button @click="closeWindow" :loading="loading"> 取消</t-button>
       <div>
-        <Button color="primary" v-if="!isLocked" @click="saveOrder('add')"
-                :loading="loading">
+        <t-button theme="primary" v-if="!isLocked" @click="saveOrder('add')"
+                  :loading="loading">
           保存并新增
-        </Button>
-        <Button @click="saveOrder('save')" v-if="!isLocked"
-                :loading="loading"> 保存
-        </Button>
-        <Button @click="doPrint" :loading="loading"> 打印 </Button>
-        <Button v-if="form.id && !isLocked" @click="approved()" :loading="loading"> 审核</Button>
-        <Button v-if="isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</Button>
+        </t-button>
+        <t-button @click="saveOrder('save')" v-if="!isLocked"
+                  :loading="loading"> 保存
+        </t-button>
+        <t-button @click="doPrint" :loading="loading"> 打印 </t-button>
+        <t-button v-if="form.id && !isLocked" @click="approved()" :loading="loading"> 审核</t-button>
+        <t-button v-if="isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</t-button>
       </div>
     </div>
   </div>
@@ -291,14 +263,15 @@ export default {
         ["", "", "", "", "", "", "", "", totalQuantity, "", totalAmount],
       ];
     },
-    // 设置行数据
+    // 设置行数据（TDesign @change 传 value；兼容对象入参
     changeRow({rowIndex}, type, selected) {
       switch (type) {
         case 'product': {
-          const selectedProduct = (selected && typeof selected === 'object') ? selected : null;
-          let value = selectedProduct
-              ? (selectedProduct.id ?? selectedProduct.productId)
-              : this.otherOutboundData[rowIndex].productId;
+          let value = (selected && typeof selected === 'object')
+              ? (selected.id ?? selected.productId)
+              : (selected != null && typeof selected !== 'object'
+                  ? selected
+                  : this.otherOutboundData[rowIndex].productId);
           if (value && typeof value === 'object') {
             value = value.id ?? value.productId;
           }
@@ -306,6 +279,9 @@ export default {
           if (this.isEmpty(value)) {
             return;
           }
+          const selectedProduct = (selected && typeof selected === 'object' && selected.name)
+              ? selected
+              : (this.productList || []).find(p => p.id === value || p.productId === value);
           const applyProduct = (item) => {
             if (!item) return;
             this.otherOutboundData[rowIndex].productName = item.name;
@@ -325,7 +301,7 @@ export default {
             }
             this.$forceUpdate();
           };
-          if (selectedProduct && selectedProduct.name) {
+          if (selectedProduct) {
             applyProduct(selectedProduct);
           } else {
             Product.list({id: value}).then(res => {
@@ -338,8 +314,11 @@ export default {
           break;
         }
         case 'warehouse': {
-          const selectedWarehouse = (selected && typeof selected === 'object') ? selected : null;
-          let value = selectedWarehouse ? selectedWarehouse.id : this.otherOutboundData[rowIndex].warehouseId;
+          let value = (selected && typeof selected === 'object')
+              ? selected.id
+              : (selected != null && typeof selected !== 'object'
+                  ? selected
+                  : this.otherOutboundData[rowIndex].warehouseId);
           if (value && typeof value === 'object') {
             value = value.id;
           }
@@ -347,7 +326,10 @@ export default {
           if (this.isEmpty(value)) {
             return;
           }
-          if (selectedWarehouse && selectedWarehouse.name) {
+          const selectedWarehouse = (selected && typeof selected === 'object' && selected.name)
+              ? selected
+              : (this.warehouseList || []).find(w => w.id === value);
+          if (selectedWarehouse) {
             this.otherOutboundData[rowIndex].warehouseName = selectedWarehouse.name;
             this.otherOutboundData[rowIndex].warehouseId = selectedWarehouse.id;
             this.$forceUpdate();
@@ -497,7 +479,6 @@ export default {
     },
     //表格行点击事件
     tableCellClick({rowIndex}) {
-      console.info(rowIndex);
     },
     //数量焦点获取库存数量到titile-prefix中
     quantityFocus({rowIndex}) {
@@ -606,8 +587,8 @@ export default {
     },
     approved() {
       DialogPlugin.confirm({
-        title: "审核提示",
-        content: `确认审核该订单?`,
+        header: "审核提示",
+        body: `确认审核该订单?`,
         onConfirm: () => {
           return OtherOutbound.approved('已审核', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");
@@ -618,8 +599,8 @@ export default {
     },
     backApproved() {
       DialogPlugin.confirm({
-        title: "反审核提示",
-        content: `确认反审核该订单?`,
+        header: "反审核提示",
+        body: `确认反审核该订单?`,
         onConfirm: () => {
           return OtherOutbound.approved('已保存', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");

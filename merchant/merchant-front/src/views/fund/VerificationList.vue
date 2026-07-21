@@ -202,8 +202,8 @@ export default {
         return MessagePlugin.error('请选择至少一个订单');
       }
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认删除?`,
+        header: "系统提示",
+        body: `确认删除?`,
         onConfirm: () => {
           Verification.remove({id: ids}).then(() => {
             MessagePlugin.success("删除成功~");
@@ -220,7 +220,7 @@ export default {
         return;
       }
       DialogPlugin.confirm({
-        content: `确定审核订单？`,
+        body: `确定审核订单？`,
         onConfirm: () => {
           Verification.approved('已审核', selectedRows).then((success) => {
             if (success !== false) {
@@ -239,7 +239,7 @@ export default {
         return;
       }
       DialogPlugin.confirm({
-        content: `确定反审核订单？`,
+        body: `确定反审核订单？`,
         onConfirm: () => {
           Verification.approved('已保存', selectedRows).then((success) => {
             if (success !== false) {

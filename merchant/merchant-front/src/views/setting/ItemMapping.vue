@@ -111,8 +111,8 @@ export default {
     },
     doRemove(id) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: '是否删除当前映射?',
+        header: '系统提示',
+        body: '是否删除当前映射?',
         onConfirm: () => {
           FinanceItemMap.delete(id).then(() => {
             MessagePlugin.success('删除成功');

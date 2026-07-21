@@ -1,40 +1,45 @@
 <template>
-  <div class="h-panel" style="width: 1000px;margin: 0 auto;padding-top: 20px;">
+  <div class="voucher-panel" style="width: 1000px;margin: 0 auto;padding-top: 20px;">
     <div class="padding-right-left">
-      <Row type="flex" :space-x="20" v-if="type !== 'look'">
-        <Cell>
-          <Button color="primary" @click="save(false)" :loading="loading">保存
-          </Button>
-        </Cell>
-      </Row>
-      <Row class="mt-20px mb-20px margin" type="flex" :space-x="10">
-        <Cell>
-          <Select @change="loadCode" keyName="word" titleName="word" style="min-width: 70px" :deletable="false"
-                  :datas="voucherWords" v-model="form.word" placeholder="记"/>
-        </Cell>
-        <Cell class="label">
-          <NumberInput :min="1" v-model="form.code" v-width="90" style="display: inline-block"/>
+      <div v-if="type !== 'look'" style="display: flex; gap: 20px;">
+        <t-button theme="primary" @click="save(false)" :loading="loading">保存</t-button>
+      </div>
+      <div class="mt-20px mb-20px margin" style="display: flex; gap: 10px; align-items: center;">
+        <t-select
+            @change="loadCode"
+            :keys="{ value: 'word', label: 'word' }"
+            style="min-width: 70px"
+            :clearable="false"
+            :options="voucherWords"
+            v-model="form.word"
+            placeholder="记"
+        />
+        <span class="label">
+          <t-input-number :min="1" v-model="form.code" style="display: inline-block; width: 90px"/>
           号
-        </Cell>
-        <Cell class="label">
-          日期：
-        </Cell>
-        <Cell class="label">
-          <DatePicker :disabled="!!carryForward" :option="dpOps" :clearable="false" v-model="form.voucherDate"
-                      format="YYYY-MM-DD"/>
-        </Cell>
-        <Cell class="label">
-          <DropdownCustom :toggle-icon="false" class-name="h-text-dropdown">
-            <span class="text-hover blue-color font-bold">备注</span>
-            <template #content>
-              <div style="width: 200px; padding: 20px">
-                <textarea placeholder="请输入备注内容" v-model="form.remark" rows="3"
-                          style="width: 100%;"></textarea>
-              </div>
-            </template>
-          </DropdownCustom>
-        </Cell>
-      </Row>
+        </span>
+        <span class="label">日期：</span>
+        <t-date-picker
+            :disabled="!!carryForward"
+            :clearable="false"
+            v-model="form.voucherDate"
+            format="YYYY-MM-DD"
+            value-type="YYYY-MM-DD"
+        />
+        <t-popup trigger="click" placement="bottom">
+          <span class="text-hover blue-color font-bold">备注</span>
+          <template #content>
+            <div style="width: 200px; padding: 20px">
+              <t-textarea
+                  placeholder="请输入备注内容"
+                  v-model="form.remark"
+                  :autosize="{ minRows: 3, maxRows: 5 }"
+                  style="width: 100%;"
+              />
+            </div>
+          </template>
+        </t-popup>
+      </div>
     </div>
     <voucher-table ref="voucherTable" v-model="voucherTable"/>
     <div class="padding-right-left padding-bottom mt-20px">
@@ -138,7 +143,6 @@ export default {
       }
 
       this.loading = true;
-      console.info("details",this.voucherItems)
       // FinanceVoucher.upVoucher(Object.assign({}, this.form, {
       //   details: this.voucherItems,
       //   createMember: this.user.id
@@ -171,7 +175,6 @@ export default {
         }).then(({data: response}) => {
           const {data} = response;
           this.$refs.voucherTable.initValue(data.details);
-          console.info(this.$refs.voucherTable.value);
           this.voucher = data;
           this.form = {
             id: data.id,
@@ -192,7 +195,6 @@ export default {
     },
   },
   mounted() {
-    console.info("this.accountBook:", this.accountBook);
     this.dpOps["start"] = manba(this.accountBook.enableDate).format("YYYY-MM-DD");
     this.init();
   }
@@ -200,6 +202,12 @@ export default {
 </script>
 
 <style scoped>
+.voucher-panel {
+  background: #fff;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
 .mask {
   position: absolute;
   height: 100%;
@@ -220,4 +228,3 @@ export default {
   align-items: center;
 }
 </style>
-

@@ -109,8 +109,8 @@ export default {
     },
     doRemove(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除客户分类：${row.name}?`,
+        header: '系统提示',
+        body: `确认删除客户分类：${row.name}?`,
         onConfirm: () => {
           CustomerCategory.remove(row.id).then(() => {
             MessagePlugin.success('删除成功~');

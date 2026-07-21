@@ -1,41 +1,54 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <Form ref="form" :model="model" :rules="validationRules" :labelWidth="160" :showErrorTip="true">
-        <FormItem label="是否关联云财务" prop="linkStatus">
-          <Radio v-model="model.linkStatus" :datas="linkRadios"/>
-        </FormItem>
-        <FormItem label="进销存账套">
-          <Select v-model="model.accountBookId" :disabled="true" :datas="accountBooks" :deletable="false" @change="changeAccountBook($event)"></Select>
-        </FormItem>
-        <FormItem label="财务软件URL" prop="url" v-if="model.linkStatus==='关联'">
-          <Input v-model="model.url"/>
-        </FormItem>
-        <FormItem label="财务软件账号" prop="financeAccount" v-if="model.linkStatus==='关联'">
-          <Input v-model="model.financeAccount"/>
-        </FormItem>
-        <FormItem label="财务软件密码" prop="financePassword" v-if="model.linkStatus==='关联'">
-          <Input v-model="model.financePassword"/>
-        </FormItem>
-        <FormItem v-if="model.linkStatus==='关联'">
-          <Button icon="fa fa-save" @click="relatedClick" :loading="loading">
+      <t-form ref="form" :data="model" :rules="validationRules" label-width="160px">
+        <t-form-item label="是否关联云财务" name="linkStatus">
+          <t-radio-group v-model="model.linkStatus">
+            <t-radio value="不关联">不关联</t-radio>
+            <t-radio value="关联">关联</t-radio>
+          </t-radio-group>
+        </t-form-item>
+        <t-form-item label="进销存账套">
+          <t-select
+              v-model="model.accountBookId"
+              :disabled="true"
+              :options="accountBooks"
+              :keys="{ value: 'key', label: 'title' }"
+              :clearable="false"
+              @change="changeAccountBook"
+          />
+        </t-form-item>
+        <t-form-item label="财务软件URL" name="url" v-if="model.linkStatus==='关联'">
+          <t-input v-model="model.url"/>
+        </t-form-item>
+        <t-form-item label="财务软件账号" name="financeAccount" v-if="model.linkStatus==='关联'">
+          <t-input v-model="model.financeAccount"/>
+        </t-form-item>
+        <t-form-item label="财务软件密码" name="financePassword" v-if="model.linkStatus==='关联'">
+          <t-input v-model="model.financePassword"/>
+        </t-form-item>
+        <t-form-item v-if="model.linkStatus==='关联'">
+          <t-button @click="relatedClick" :loading="loading">
             连接云财务
-          </Button>
-        </FormItem>
+          </t-button>
+        </t-form-item>
 
-        <FormItem label="关联财务软件帐套" prop="financeAccountId" v-if="model.linkStatus==='关联'">
-          <Select :datas="accountSetsList" keyName="id" v-model="model.financeAccountId" filterable
-                  titleName="companyName" placeholder="关联财务系统帐套" @change="changeSets($event)"/>
-        </FormItem>
-      </Form>
+        <t-form-item label="关联财务软件帐套" name="financeAccountId" v-if="model.linkStatus==='关联'">
+          <t-select
+              :options="accountSetsList"
+              :keys="{ value: 'id', label: 'companyName' }"
+              v-model="model.financeAccountId"
+              filterable
+              clearable
+              placeholder="关联财务系统帐套"
+              @change="changeSets"
+          />
+        </t-form-item>
+      </t-form>
     </div>
-    <div class="modal-column-right">
-      <Button icon="fa fa-close" @click="$emit('close')" :loading="loading">
-        取消
-      </Button>
-      <Button icon="fa fa-save" color="primary" @click="confirm" :loading="loading">
-        保存
-      </Button>
+    <div class="modal-column-between">
+      <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
+      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
@@ -108,7 +121,6 @@ export default {
     },
     relatedClick() {
       const {url, financeAccount, financePassword} = this.model;
-      console.info("relatedClick:", url, financeAccount, financePassword);
       if (ObjectUtil.isEmpty(url)) {
         MessagePlugin.success("请输入财务软件URL～");
         return;
@@ -138,9 +150,6 @@ export default {
     init() {
       const id = this.id;
       const type = this.type;
-      console.info("id:", id);
-      console.info("type:", type);
-      console.info("accountBooks:", this.accountBooks);
       switch (type) {
         case "add": {
           if (this.accountBooks) {
@@ -155,7 +164,6 @@ export default {
             this.model.accountBookName = this.accountBook.title;
             // 根据accountBookId加载账套信息
             FinanceAccountLink.byAccountBook(this.model.accountBookId).then(({data}) => {
-              console.log(data);
               if (ObjectUtil.isEmpty(data)) {
                 this.model.accountBookId = this.accountBook.key;
                 this.model.accountBookName = this.accountBook.title;

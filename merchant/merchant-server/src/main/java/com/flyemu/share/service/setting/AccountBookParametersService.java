@@ -7,10 +7,10 @@ import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.entity.setting.AccountBook;
 import com.flyemu.share.repository.AccountBookParametersRepository;
 import com.flyemu.share.service.AbsService;
-import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 
@@ -31,34 +31,41 @@ public class AccountBookParametersService extends AbsService {
     private final AccountBookService accountBookService;
 
 
+    @Transactional
     public AccountBookParameters load(Long merchantId, Integer accountBookId) {
         Assert.notNull(accountBookId, "id不能为空");
         AccountBook accountBook = accountBookService.loadById(merchantId, accountBookId.longValue());
         Assert.notNull(accountBook, "账套不存在");
-        return list(accountBookId);
+        return findOrCreate(accountBookId);
     }
 
+    @Transactional
     public AccountBookParameters list(Integer id) {
-        Assert.notNull(id, "id不能为空");
+        return findOrCreate(id);
+    }
+
+    private AccountBookParameters findOrCreate(Integer accountBookId) {
+        Assert.notNull(accountBookId, "id不能为空");
         AccountBookParameters params = bqf
                 .selectFrom(Q_ACCOUNT_BOOK_PARAMETERS)
-                .where(Q_ACCOUNT_BOOK_PARAMETERS.accountBookId.eq(id))
-                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .where(Q_ACCOUNT_BOOK_PARAMETERS.accountBookId.eq(accountBookId))
                 .fetchFirst();
         if (params == null) {
             params = new AccountBookParameters();
-            params.setAccountBookId(id);
+            params.setAccountBookId(accountBookId);
             params.setCostAccounting(1);
-            params.setAvailableInventory(1);
-            params.setQuantityDecimal(0);
-            params.setPriceDecimal(0);
+            params.setAvailableInventory(2);
+            params.setQuantityDecimal(2);
+            params.setPriceDecimal(2);
+            params.setCreateTime(new Date());
+            params.setUpdateTime(new Date());
             accountBookParametersRepository.save(params);
         }
-
         return params;
     }
 
 
+    @Transactional
     public void update(AccountBookParameters accountBookParameters) {
         Assert.notNull(accountBookParameters.getId(), "id不能为空");
         AccountBookParameters existing = accountBookParametersRepository.findById(accountBookParameters.getId())
@@ -75,8 +82,14 @@ public class AccountBookParametersService extends AbsService {
         if (originalQuantityDecimal != null && newQuantityDecimal < originalQuantityDecimal) {
             throw new IllegalArgumentException("数量小数位不能由大改小（原值：" + originalQuantityDecimal + "）");
         }
-        accountBookParameters.setUpdateTime(new Date());
-        accountBookParametersRepository.save(accountBookParameters);
+        Assert.notNull(accountBookParameters.getCostAccounting(), "成本核算方法不能为空");
+        Assert.notNull(accountBookParameters.getAvailableInventory(), "可用库存允许为负不能为空");
+
+        existing.setCostAccounting(accountBookParameters.getCostAccounting());
+        existing.setAvailableInventory(accountBookParameters.getAvailableInventory());
+        existing.setQuantityDecimal(newQuantityDecimal);
+        existing.setPriceDecimal(newPriceDecimal);
+        existing.setUpdateTime(new Date());
+        accountBookParametersRepository.save(existing);
     }
 }
-

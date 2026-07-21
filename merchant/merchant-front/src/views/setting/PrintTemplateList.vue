@@ -178,8 +178,8 @@ export default {
     },
     doRemove(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: row.systemDefault
+        header: '系统提示',
+        body: row.systemDefault
           ? `「${row.name}」当前为默认模板，确认删除？`
           : `确认删除打印模板「${row.name}」？`,
         onConfirm: () => {
@@ -193,8 +193,8 @@ export default {
     triggerDefault(row) {
       const systemDefault = !row.systemDefault;
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: systemDefault
+        header: '系统提示',
+        body: systemDefault
           ? `确认将「${row.name}」设为【${row.documentType}】的默认模板？`
           : `确认取消「${row.name}」的默认模板？`,
         onConfirm: () => {

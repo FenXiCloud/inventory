@@ -197,7 +197,6 @@ export function export_json_to_excel({
         }))
         /*以第一行为初始值*/
         let result = colWidth[0];
-        console.info("result", result, colWidth)
         for (let i = 1; i < colWidth.length; i++) {
             for (let j = 0; j < colWidth[i].length; j++) {
                 if (result[j]['wch'] < colWidth[i][j]['wch']) {
@@ -209,7 +208,6 @@ export function export_json_to_excel({
     }
 
     for (let wsKey in ws) {
-        console.info(ws[wsKey])
         try {
             ws[wsKey].s = {
                 alignment: {

@@ -145,8 +145,8 @@ export default {
     },
     doRemove(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除用户：${row.name}?`,
+        header: '系统提示',
+        body: `确认删除用户：${row.name}?`,
         onConfirm: () => {
           Admin.remove(row.id).then(() => {
             MessagePlugin.success('删除成功~');
@@ -157,8 +157,8 @@ export default {
     },
     resetPassword(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认要重置【${row.name}】的登录密码?`,
+        header: '系统提示',
+        body: `确认要重置【${row.name}】的登录密码?`,
         onConfirm: () => {
           Admin.resetPassword(row.id).then(() => {
             MessagePlugin.success('重置成功~');
@@ -169,8 +169,8 @@ export default {
     trigger(row) {
       let enabled = !row.enabled;
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认要「${enabled ? '启用' : '禁用'}」用户：${row.name}?`,
+        header: '系统提示',
+        body: `确认要「${enabled ? '启用' : '禁用'}」用户：${row.name}?`,
         onConfirm: () => {
           Admin.save({id: row.id, enabled}).then(() => {
             MessagePlugin.success('操作成功~');

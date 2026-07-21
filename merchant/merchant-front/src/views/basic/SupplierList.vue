@@ -190,8 +190,8 @@ export default {
     },
     deleteSupplierCategory(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除货商分类：${row.name}?`,
+        header: '系统提示',
+        body: `确认删除货商分类：${row.name}?`,
         onConfirm: () => {
           SupplierCategory.delete(row.id).then(() => {
             MessagePlugin.success('删除成功~');
@@ -231,8 +231,8 @@ export default {
     },
     deleteSupplier(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除货商：${row.name}?`,
+        header: '系统提示',
+        body: `确认删除货商：${row.name}?`,
         onConfirm: () => {
           Supplier.remove(row.id).then(() => {
             MessagePlugin.success('删除成功~');

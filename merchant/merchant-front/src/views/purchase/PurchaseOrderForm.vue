@@ -6,26 +6,24 @@
           <label class="mr-20px" style="font-size: 16px !important"
             >供货商：</label
           >
-          <Select
+          <t-select
             class="w-300px"
             filterable
-            required
-            :datas="supplierList"
-            keyName="id"
-            titleName="name"
-            :deletable="false"
+            :options="supplierList"
+            :clearable="false"
             @change="changeSupplier($event)"
             v-model="supplierId"
             placeholder="请选择供货商"
-          />
+                :keys="{ value: 'id', label: 'name' }"
+              />
           <label class="mr-20px ml-16px" style="font-size: 16px !important"
             >单据日期：</label
           >
-          <DatePicker
+          <t-date-picker
             v-model="form.orderDate"
-            :option="{ start: accountBook.checkoutDate }"
+            :disable-date="{ before: accountBook.checkoutDate }"
             :clearable="false"
-          ></DatePicker>
+          ></t-date-picker>
         </template>
       </vxe-toolbar>
       <vxe-table
@@ -84,51 +82,16 @@
         </vxe-column>
         <vxe-column title="产品信息" min-width="300">
           <template #default="{ row, rowIndex }">
-            <div class="h-input-group goodsSelect" @keyup.stop="void 0">
-              <Select
+            <div class="input-group goodsSelect" @keyup.stop="void 0">
+              <t-select
                 ref="ms"
                 @change="selectProduct($event, rowIndex)"
                 v-model="row.productId"
-                :datas="productList"
+                :options="productList"
                 filterable
-                :equalWidth="false"
                 placeholder="输入编码/名称"
-                keyName="productId"
-                titleName="productName"
-              >
-                <template v-slot:top>
-                  <table class="h-table" style="width: 100%">
-                    <thead class="h-table-header">
-                      <tr>
-                        <td width="150" align="center">编码</td>
-                        <td width="150" align="center">图片</td>
-                        <td width="150" align="center">名称</td>
-                        <td width="150" align="center">类别</td>
-                        <td width="150" align="center">规格</td>
-                      </tr>
-                    </thead>
-                  </table>
-                </template>
-                <template v-slot:item="{ item }">
-                  <table>
-                    <tbody class="h-table-body-table">
-                      <tr>
-                        <td width="150" align="center">
-                          {{ item.productCode }}
-                        </td>
-                        <td width="150" align="center">{{ item.imageUrl }}</td>
-                        <td width="150" align="center">
-                          {{ item.productName }}
-                        </td>
-                        <td width="150" align="center">
-                          {{ item.productCategoryName }}
-                        </td>
-                        <td width="150" align="center">{{ item.spec }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </template>
-              </Select>
+                :keys="{ value: 'productId', label: 'productName' }"
+              />
             </div>
           </template>
         </vxe-column>
@@ -140,16 +103,15 @@
         >
           <template #default="{ row, rowIndex }">
             <template v-if="!row.isNew">
-              <Select
+              <t-select
                 v-if="row.auxiliaryUnitPrices"
-                :deletable="false"
+                :clearable="false"
                 @change="changeProductUnit($event, row)"
                 v-model="row.secondaryUnitId"
-                :datas="row.auxiliaryUnitPrices"
+                :options="row.auxiliaryUnitPrices"
                 filterable
                 placeholder="输入采购单位"
-                keyName="unitId"
-                titleName="unitName"
+                :keys="{ value: 'unitId', label: 'unitName' }"
               />
               <span v-else>{{ row.secondaryUnitName }}</span>
             </template>
@@ -165,14 +127,13 @@
         <vxe-column title="仓库" field="warehouse" align="center" width="120">
           <template #default="{ row, rowIndex }">
             <template v-if="!row.isNew">
-              <Select
-                :deletable="false"
+              <t-select
+                :clearable="false"
                 v-model="row.warehouseId"
-                :datas="warehouseList"
+                :options="warehouseList"
                 filterable
-                keyName="id"
-                titleName="name"
                 @change="handleWarehouseChange(row, $event)"
+                :keys="{ value: 'id', label: 'name' }"
               />
             </template>
           </template>
@@ -309,7 +270,7 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input
+          <t-input
             placeholder="请输入备注"
             maxlength="150"
             v-model="form.remarks"
@@ -319,26 +280,26 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">优惠率：</label>
-          <Input v-model="form.discountRate" @blur="changeDiscountRate" />
+          <t-input v-model="form.discountRate" @blur="changeDiscountRate" />
           <label class="ml-10px mr-16px w-80px">优惠金额：</label>
-          <Input v-model="form.discountAmount" @blur="changeDiscountAmount" />
+          <t-input v-model="form.discountAmount" @blur="changeDiscountAmount" />
           <label class="ml-16px mr-16px w-100px">优惠后金额：</label>
-          <Input v-model="form.finalAmount" @blur="changeFinalAmount" />
+          <t-input v-model="form.finalAmount" @blur="changeFinalAmount" />
         </div>
       </div>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button @click="closeWindow" :loading="loading"> 取消 </Button>
+      <t-button @click="closeWindow" :loading="loading"> 取消 </t-button>
       <div>
-        <Button color="primary" @click="saveOrder('add')" :loading="loading">
+        <t-button theme="primary" @click="saveOrder('add')" :loading="loading">
           保存并新增
-        </Button>
-        <Button @click="saveOrder('save')" :loading="loading"> 保存 </Button>
-        <Button @click="doPrint" :loading="loading"> 打印 </Button>
+        </t-button>
+        <t-button @click="saveOrder('save')" :loading="loading"> 保存 </t-button>
+        <t-button @click="doPrint" :loading="loading"> 打印 </t-button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="approved()" :loading="loading" v-if="form.id">
+        <t-button @click="approved()" :loading="loading" v-if="form.id">
           审核
-        </Button>
+        </t-button>
       </div>
     </div>
   </div>
@@ -480,7 +441,6 @@ export default {
       let productId = row.productId;
       let warehouseId = row.warehouseId;
       if (!productId) {
-        console.log('请选择产品');
         return;
       }
       // 获取产品库存进行提示
@@ -541,7 +501,8 @@ export default {
     },
 
     //选择产品
-    selectProduct(d, index) {
+    selectProduct(value, index) {
+      const d = (this.productList || []).find((item) => String(item.productId) === String(value));
       if (d) {
         const defaultWarehouseId = this.resolveDefaultWarehouseId();
         let g = {
@@ -597,7 +558,6 @@ export default {
 
     showPrice(productId) {
       if (!productId) {
-        console.log('请选择产品');
         return;
       }
       // 获取产品库存进行提示
@@ -607,7 +567,6 @@ export default {
       PriceRecord.purchasePrice(param)
         .then(({ data }) => {
           this.recentSales = data || [];
-          console.log(this.recentSales);
         })
         .finally(() => (this.loading = false));
     },
@@ -678,15 +637,19 @@ export default {
     },
 
     //修改供货商
-    changeSupplier(e) {
-      if (!e) {
+    changeSupplier(value) {
+      if (value == null || value === '') {
         this.form.supplierId = null;
         this.productData = [{ isNew: true }];
-      } else if (e.id !== this.form.supplierId) {
+        return;
+      }
+      const e = (this.supplierList || []).find((item) => String(item.id) === String(value));
+      if (!e) return;
+      if (e.id !== this.form.supplierId) {
         if (this.productData.length > 1) {
           DialogPlugin.confirm({
-            title: '系统提示',
-            content: `修改供货商后，将清除已选择的产品数据，确定修改？`,
+            header: '系统提示',
+            body: `修改供货商后，将清除已选择的产品数据，确定修改？`,
             onConfirm: () => {
               this.productData = [{ isNew: true }];
               this.form.supplierId = e.id;
@@ -757,10 +720,11 @@ export default {
           : ((this.form.finalAmount / this.allFinalAmount) * 100).toFixed(2);
     },
     //修改产品多单位
-    changeProductUnit(item, row) {
-      console.log(item);
+    changeProductUnit(value, row) {
+      const item = (row.auxiliaryUnitPrices || []).find((u) => String(u.unitId) === String(value));
+      if (!item) return;
       row.secondaryUnitName = item.unitName;
-      row.secondaryPrice = (item.unitPrice || 0).toFixed(2) || 0;
+      row.secondaryPrice = (item.unitPrice || item.price || 0).toFixed(2) || 0;
       row.conversionRate = item.conversionRate || 1;
       row.quantity = (row.secondaryQuantity * row.conversionRate).toFixed(2);
       row.subtotal = (row.secondaryQuantity * row.secondaryPrice).toFixed(2);
@@ -844,8 +808,8 @@ export default {
     approved() {
       let ids = [this.form.id];
       DialogPlugin.confirm({
-        title: '审核提示',
-        content: `确认审核该订单?`,
+        header: '审核提示',
+        body: `确认审核该订单?`,
         onConfirm: () => {
           PurchaseOrder.approved('已审核', ids).then(() => {
             MessagePlugin.success('操作成功~');
@@ -868,8 +832,8 @@ export default {
   },
   beforeDestroy() {
     DialogPlugin.confirm({
-      title: '系统提示',
-      content: `确认?`,
+      header: '系统提示',
+      body: `确认?`,
       onConfirm: () => {}
     });
   },

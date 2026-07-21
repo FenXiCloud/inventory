@@ -168,7 +168,7 @@ export default {
       ];
       DialogPlugin.confirm({
         header: '操作日志详情',
-        content: lines.join('\n'),
+        body: lines.join('\n'),
         width: 560,
         confirmBtn: '关闭',
         cancelBtn: null

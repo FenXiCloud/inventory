@@ -111,8 +111,8 @@ export default {
     },
     doBackup() {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: '确认立即备份当前账套的系统设置（打印模板/编码规则/收支类别/结算方式）？',
+        header: '系统提示',
+        body: '确认立即备份当前账套的系统设置（打印模板/编码规则/收支类别/结算方式）？',
         onConfirm: () => {
           this.creating = true;
           DataBackup.create({ remarks: (this.remarks || '').trim() || '手动备份' })
@@ -132,8 +132,8 @@ export default {
     },
     doRestore(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认用备份「${row.fileName}」恢复当前账套设置？打印模板与编码规则将被覆盖，收支类别与结算方式按名称合并。`,
+        header: '系统提示',
+        body: `确认用备份「${row.fileName}」恢复当前账套设置？打印模板与编码规则将被覆盖，收支类别与结算方式按名称合并。`,
         onConfirm: () => {
           this.restoring = true;
           DataBackup.restore(row.id)
@@ -154,8 +154,8 @@ export default {
         return;
       }
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认上传并恢复文件「${file.name}」？打印模板与编码规则将被覆盖，收支类别与结算方式按名称合并。`,
+        header: '系统提示',
+        body: `确认上传并恢复文件「${file.name}」？打印模板与编码规则将被覆盖，收支类别与结算方式按名称合并。`,
         onConfirm: () => {
           const formData = new FormData();
           formData.append('file', file);
@@ -171,8 +171,8 @@ export default {
     },
     doRemove(row) {
       DialogPlugin.confirm({
-        title: '系统提示',
-        content: `确认删除备份「${row.fileName}」？`,
+        header: '系统提示',
+        body: `确认删除备份「${row.fileName}」？`,
         onConfirm: () => {
           DataBackup.remove(row.id).then(() => {
             MessagePlugin.success('删除成功~');

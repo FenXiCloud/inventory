@@ -69,7 +69,8 @@
 
 <script>
 import AccountBook from "@js/api/setting/AccountBook";
-import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 import AccountBookForm from "./AccountBookForm.vue";
 import SystemConfigForm from "./SystemConfigForm.vue";
 import {openDialog, closeDialog} from '@common/dialog';

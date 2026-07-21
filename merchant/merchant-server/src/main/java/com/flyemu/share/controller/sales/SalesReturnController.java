@@ -1,12 +1,13 @@
 package com.flyemu.share.controller.sales;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
-import com.flyemu.share.entity.sales.SalesReturn;
-import com.flyemu.share.form.SalesOutboundForm;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesReturnForm;
 import com.flyemu.share.service.sales.SalesReturnService;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * @功能描述: 销售退货单
@@ -36,24 +38,34 @@ public class SalesReturnController {
         return JsonResult.successful(salesReturnService.query(page, query));
     }
 
+    @GetMapping("/total")
+    public JsonResult queryTotal(SalesReturnService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(salesReturnService.queryTotal(query));
+    }
+
+
+
     @PostMapping
     public JsonResult save(
-        @RequestBody @Valid SalesReturnForm salesReturnForm,
-        @SaAccountBookId Long accountBookId,
-        @SaMerchantId Long merchantId,
-        @SaAdminId Long adminId
+            @RequestBody @Valid SalesReturnForm salesReturnForm,
+            @SaAccountBookId Long accountBookId,
+            @SaMerchantId Long merchantId,
+            @SaAdminId Long adminId
     ) {
         salesReturnForm.getSalesReturn().setMerchantId(merchantId);
         salesReturnForm.getSalesReturn().setAccountBookId(accountBookId);
         salesReturnForm.getSalesReturn().setCreatedBy(adminId);
         salesReturnForm.getSalesReturn().setCreatedAt(LocalDateTime.now());
-        salesReturnService.save(salesReturnForm);
+        salesReturnForm.getSalesReturn().setOrderStatus(OrderStatus.已保存);
+        salesReturnService.save(salesReturnForm, merchantId);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update( @RequestBody @Valid SalesReturnForm salesReturnForm) {
-        salesReturnService.save(salesReturnForm);
+    public JsonResult update(@RequestBody @Valid SalesReturnForm salesReturnForm, @SaMerchantId Long merchantId) {
+        salesReturnService.save(salesReturnForm, merchantId);
         return JsonResult.successful();
     }
 
@@ -68,44 +80,14 @@ public class SalesReturnController {
         return JsonResult.successful(salesReturnService.select(merchantId, accountBookId));
     }
 
-    /**
-     * 销售退货单详情
-     * @param merchantId
-     * @param accountBookId
-     * @param orderId
-     * @return
-     */
-    @GetMapping("/getInfo/{orderId}")
-    public JsonResult getInfo(
-            @SaMerchantId Long merchantId,
-            @SaAccountBookId Long accountBookId,
-            @PathVariable Long orderId
-    ) {
-        SalesReturn query = new SalesReturn();
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
-        query.setId(orderId);
-        return JsonResult.successful(salesReturnService.getById(query));
+    @GetMapping("load/{orderId}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long orderId) {
+        return JsonResult.successful(salesReturnService.load(merchantId, orderId));
     }
 
-    @PutMapping("/batchAudit")
-    public JsonResult batchAudit(
-            @RequestBody SalesReturnForm salesReturnForm,
-            @SaAdminId Long adminId
-    ) {
-        salesReturnForm.setSalesReturn(new SalesReturn());
-        salesReturnForm.getSalesReturn().setApprovedBy(adminId);
-        salesReturnService.batchAudit(salesReturnForm);
-        return JsonResult.successful();
-    }
-
-    @PutMapping("/audit")
-    public JsonResult audit(
-            @RequestBody @Valid SalesReturnForm salesReturnForm,
-            @SaAdminId Long adminId
-    ) {
-        salesReturnForm.getSalesReturn().setApprovedBy(adminId);
-        salesReturnService.audit(salesReturnForm);
+    @PostMapping("/approved/{state}")
+    public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
+        salesReturnService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
         return JsonResult.successful();
     }
 

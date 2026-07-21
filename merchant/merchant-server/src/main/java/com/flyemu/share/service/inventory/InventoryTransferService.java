@@ -14,11 +14,12 @@ import com.flyemu.share.entity.basic.QUnit;
 import com.flyemu.share.entity.basic.QWarehouse;
 import com.flyemu.share.entity.inventory.*;
 import com.flyemu.share.entity.setting.QAdmin;
-import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.InventoryTransferForm;
 import com.flyemu.share.repository.InventoryTransferRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -52,6 +53,7 @@ import static com.flyemu.share.entity.inventory.QInventoryTransfer.inventoryTran
 @RequiredArgsConstructor
 public class InventoryTransferService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QInventoryTransfer qInventoryTransfer = inventoryTransfer;
 
     private final InventoryTransferRepository inventoryTransferRepository;
@@ -100,10 +102,13 @@ public class InventoryTransferService extends AbsService {
     }
 
     @Transactional
-    public InventoryTransfer save(InventoryTransferForm inventoryTransferForm) {
+    public InventoryTransfer save(InventoryTransferForm inventoryTransferForm, Long merchantId) {
         InventoryTransfer result;
         SnowflakeGenerator snowflakeGenerator = new SnowflakeGenerator();
         InventoryTransfer inventoryTransfer = inventoryTransferForm.getInventoryTransfer();
+        java.time.LocalDate __checkoutOrderDate = inventoryTransfer.getTransferDate() == null ? null : new java.sql.Date(inventoryTransfer.getTransferDate().getTime()).toLocalDate();
+        checkoutService.assertEditable(inventoryTransfer.getMerchantId(), inventoryTransfer.getAccountBookId(), __checkoutOrderDate);
+        inventoryTransfer.setMerchantId(merchantId);
         if (inventoryTransfer.getId() != null) {
             //更新
             InventoryTransfer original = inventoryTransferRepository.getById(inventoryTransfer.getId());
@@ -112,6 +117,7 @@ public class InventoryTransferService extends AbsService {
         } else {
             inventoryTransfer.setCreatedAt(LocalDateTime.now());
             inventoryTransfer.setOrderNo(snowflakeGenerator.next().toString());
+            inventoryTransfer.setOrderStatus(OrderStatus.已保存);
             result = inventoryTransferRepository.save(inventoryTransfer);
         }
         // 处理调拨单明细
@@ -140,29 +146,40 @@ public class InventoryTransferService extends AbsService {
     }
 
     @Transactional
-    public void approve(Long id, ApproveType type, Long adminId) {
-        InventoryTransfer inventoryTransfer = jqf.selectFrom(qInventoryTransfer).where(qInventoryTransfer.id.eq(id)).fetchOne();
-        List<InventoryTransferItem> inventoryTransferItems = inventoryTransferItemService.findByInventoryTransferId(id);
-        switch (type) {
-            case AUDITS -> {
-                //处理库存 （调入库存增加、调出库存减少）
-                this.getComputedInventory(inventoryTransfer, inventoryTransferItems, false);
-                inventoryTransfer.setOrderStatus(OrderStatus.已审核);
-                inventoryTransfer.setApprovedBy(adminId);
-                inventoryTransfer.setApprovedAt(LocalDateTime.now());
-                inventoryTransferRepository.save(inventoryTransfer);
-            }
-            case ANTI_AUDIT -> {
-                //处理库存（调入库存减少、调出库存增加）
-                this.getComputedInventory(inventoryTransfer, inventoryTransferItems, true);
-                inventoryTransfer.setOrderStatus(OrderStatus.未审核);
-                inventoryTransfer.setApprovedBy(adminId);
-                inventoryTransfer.setApprovedAt(LocalDateTime.now());
-                inventoryTransferRepository.save(inventoryTransfer);
-            }
-            default -> {
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new ServiceException("未选择单据");
+        }
+        if (!OrderStatus.已审核.equals(state) && !OrderStatus.已保存.equals(state)) {
+            throw new ServiceException("不支持的审核状态");
+        }
+        for (Long id : ids) {
+            this.approve(id, state, adminId, merchantId);
+        }
+    }
 
-            }
+    private void approve(Long id, OrderStatus state, Long adminId, Long merchantId) {
+        InventoryTransfer inventoryTransfer = jqf.selectFrom(qInventoryTransfer)
+                .where(qInventoryTransfer.id.eq(id).and(qInventoryTransfer.merchantId.eq(merchantId)))
+                .fetchOne();
+        if (inventoryTransfer == null) {
+            throw new ServiceException("审核数据不存在～");
+        }
+        List<InventoryTransferItem> inventoryTransferItems = inventoryTransferItemService.findByInventoryTransferId(id);
+        if (OrderStatus.已审核.equals(state)) {
+            //处理库存 （调入库存增加、调出库存减少）
+            this.getComputedInventory(inventoryTransfer, inventoryTransferItems, false);
+            inventoryTransfer.setOrderStatus(OrderStatus.已审核);
+            inventoryTransfer.setApprovedBy(adminId);
+            inventoryTransfer.setApprovedAt(LocalDateTime.now());
+            inventoryTransferRepository.save(inventoryTransfer);
+        } else if (OrderStatus.已保存.equals(state)) {
+            //处理库存（调入库存减少、调出库存增加）
+            this.getComputedInventory(inventoryTransfer, inventoryTransferItems, true);
+            inventoryTransfer.setOrderStatus(OrderStatus.已保存);
+            inventoryTransfer.setApprovedBy(adminId);
+            inventoryTransfer.setApprovedAt(LocalDateTime.now());
+            inventoryTransferRepository.save(inventoryTransfer);
         }
     }
 
@@ -305,7 +322,7 @@ public class InventoryTransferService extends AbsService {
         });
     }
 
-    public List<Map<String, Object>> load(Long id) {
+    public List<Map<String, Object>> load(Long merchantId, Long id) {
         StringTemplate dateExpressions = Expressions.
                 stringTemplate("DATE_FORMAT({0},'%Y-%m-%d')", qInventoryTransfer.transferDate);
         NumberExpression<Integer> numberExpression = new CaseBuilder()
@@ -345,7 +362,7 @@ public class InventoryTransferService extends AbsService {
                 .leftJoin(qAdmin).on(qAdmin.id.eq(qInventoryTransfer.createdBy))
                 .leftJoin(toQWarehouse).on(toQWarehouse.id.eq(qInventoryTransfer.ToWarehouseId))
                 .leftJoin(formQWarehouse).on(formQWarehouse.id.eq(qInventoryTransfer.FromWarehouseId))
-                .where(qInventoryTransfer.id.eq(id))
+                .where(qInventoryTransfer.id.eq(id).and(qInventoryTransfer.merchantId.eq(merchantId)))
                 .groupBy(qInventoryTransferItem.id).fetch();
         List<Map<String, Object>> result = new ArrayList<>();
         Map<String, Object> item;

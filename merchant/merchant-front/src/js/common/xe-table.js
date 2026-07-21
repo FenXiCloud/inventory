@@ -25,8 +25,8 @@ import {
 	Button,
 } from 'vxe-table'
 import zhCN from 'vxe-table/lib/locale/lang/zh-CN'
-
-import  '@/style/tableVal.scss'
+import 'vxe-table/lib/style.css'
+import '@/style/tableVal.scss'
 
 VXETable.setup({
 	size: "mini",

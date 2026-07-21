@@ -17,8 +17,10 @@ import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.SalesReturnForm;
 import com.flyemu.share.repository.*;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.basic.PriceRecordService;
@@ -57,6 +59,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class SalesReturnService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QSalesReturn qSalesReturn = QSalesReturn.salesReturn;
     private final static QSalesReturnItem qsalesReturnItem = QSalesReturnItem.salesReturnItem;
 
@@ -134,8 +137,10 @@ public class SalesReturnService extends AbsService {
     }
 
     @Transactional
-    public SalesReturn save(SalesReturnForm salesReturnForm) {
+    public SalesReturn save(SalesReturnForm salesReturnForm, Long merchantId) {
         SalesReturn salesReturn = salesReturnForm.getSalesReturn();
+        checkoutService.assertEditable(salesReturn.getMerchantId(), salesReturn.getAccountBookId(), salesReturn.getReturnDate());
+        salesReturn.setMerchantId(merchantId);
         List<SalesReturnItem> salesReturnItemList = salesReturnForm.getSalesReturnItemList();
         Long id = salesReturn.getId();
         if (id != null) {
@@ -166,7 +171,7 @@ public class SalesReturnService extends AbsService {
             //状态初始化
             salesReturn.setOrderStatus(OrderStatus.已保存);
             //订单编号
-            salesReturn.setOrderNo(codeSeedService.generateCode(salesReturn.getMerchantId(), "销售退货单"));
+            salesReturn.setOrderNo(codeSeedService.generateCode(salesReturn.getMerchantId(), salesReturn.getAccountBookId(), "销售退货单"));
             SalesReturn save = salesReturnRepository.save(salesReturn);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
@@ -273,31 +278,32 @@ public class SalesReturnService extends AbsService {
         return bqf.selectFrom(qSalesReturn).where(qSalesReturn.merchantId.eq(merchantId).and(qSalesReturn.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public Object getById(SalesReturn query) {
-        //查询订单
-        SalesReturn salesReturn = salesReturnRepository.getById(query.getId());
-        //订单数据转换
+    public SalesReturnDTO load(Long merchantId, Long orderId) {
+        SalesReturn salesReturn = bqf.selectFrom(qSalesReturn)
+                .where(qSalesReturn.merchantId.eq(merchantId).and(qSalesReturn.id.eq(orderId)))
+                .fetchFirst();
+        if (salesReturn == null) {
+            throw new ServiceException("单据不存在");
+        }
         SalesReturnDTO dto = BeanUtil.toBean(salesReturn, SalesReturnDTO.class);
-        //查询销售订单商品
         List<Tuple> fetch = jqf.selectFrom(qsalesReturnItem)
                 .select(qsalesReturnItem, qProduct.code, qProduct.name, qUnit.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qsalesReturnItem.productId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qsalesReturnItem.baseUnitId))
-                .where(qsalesReturnItem.salesReturnId.eq(query.getId())).orderBy(qsalesReturnItem.id.asc()).fetch();
+                .where(qsalesReturnItem.salesReturnId.eq(orderId)
+                        .and(qsalesReturnItem.merchantId.eq(merchantId)))
+                .orderBy(qsalesReturnItem.id.asc()).fetch();
         List<SalesReturnItemDTO> salesReturnItemDTOList = new ArrayList<>();
         fetch.forEach(tuple -> {
             SalesReturnItemDTO salesReturnItemDTO = BeanUtil.toBean(tuple.get(qsalesReturnItem), SalesReturnItemDTO.class);
             salesReturnItemDTO.setProductName(tuple.get(qProduct.name));
             salesReturnItemDTO.setProductCode(tuple.get(qProduct.code));
             salesReturnItemDTO.setUnitName(tuple.get(qUnit.name));
-            //关联查询销售出库单编号
             Long salesOutboundId = salesReturnItemDTO.getSalesOutboundId();
             if (salesOutboundId != null) {
-                //返回销售出库单编号
                 SalesOutbound salesOutbound = salesOutboundRepository.findById(salesOutboundId).orElse(null);
                 if (salesOutbound != null) {
-                    String orderNo = salesOutbound.getOrderNo();
-                    salesReturnItemDTO.setSalesOutboundNo(orderNo);
+                    salesReturnItemDTO.setSalesOutboundNo(salesOutbound.getOrderNo());
                 }
             }
             salesReturnItemDTOList.add(salesReturnItemDTO);
@@ -307,51 +313,26 @@ public class SalesReturnService extends AbsService {
     }
 
     @Transactional
-    public void batchAudit(SalesReturnForm salesReturnForm) {
-        List<Long> orderIds = salesReturnForm.getOrderIds();
-        if (orderIds == null || orderIds.isEmpty()) {
-            throw new IllegalArgumentException("Order IDs cannot be null or empty");
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new ServiceException("未选择单据");
         }
-
-        List<SalesReturn> salesReturnList = salesReturnRepository.findAllById(orderIds);
-
-        if (salesReturnList.size() != orderIds.size()) {
-            throw new IllegalArgumentException("Some salesOutboundList could not be found");
+        List<SalesReturn> salesReturnList = bqf.selectFrom(qSalesReturn)
+                .where(qSalesReturn.merchantId.eq(merchantId).and(qSalesReturn.id.in(ids)))
+                .fetch();
+        if (salesReturnList.isEmpty()) {
+            throw new ServiceException("未找到数据~");
         }
-        OrderStatus targetStatus = salesReturnForm.getOrderStatus();
-        SalesReturn salesReturn = salesReturnForm.getSalesReturn();
         salesReturnList.forEach(order -> {
-            order.setOrderStatus(salesReturnForm.getOrderStatus());
+            order.setOrderStatus(state);
             order.setApprovedAt(LocalDateTime.now());
-            order.setApprovedBy(salesReturn.getApprovedBy());
+            order.setApprovedBy(adminId);
         });
         salesReturnRepository.saveAll(salesReturnList);
-        salesReturnList.forEach(order -> this.updateCustomerBalanceAndRecordFlow(order, targetStatus));
-
-        // 设置明细
+        salesReturnList.forEach(order -> this.updateCustomerBalanceAndRecordFlow(order, state));
         salesReturnList.forEach(this::salesReturnToInventory);
     }
 
-    @Transactional
-    public void audit(SalesReturnForm salesReturnForm) {
-        SalesReturn salesReturn = salesReturnForm.getSalesReturn();
-        Long id = salesReturn.getId();
-
-        OrderStatus orderStatus = salesReturn.getOrderStatus();
-        SalesReturn original = salesReturnRepository.getById(id);
-        if (original.getId() == null) {
-            throw new IllegalArgumentException("单据不存在");
-        }
-        original.setApprovedAt(LocalDateTime.now());
-        original.setApprovedBy(salesReturn.getApprovedBy());
-        original.setOrderStatus(salesReturn.getOrderStatus());
-        //审核单据
-        salesReturnRepository.save(original);
-        // 更新客户余额 + 记录流水
-        this.updateCustomerBalanceAndRecordFlow(original, orderStatus);
-        // 设置明细
-        this.salesReturnToInventory(original);
-    }
     private void updateCustomerBalanceAndRecordFlow(SalesReturn salesReturn, OrderStatus targetStatus) {
         Customer customer = customerService.selectByPrimaryKey(salesReturn.getCustomerId());
         if (customer == null) {
@@ -481,6 +462,13 @@ public class SalesReturnService extends AbsService {
         return inventoryItem;
     }
 
+
+    public BigDecimal queryTotal(Query query) {
+        return bqf.selectFrom(qSalesReturn)
+                .select(qSalesReturn.finalAmount.sum())
+                .where(query.builder).fetchFirst();
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
@@ -502,21 +490,21 @@ public class SalesReturnService extends AbsService {
             }
         }
 
-        public void setState(String state) {
-            if (StringUtils.isNotBlank(state)) {
-                builder.and(qSalesReturn.orderStatus.eq(OrderStatus.valueOf(state)));
+        public void setState(OrderStatus state) {
+            if (state != null) {
+                builder.and(qSalesReturn.orderStatus.eq(state));
             }
         }
 
-        public void setStart(String start) {
-            if (StringUtils.isNotBlank(start)) {
-                builder.and(qSalesReturn.returnDate.goe(LocalDate.parse(start)));
+        public void setStart(LocalDate start) {
+            if (start != null) {
+                builder.and(qSalesReturn.returnDate.goe(start));
             }
         }
 
-        public void setEnd(String end) {
-            if (StringUtils.isNotBlank(end)) {
-                builder.and(qSalesReturn.returnDate.loe(LocalDate.parse(end)));
+        public void setEnd(LocalDate end) {
+            if (end != null) {
+                builder.and(qSalesReturn.returnDate.loe(end));
             }
         }
 

@@ -14,9 +14,10 @@ import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.*;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
-import com.flyemu.share.service.fund.dto.VerificationSaveDTO;
+import com.flyemu.share.form.VerificationForm;
 import com.flyemu.share.service.fund.vo.VerificationDetails;
 import com.flyemu.share.service.fund.vo.VerificationQueryVO;
 import com.flyemu.share.service.fund.vo.VerificationVO;
@@ -43,11 +44,13 @@ import java.util.*;
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 @Service
+@Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
 public class VerificationService extends AbsService {
 
 
+    private final CheckoutService checkoutService;
     private final static QVerification qVerification = QVerification.verification;
     private final static QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
     private final static QVerificationCollection qVerificationCollection = QVerificationCollection.verificationCollection;
@@ -62,7 +65,11 @@ public class VerificationService extends AbsService {
     private final CodeRuleService codeRuleService;
 
     @Transactional
-    public Verification save(VerificationSaveDTO dto) {
+    public Verification save(VerificationForm dto) {
+        java.time.LocalDate __checkoutOrderDate = dto.getOrder() == null || dto.getOrder().getOrderDate() == null ? null : dto.getOrder().getOrderDate().toLocalDate();
+        if (dto.getOrder() != null) {
+            checkoutService.assertEditable(dto.getOrder().getMerchantId(), dto.getOrder().getAccountBookId(), __checkoutOrderDate);
+        }
         if (dto.getOrder() == null) {
             throw new ServiceException("核销单主表信息不能为空");
         }
@@ -378,6 +385,15 @@ public class VerificationService extends AbsService {
     }
 
     @Transactional
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        OrderPaymentUpdateDTO dto = new OrderPaymentUpdateDTO();
+        dto.setId(ids.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")));
+        dto.setOrderStatus(state);
+        dto.setApprovedBy(adminId);
+        updateStatus(dto);
+    }
+
+    @Transactional
     public void updateStatus(OrderPaymentUpdateDTO dto) {
         String ids = dto.getId();
         OrderStatus targetStatus = dto.getOrderStatus();
@@ -588,7 +604,7 @@ public class VerificationService extends AbsService {
         return bqf.selectFrom(qVerification).where(qVerification.merchantId.eq(merchantId).and(qVerification.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public VerificationDetails selectById(Long id) {
+    public VerificationDetails load(Long merchantId, Long id) {
         if (id == null) {
             throw new ServiceException("ID不能为空");
         }
@@ -626,7 +642,7 @@ public class VerificationService extends AbsService {
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qVerification.createdBy.longValue()))
                 .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qVerification.updateBy.longValue()))
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qVerification.approvedBy.longValue()))
-                .where(qVerification.id.eq(id))
+                .where(qVerification.merchantId.eq(merchantId).and(qVerification.id.eq(id)))
                 .fetchOne();
 
         if (orderVO == null) {
@@ -652,6 +668,15 @@ public class VerificationService extends AbsService {
         details.setCollectionList(collections);
 
         return details;
+    }
+
+
+    public BigDecimal queryTotal(Query query) {
+        // sum item verify amounts for matching verifications
+        return bqf.selectFrom(qVerificationItem)
+                .select(qVerificationItem.currentVerifyAmount.sum())
+                .innerJoin(qVerification).on(qVerification.id.eq(qVerificationItem.verificationId))
+                .where(query.builder).fetchFirst();
     }
 
     public static class Query {

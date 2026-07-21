@@ -452,7 +452,7 @@ export default {
         this.balanceList[subjectId] = FormatNum(balance);
       }
     },
-    loadVoucherSelect() {
+    loadSelect() {
       let tmp = localStorage.getItem('voucherSelect');
       let tmp2 = localStorage.getItem('summarySelect');
       if (tmp) {
@@ -461,13 +461,13 @@ export default {
       if (tmp2) {
         this.summarySelect = JSON.parse(tmp2);
       }
-      FinanceAccountLink.loadVoucherSelect().then(({data}) => {
+      FinanceAccountLink.voucherSelect().then(({data}) => {
         console.log(data);
         this.voucherSelect = data.data || [];
         localStorage.setItem("voucherSelect", JSON.stringify(data));
       });
 
-      // FinanceAccountLink.loadVoucherSummary().then(({data}) => {
+      // FinanceAccountLink.voucherSummary().then(({data}) => {
       //   let newData = data.map(val => {
       //     return {
       //       name: val,
@@ -533,7 +533,7 @@ export default {
     },
     loadAuxiliaryAccountingData(idx, subject) {
       if (!this.auxiliaryAccountingData[subject.id]) {
-        FinanceVoucher.loadAuxiliaryAccountingData({ids: this.auxiliaryAccounting[idx]}).then(({data}) => {
+        FinanceVoucher.auxiliary({ids: this.auxiliaryAccounting[idx]}).then(({data}) => {
           this.auxiliaryAccountingData[subject.id] = data;
         });
       }
@@ -834,7 +834,7 @@ export default {
       if (app) app.addEventListener('click', this._onAppClick);
       this.bindEnterTabKeydownEvt();
     });
-    this.loadVoucherSelect();
+    this.loadSelect();
   },
   beforeUnmount() {
     const app = document.getElementById('app');

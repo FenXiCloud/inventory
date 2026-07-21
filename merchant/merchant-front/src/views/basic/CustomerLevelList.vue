@@ -47,7 +47,8 @@
 <script>
 import CustomerLevel from '@js/api/basic/CustomerLevel';
 import CustomerLevelForm from '@views/basic/CustomerLevelForm.vue';
-import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 

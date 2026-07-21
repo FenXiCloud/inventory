@@ -9,7 +9,7 @@ import Ajax from "@common/Request";
 
 export default {
     save(param) {
-        return Ajax[param.id ? 'put' : 'post']('/stockTake', param)
+        return Ajax[param.stockTake?.id ? 'put' : 'post']('/stockTake', param)
     },
     list(param) {
         return Ajax.get('/stockTake', param)
@@ -23,14 +23,8 @@ export default {
     load(id) {
         return Ajax.get("/stockTake/load/" + id);
     },
-    approve(param) {
-        return Ajax.get("/stockTake/approve", param);
-    },
-    approves(param) {
-        return Ajax.get("/stockTake/approves", param);
-    },
-    delete(id) {
-        return Ajax.delete("/stockTake/" + id);
+    approved(state, ids) {
+        return Ajax.post('/stockTake/approved/' + state, ids);
     },
     export(id) {
         return Ajax.get("/stockTake/export/" + id);

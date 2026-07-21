@@ -1,19 +1,32 @@
 import Ajax from '@common/Request';
 
+function toIds(ids) {
+  if (Array.isArray(ids)) {
+    return ids.map(Number).filter(Boolean);
+  }
+  return String(ids ?? '')
+    .split(',')
+    .map((s) => Number(s.trim()))
+    .filter(Boolean);
+}
+
 export default {
   list(param) {
-    return Ajax.get('/otherIncome/list', param);
+    return Ajax.get('/otherReceipt', param);
   },
-  details(param) {
-    return Ajax.get('/otherIncome/selectById', param);
+  total(param) {
+    return Ajax.get('/otherReceipt/total', param);
+  },
+  load(id) {
+    return Ajax.get('/otherReceipt/load/' + id);
   },
   remove(id) {
-    return Ajax.post('/otherIncome/delete', id);
+    return Ajax.delete('/otherReceipt/' + id);
   },
-  batchAudit(param) {
-    return Ajax.post('/otherIncome/updateStatus', param);
+  approved(state, ids) {
+    return Ajax.post('/otherReceipt/approved/' + state, toIds(ids));
   },
-  addEdit(param) {
-    return Ajax.post('/otherIncome/save', param);
+  save(param) {
+    return Ajax[param.order?.id ? 'put' : 'post']('/otherReceipt', param);
   }
 };

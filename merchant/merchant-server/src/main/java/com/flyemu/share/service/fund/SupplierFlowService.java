@@ -59,7 +59,7 @@ public class SupplierFlowService extends AbsService {
         return supplierFlows;
     }
 
-    public PageResults<SupplierFlow> getFlowsBySupplierId(Page page, SupplierFlowService.QueryDTO queryDTO) {
+    public PageResults<SupplierFlow> statement(Page page, SupplierFlowService.QueryDTO queryDTO) {
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(queryDTO.builder);
 
@@ -131,7 +131,7 @@ public class SupplierFlowService extends AbsService {
     }
 
     @Transactional
-    public void batchSave(SupplierInitialForm form) {
+    public void batch(SupplierInitialForm form) {
         List<SupplierFlow> supplierFlowList = form.getSupplierFlowList();
         for (SupplierFlow item : supplierFlowList) {
             item.setAccountBookId(form.getAccountBookId());
@@ -172,12 +172,15 @@ public class SupplierFlowService extends AbsService {
     }
 
     @Transactional
-    public void batchDelete(SupplierInitialForm form) {
-        List<Long> ids = form.getIds();
-        if (ids.isEmpty()) {
+    public void batchDelete(List<Long> ids, Long merchantId, Long accountBookId) {
+        if (ids == null || ids.isEmpty()) {
             return;
         }
-        supplierFlowRepository.deleteAllByIdInBatch(ids);
+        jqf.delete(qSupplierFlow)
+                .where(qSupplierFlow.id.in(ids)
+                        .and(qSupplierFlow.merchantId.eq(merchantId))
+                        .and(qSupplierFlow.accountBookId.eq(accountBookId)))
+                .execute();
     }
 
     public static class QueryDTO {

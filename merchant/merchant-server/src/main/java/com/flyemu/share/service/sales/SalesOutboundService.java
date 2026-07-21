@@ -24,6 +24,7 @@ import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.SalesOutboundForm;
 import com.flyemu.share.repository.*;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.basic.PriceRecordService;
@@ -64,6 +65,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SalesOutboundService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
     private final static QSalesOutboundItem qSalesOutboundItem = QSalesOutboundItem.salesOutboundItem;
     private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
@@ -151,8 +153,10 @@ public class SalesOutboundService extends AbsService {
     }
 
     @Transactional
-    public SalesOutbound save(SalesOutboundForm salesOutboundForm) {
+    public SalesOutbound save(SalesOutboundForm salesOutboundForm, Long merchantId) {
         SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
+        checkoutService.assertEditable(salesOutbound.getMerchantId(), salesOutbound.getAccountBookId(), salesOutbound.getOutboundDate());
+        salesOutbound.setMerchantId(merchantId);
         Long id = salesOutbound.getId();
         List<SalesOutboundItem> salesOutboundItemList = salesOutboundForm.getSalesOutboundItemList();
 
@@ -179,7 +183,12 @@ public class SalesOutboundService extends AbsService {
 
         if (id != null) {
             //查询
-            SalesOutbound original = salesOutboundRepository.getById(id);
+            SalesOutbound original = bqf.selectFrom(qSalesOutbound)
+                    .where(qSalesOutbound.id.eq(id).and(qSalesOutbound.merchantId.eq(merchantId)))
+                    .fetchFirst();
+            if (original == null) {
+                throw new ServiceException("单据不存在");
+            }
             //已审核单据不能修改
             OrderStatus orderStatus = original.getOrderStatus();
             if (orderStatus.equals(OrderStatus.已审核)) {
@@ -191,11 +200,9 @@ public class SalesOutboundService extends AbsService {
             //保存新关系
             if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                 salesOutboundItemList.forEach(item -> {
-                    //保存价格记录
-                    savePrice(item, update);
                     item.setSalesOutboundId(update.getId());
                     item.setAccountBookId(salesOutbound.getAccountBookId());
-                    item.setMerchantId(salesOutbound.getMerchantId());
+                    item.setMerchantId(merchantId);
                     item.setUpdatedAt(LocalDateTime.now());
                 });
                 //批量修改
@@ -208,16 +215,14 @@ public class SalesOutboundService extends AbsService {
             //状态初始化
             salesOutbound.setOrderStatus(OrderStatus.已保存);
             //订单编号
-            salesOutbound.setOrderNo(codeSeedService.generateCode(salesOutbound.getMerchantId(), "销售出库单"));
+            salesOutbound.setOrderNo(codeSeedService.generateCode(merchantId, salesOutbound.getAccountBookId(), "销售出库单"));
             //保存订单
             SalesOutbound save = salesOutboundRepository.save(salesOutbound);
             if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                 salesOutboundItemList.forEach(item -> {
-                    //保存价格记录
-                    savePrice(item, save);
                     item.setSalesOutboundId(save.getId());
                     item.setAccountBookId(salesOutbound.getAccountBookId());
-                    item.setMerchantId(salesOutbound.getMerchantId());
+                    item.setMerchantId(merchantId);
                     item.setCreatedBy(salesOutbound.getCreatedBy());
                     item.setCreatedAt(salesOutbound.getCreatedAt());
                 });
@@ -318,19 +323,38 @@ public class SalesOutboundService extends AbsService {
         }
     }
 
-    private void savePrice(SalesOutboundItem item, SalesOutbound save) {
-        //保存价格记录
-        PriceRecord priceRecord = new PriceRecord();
-        priceRecord.setOrderId(save.getId());
-        priceRecord.setUnitPrice(item.getUnitPrice());
-        priceRecord.setBaseUnitId(item.getBaseUnitId());
-        priceRecord.setProductId(item.getProductId());
-        priceRecord.setMerchantId(save.getMerchantId());
-        priceRecord.setAccountBookId(save.getAccountBookId());
-        priceRecord.setCustomerId(save.getCustomerId());
-        priceRecord.setPriceSource(PriceSource.最近销售价格);
-        priceRecord.setPriceType(PriceType.最近销售价格);
-        priceRecordService.savePriceRecord(priceRecord);
+    private void recordOutboundPrices(SalesOutbound order) {
+        List<SalesOutboundItem> items = salesOutboundItemRepository.findBySalesOutboundId(order.getId());
+        if (CollectionUtils.isEmpty(items)) {
+            return;
+        }
+        Date orderDate = order.getOutboundDate() == null ? new Date()
+                : Date.from(order.getOutboundDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
+        for (SalesOutboundItem item : items) {
+            PriceRecord priceRecord = new PriceRecord();
+            priceRecord.setOrderId(order.getId());
+            priceRecord.setOrderDate(orderDate);
+            priceRecord.setUnitPrice(item.getUnitPrice());
+            priceRecord.setBaseUnitId(item.getBaseUnitId());
+            priceRecord.setProductId(item.getProductId());
+            priceRecord.setMerchantId(order.getMerchantId());
+            priceRecord.setAccountBookId(order.getAccountBookId());
+            priceRecord.setCustomerId(order.getCustomerId());
+            priceRecord.setQuantity(item.getQuantity());
+            priceRecord.setPriceSource(PriceSource.最近销售价格);
+            priceRecord.setPriceType(PriceType.最近销售价格);
+            priceRecordService.appendTradePrice(priceRecord);
+        }
+    }
+
+    private void removeOutboundPrices(SalesOutbound order) {
+        priceRecordService.removeByOrder(
+                order.getId(),
+                PriceType.最近销售价格,
+                PriceSource.最近销售价格,
+                order.getMerchantId(),
+                order.getAccountBookId()
+        );
     }
 
     @Transactional
@@ -377,17 +401,21 @@ public class SalesOutboundService extends AbsService {
         return bqf.selectFrom(qSalesOutbound).where(qSalesOutbound.merchantId.eq(merchantId).and(qSalesOutbound.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public Object getById(SalesOrder query) {
-        //查询订单
-        SalesOutbound salesOutbound = salesOutboundRepository.getById(query.getId());
-        //订单数据转换
+    public SalesOutboundDTO load(Long merchantId, Long orderId) {
+        SalesOutbound salesOutbound = bqf.selectFrom(qSalesOutbound)
+                .where(qSalesOutbound.merchantId.eq(merchantId).and(qSalesOutbound.id.eq(orderId)))
+                .fetchFirst();
+        if (salesOutbound == null) {
+            throw new ServiceException("单据不存在");
+        }
         SalesOutboundDTO dto = BeanUtil.toBean(salesOutbound, SalesOutboundDTO.class);
-        //查询销售订单商品
         List<Tuple> fetch = jqf.selectFrom(qSalesOutboundItem)
                 .select(qSalesOutboundItem, qProduct.code, qProduct.name, qUnit.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qSalesOutboundItem.productId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qSalesOutboundItem.baseUnitId))
-                .where(qSalesOutboundItem.salesOutboundId.eq(query.getId())).orderBy(qSalesOutboundItem.id.asc()).fetch();
+                .where(qSalesOutboundItem.salesOutboundId.eq(orderId)
+                        .and(qSalesOutboundItem.merchantId.eq(merchantId)))
+                .orderBy(qSalesOutboundItem.id.asc()).fetch();
         List<SalesOutboundItemDTO> salesOutboundItemDTOList = new ArrayList<>();
         fetch.forEach(tuple -> {
             SalesOutboundItemDTO salesOutboundItemDTO = BeanUtil.toBean(tuple.get(qSalesOutboundItem), SalesOutboundItemDTO.class);
@@ -397,11 +425,9 @@ public class SalesOutboundService extends AbsService {
 
             Long salesOrderId = salesOutboundItemDTO.getSalesOrderId();
             if (salesOrderId != null) {
-                //返回销售订单编号
                 SalesOrder salesOrder = salesOrderRepository.findById(salesOrderId).orElse(null);
                 if (salesOrder != null) {
-                    String orderNo = salesOrder.getOrderNo();
-                    salesOutboundItemDTO.setSalesOrderNo(orderNo);
+                    salesOutboundItemDTO.setSalesOrderNo(salesOrder.getOrderNo());
                 }
             }
             salesOutboundItemDTOList.add(salesOutboundItemDTO);
@@ -411,44 +437,43 @@ public class SalesOutboundService extends AbsService {
     }
 
     @Transactional
-    public void batchAudit(SalesOutboundForm salesOutboundForm) {
-        List<Long> orderIds = salesOutboundForm.getOrderIds();
-        if (orderIds == null || orderIds.isEmpty()) {
-            throw new IllegalArgumentException("Order IDs cannot be null or empty");
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new ServiceException("未选择单据");
         }
-
-        List<SalesOutbound> salesOutboundList = salesOutboundRepository.findAllById(orderIds);
-
-        if (salesOutboundList.size() != orderIds.size()) {
-            throw new IllegalArgumentException("Some salesOutboundList could not be found");
+        List<SalesOutbound> salesOutboundList = bqf.selectFrom(qSalesOutbound)
+                .where(qSalesOutbound.merchantId.eq(merchantId).and(qSalesOutbound.id.in(ids)))
+                .fetch();
+        if (salesOutboundList.isEmpty()) {
+            throw new ServiceException("未找到数据~");
         }
-        SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
         salesOutboundList.forEach(order -> {
-            OrderStatus orderStatus = salesOutboundForm.getOrderStatus();
-            if (orderStatus.equals(OrderStatus.已保存)) {
+            if (OrderStatus.已保存.equals(state)) {
                 boolean hasPaymentOrVerification = checkHasPaymentOrVerification(order.getId());
                 if (hasPaymentOrVerification) {
-                    log.error("存在付款单或核销单，无法反审核-----orderId:{}",order.getId());
+                    log.error("存在付款单或核销单，无法反审核-----orderId:{}", order.getId());
                     throw new ServiceException("存在付款单或核销单，无法反审核");
                 }
-                //已关联销售退货单不能审核
                 Long returnOrderId = order.getReturnOrderId();
                 if (returnOrderId != null) {
                     Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
                     salesReturnOptional.ifPresent(salesReturn -> {
-                        throw new InvalidContextException("已关联销售退货单不能审核");
+                        throw new ServiceException("已关联销售退货单不能反审核");
                     });
                 }
+                removeOutboundPrices(order);
+            } else if (OrderStatus.已审核.equals(state)) {
+                if (OrderStatus.已保存.equals(order.getOrderStatus())) {
+                    recordOutboundPrices(order);
+                }
             }
-            this.updateCustomerBalanceAndRecordFlow(order, orderStatus);
-            order.setOrderStatus(orderStatus);
+            this.updateCustomerBalanceAndRecordFlow(order, state);
+            order.setOrderStatus(state);
             order.setApprovedAt(LocalDateTime.now());
-            order.setApprovedBy(salesOutbound.getApprovedBy());
-
+            order.setApprovedBy(adminId);
         });
 
         salesOutboundRepository.saveAll(salesOutboundList);
-        // 设置明细
         salesOutboundList.forEach(this::salesOutboundToInventory);
     }
 
@@ -474,40 +499,6 @@ public class SalesOutboundService extends AbsService {
         return paymentTotal > 0 || verificationTotal > 0;
     }
 
-    @Transactional
-    public void audit(SalesOutboundForm salesOutboundForm) {
-        SalesOutbound salesOutbound = salesOutboundForm.getSalesOutbound();
-        Long id = salesOutbound.getId();
-        SalesOutbound original = salesOutboundRepository.getById(id);
-        if (original.getId() == null) {
-            throw new IllegalArgumentException("单据不存在");
-        }
-        //反审核
-        OrderStatus orderStatus = salesOutbound.getOrderStatus();
-        if (orderStatus.equals(OrderStatus.已保存)) {
-            boolean hasPaymentOrVerification = checkHasPaymentOrVerification(id);
-            if (hasPaymentOrVerification) {
-                log.error("存在付款单或核销单，无法反审核-----orderId:{}",id);
-                throw new ServiceException("存在付款单或核销单，无法反审核");
-            }
-            //已关联销售退货单不能反审核
-            Long returnOrderId = original.getReturnOrderId();
-            if (returnOrderId != null) {
-                Optional<SalesReturn> salesReturnOptional = salesReturnRepository.findById(returnOrderId);
-                salesReturnOptional.ifPresent(salesReturn -> {
-                    throw new InvalidContextException("已关联销售退货单不能反审核");
-                });
-            }
-        }
-        this.updateCustomerBalanceAndRecordFlow(original, orderStatus);
-        original.setApprovedAt(LocalDateTime.now());
-        original.setApprovedBy(salesOutbound.getApprovedBy());
-        original.setOrderStatus(salesOutbound.getOrderStatus());
-        //审核单据
-        salesOutboundRepository.save(original);
-        // 设置明细
-        this.salesOutboundToInventory(original);
-    }
     private void updateCustomerBalanceAndRecordFlow(SalesOutbound salesOutbound, OrderStatus targetStatus) {
         Customer customer = customerService.findById(salesOutbound.getCustomerId());
         BigDecimal amount = salesOutbound.getFinalAmount();
@@ -650,6 +641,13 @@ public class SalesOutboundService extends AbsService {
         return inventoryItem;
     }
 
+
+    public BigDecimal queryTotal(Query query) {
+        return bqf.selectFrom(qSalesOutbound)
+                .select(qSalesOutbound.finalAmount.sum())
+                .where(query.builder).fetchFirst();
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
@@ -671,21 +669,21 @@ public class SalesOutboundService extends AbsService {
             }
         }
 
-        public void setState(String state) {
-            if (StringUtils.isNotBlank(state)) {
-                builder.and(qSalesOutbound.orderStatus.eq(OrderStatus.valueOf(state)));
+        public void setState(OrderStatus state) {
+            if (state != null) {
+                builder.and(qSalesOutbound.orderStatus.eq(state));
             }
         }
 
-        public void setStart(String start) {
-            if (StringUtils.isNotBlank(start)) {
-                builder.and(qSalesOutbound.outboundDate.goe(LocalDate.parse(start)));
+        public void setStart(LocalDate start) {
+            if (start != null) {
+                builder.and(qSalesOutbound.outboundDate.goe(start));
             }
         }
 
-        public void setEnd(String end) {
-            if (StringUtils.isNotBlank(end)) {
-                builder.and(qSalesOutbound.outboundDate.loe(LocalDate.parse(end)));
+        public void setEnd(LocalDate end) {
+            if (end != null) {
+                builder.and(qSalesOutbound.outboundDate.loe(end));
             }
         }
 
@@ -697,7 +695,7 @@ public class SalesOutboundService extends AbsService {
 
         //查询未退货订单
         public void setQueryUnReturnOrder(Integer queryUnReturnOrder) {
-            if (queryUnReturnOrder == 1) {
+            if (queryUnReturnOrder != null && queryUnReturnOrder == 1) {
                 builder.and(qSalesOutbound.returnOrderId.isNull());
             }
         }

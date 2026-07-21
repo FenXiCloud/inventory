@@ -6,7 +6,6 @@ import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.dto.AccountDto;
-import com.flyemu.share.entity.setting.FinanceAccountLink;
 import com.flyemu.share.entity.setting.FinanceVoucherTemplate;
 import com.flyemu.share.service.setting.FinanceVoucherTemplateService;
 import jakarta.validation.Valid;
@@ -35,8 +34,16 @@ public class FinanceVoucherTemplateController {
         return JsonResult.successful(financeVoucherTemplateService.query(query));
     }
 
-    @PostMapping("save")
+    @PostMapping
     public JsonResult save(@RequestBody @Valid FinanceVoucherTemplate financeVoucherTemplate, @SaAccountVal AccountDto accountDto) {
+        financeVoucherTemplate.setMerchantId(accountDto.getMerchantId());
+        financeVoucherTemplate.setAccountBookId(accountDto.getAccountBookId());
+        financeVoucherTemplateService.save(financeVoucherTemplate, accountDto);
+        return JsonResult.successful();
+    }
+
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid FinanceVoucherTemplate financeVoucherTemplate, @SaAccountVal AccountDto accountDto) {
         financeVoucherTemplate.setMerchantId(accountDto.getMerchantId());
         financeVoucherTemplate.setAccountBookId(accountDto.getAccountBookId());
         financeVoucherTemplateService.save(financeVoucherTemplate, accountDto);
@@ -49,10 +56,9 @@ public class FinanceVoucherTemplateController {
         return JsonResult.successful();
     }
 
-
-    @GetMapping("/load/{id}")
-    public JsonResult load(@PathVariable Long id) {
-        return JsonResult.successful(financeVoucherTemplateService.load(id));
+    @GetMapping("load/{id}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+        return JsonResult.successful(financeVoucherTemplateService.load(merchantId, id));
     }
 
 }

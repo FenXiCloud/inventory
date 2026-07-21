@@ -9,6 +9,7 @@
 
     <div class="simple-page__toolbar">
       <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="exportData">导 出</t-button>
         <t-date-range-picker
             v-model="dateRangeValue"
             clearable
@@ -124,6 +125,8 @@
 
 <script>
 import manba from 'manba';
+import * as XLSX from 'xlsx';
+import {MessagePlugin} from 'tdesign-vue-next';
 import AccountFlow from '@js/api/fund/AccountFlow';
 import OrderStaff from '@js/api/basic/OrderStaff';
 import Customer from '@js/api/basic/Customer';
@@ -140,7 +143,7 @@ const money = (v) => Number(v || 0).toFixed(2);
  * @功能描述: 往来单位欠款表
  */
 export default {
-  name: 'counterpartDebt',
+  name: 'CounterpartDebt',
   data() {
     return {
       activeTab: 'ar',
@@ -288,6 +291,29 @@ export default {
     }
   },
   methods: {
+    exportData() {
+      if (!this.dataList || this.dataList.length === 0) {
+        MessagePlugin.warning('没有可导出的数据');
+        return;
+      }
+      try {
+        const cols = (this.columns || []).filter(c => c.colKey && c.colKey !== 'ops' && c.title);
+        const exportData = this.dataList.map(item => {
+          const row = {};
+          cols.forEach(col => { row[col.title] = item[col.colKey]; });
+          return row;
+        });
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '往来欠款');
+        XLSX.writeFile(wb, `往来单位欠款_${manba().format('YYYY-MM-DD')}.xlsx`);
+        MessagePlugin.success('导出成功');
+      } catch (error) {
+        console.error('导出错误:', error);
+        MessagePlugin.error('导出失败');
+      }
+    },
+
     onTabChange() {
       this.params.type = 1;
       this.changeType();
@@ -316,8 +342,8 @@ export default {
       this.loading = true;
       const req =
         this.activeTab === 'ar'
-          ? AccountFlow.summaryReceivableDetails(this.queryParams)
-          : AccountFlow.summaryPayableDetails(this.queryParams);
+          ? AccountFlow.summaryReceivable(this.queryParams)
+          : AccountFlow.summaryPayable(this.queryParams);
       req
         .then(({ data }) => {
           if (this.activeTab === 'ar') {
@@ -343,7 +369,7 @@ export default {
         .finally(() => (this.loading = false));
     },
     loadOptions() {
-      OrderStaff.orderStaffList().then(({ data }) => {
+      OrderStaff.select().then(({ data }) => {
         this.orderStaffList = data || [];
       });
       Customer.select().then(({ data }) => {

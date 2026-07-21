@@ -2,6 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="exportData">导 出</t-button>
         <t-date-range-picker
             v-model="dateRangeValue"
             clearable
@@ -58,6 +59,8 @@
 </template>
 <script>
 import manba from 'manba';
+import * as XLSX from 'xlsx';
+import {MessagePlugin} from 'tdesign-vue-next';
 import { mapMutations } from 'vuex';
 import OrderStaff from '@js/api/basic/OrderStaff';
 import AccountFlow from '@js/api/fund/AccountFlow';
@@ -128,6 +131,31 @@ export default {
     }
   },
   methods: {
+    exportData() {
+      if (!this.dataList || this.dataList.length === 0) {
+        MessagePlugin.warning('没有可导出的数据');
+        return;
+      }
+      try {
+        const exportData = this.dataList.map(item => ({
+          '单据编号': item.documentNumber,
+          '日期': item.date,
+          '金额': item.amount,
+          '收支类别': item.accountType,
+          '往来单位': item.businessPartner,
+          '业务员': item.staffName,
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '其他收支');
+        XLSX.writeFile(wb, `其他收支报表_${manba().format('YYYY-MM-DD')}.xlsx`);
+        MessagePlugin.success('导出成功');
+      } catch (error) {
+        console.error('导出错误:', error);
+        MessagePlugin.error('导出失败');
+      }
+    },
+
     ...mapMutations(['pushTab']),
     onPageChange(pageInfo) {
       this.pagination.page = pageInfo.current;
@@ -141,7 +169,7 @@ export default {
     },
     loadList() {
       this.loading = true;
-      AccountFlow.otherFundDetails(this.queryParams)
+      AccountFlow.otherFund(this.queryParams)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
           this.pagination.total = total;
@@ -151,7 +179,7 @@ export default {
         .finally(() => (this.loading = false));
     },
     loadOrderStaff() {
-      OrderStaff.orderStaffList().then(({ data }) => {
+      OrderStaff.select().then(({ data }) => {
         this.orderStaffList = data || [];
       });
     }

@@ -66,7 +66,8 @@
 <script>
 import AccountType from '@js/api/basic/AccountType';
 import AccountTypeForm from '@views/basic/AccountTypeForm.vue';
-import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 import {toArrayTree} from 'xe-utils';

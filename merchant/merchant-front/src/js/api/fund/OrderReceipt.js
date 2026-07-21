@@ -1,29 +1,35 @@
 import Ajax from '@common/Request';
 
+function toIds(ids) {
+  if (Array.isArray(ids)) {
+    return ids.map(Number).filter(Boolean);
+  }
+  return String(ids ?? '')
+    .split(',')
+    .map((s) => Number(s.trim()))
+    .filter(Boolean);
+}
+
 export default {
   list(param) {
-    return Ajax.get('/orderReceipt/list', param);
+    return Ajax.get('/orderReceipt', param);
   },
-  details(param) {
-    return Ajax.get('/orderReceipt/selectById', param);
+  total(param) {
+    return Ajax.get('/orderReceipt/total', param);
+  },
+  load(id) {
+    return Ajax.get('/orderReceipt/load/' + id);
   },
   remove(id) {
-    return Ajax.post('/orderReceipt/delete', id);
+    return Ajax.delete('/orderReceipt/' + id);
   },
-  batchAudit(param) {
-    return Ajax.post('/orderReceipt/updateStatus', param);
+  approved(state, ids) {
+    return Ajax.post('/orderReceipt/approved/' + state, toIds(ids));
   },
-  addEdit(param) {
-    return Ajax.post('/orderReceipt/save', param);
+  save(param) {
+    return Ajax[param.orderReceipt?.id ? 'put' : 'post']('/orderReceipt', param);
   },
-  writeOffTheOrder(param) {
-    return Ajax.get(`/orderReceipt/writeOffTheOrder`, param);
-  },
-
-  orderStaffList(param) {
-    return Ajax.get('/orderStaff/list', param);
-  },
-  orderStaffAdd(param) {
-    return Ajax.post('/orderStaff/add', param);
+  writeOff(param) {
+    return Ajax.get('/orderReceipt/writeOff', param);
   }
 };

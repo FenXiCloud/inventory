@@ -99,4 +99,9 @@ public class SalesReportItemDTO {
     private LocalDate orderDate;
 
     private String salesType;
+    private BigDecimal costPrice;
+    private BigDecimal costAmount;
+    private BigDecimal profitAmount;
+    private BigDecimal profitRate;
+    private Integer rankNo;
 }

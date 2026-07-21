@@ -1,21 +1,21 @@
 package com.flyemu.share.controller.sales;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
-import com.flyemu.share.entity.sales.SalesOrder;
-import com.flyemu.share.entity.sales.SalesOutbound;
-import com.flyemu.share.form.SalesOrderForm;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesOutboundForm;
-import com.flyemu.share.form.SalesReturnForm;
 import com.flyemu.share.service.sales.SalesOutboundService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * @功能描述: 销售出库单
@@ -38,6 +38,15 @@ public class SalesOutboundController {
         return JsonResult.successful(salesOutboundService.query(page, query));
     }
 
+    @GetMapping("/total")
+    public JsonResult queryTotal(SalesOutboundService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(salesOutboundService.queryTotal(query));
+    }
+
+
+
     @PostMapping
     public JsonResult save(
             @RequestBody @Valid SalesOutboundForm salesOutboundForm,
@@ -49,13 +58,14 @@ public class SalesOutboundController {
         salesOutboundForm.getSalesOutbound().setAccountBookId(accountBookId);
         salesOutboundForm.getSalesOutbound().setCreatedBy(adminId);
         salesOutboundForm.getSalesOutbound().setCreatedAt(LocalDateTime.now());
-        salesOutboundService.save(salesOutboundForm);
+        salesOutboundForm.getSalesOutbound().setOrderStatus(OrderStatus.已保存);
+        salesOutboundService.save(salesOutboundForm, merchantId);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid SalesOutboundForm salesOutboundForm) {
-        salesOutboundService.save(salesOutboundForm);
+    public JsonResult update(@RequestBody @Valid SalesOutboundForm salesOutboundForm, @SaMerchantId Long merchantId) {
+        salesOutboundService.save(salesOutboundForm, merchantId);
         return JsonResult.successful();
     }
 
@@ -70,44 +80,14 @@ public class SalesOutboundController {
         return JsonResult.successful(salesOutboundService.select(merchantId, accountBookId));
     }
 
-    /**
-     * 销售出库订单详情
-     * @param merchantId
-     * @param accountBookId
-     * @param orderId
-     * @return
-     */
-    @GetMapping("/getInfo/{orderId}")
-    public JsonResult getInfo(
-            @SaMerchantId Long merchantId,
-            @SaAccountBookId Long accountBookId,
-            @PathVariable Long orderId
-    ) {
-        SalesOrder query = new SalesOrder();
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
-        query.setId(orderId);
-        return JsonResult.successful(salesOutboundService.getById(query));
+    @GetMapping("load/{orderId}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long orderId) {
+        return JsonResult.successful(salesOutboundService.load(merchantId, orderId));
     }
 
-    @PutMapping("/batchAudit")
-    public JsonResult batchAudit(
-            @RequestBody SalesOutboundForm salesOutboundForm,
-            @SaAdminId Long adminId
-    ) {
-        salesOutboundForm.setSalesOutbound(new SalesOutbound());
-        salesOutboundForm.getSalesOutbound().setApprovedBy(adminId);
-        salesOutboundService.batchAudit(salesOutboundForm);
-        return JsonResult.successful();
-    }
-
-    @PutMapping("/audit")
-    public JsonResult audit(
-            @RequestBody @Valid SalesOutboundForm salesOutboundForm,
-            @SaAdminId Long adminId
-    ) {
-        salesOutboundForm.getSalesOutbound().setApprovedBy(adminId);
-        salesOutboundService.audit(salesOutboundForm);
+    @PostMapping("/approved/{state}")
+    public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
+        salesOutboundService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
         return JsonResult.successful();
     }
 

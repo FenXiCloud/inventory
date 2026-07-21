@@ -285,10 +285,9 @@ public class InventoryService extends AbsService {
     /**
      * 库存余额统计
      */
-    public PageResults<InventoryReportDto> report(Page page, Query query) {
+    public PageResults<InventoryReportDto> balance(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventory)
                 .select(
-                        qProduct.id.count().as("count"),
                         qProduct.id.as("productId"),
                         qProduct.code.as("productCode"),
                         qProduct.name.as("productName"),
@@ -301,11 +300,17 @@ public class InventoryService extends AbsService {
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventory.warehouseId))
                 .where(query.builders()).where(qProduct.id.isNotNull())
-                .groupBy(qProduct.id)
+                .groupBy(
+                        qProduct.id,
+                        qProduct.code,
+                        qProduct.name,
+                        qProductCategory.name,
+                        qProduct.specification,
+                        qUnit.name
+                )
                 .orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryReportDto> dtos = new ArrayList<>();
         InventoryReportDto dto;
-        Long totalCount = 0L;
         for (Tuple tuple : fetchPage) {
             dto = new InventoryReportDto();
             dto.setProductId(tuple.get(qProduct.id.as("productId")));
@@ -316,16 +321,10 @@ public class InventoryService extends AbsService {
             dto.setProductUnitName(tuple.get(qUnit.name.as("productUnitName")));
             dtos.add(dto);
         }
-        if (!fetchPage.isEmpty()) {
-            totalCount = fetchPage.get(0).get(qProduct.id.count().as("count"));
-        }
-        if (totalCount == null) {
-            totalCount = 0L;
-        }
-        return new PageResults<>(dtos, page, totalCount);
+        return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-    public List<Inventory> reportInventory(Query query) {
+    public List<Inventory> balanceTotal(Query query) {
         return jqf.selectFrom(qInventory)
                 .leftJoin(qWarehouse).on(qInventory.warehouseId.eq(qWarehouse.id))
                 .leftJoin(qProduct).on(qProduct.id.eq(qInventory.productId))
@@ -469,31 +468,32 @@ public class InventoryService extends AbsService {
         }
 
         public BooleanBuilder builders() {
+            BooleanBuilder where = new BooleanBuilder(builder);
             if (warehouseId != null) {
-                builder.and(qInventory.warehouseId.eq(warehouseId));
+                where.and(qInventory.warehouseId.eq(warehouseId));
             }
             if (productId != null) {
-                builder.and(qInventory.productId.eq(productId));
+                where.and(qInventory.productId.eq(productId));
             }
             if (productCategoryId != null) {
-                builder.and(qProductCategory.id.eq(productCategoryId));
+                where.and(qProductCategory.id.eq(productCategoryId));
             }
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
-                builder.and(qProduct.name.contains(filter))
+                where.and(qProduct.name.contains(filter)
                         .or(qProduct.code.contains(filter))
                         .or(qProductCategory.name.contains(filter))
-                        .or(qProduct.specification.contains(filter));
+                        .or(qProduct.specification.contains(filter)));
             }
             if (StrUtil.isNotBlank(productCategoryIds)) {
-                builder.and(qProduct.productCategoryId.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).toList()));
+                where.and(qProduct.productCategoryId.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).toList()));
             }
             if (StrUtil.isNotBlank(productIds)) {
-                builder.and(qProduct.id.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+                where.and(qProduct.id.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
             }
             if (StrUtil.isNotBlank(warehouseIds)) {
-                builder.and(qWarehouse.id.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+                where.and(qWarehouse.id.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
             }
-            return builder;
+            return where;
         }
     }
 }

@@ -7,17 +7,17 @@
             <![CDATA[
             SELECT
 	sum(po.subtotal) as subtotalSum,
-	po.product_id AS productId,
-	po.quantity AS baseQuantitySum,
-	jp.`name` as productName,
-	ju.`name` as baseUnitName,
-	jp.`code` as productCode,
-	jp.`specification` as spec,
-	jpc.`name` as categoryName,
-	jsc.`name` as supplierCategoryName,
-	js.`name` as supplierName,
-	js.`code` as supplierCode,
-	jw.`name` as warehouseName
+	ANY_VALUE(po.product_id) AS productId,
+	sum(po.quantity) AS baseQuantitySum,
+	ANY_VALUE(jp.`name`) as productName,
+	ANY_VALUE(ju.`name`) as baseUnitName,
+	ANY_VALUE(jp.`code`) as productCode,
+	ANY_VALUE(jp.`specification`) as spec,
+	ANY_VALUE(jpc.`name`) as categoryName,
+	ANY_VALUE(jsc.`name`) as supplierCategoryName,
+	ANY_VALUE(js.`name`) as supplierName,
+	ANY_VALUE(js.`code`) as supplierCode,
+	ANY_VALUE(jw.`name`) as warehouseName
 FROM
 	(
 	SELECT
@@ -26,13 +26,15 @@ FROM
 		jpii.base_unit_id,
 		jpii.warehouse_id,
 		jpii.product_id,
-		jpi.supplier_id
+		jpi.supplier_id,
+		jpi.order_no
 	FROM
 		jxc_purchase_inbound_item AS jpii
 		LEFT JOIN jxc_purchase_inbound AS jpi ON jpii.purchase_inbound_id = jpi.id
 	WHERE
 		jpi.order_status = '已审核'
 		 and jpii.merchant_id = :merchantId
+		#[AND jpi.account_book_id = :accountBookId]
 		#[ AND jpi.inbound_date BETWEEN :startDate AND :endDate]
 		 UNION ALL
 	SELECT
@@ -41,13 +43,15 @@ FROM
 		jpri.base_unit_id,
 		jpri.warehouse_id,
 		jpri.product_id,
-		jpr.supplier_id
+		jpr.supplier_id,
+		jpr.order_no
 	FROM
 		jxc_purchase_return_item AS jpri
 		LEFT JOIN jxc_purchase_return AS jpr ON jpri.purchase_return_id = jpr.id
 	WHERE
 		jpr.order_status = '已审核'
 		and jpri.merchant_id = :merchantId
+		#[AND jpr.account_book_id = :accountBookId]
 		#[AND jpr.return_date BETWEEN :startDate AND :endDate]
 	) AS po
 	LEFT JOIN jxc_warehouse AS jw ON jw.id = po.warehouse_id

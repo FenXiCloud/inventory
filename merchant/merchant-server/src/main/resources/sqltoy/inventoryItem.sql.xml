@@ -15,31 +15,31 @@
                             null AS warehouseId,
                             null AS batchNumber,
                             jp.id AS productId,
-                            jp.`code` AS productCode,
-                            jp.`name` AS productName,
-                            jp.product_category_id AS productCategoryId,
-                            jpc.`name` AS productCategoryName,
-                            jp.specification AS productSpecification,
+                            ANY_VALUE(jp.`code`) AS productCode,
+                            ANY_VALUE(jp.`name`) AS productName,
+                            ANY_VALUE(jp.product_category_id) AS productCategoryId,
+                            ANY_VALUE(jpc.`name`) AS productCategoryName,
+                            ANY_VALUE(jp.specification) AS productSpecification,
                             null AS createdAt,
-                            jii.quantity AS quantity,
+                            ANY_VALUE(jii.quantity) AS quantity,
                             null AS orderId,
                             null AS warehouseName,
                             '期初余额' AS operationType,
-                            jp.remarks AS productRemarks,
-                            ju.`name` AS unitName,
+                            ANY_VALUE(jp.remarks) AS productRemarks,
+                            ANY_VALUE(ju.`name`) AS unitName,
                             null AS supplierId,
                             null AS supplierName,
                             null AS customerId,
                             null AS customerName,
-                            jii.unit_price AS unitPrice,
+                            ANY_VALUE(jii.unit_price) AS unitPrice,
                             null AS subtotal,
                             sum(jii.current_quantity) AS currentQuantity,
                             sum(jii.total_cost) AS totalCost,
                             sum(jii.current_quantity) AS summaryQuantity,
                             sum(jii.total_cost) AS summaryCost,
-                            jii.average_cost AS averageCost,
-                            jii.summary_average AS summaryAverage,
-                            jii.inventory_date AS inventoryDate,
+                            ANY_VALUE(jii.average_cost) AS averageCost,
+                            ANY_VALUE(jii.summary_average) AS summaryAverage,
+                            ANY_VALUE(jii.inventory_date) AS inventoryDate,
                             null AS voucherId,
                             null AS voucherCode
                         FROM
@@ -63,8 +63,8 @@
                                     #[AND jw.id in (:warehouseIds)]
                                     #[AND jpc.id in (:productCategoryIds)]
                                     #[AND jc.id in (:customerIds)]
-                                    #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
-                                    GROUP BY product_id, warehouse_id
+                                    #[AND (jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存')]
+                                    GROUP BY jii.product_id
                                 )
                             )
                             LEFT JOIN jxc_product_category jpc ON (jpc.id = jp.product_category_id)
@@ -82,7 +82,8 @@
                             #[AND jw.id in (:warehouseIds)]
                             #[AND jpc.id in (:productCategoryIds)]
                             #[AND jc.id in (:customerIds)]
-                            #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
+                            #[AND (jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存')]
+                        GROUP BY jp.id
                             UNION
                         SELECT
                             jii.id AS id,
@@ -229,32 +230,32 @@
                     1 AS sn,
                     jii.warehouse_id AS warehouseId,
                     null AS batchNumber,
-                    jp.id AS productId,
-                    jp.`code` AS productCode,
-                    jp.`name` AS productName,
-                    jp.product_category_id AS productCategoryId,
-                    jpc.`name` AS productCategoryName,
-                    jp.specification AS productSpecification,
+                    jii.product_id AS productId,
+                    ANY_VALUE(jp.`code`) AS productCode,
+                    ANY_VALUE(jp.`name`) AS productName,
+                    ANY_VALUE(jp.product_category_id) AS productCategoryId,
+                    ANY_VALUE(jpc.`name`) AS productCategoryName,
+                    ANY_VALUE(jp.specification) AS productSpecification,
                     null AS createdAt,
-                    jii.quantity AS quantity,
+                    ANY_VALUE(jii.quantity) AS quantity,
                     null AS orderId,
-                    jw.`name` AS warehouseName,
+                    ANY_VALUE(jw.`name`) AS warehouseName,
                     '期初余额' AS operationType,
-                    jp.remarks AS productRemarks,
-                    ju.`name` AS unitName,
+                    ANY_VALUE(jp.remarks) AS productRemarks,
+                    ANY_VALUE(ju.`name`) AS unitName,
                     null AS supplierId,
                     null AS supplierName,
                     null AS customerId,
                     null AS customerName,
-                    jii.unit_price AS unitPrice,
+                    ANY_VALUE(jii.unit_price) AS unitPrice,
                     null AS subtotal,
                     sum(jii.current_quantity) AS currentQuantity,
                     sum(jii.total_cost) AS totalCost,
                     sum(jii.current_quantity) AS summaryQuantity,
                     sum(jii.total_cost) AS summaryCost,
-                    jii.average_cost AS averageCost,
-                    jii.summary_average AS summaryAverage,
-                    jii.inventory_date AS inventoryDate,
+                    ANY_VALUE(jii.average_cost) AS averageCost,
+                    ANY_VALUE(jii.summary_average) AS summaryAverage,
+                    ANY_VALUE(jii.inventory_date) AS inventoryDate,
                     null AS voucherId,
                     null AS voucherCode
                 FROM
@@ -278,7 +279,7 @@
                         #[AND jw.id in (:warehouseIds)]
                         #[AND jpc.id in (:productCategoryIds)]
                         #[AND jc.id in (:customerIds)]
-                        #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
+                        #[AND (jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存')]
                         GROUP BY product_id, warehouse_id
                     )
                 )
@@ -299,7 +300,7 @@
                     #[AND jw.id in (:warehouseIds)]
                     #[AND jpc.id in (:productCategoryIds)]
                     #[AND jc.id in (:customerIds)]
-                    #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
+                    #[AND (jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存')]
                 GROUP BY jii.product_id, jii.warehouse_id
             ]]>
         </value>
@@ -325,14 +326,14 @@
                         LEFT JOIN jxc_finance_voucher jfv ON (jfv.order_id = jii.id)
                         WHERE jii.merchant_id = :merchantId AND jii.account_book_id = :accountBookId AND jii.inventory_date < :initDate
                         AND jii.operation_type <> '期初余额'
-                        #[AND (jp.`code` like :summaryFilter OR jp.`name` like :summaryFilter)]
+                        #[AND (jii.batch_number like :filter OR jp.`name` like :filter)]
                         #[AND js.id in (:supplierIds)]
                         #[AND jp.id in (:productIds)]
                         #[AND jw.id in (:warehouseIds)]
                         #[AND jpc.id in (:productCategoryIds)]
                         #[AND jc.id in (:customerIds)]
-                        #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
-                        GROUP BY product_id, warehouse_id
+                        #[AND (jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存')]
+                        GROUP BY jii.product_id
                     )
                 )
                 LEFT JOIN jxc_product_category jpc ON (jpc.id = jp.product_category_id)
@@ -347,13 +348,13 @@
                     AND jp.account_book_id = :accountBookId
                     AND jii.operation_type <> '期初余额'
                     #[AND jii.inventory_date < :initDate]
-                    #[AND (jp.`code` like :summaryFilter OR jp.`name` like :summaryFilter)]
+                    #[AND (jii.batch_number like :filter OR jp.`name` like :filter)]
                     #[AND js.id in (:supplierIds)]
                     #[AND jp.id in (:productIds)]
                     #[AND jw.id in (:warehouseIds)]
                     #[AND jpc.id in (:productCategoryIds)]
                     #[AND jc.id in (:customerIds)]
-                    #[AND jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存']
+                    #[AND (jii.operation_type in (:operationTypes) OR jii.operation_type = '期初库存')]
             ]]>
         </value>
     </sql>

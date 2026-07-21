@@ -60,7 +60,7 @@ public class CustomerFlowService extends AbsService {
     private final CustomerFlowRepository customerFlowRepository;
     private final CustomerRepository customerRepository;
 
-    public PageResults<CustomerFlow> getFlowsByCustomerBill(Page page, CustomerBillQueryDTO queryDTO) {
+    public PageResults<CustomerFlow> statement(Page page, CustomerBillQueryDTO queryDTO) {
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(queryDTO.builder);
 
@@ -153,7 +153,7 @@ public class CustomerFlowService extends AbsService {
     }
 
     @Transactional
-    public void batchSave(CustomerInitialForm form) {
+    public void batch(CustomerInitialForm form) {
         List<CustomerFlow> customerFlowList = form.getCustomerFlowList();
         for (CustomerFlow item : customerFlowList) {
             item.setAccountBookId(form.getAccountBookId());
@@ -194,12 +194,15 @@ public class CustomerFlowService extends AbsService {
     }
 
     @Transactional
-    public void batchDelete(CustomerInitialForm form) {
-        List<Long> ids = form.getIds();
-        if (ids.isEmpty()) {
+    public void batchDelete(List<Long> ids, Long merchantId, Long accountBookId) {
+        if (ids == null || ids.isEmpty()) {
             return;
         }
-        customerFlowRepository.deleteAllByIdInBatch(ids);
+        jqf.delete(qCustomerFlow)
+                .where(qCustomerFlow.id.in(ids)
+                        .and(qCustomerFlow.merchantId.eq(merchantId))
+                        .and(qCustomerFlow.accountBookId.eq(accountBookId)))
+                .execute();
     }
 
     public void insert(CustomerFlow form) {

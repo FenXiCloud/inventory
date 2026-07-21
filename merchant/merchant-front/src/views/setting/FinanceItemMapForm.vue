@@ -75,7 +75,7 @@ export default {
     },
     init() {
       const categoryId = this.categoryId;
-      FinanceAccountLink.loadAccountingCategory({ids: this.categoryId}).then(({data}) => {
+      FinanceAccountLink.accountingCategory({ids: this.categoryId}).then(({data}) => {
         console.info("categoryId", data)
         this.model.categoryType = data.data[0].categoryType;
         this.model.categoryId = data.data[0].id;

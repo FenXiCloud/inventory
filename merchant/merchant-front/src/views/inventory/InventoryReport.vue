@@ -33,13 +33,6 @@
             placeholder="产品类别"
             style="width: 160px; border-radius: 4px"
         />
-        <t-date-picker
-            v-model="dateRange.start"
-            :clearable="false"
-            allow-input
-            placeholder="日期"
-            style="width: 160px; border-radius: 4px"
-        />
         <t-input
             v-model="params.filter"
             clearable
@@ -54,43 +47,50 @@
         <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
       </t-space>
     </div>
+
+    <div class="simple-page__hint">
+      显示当前库存余额（按仓库分列）。成本取库存账面成本。
+    </div>
+
     <div class="simple-page__table">
-      <vxe-table row-id="id"
-                 ref="table"
-                 height="auto"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 show-footer
-                 :footer-method="footerMethod"
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :sort-config="{remote:true}"
-                 :loading="loading">
-        <vxe-column title="产品图片" field="productUrl" align="center" width="130"/>
-        <vxe-column title="产品编码" field="productCode" width="200"/>
-        <vxe-column title="产品名称" field="productName" width="200"/>
+      <vxe-table
+          row-id="productId"
+          ref="table"
+          height="auto"
+          :data="dataList"
+          highlight-hover-row
+          show-overflow
+          show-footer
+          :footer-method="footerMethod"
+          :row-config="{height: 48}"
+          :column-config="{resizable: true}"
+          :loading="loading"
+      >
+        <vxe-column title="产品编码" field="productCode" min-width="120"/>
+        <vxe-column title="产品名称" field="productName" min-width="140"/>
         <vxe-column title="产品类别" field="productCategoryName" min-width="120"/>
         <vxe-column title="规格型号" field="productSpecification" width="120"/>
-        <vxe-column title="单位" field="productUnitName" width="120"/>
+        <vxe-column title="单位" field="productUnitName" width="80" align="center"/>
         <vxe-colgroup align="center" title="全部仓库">
-          <vxe-column title="单位数量" field="all_quantity" align="center" width="130"/>
-          <!--          <vxe-column title="多单位数量" field="orderDate" align="center" width="130"/>-->
-          <vxe-column title="单位成本" field="all_averageCost" align="center" width="130"/>
-          <vxe-column title="成本小计" field="all_totalCost" align="center" width="130"/>
+          <vxe-column title="单位数量" field="all_quantity" align="right" width="110"/>
+          <vxe-column title="单位成本" field="all_averageCost" align="right" width="110"/>
+          <vxe-column title="成本小计" field="all_totalCost" align="right" width="110"/>
         </vxe-colgroup>
-        <!--        <vxe-column title="多单位" field="finalAmount" width="120"/>-->
-        <vxe-colgroup v-for="(item,index) in warehouseList" align="center" :title="item.code + '-'+ item.name"
-                      :key="index">
-          <vxe-column title="单位数量" :field="item.code + '_quantity'" align="center" width="130"/>
-          <!--          <vxe-column title="多单位数量" field="orderDate" align="center" width="130"/>-->
-          <vxe-column title="单位成本" :field="item.code + '_averageCost'" align="center" width="130"/>
-          <vxe-column title="成本小计" :field="item.code + '_totalCost'" align="center" width="130"/>
+        <vxe-colgroup
+            v-for="item in displayWarehouses"
+            :key="item.id"
+            align="center"
+            :title="(item.code || '') + '-' + item.name"
+        >
+          <vxe-column title="单位数量" :field="warehouseField(item, 'quantity')" align="right" width="110"/>
+          <vxe-column title="单位成本" :field="warehouseField(item, 'averageCost')" align="right" width="110"/>
+          <vxe-column title="成本小计" :field="warehouseField(item, 'totalCost')" align="right" width="110"/>
         </vxe-colgroup>
       </vxe-table>
     </div>
+
     <div class="simple-page__pager">
-      <span class="simple-page__total">总金额：{{ amountTotal }}元</span>
+      <span class="simple-page__total">总成本：{{ amountTotal }}元</span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -103,28 +103,23 @@
     </div>
   </div>
 </template>
-<script>
-import manba from "manba";
-import Inventory from "@js/api/inventory/Inventory";
-import Product from "@js/api/basic/Product";
-import ProductCategory from "@js/api/basic/ProductCategory";
-import Warehouse from "@js/api/basic/Warehouse";
-import {mapMutations} from "vuex";
-import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
-import {exportExcelHeader} from "@js/excel";
-import InventoryItem from "../../js/api/inventory/InventoryItem";
 
-// const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
-const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
+<script>
+import manba from 'manba';
+import Inventory from '@js/api/inventory/Inventory';
+import Product from '@js/api/basic/Product';
+import ProductCategory from '@js/api/basic/ProductCategory';
+import Warehouse from '@js/api/basic/Warehouse';
+import { LoadingPlugin, MessagePlugin } from 'tdesign-vue-next';
+import { exportExcelHeader } from '@js/excel';
 
 export default {
-  name: "InventoryReport",
+  name: 'InventoryReport',
   data() {
     return {
       dataList: [],
       loading: false,
-      amountTotal: 0,
-      totalParams: {},
+      amountTotal: '0.00',
       pagination: {
         page: 1,
         pageSize: 20,
@@ -134,248 +129,201 @@ export default {
         productCategoryIds: [],
         productIds: [],
         warehouseIds: [],
-        warehouseId: null,
-        productId: null,
-        productCategoryId: null,
-        filter: null,
-        state: null,
-        sortCol: null,
-        sort: null,
-      },
-      dateRange: {
-        start: manba(endTime).format("YYYY-MM-dd"),
-        end: manba(endTime).format("YYYY-MM-dd")
+        filter: null
       },
       warehouseList: [],
       productList: [],
       productCategoryList: [],
-      reportInventoryList: [],
-    }
+      balanceTotalList: []
+    };
   },
   computed: {
+    displayWarehouses() {
+      if (!this.params.warehouseIds || !this.params.warehouseIds.length) {
+        return this.warehouseList;
+      }
+      const ids = new Set(this.params.warehouseIds);
+      return this.warehouseList.filter((item) => ids.has(item.id));
+    },
     queryParams() {
       return Object.assign({}, this.params, {
         page: this.pagination.page,
-        pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
-      })
-    },
+        pageSize: this.pagination.pageSize
+      });
+    }
   },
   methods: {
-    ...mapMutations(['pushTab']),
+    warehouseField(warehouse, suffix) {
+      return `${warehouse.code || warehouse.id}_${suffix}`;
+    },
+    buildRequestParams(extra = {}) {
+      const params = Object.assign({}, this.queryParams, extra);
+      params.productCategoryIds = (params.productCategoryIds || []).join(',');
+      params.productIds = (params.productIds || []).join(',');
+      params.warehouseIds = (params.warehouseIds || []).join(',');
+      return params;
+    },
+    fillRowInventory(rows, inventoryList) {
+      const warehouses = this.displayWarehouses;
+      let amountTotal = 0;
+      rows.forEach((item) => {
+        let allQuantity = 0;
+        let allTotalCost = 0;
+        warehouses.forEach((warehouse) => {
+          const report = inventoryList.find(
+            (row) => row.warehouseId === warehouse.id && row.productId === item.productId
+          );
+          const quantity = Number(report?.currentQuantity || 0);
+          const averageCost = Number(report?.averageCost || 0);
+          const totalCost = Number(report?.totalCost || 0);
+          item[this.warehouseField(warehouse, 'quantity')] = quantity;
+          item[this.warehouseField(warehouse, 'averageCost')] = averageCost;
+          item[this.warehouseField(warehouse, 'totalCost')] = totalCost;
+          allQuantity += quantity;
+          allTotalCost += totalCost;
+          amountTotal += totalCost;
+        });
+        item.all_quantity = allQuantity;
+        item.all_totalCost = Number(allTotalCost.toFixed(2));
+        item.all_averageCost = allQuantity
+          ? Number((allTotalCost / allQuantity).toFixed(2))
+          : 0;
+      });
+      this.amountTotal = amountTotal.toFixed(2);
+      return rows;
+    },
+    footerMethod({ columns, data }) {
+      const sums = [];
+      columns.forEach((column, index) => {
+        if (index === 0) {
+          sums.push('合计');
+          return;
+        }
+        const property = column.property;
+        if (!property) {
+          sums.push('');
+          return;
+        }
+        if (property.endsWith('_quantity') || property === 'all_quantity') {
+          const total = data.reduce((acc, row) => acc + Number(row[property] || 0), 0);
+          sums.push(total);
+          return;
+        }
+        if (property.endsWith('_totalCost') || property === 'all_totalCost') {
+          const total = data.reduce((acc, row) => acc + Number(row[property] || 0), 0);
+          sums.push(total.toFixed(2));
+          return;
+        }
+        sums.push('');
+      });
+      return [sums];
+    },
     onPageChange(pageInfo) {
       this.pagination.page = pageInfo.current;
       this.pagination.pageSize = pageInfo.pageSize;
       this.loadList();
     },
-    footerMethod({columns, data}) {
-      let sums = ["合计", "", "", "", "", ""];
-      let propertyNames = [];
-      this.warehouseList.forEach((warehouse) => {
-        propertyNames.push(warehouse.code + "_quantity");
-        propertyNames.push(warehouse.code + "_totalCost");
-      });
-      let index = 1;
-      let allQuantity = 0;
-      let allTotalCost = 0;
-      columns.forEach((column) => {
-        if (column.property && ['all_quantity'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              allQuantity += Number(rd || 0);
-            }
-          });
-        }
-        if (column.property && ['all_totalCost'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              allTotalCost += Number(rd || 0);
-            }
-          });
-        }
-      });
-      sums.push(allQuantity);
-      sums.push('');
-      sums.push(allTotalCost.toFixed(2));
-      columns.forEach((column) => {
-        if (column.property && propertyNames.includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              total += Number(rd || 0);
-            }
-          });
-          if (index === 1) {
-            sums.push(total);
-          } else {
-            if (column.property && column.property.indexOf('_quantity') > -1) {
-              sums.push(total);
-            } else {
-              sums.push("");
-              sums.push(total.toFixed(2));
-            }
-
-          }
-          index++;
-        }
-      })
-      console.log(sums);
-      return [sums];
-    },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
     },
-    loadList(type = true) {
+    loadList() {
       this.loading = true;
-      const params = JSON.parse(JSON.stringify(this.queryParams));
-      params.productCategoryIds = params.productCategoryIds.join(",");
-      params.productIds = params.productIds.join(",");
-      params.warehouseIds = params.warehouseIds.join(",");
-      Promise.all([InventoryItem.balance(params)])
-          .then(results => {
-            this.reportInventoryList = results[0].data.results || [];
-            this.amountTotal = 0;
-            Inventory.report(params).then(({data: {results, total}}) => {
-              this.dataList = results || [];
-              this.pagination.total = total;
-              this.dataList.forEach(item => {
-                this.warehouseList.forEach(warehouse => {
-                  let allQuantity = 0;
-                  let allAverageCost = 0;
-                  let allTotalCost = 0;
-                  this.reportInventoryList.forEach(report => {
-                    if (report.warehouseId === warehouse.id && report.productId === item.productId) {
-                      item[`${warehouse.code}_quantity`] = report.currentQuantity;
-                      item[`${warehouse.code}_averageCost`] = report.averageCost;
-                      item[`${warehouse.code}_totalCost`] = report.totalCost;
-                      this.amountTotal += parseFloat(report.totalCost);
-                    }
-                    if (report.productId === item.productId) {
-                      allQuantity += Number(report.currentQuantity || 0);
-                      allAverageCost += Number(report.averageCost || 0);
-                      allTotalCost += Number(report.totalCost || 0);
-                    }
-                  });
-                  item['all_quantity'] = allQuantity;
-                  item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
-                  item['all_totalCost'] = allTotalCost;
-                  if (isNaN(item['all_averageCost'])) {
-                    item['all_averageCost'] = 0;
-                  }
-                });
-              });
-              this.amountTotal = this.amountTotal.toFixed(2);
-            }).finally(() => this.loading = false);
-          })
+      const params = this.buildRequestParams();
+      Promise.all([Inventory.balance(params), Inventory.balanceTotal(params)])
+        .then(([reportRes, inventoryRes]) => {
+          const rows = reportRes?.data?.results || [];
+          this.pagination.total = reportRes?.data?.total || 0;
+          this.balanceTotalList = inventoryRes?.data || [];
+          this.dataList = this.fillRowInventory(rows, this.balanceTotalList);
+        })
+        .catch(() => {
+          this.dataList = [];
+          this.pagination.total = 0;
+          this.amountTotal = '0.00';
+        })
+        .finally(() => {
+          this.loading = false;
+        });
     },
     loadDict(callback) {
       LoadingPlugin(true);
       Promise.all([Product.select(), Warehouse.select(), ProductCategory.select()])
-          .then((results) => {
-            this.productList = results[0].data || [];
-            this.warehouseList = results[1].data || [];
-            this.productCategoryList = results[2].data || [];
-            callback();
-          })
-          .finally(() => LoadingPlugin(false));
+        .then((results) => {
+          this.productList = results[0].data || [];
+          this.warehouseList = results[1].data || [];
+          this.productCategoryList = results[2].data || [];
+          callback && callback();
+        })
+        .finally(() => LoadingPlugin(false));
     },
     excel() {
-      const params = JSON.parse(JSON.stringify(this.queryParams));
-      params.page = 1;
-      params.pageSize = 999999;
-      params.productCategoryIds = params.productCategoryIds.join(",");
-      params.productIds = params.productIds.join(",");
-      params.warehouseIds = params.warehouseIds.join(",");
-      Promise.all([Inventory.reportInventory(params)])
-          .then(results => {
-            let reportInventoryList = results[0].data || [];
-            Inventory.report(params).then(({data: {results, total}}) => {
-              let dataList = results || [];
-              dataList.forEach(item => {
-                this.warehouseList.forEach(warehouse => {
-                  let allQuantity = 0;
-                  let allAverageCost = 0;
-                  let allTotalCost = 0;
-                  reportInventoryList.forEach(report => {
-                    if (report.warehouseId === warehouse.id && report.productId === item.productId) {
-                      item[`${warehouse.code}_quantity`] = report.currentQuantity;
-                      item[`${warehouse.code}_averageCost`] = report.averageCost;
-                      item[`${warehouse.code}_totalCost`] = report.totalCost;
-                    }
-                    if (report.productId === item.productId) {
-                      allQuantity += Number(report.currentQuantity || 0);
-                      allAverageCost += Number(report.averageCost || 0);
-                      allTotalCost += Number(report.totalCost || 0);
-                    }
-                  });
-                  item['all_quantity'] = allQuantity;
-                  item['all_averageCost'] = (allTotalCost / allQuantity).toFixed(2);
-                  item['all_totalCost'] = allTotalCost;
-                });
-              });
-              this.callExcel(dataList);
-            }).finally(() => this.loading = false);
-          })
+      const params = this.buildRequestParams({ page: 1, pageSize: 999999 });
+      this.loading = true;
+      Promise.all([Inventory.balance(params), Inventory.balanceTotal(params)])
+        .then(([reportRes, inventoryRes]) => {
+          const rows = this.fillRowInventory(reportRes?.data?.results || [], inventoryRes?.data || []);
+          this.callExcel(rows);
+        })
+        .finally(() => {
+          this.loading = false;
+        });
     },
     callExcel(dataList) {
-      if (dataList.length < 0) {
-        MessagePlugin.warning("暂无数据～");
+      if (!dataList.length) {
+        MessagePlugin.warning('暂无数据～');
         return;
       }
-      let headList = [
-        {label: "产品图片", key: "productUrl"},
-        {label: "产品编码", key: "productCode"},
-        {label: "产品名称", key: "productName"},
-        {label: "产品类别", key: "productCategoryName"},
-        {label: "规格型号", key: "productSpecification"},
-        {label: "单位", key: "productUnitName"},
-        {label: "单位数量", key: "all_quantity"},
-        {label: "单位成本", key: "all_averageCost"},
-        {label: "成本小计", key: "all_totalCost"},
+      const headList = [
+        { label: '产品编码', key: 'productCode' },
+        { label: '产品名称', key: 'productName' },
+        { label: '产品类别', key: 'productCategoryName' },
+        { label: '规格型号', key: 'productSpecification' },
+        { label: '单位', key: 'productUnitName' },
+        { label: '单位数量', key: 'all_quantity' },
+        { label: '单位成本', key: 'all_averageCost' },
+        { label: '成本小计', key: 'all_totalCost' }
       ];
-      const tHeader = ['产品图片', '产品编码', '产品名称', '产品类别', '规格型号', '单位', '全部仓库', null, null];
-      const secondHeader = [null, null, null, null, null, null, '单位数量', '单位成本', '成本小计'];
+      const tHeader = ['产品编码', '产品名称', '产品类别', '规格型号', '单位', '全部仓库', null, null];
+      const secondHeader = [null, null, null, null, null, '单位数量', '单位成本', '成本小计'];
       const merges = [
-        {s: {r: 0, c: 0}, e: {r: 1, c: 0}},
-        {s: {r: 0, c: 1}, e: {r: 1, c: 1}},
-        {s: {r: 0, c: 2}, e: {r: 1, c: 2}},
-        {s: {r: 0, c: 3}, e: {r: 1, c: 3}},
-        {s: {r: 0, c: 4}, e: {r: 1, c: 4}},
-        {s: {r: 0, c: 5}, e: {r: 1, c: 5}},
-        {s: {r: 0, c: 6}, e: {r: 0, c: 8}},
+        { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
+        { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+        { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
+        { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } },
+        { s: { r: 0, c: 4 }, e: { r: 1, c: 4 } },
+        { s: { r: 0, c: 5 }, e: { r: 0, c: 7 } }
       ];
-      let start = 6;
-      let end = 8;
-      this.warehouseList.forEach(warehouse => {
+      let start = 5;
+      let end = 7;
+      this.displayWarehouses.forEach((warehouse) => {
         start += 3;
         end += 3;
-        headList.push({label: "单位数量", key: `${warehouse.code}_quantity`});
-        headList.push({label: "单位成本", key: `${warehouse.code}_averageCost`});
-        headList.push({label: "成本小计", key: `${warehouse.code}_totalCost`});
-        tHeader.push(`${warehouse.code}-${warehouse.name}`);
+        headList.push({ label: '单位数量', key: this.warehouseField(warehouse, 'quantity') });
+        headList.push({ label: '单位成本', key: this.warehouseField(warehouse, 'averageCost') });
+        headList.push({ label: '成本小计', key: this.warehouseField(warehouse, 'totalCost') });
+        tHeader.push(`${warehouse.code || ''}-${warehouse.name}`);
         tHeader.push(null);
         tHeader.push(null);
         secondHeader.push('单位数量');
         secondHeader.push('单位成本');
         secondHeader.push('成本小计');
-        merges.push({s: {r: 0, c: start}, e: {r: 0, c: end}});
+        merges.push({ s: { r: 0, c: start }, e: { r: 0, c: end } });
       });
-      const list = [secondHeader];
-      // 处理传递数据
-      exportExcelHeader(dataList, tHeader, headList, merges, list, manba(new Date()).format("YYYYMMddHHmmss") + "_库存余额");
+      exportExcelHeader(
+        dataList,
+        tHeader,
+        headList,
+        merges,
+        [secondHeader],
+        manba(new Date()).format('YYYYMMDDHHmmss') + '_库存余额'
+      );
     }
   },
   created() {
-    this.loadDict(() => {
-      this.loadList();
-    });
+    this.loadDict(() => this.loadList());
   }
-}
+};
 </script>
 
 <style scoped>
@@ -394,6 +342,17 @@ export default {
 .simple-page__toolbar {
   flex-shrink: 0;
   padding: 8px 0;
+}
+
+.simple-page__hint {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: #f3f3f3;
+  color: #555;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .simple-page__table {

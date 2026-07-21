@@ -1,4 +1,4 @@
-import { defineAsyncComponent } from 'vue';
+﻿import { defineAsyncComponent } from 'vue';
 
 const groupRoutes = [
   {
@@ -422,77 +422,83 @@ const groupRoutes = [
       import('@views/inventory/OtherOutboundForm.vue')
     )
   },
+  // 资金单据：列表走 *List，录入走 *Form
   {
-    name: 'OtherIncomeList',
+    name: 'OtherReceiptList',
     component: defineAsyncComponent(() =>
-      import('@views/fund/OtherIncomeList.vue')
+      import('@views/fund/OtherReceiptList.vue')
     )
   },
-  // 菜单入口：列表；录入页走 *Form
+  {
+    name: 'OtherReceiptForm',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/OtherReceiptForm.vue')
+    )
+  },
   {
     name: 'OtherExpenseList',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/OtherExpenseRecord.vue')
-    )
-  },
-  {
-    name: 'OtherExpenseForm',
     component: defineAsyncComponent(() =>
       import('@views/fund/OtherExpenseList.vue')
     )
   },
   {
-    name: 'OrderReceiptList',
+    name: 'OtherExpenseForm',
     component: defineAsyncComponent(() =>
-      import('@views/fund/OrderReceiptRecord.vue')
+      import('@views/fund/OtherExpenseForm.vue')
     )
   },
   {
-    name: 'OrderReceiptForm',
+    name: 'OrderReceiptList',
     component: defineAsyncComponent(() =>
       import('@views/fund/OrderReceiptList.vue')
     )
   },
   {
-    name: 'OrderPaymentList',
+    name: 'OrderReceiptForm',
     component: defineAsyncComponent(() =>
-      import('@views/fund/OrderPaymentRecord.vue')
+      import('@views/fund/OrderReceiptForm.vue')
     )
   },
   {
-    name: 'OrderPaymentForm',
+    name: 'OrderPaymentList',
     component: defineAsyncComponent(() =>
       import('@views/fund/OrderPaymentList.vue')
     )
   },
   {
-    name: 'VerificationList',
+    name: 'OrderPaymentForm',
     component: defineAsyncComponent(() =>
-      import('@views/fund/OrderVerificationRecord.vue')
+      import('@views/fund/OrderPaymentForm.vue')
     )
   },
   {
-    name: 'VerificationForm',
+    name: 'VerificationList',
     component: defineAsyncComponent(() =>
       import('@views/fund/VerificationList.vue')
     )
   },
   {
-    name: 'AccountTransferList',
+    name: 'VerificationForm',
     component: defineAsyncComponent(() =>
-      import('@views/fund/AccountTransferRecord.vue')
+      import('@views/fund/VerificationForm.vue')
     )
   },
   {
-    name: 'AccountTransferForm',
+    name: 'AccountTransferList',
     component: defineAsyncComponent(() =>
       import('@views/fund/AccountTransferList.vue')
     )
   },
   {
-    name: 'counterpartDebt',
+    name: 'AccountTransferForm',
     component: defineAsyncComponent(() =>
-      import('@views/fund/counterpartDebt.vue')
+      import('@views/fund/AccountTransferForm.vue')
+    )
+  },
+  {
+    name: 'CounterpartDebt',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/CounterpartDebt.vue')
     )
   },
   {
@@ -514,85 +520,27 @@ const groupRoutes = [
     )
   },
   {
-    name: 'cashBankStatements',
+    name: 'AccountFlowList',
     component: defineAsyncComponent(() =>
       import('@views/fund/AccountFlowList.vue')
     )
   },
   {
-    name: 'otherIncome',
-    component: defineAsyncComponent(() => import('@views/fund/otherIncome.vue'))
-  },
-  {
-    name: 'receivableSummary',
+    name: 'CustomerStatements',
     component: defineAsyncComponent(() =>
-      import('@views/fund/receivableSummary.vue')
+      import('@views/fund/CustomerStatements.vue')
     )
   },
   {
-    name: 'summaryPaymentsMade',
+    name: 'VendorStatements',
     component: defineAsyncComponent(() =>
-      import('@views/fund/summaryPaymentsMade.vue')
-    )
-  },
-  {
-    name: 'customerStatements',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/customerStatements.vue')
-    )
-  },
-  {
-    name: 'vendorStatements',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/vendorStatements.vue')
-    )
-  },
-  {
-    name: 'OrderReceiptRecord',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/OrderReceiptRecord')
-    )
-  },
-  {
-    name: 'OrderVerificationRecord',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/OrderVerificationRecord')
-    )
-  },
-  {
-    name: 'OrderPaymentRecord',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/OrderPaymentRecord')
+      import('@views/fund/VendorStatements.vue')
     )
   },
   {
     name: 'DDLogin',
     component: defineAsyncComponent(() => import('@/DDLogin.vue'))
   },
-  {
-    name: 'OtherReceiptList',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/OtherReceiptList.vue')
-    )
-  },
-  {
-    name: 'OtherReceiptRecord',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/OtherReceiptRecord')
-    )
-  },
-  {
-    name: 'OtherExpenseRecord',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/OtherExpenseRecord')
-    )
-  },
-  {
-    name: 'AccountTransferRecord',
-    component: defineAsyncComponent(() =>
-      import('@views/fund/AccountTransferRecord')
-    )
-  }
 ];
 
 /**

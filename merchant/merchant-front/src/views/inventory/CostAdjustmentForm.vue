@@ -4,16 +4,16 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker v-model="form.orderDate" :disabled="looked"
+          <DatePicker v-model="form.orderDate" :disabled="isAudited || looked"
                       :option="{ start: accountBook.checkoutDate }"
                       :clearable="false">
           </DatePicker>
         </template>
         <template #tools>
-          <Stamp v-if="approved"/>
+          <Stamp v-if="isAudited"/>
         </template>
       </vxe-toolbar>
-      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border="border" show-overflow keep-source
+      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border show-overflow keep-source
                  :edit-config="editConfig" :row-config="{ height: 40, isCurrent: true, isHover: true }"
                  :tooltip-config="tooltipConfig" show-footer :footer-method="footerMethod" stripe
                  :data="costAdjustmentData"
@@ -34,9 +34,9 @@
         <vxe-column field="productCode" title="产品编码" width="100"></vxe-column>
         <vxe-column field="productName" title="产品名称" min-width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!looked">
+            <div class="h-input-group goodsSelect" v-if="!isAudited && !looked">
               <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable :equalWidth="false"
-                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="changeRow(scope, 'product')">
+                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="(e) => changeRow(scope, 'product', e)">
                 <template v-slot:top>
                   <table class="h-table" style="width: 100%">
                     <thead class="h-table-header">
@@ -74,14 +74,12 @@
         </vxe-column>
         <vxe-column title="规格型号" field="productSpecification" align="center" width="80"></vxe-column>
         <vxe-column title="产品类别" field="productCategoryName" align="center" width="120"></vxe-column>
-        <!-- <vxe-column title="品牌" field="productBrand" width="90"></vxe-column> -->
-        <!-- <vxe-column title="产地" field="productOrigin" align="center" width="80" /> -->
         <vxe-column title="单位" field="productUnitName" width="90"/>
         <vxe-column title="仓库" field="warehouseName" width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!looked">
+            <div class="h-input-group goodsSelect" v-if="!isAudited && !looked">
               <Select :deletable="false" ref="ms" v-model="scope.row.warehouseId" :datas="warehouseList" filterable
-                      placeholder="请选择仓库" keyName="id" titleName="name" @change="changeRow(scope, 'warehouse')">
+                      placeholder="请选择仓库" keyName="id" titleName="name" @change="(e) => changeRow(scope, 'warehouse', e)">
                 <template v-slot:item="{ item }">
                   <div>{{ item.name }}</div>
                 </template>
@@ -96,7 +94,7 @@
         </vxe-column>
         <vxe-column title="调整金额" field="adjustmentAmount" width="100">
           <template #default="scope">
-            <vxe-tooltip v-if="!looked" theme="light" :content="scope.row.quantityTips">
+            <vxe-tooltip v-if="!isAudited && !looked" theme="light" :content="scope.row.quantityTips">
               <vxe-input @focus="getTotalCost(scope)"
                          v-model.number="scope.row.adjustmentAmount" type="int" min="0" :controls="false">
               </vxe-input>
@@ -110,7 +108,7 @@
         </vxe-column>
         <vxe-column title="备注" field="remarks" width="100">
           <template #default="scope">
-            <vxe-input v-if="!looked" v-model.number="scope.row.remarks" :controls="false">
+            <vxe-input v-if="!isAudited && !looked" v-model="scope.row.remarks" :controls="false">
             </vxe-input>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
@@ -124,7 +122,7 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="looked" placeholder="请输入备注" type="text" maxlength="150"
+          <Input :disabled="isAudited || looked" placeholder="请输入备注" type="text" maxlength="150"
                  style="width: 80%"
                  v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
@@ -134,20 +132,21 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button v-if="!approved && !looked" color="primary" @click="saveOrder('increase')" :loading="loading">
+        <Button v-if="!isAudited && !looked" color="primary" @click="saveOrder('add')" :loading="loading">
           保存并新增
         </Button>
-        <Button v-if="!approved && !looked" @click="saveOrder" :loading="loading"> 保存</Button>
-        <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
-        <!-- 仅当状态为审核时显示 -->
-        <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
+        <Button v-if="!isAudited && !looked" @click="saveOrder('save')" :loading="loading"> 保存</Button>
+        <Button @click="doPrint" :loading="loading"> 打印 </Button>
+        <Button v-if="form.id && !isAudited && !looked" @click="approved()" :loading="loading"> 审核</Button>
+        <Button v-if="isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</Button>
       </div>
     </div>
   </div>
 </template>
 <script>
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
+import {openPrint} from '@common/print';
 import manba from "manba";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -168,11 +167,11 @@ export default {
   },
   computed: {
     ...mapState(["user", "accountBook"]),
-    approved() {
-      return ['已审核'].includes(this.form.orderStatus);
+    isAudited() {
+      return this.form.orderStatus === '已审核';
     },
     looked() {
-      return ['look'].includes(this.type);
+      return this.type === 'look';
     }
   },
   data() {
@@ -196,7 +195,6 @@ export default {
       costAdjustmentData: [],
       selectRowIndex: null,
       increase: true,
-      // 表格校验规则
       validRules: {
         productName: [
           {required: true, message: '请选择产品名称'},
@@ -208,26 +206,42 @@ export default {
           {required: true, message: '请填写数量'},
         ]
       },
-      // 提示配置
       tooltipConfig: {
         showAll: false,
         enterable: false,
       },
-      // 编辑配置
       editConfig: {trigger: 'click', mode: 'row'}
     };
   },
-  // 待优化使用hook方式调用
   methods: {
-    // 关闭tab
+    doPrint() {
+      const items = (this.costAdjustmentData || []).filter(r => r && !r.isNew && r.productId).map(r => {
+        const p = (this.productList || []).find(x => (x.productId || x.id) === r.productId) || {};
+        return {
+          ...r,
+          productName: r.productName || p.productName || p.name || p.customName || '',
+          quantity: r.quantity ?? r.secondaryQuantity,
+          price: r.unitPrice ?? r.secondaryPrice ?? r.price,
+          amount: r.subtotal ?? r.amount,
+        };
+      });
+      openPrint('成本调整单', {
+        header: {
+          ...this.form,
+          partner: '',
+          amount: this.form.finalAmount ?? this.form.totalAmount,
+        },
+        items,
+      });
+    },
+
     ...mapMutations(['closeSelfTab', 'pushTab']),
-    //footer合计
     footerMethod({columns, data}) {
       let totalQuantity = 0;
       let totalAmount = 0.00;
-      columns.forEach(column => {
+      (columns || []).forEach(column => {
         if (column.property && ['quantity', 'subtotal'].includes(column.property)) {
-          data.forEach((row) => {
+          (data || []).forEach((row) => {
             switch (column.property) {
               case 'quantity': {
                 let rd = row[column.property];
@@ -253,69 +267,83 @@ export default {
         ["", "", "", "", "", "", "", "", totalQuantity, "", totalAmount],
       ];
     },
-    // 设置行数据
-    changeRow({rowIndex}, type) {
+    resolveDefaultWarehouse() {
+      return (this.warehouseList || []).find(w => w.systemDefault || w.isDefault) || null;
+    },
+    changeRow({rowIndex}, type, selected) {
+      const row = this.costAdjustmentData?.[rowIndex];
+      if (!row) return;
       switch (type) {
         case 'product': {
-          const value = this.costAdjustmentData[rowIndex].productId;
+          const selectedProduct = (selected && typeof selected === 'object') ? selected : null;
+          let value = selectedProduct
+              ? (selectedProduct.id ?? selectedProduct.productId)
+              : row.productId;
+          if (value && typeof value === 'object') {
+            value = value.id ?? value.productId;
+          }
+          row.productId = value;
           if (this.isEmpty(value)) {
             return;
           }
-          // 根据id获取产品信息更新
-          Product.list({id: value}).then(res => {
-            const {success, data} = res;
-            if (success) {
-              const item = data.results[0];
-              this.costAdjustmentData[rowIndex].productName = item.name;
-              this.costAdjustmentData[rowIndex].productId = item.id;
-              this.costAdjustmentData[rowIndex].productCode = item.code;
-              this.costAdjustmentData[rowIndex].productSpecification = item.specification;
-              this.costAdjustmentData[rowIndex].productCategoryName = item.productCategoryName;
-              this.costAdjustmentData[rowIndex].productUnitName = item.unitName;
-              this.costAdjustmentData[rowIndex].productUnitId = item.unitId;
-              this.costAdjustmentData[rowIndex].purchasePrice = item.purchasePrice;
-              const warehouseId = this.costAdjustmentData[rowIndex].warehouseId;
-              if (!warehouseId) {
-                let find = this.warehouseList.find(warehouse => {
-                  return warehouse.systemDefault;
-                });
-                if (find) {
-                  const warehouseId = find.id;
-                  this.costAdjustmentData[rowIndex].warehouseId = warehouseId;
-                  // 根据id获取仓库信息
-                  Warehouse.list({id: warehouseId}).then(res => {
-                    console.info("Warehouse res:", res);
-                    const {success, data} = res;
-                    if (success) {
-                      const item = data[0];
-                      this.costAdjustmentData[rowIndex].warehouseName = item.name;
-                      this.costAdjustmentData[rowIndex].warehouseId = item.id;
-                      this.$forceUpdate();
-                    }
-                  });
-                }
+          const applyProduct = (item) => {
+            if (!item) return;
+            row.productName = item.name;
+            row.productId = item.id;
+            row.productCode = item.code;
+            row.productSpecification = item.specification;
+            row.productCategoryName = item.productCategoryName;
+            row.productUnitName = item.unitName;
+            row.productUnitId = item.unitId;
+            row.purchasePrice = item.purchasePrice;
+            if (!row.warehouseId) {
+              const find = this.resolveDefaultWarehouse();
+              if (find) {
+                row.warehouseId = find.id;
+                row.warehouseName = find.name;
               }
-              this.$forceUpdate();
             }
-          });
+            this.$forceUpdate();
+          };
+          if (selectedProduct && selectedProduct.name) {
+            applyProduct(selectedProduct);
+          } else {
+            Product.list({id: value}).then(res => {
+              const {success, data} = res || {};
+              if (success) {
+                applyProduct(data?.results?.[0]);
+              }
+            });
+          }
           break;
         }
         case 'warehouse': {
-          const value = this.costAdjustmentData[rowIndex].warehouseId;
+          const selectedWarehouse = (selected && typeof selected === 'object') ? selected : null;
+          let value = selectedWarehouse ? selectedWarehouse.id : row.warehouseId;
+          if (value && typeof value === 'object') {
+            value = value.id;
+          }
+          row.warehouseId = value;
           if (this.isEmpty(value)) {
             return;
           }
-          // 根据id获取仓库信息
-          Warehouse.list({id: value}).then(res => {
-            console.info("Warehouse res:", res);
-            const {success, data} = res;
-            if (success) {
-              const item = data[0];
-              this.costAdjustmentData[rowIndex].warehouseName = item.name;
-              this.costAdjustmentData[rowIndex].warehouseId = item.id;
-              this.$forceUpdate();
-            }
-          });
+          if (selectedWarehouse && selectedWarehouse.name) {
+            row.warehouseName = selectedWarehouse.name;
+            row.warehouseId = selectedWarehouse.id;
+            this.$forceUpdate();
+          } else {
+            Warehouse.list({id: value}).then(res => {
+              const {success, data} = res || {};
+              if (success) {
+                const item = data?.[0];
+                if (item) {
+                  row.warehouseName = item.name;
+                  row.warehouseId = item.id;
+                  this.$forceUpdate();
+                }
+              }
+            });
+          }
           break;
         }
         default:
@@ -323,108 +351,103 @@ export default {
       }
     },
     getTotalCost({rowIndex}) {
-      const item = this.costAdjustmentData[rowIndex];
-      if (item.productId && item.warehouseId) {
-        Inventory.totalCost(item.productId, item.warehouseId).then(res => {
-          this.costAdjustmentData[rowIndex].totalCost = res.data;
-          this.costAdjustmentData[rowIndex].quantityTips = `总成本：${res.data}`;
-        });
+      const item = this.costAdjustmentData?.[rowIndex];
+      if (!item?.productId || !item?.warehouseId) {
+        return;
       }
+      Inventory.totalCost(item.productId, item.warehouseId).then(res => {
+        const totalCost = res?.data ?? 0;
+        item.totalCost = totalCost;
+        item.quantityTips = `总成本：${totalCost}`;
+      });
     },
     isEmpty(value) {
       return (value !== 0 && !value) || value === '';
     },
-    //保存新增、保存
     saveOrder(type) {
-      const filterCostAdjustmentData = this.costAdjustmentData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-      // 校验
-      this.validatorsForm(filterCostAdjustmentData);
-      // 操作对象
-      const params = this.getSaveOrderParams(filterCostAdjustmentData, type);
+      const filterCostAdjustmentData = (this.costAdjustmentData || []).filter(item =>
+          !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks) || !this.isEmpty(item.adjustmentAmount)
+      );
+      if (!this.validatorsForm(filterCostAdjustmentData)) {
+        return;
+      }
+      const params = this.getSaveOrderParams(filterCostAdjustmentData);
+      LoadingPlugin(true);
       CostAdjustment.save(params)
           .then(({success, data}) => {
             if (success) {
               MessagePlugin.success("保存成功~");
               setTimeout(() => {
-                if (type === "increase") {
+                if (type === 'add') {
                   this.clearForm();
-                  // 刷新列表为编辑
                   this.closeWindow();
                   this.pushTab({
                     key: 'CostAdjustmentForm',
                     title: '新增成本调整单',
-                    params: {type: type, costAdjustmentId: null}
+                    params: {type: 'add', costAdjustmentId: null}
                   });
                 } else {
-                  // 刷新列表为编辑
                   this.closeWindow();
                   this.pushTab({
                     key: 'CostAdjustmentForm',
                     title: '编辑成本调整单',
-                    params: {type: 'edit', costAdjustmentId: data.id}
+                    params: {type: 'edit', costAdjustmentId: data?.id}
                   });
-                  this.$emit("update:costAdjustmentId", data.id);
+                  this.$emit("update:costAdjustmentId", data?.id);
                   this.$emit("update:type", "edit");
-                  this.loadEditForm(data.id);
+                  if (data?.id) {
+                    this.loadEditForm(data.id);
+                  }
                 }
               }, 300);
             }
           })
           .finally(() => LoadingPlugin(false));
     },
-    //校验提交表单
     validatorsForm(filterCostAdjustmentData) {
-      if (filterCostAdjustmentData.length === 0) {
-        throw new Error("请填写操作数据~")
+      if (!filterCostAdjustmentData || filterCostAdjustmentData.length === 0) {
+        MessagePlugin.error("请填写操作数据~");
+        return false;
       }
-      LoadingPlugin(true);
-      let productData = filterCostAdjustmentData.filter((c) => this.isEmpty(c.productId));
-      console.info("productData:", productData)
-      if (productData.length > 0) {
-        LoadingPlugin(false);
-        throw new Error("请选择产品~")
+      if (filterCostAdjustmentData.some((c) => this.isEmpty(c.productId))) {
+        MessagePlugin.error("请选择产品~");
+        return false;
       }
-      let warehouse = filterCostAdjustmentData.filter((c) => this.isEmpty(c.warehouseId));
-      if (warehouse.length > 0) {
-        LoadingPlugin(false);
-        throw new Error("请选择仓库~")
+      if (filterCostAdjustmentData.some((c) => this.isEmpty(c.warehouseId))) {
+        MessagePlugin.error("请选择仓库~");
+        return false;
       }
-      let adjustmentAmount = filterCostAdjustmentData.filter((c) => this.isEmpty(c.adjustmentAmount) || Number(c.adjustmentAmount) === 0);
-      if (adjustmentAmount.length > 0) {
-        LoadingPlugin(false);
-        throw new Error("请填写调整金额~")
+      if (filterCostAdjustmentData.some((c) => this.isEmpty(c.adjustmentAmount) || Number(c.adjustmentAmount) === 0)) {
+        MessagePlugin.error("请填写调整金额~");
+        return false;
       }
-      let totalCost = filterCostAdjustmentData.filter((c) => (c.totalCost + c.adjustmentAmount) <= 0);
-      if (totalCost.length > 0) {
-        LoadingPlugin(false);
-        throw new Error("调整后金额不能小于等于零~")
+      if (filterCostAdjustmentData.some((c) => (Number(c.totalCost || 0) + Number(c.adjustmentAmount || 0)) <= 0)) {
+        MessagePlugin.error("调整后金额不能小于等于零~");
+        return false;
       }
+      return true;
     },
-    //获取保存新增、保存方法提交数据
-    getSaveOrderParams(filterCostAdjustmentData, type) {
-      const costAdjustmentItems = [];
+    getSaveOrderParams(filterCostAdjustmentData) {
+      // Backend entity field is typo'd as djustmentDate — keep API payload aligned
       const costAdjustment = {
         adjustmentType: this.form.adjustmentType,
         djustmentDate: this.form.orderDate,
-        remarks: this.form.remarks
+        remarks: this.form.remarks,
+        id: this.form.id
       };
-      costAdjustment.id = this.form.id;
-      filterCostAdjustmentData.forEach(item => {
-        costAdjustmentItems.push({
-          productId: item.productId,
-          baseUnitId: item.productUnitId,
-          remarks: item.remarks,
-          warehouseId: item.warehouseId,
-          adjustmentAmount: item.adjustmentAmount,
-          totalCost: item.totalCost,
-        });
-      });
+      const costAdjustmentItems = (filterCostAdjustmentData || []).map(item => ({
+        productId: item.productId,
+        baseUnitId: item.productUnitId,
+        remarks: item.remarks,
+        warehouseId: item.warehouseId,
+        adjustmentAmount: item.adjustmentAmount,
+        totalCost: item.totalCost,
+      }));
       return {
-        costAdjustment: costAdjustment,
-        costAdjustmentItems: costAdjustmentItems
+        costAdjustment,
+        costAdjustmentItems
       };
     },
-    //清除Form
     clearForm() {
       this.form = {
         id: null,
@@ -432,13 +455,12 @@ export default {
         remarks: null,
         adjustmentType: '入库调整',
         adminName: '',
-        orderStatus: '已保存'
+        orderStatus: '已保存',
+        totalAdjustmentAmount: 0
       };
       this.costAdjustmentData = [];
       this.newCostAdjustmentData();
     },
-
-    //添加行或减少行
     adjustRows(type, index) {
       if (type === "insert") {
         this.costAdjustmentData.splice(index + 1, 0, {isNew: true});
@@ -446,25 +468,19 @@ export default {
         this.costAdjustmentData.splice(index, 1);
       }
     },
-    //新增默认初始化行数
     newCostAdjustmentData() {
       for (let index = 0; index < 5; index++) {
         this.costAdjustmentData.push({productId: null, warehouseId: null, quantity: null});
       }
     },
-    //行是否选中
-    rowIsSelect(rowIndex) {
-      return !this.looked;
+    rowIsSelect() {
+      return !this.isAudited && !this.looked;
     },
-    //行选中事件
     currentChangeEvent({rowIndex}) {
       this.selectRowIndex = rowIndex;
     },
-    //表格行点击事件
-    tableCellClick({rowIndex}) {
-      console.info(rowIndex);
+    tableCellClick() {
     },
-    //加载编辑表单
     loadEditForm(id) {
       this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
@@ -472,15 +488,17 @@ export default {
       CostAdjustment.load(this.costAdjustmentId || id).then(
           ({data}) => {
             if (data && data.length > 0) {
-              this.form.id = data[0].id;
-              this.form.remarks = data[0].costRemarks;
-              this.form.adjustmentType = data[0].adjustmentType;
-              this.form.djustmentDate = data[0].djustmentDate;
-              this.form.adminName = data[0].adminName;
-              this.form.orderStatus = data[0].orderStatus;
+              const first = data[0] || {};
+              this.form.id = first.id;
+              this.form.remarks = first.costRemarks;
+              this.form.adjustmentType = first.adjustmentType;
+              // Map backend typo djustmentDate → UI orderDate so DatePicker restores
+              this.form.orderDate = first.djustmentDate || first.adjustmentDate || this.form.orderDate;
+              this.form.adminName = first.adminName;
+              this.form.orderStatus = first.orderStatus;
               let totalAdjustmentAmount = 0;
               data.forEach(item => {
-                totalAdjustmentAmount += parseFloat(item.adjustmentAmount);
+                totalAdjustmentAmount += parseFloat(item.adjustmentAmount || 0);
                 this.costAdjustmentData.push({
                   productUrl: '',
                   productCode: item.productCode,
@@ -502,71 +520,63 @@ export default {
           }
       );
     },
-    //加载字典
     loadDict(callback) {
       Promise.all([Product.select(), Warehouse.select(), Customer.select(), Supplier.select()])
           .then((results) => {
-            this.productList = results[0].data || [];
-            // 调整productList的name值
+            this.productList = results[0]?.data || [];
             this.productList.forEach(item => {
               item.customName = `${item.code}--${item.name}`;
             });
-            this.warehouseList = results[1].data || [];
-            this.customerList = results[2].data || [];
-            this.supplierList = results[3].data || [];
-            if (this.warehouseList != null) {
-              this.warehouseId = this.warehouseList.find(
-                  (val) => val.isDefault
-              )?.id;
-            }
-            console.log("results[3].data:", results[3].data);
+            this.warehouseList = results[1]?.data || [];
+            this.customerList = results[2]?.data || [];
+            this.supplierList = results[3]?.data || [];
+            this.warehouseId = this.resolveDefaultWarehouse()?.id || null;
             if (callback) {
               callback();
             }
           })
           .finally(() => LoadingPlugin(false));
     },
-    //初始化表单
     initIncreaseForm() {
       this.increase = true;
       this.newCostAdjustmentData();
-      this.form.adminName = this.user.admin.name;
+      this.form.adminName = this.user?.admin?.name || '';
       this.form.id = null;
       this.editConfig = {trigger: 'click', mode: 'row'};
     },
-    //初始化审核表单
     initAuditsForm() {
-      //表格不可编辑
       this.editConfig = {};
     },
-    //审核表单
-    async auditForm(operateType) {
-      const type = this.type;
-      let {id} = this.form;
-      if (!id) {
-        const filterCostAdjustmentData = this.costAdjustmentData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-        // 校验
-        this.validatorsForm(filterCostAdjustmentData);
-        // 操作对象
-        const params = this.getSaveOrderParams(filterCostAdjustmentData, type);
-        const res = await CostAdjustment.save(params);
-        if (!res.success) {
-          return;
-        }
-        id = res.data.id;
+    approved() {
+      if (!this.form.id) {
+        MessagePlugin.warning("请先保存单据~");
+        return;
       }
-      const params = {id, type: operateType};
-      LoadingPlugin(true);
-      CostAdjustment.approve(params)
-          .then((success) => {
-            if (success) {
-              MessagePlugin.success("审核成功~");
-              setTimeout(() => {
-                this.loadEditForm(id);
-              }, 300);
-            }
-          })
-          .finally(() => LoadingPlugin(false));
+      DialogPlugin.confirm({
+        title: "审核提示",
+        content: `确认审核该订单?`,
+        onConfirm: () => {
+          return CostAdjustment.approved('已审核', [this.form.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.closeWindow();
+          });
+        }
+      });
+    },
+    backApproved() {
+      if (!this.form.id) {
+        return;
+      }
+      DialogPlugin.confirm({
+        title: "反审核提示",
+        content: `确认反审核该订单?`,
+        onConfirm: () => {
+          return CostAdjustment.approved('已保存', [this.form.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.closeWindow();
+          });
+        }
+      });
     },
     closeWindow() {
       this.closeSelfTab(this.index);
@@ -577,18 +587,9 @@ export default {
       });
     },
   },
-  beforeDestroy() {
-    DialogPlugin.confirm({
-      title: "系统提示",
-      content: `确认?`,
-      onConfirm: () => {
-      },
-    });
-  },
   created() {
     LoadingPlugin(true);
     this.loadDict(() => {
-      //订单详情/编辑订单
       if (this.costAdjustmentId) {
         this.loadEditForm();
         const type = this.type;
@@ -600,7 +601,7 @@ export default {
           default:
             break;
         }
-        return
+        return;
       }
       this.initIncreaseForm();
     });

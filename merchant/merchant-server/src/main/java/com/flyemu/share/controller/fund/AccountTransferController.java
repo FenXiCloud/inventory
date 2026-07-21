@@ -1,16 +1,19 @@
 package com.flyemu.share.controller.fund;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
-import com.flyemu.share.entity.fund.AccountTransfer;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.service.fund.AccountTransferService;
-import com.flyemu.share.service.fund.dto.AccountTransferDTO;
-import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
+import com.flyemu.share.form.AccountTransferForm;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * @功能描述: 转账单管理
@@ -26,7 +29,7 @@ public class AccountTransferController {
 
     private final AccountTransferService accountTransferService;
 
-    @GetMapping("list")
+    @GetMapping
     public JsonResult list(Page page, AccountTransferService.Query query,
                            @SaAccountBookId Long accountBookId,
                            @SaMerchantId Long merchantId) {
@@ -35,9 +38,17 @@ public class AccountTransferController {
         return JsonResult.successful(accountTransferService.query(page, query));
     }
 
+    @GetMapping("/total")
+    public JsonResult queryTotal(AccountTransferService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(accountTransferService.queryTotal(query));
+    }
 
-    @PostMapping("save")
-    public JsonResult save(@RequestBody @Valid AccountTransferDTO dto,
+
+
+    @PostMapping
+    public JsonResult save(@RequestBody @Valid AccountTransferForm dto,
                            @SaAccountBookId Long accountBookId,
                            @SaMerchantId Long merchantId) {
         dto.getOrder().setMerchantId(merchantId);
@@ -46,24 +57,32 @@ public class AccountTransferController {
         return JsonResult.successful();
     }
 
-
-    @PostMapping("delete")
-    public JsonResult delete(@RequestBody OrderPaymentUpdateDTO dto,
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid AccountTransferForm dto,
                              @SaAccountBookId Long accountBookId,
                              @SaMerchantId Long merchantId) {
-        accountTransferService.delete(dto.getId(), merchantId, accountBookId);
+        dto.getOrder().setMerchantId(merchantId);
+        dto.getOrder().setAccountBookId(accountBookId);
+        accountTransferService.save(dto);
         return JsonResult.successful();
     }
 
-
-    @PostMapping("updateStatus")
-    public JsonResult updateStatus(@RequestBody OrderPaymentUpdateDTO dto) {
-        accountTransferService.updateStatus(dto);
+    @DeleteMapping("/{accountTransferId}")
+    public JsonResult delete(@PathVariable Long accountTransferId,
+                             @SaAccountBookId Long accountBookId,
+                             @SaMerchantId Long merchantId) {
+        accountTransferService.delete(String.valueOf(accountTransferId), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("selectById")
-    public JsonResult selectById(Long id) {
-        return JsonResult.successful(accountTransferService.selectById(id));
+    @GetMapping("load/{id}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+        return JsonResult.successful(accountTransferService.load(merchantId, id));
+    }
+
+    @PostMapping("/approved/{state}")
+    public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
+        accountTransferService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
+        return JsonResult.successful();
     }
 }

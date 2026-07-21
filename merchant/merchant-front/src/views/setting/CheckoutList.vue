@@ -48,7 +48,8 @@
 </template>
 
 <script>
-import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 import Checkout from "@js/api/setting/Checkout";
 import manba from "manba";
 import {mapState} from 'vuex';

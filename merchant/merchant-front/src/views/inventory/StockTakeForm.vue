@@ -8,14 +8,15 @@
           <label class="mr-20px ml-20px" style="font-size: 16px !important">仓库：</label>
           <Select class="w-178px" filterable :multiple="true" required :datas="warehouseList" keyName="id"
                   titleName="name"
-                  v-model="form.warehouseIds" :placeholder="warehousePlaceholder" :disabled="looked || form.id"
+                  v-model="form.warehouseIds" :placeholder="warehousePlaceholder"
+                  :disabled="isLocked || !!form.id"
                   @change="changeWarehouseId"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">产品：</label>
-          <Select class="w-178px mr-20px" filterable required :datas="productList" keyName="id" titleName="name"
-                  v-model="form.productId" placeholder="请选择产品" :disabled="looked || form.id"/>
+          <Select class="w-178px mr-20px" filterable required :datas="productList" keyName="id" titleName="customName"
+                  v-model="form.productId" placeholder="请选择产品" :disabled="isLocked || !!form.id"/>
         </template>
         <template #tools>
-          <Stamp v-if="approved"/>
+          <Stamp v-if="isAudited"/>
           <Search v-if="!form.id" v-model.trim="form.filter"
                   show-search-button class="w-360px ml-8px"
                   placeholder="请输入产品编号/产品名称" @search="doSearch">
@@ -23,8 +24,8 @@
           </Search>
         </template>
       </vxe-toolbar>
-      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border="border" show-overflow keep-source
-                 :edit-config="editConfig" :row-config="{ height: 40, isCurrent: true, isHover: true }"
+      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border show-overflow keep-source
+                 :edit-config="isLocked ? undefined : editConfig" :row-config="{ height: 40, isCurrent: true, isHover: true }"
                  :tooltip-config="tooltipConfig" show-footer :footer-method="footerMethod" stripe
                  :data="stockTakeData"
                  @current-change="currentChangeEvent" @cell-click="tableCellClick">
@@ -36,13 +37,11 @@
         </vxe-column>
         <vxe-column title="规格型号" field="productSpecification" align="center" width="120"></vxe-column>
         <vxe-column title="产品类别" field="productCategoryName" align="center" width="110"></vxe-column>
-        <!-- <vxe-column title="品牌" field="productBrand" width="90"></vxe-column> -->
-        <!-- <vxe-column title="产地" field="productOrigin" align="center" width="80" /> -->
         <vxe-column title="单位" field="productUnitName" width="100"/>
         <vxe-column title="系统库存" field="systemQuantity" width="100"/>
         <vxe-column title="盘点库存" field="actualQuantity" width="100">
           <template #default="scope">
-            <vxe-input v-if="!looked" @input="quantityInput(scope)"
+            <vxe-input v-if="!isLocked" @input="quantityInput(scope)"
                        v-model.number="scope.row.actualQuantity" type="int" min="0" :controls="false">
             </vxe-input>
             <div v-else class="flex">
@@ -64,7 +63,7 @@
         </vxe-column>
         <vxe-column title="备注" field="differenceReason" width="100">
           <template #default="scope">
-            <vxe-input v-if="!looked" v-model="scope.row.differenceReason"></vxe-input>
+            <vxe-input v-if="!isLocked" v-model="scope.row.differenceReason"></vxe-input>
             <div v-else class="flex">
               <div class="flex1 ml-8px">
                 <div>{{ scope.row.differenceReason }}</div>
@@ -77,7 +76,7 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="looked" placeholder="请输入备注" type="text" maxlength="150"
+          <Input :disabled="isLocked" placeholder="请输入备注" type="text" maxlength="150"
                  style="width: 80%"
                  v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
@@ -87,17 +86,16 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button v-if="!approved && !looked" color="primary" @click="saveOrder('increase')" :loading="loading">
+        <Button v-if="!isAudited && !looked" color="primary" @click="saveOrder('add')" :loading="loading">
           保存并新增
         </Button>
         <Button color="primary" :disabled="form.generatedDisabled" @click="openGeneratedModal" :loading="loading">
           生成盘点单据
         </Button>
-        <Button v-if="!approved && !looked" @click="saveOrder" :loading="loading">保存</Button>
-        <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
-        <!-- 仅当状态为审核时显示 -->
-        <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
+        <Button v-if="!isAudited && !looked" @click="saveOrder('save')" :loading="loading">保存</Button>
+        <Button @click="doPrint" :loading="loading"> 打印 </Button>
+        <Button v-if="form.id && !isAudited && !looked" @click="approved()" :loading="loading"> 审核</Button>
+        <Button v-if="isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</Button>
       </div>
     </div>
     <t-dialog v-model:visible="opened" header="生成盘点单据" :footer="false" width="360px">
@@ -113,7 +111,9 @@
   </div>
 </template>
 <script>
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
+import {openPrint} from '@common/print';
 import manba from "manba";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -133,12 +133,15 @@ export default {
   },
   computed: {
     ...mapState(["user", "accountBook"]),
-    approved() {
-      return ['已审核'].includes(this.form.orderStatus);
+    isAudited() {
+      return this.form.orderStatus === '已审核';
     },
     looked() {
-      return ['look'].includes(this.type);
-    }
+      return this.type === 'look';
+    },
+    isLocked() {
+      return this.isAudited || this.looked;
+    },
   },
   data() {
     return {
@@ -157,6 +160,7 @@ export default {
         warehouseId: null,
         warehouseIds: [],
         productId: null,
+        filter: null,
         totalAmount: 0.00,
         totalQuantity: 0,
         adminName: '',
@@ -168,7 +172,6 @@ export default {
       originalStockTakeData: [],
       selectRowIndex: null,
       increase: true,
-      // 表格校验规则
       validRules: {
         productName: [
           {required: true, message: '请选择产品名称'},
@@ -176,44 +179,49 @@ export default {
         warehouseName: [
           {required: true, message: '请选择仓库'},
         ],
-        quantity: [
-          {required: true, message: '请填写数量'},
+        actualQuantity: [
+          {required: true, message: '请填写盘点库存'},
         ]
       },
-      // 提示配置
       tooltipConfig: {
         showAll: false,
         enterable: false,
       },
-      // 编辑配置
       editConfig: {trigger: 'click', mode: 'row'},
-      // 盘盈
       outbounds: [],
-      // 盘亏
       inbounds: []
     };
   },
-  // 待优化使用hook方式调用
   methods: {
-    // 关闭tab
+    doPrint() {
+      const items = (this.stockTakeData || []).filter(r => r && !r.isNew && r.productId).map(r => {
+        const p = (this.productList || []).find(x => (x.productId || x.id) === r.productId) || {};
+        return {
+          ...r,
+          productName: r.productName || p.productName || p.name || p.customName || '',
+          quantity: r.actualQuantity ?? r.quantity ?? r.secondaryQuantity,
+          price: r.unitPrice ?? r.secondaryPrice ?? r.price,
+          amount: r.subtotal ?? r.amount,
+        };
+      });
+      openPrint('盘点单', {
+        header: {
+          ...this.form,
+          partner: '',
+          amount: this.form.finalAmount ?? this.form.totalAmount,
+        },
+        items,
+      });
+    },
+
     ...mapMutations(['closeSelfTab', 'pushTab']),
-    //footer合计
     footerMethod({columns, data}) {
       let totalQuantity = 0;
-      let totalAmount = 0.00;
-      columns.forEach(column => {
+      (columns || []).forEach(column => {
         if (column.property && ['actualQuantity'].includes(column.property)) {
-          data.forEach((row) => {
-            switch (column.property) {
-              case 'actualQuantity': {
-                let rd = row[column.property];
-                if (rd) {
-                  totalQuantity += Number(rd || 0);
-                }
-                break;
-              }
-              default:
-                break;
+          (data || []).forEach((row) => {
+            if (column.property === 'actualQuantity') {
+              totalQuantity += Number(row?.[column.property] || 0);
             }
           });
         }
@@ -225,50 +233,37 @@ export default {
     isEmpty(value) {
       return (value !== 0 && !value) || value === '';
     },
-    //保存新增、保存
     saveOrder(type) {
-      const filterStockTakeData = this.stockTakeData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-      // 校验
-      this.validatorsForm(filterStockTakeData);
-      // 操作对象
-      const params = this.getSaveOrderParams(filterStockTakeData, type);
-      StockTake.save(params)
-          .then(({success, data}) => {
-            if (success) {
-              MessagePlugin.success("保存成功~");
-              this.clearForm();
-              setTimeout(() => {
-                if (type === "increase") {
-                  this.clearForm();
+      try {
+        const filterStockTakeData = (this.stockTakeData || []).filter(item =>
+            !this.isEmpty(item.productId)
+            || !this.isEmpty(item.warehouseId)
+            || !this.isEmpty(item.actualQuantity)
+            || !this.isEmpty(item.differenceReason)
+        );
+        this.validatorsForm(filterStockTakeData);
+        const params = this.getSaveOrderParams(filterStockTakeData);
+        StockTake.save(params)
+            .then(({success}) => {
+              if (success) {
+                MessagePlugin.success("保存成功~");
+                this.clearForm();
+                if (type === 'save') {
                   this.closeWindow();
-                  this.pushTab({
-                    key: 'StockTakeForm',
-                    title: '新增盘点单',
-                    params: {type: 'add', stockTakeId: null, status: null}
-                  });
                 } else {
-                  // 刷新列表为编辑
-                  this.closeWindow();
-                  this.pushTab({
-                    key: 'StockTakeForm',
-                    title: '编辑盘点单',
-                    params: {type: 'edit', stockTakeId: data.id, status: data.orderStatus},
-                  });
-                  this.$emit("update:stockTakeId", data.id);
-                  this.$emit("update:status", data.orderStatus);
-                  this.$emit("update:type", "edit");
-                  this.loadEditForm(data.id);
+                  this.initIncreaseForm();
                 }
-              }, 300);
-            }
-          })
-          .finally(() => LoadingPlugin(false));
+              }
+            })
+            .finally(() => LoadingPlugin(false));
+      } catch (e) {
+        LoadingPlugin(false);
+        MessagePlugin.error(e?.message || "保存失败~");
+      }
     },
-    // 打开生成盘点单
     openGeneratedModal() {
       this.opened = true;
     },
-    // 盘盈单
     generatedInbounds() {
       this.pushTab({
         key: 'OtherInboundForm',
@@ -277,7 +272,6 @@ export default {
       });
       this.opened = false;
     },
-    // 盘亏单
     generatedOutbounds() {
       this.pushTab({
         key: 'OtherOutboundForm',
@@ -286,29 +280,30 @@ export default {
       });
       this.opened = false;
     },
-    //校验提交表单
     validatorsForm(filterStockTakeData) {
-      if (filterStockTakeData.length === 0) {
+      if (!filterStockTakeData || filterStockTakeData.length === 0) {
         throw new Error("请填写操作数据~")
       }
+      if (!(this.form.warehouseIds && this.form.warehouseIds.length > 0)) {
+        throw new Error("请选择仓库~")
+      }
       LoadingPlugin(true);
-      let quantity = filterStockTakeData.filter((c) => this.isEmpty(c.actualQuantity));
-      if (quantity.length > 0) {
+      const emptyQty = filterStockTakeData.filter((c) => this.isEmpty(c.actualQuantity));
+      if (emptyQty.length > 0) {
         LoadingPlugin(false);
         throw new Error("请填写盘点库存~")
       }
     },
-    //获取保存新增、保存方法提交数据
-    getSaveOrderParams(filterStockTakeData, type) {
+    getSaveOrderParams(filterStockTakeData) {
       const stockTakeItems = [];
       const stockTake = {
         checkDate: this.form.checkDate,
         remarks: this.form.remarks,
         warehouseId: this.form.warehouseId,
-        warehouseIds: this.form.warehouseIds.join(","),
+        warehouseIds: (this.form.warehouseIds || []).join(","),
       };
       stockTake.id = this.form.id;
-      filterStockTakeData.forEach(item => {
+      (filterStockTakeData || []).forEach(item => {
         stockTakeItems.push({
           actualQuantity: item.actualQuantity,
           systemQuantity: item.systemQuantity,
@@ -322,26 +317,27 @@ export default {
         stockTakeItems: stockTakeItems
       };
     },
-    //清除Form
     clearForm() {
       this.form = {
         id: null,
-        orderDate: manba().format("YYYY-MM-dd"),
+        checkDate: manba().format("YYYY-MM-dd"),
         remarks: null,
         warehouseId: null,
         warehouseIds: [],
-        toWarehouseId: null,
-        fromWarehouseId: null,
+        productId: null,
+        filter: null,
         totalAmount: 0.00,
         totalQuantity: 0,
-        quantityTips: '',
+        adminName: this.user?.admin?.name || '',
+        orderStatus: '已保存',
         generatedDisabled: true
       };
       this.stockTakeData = [];
-      this.newStockTakeData();
+      this.originalStockTakeData = [];
+      this.inbounds = [];
+      this.outbounds = [];
+      this.opened = false;
     },
-
-    //添加行或减少行
     adjustRows(type, index) {
       if (type === "insert") {
         this.stockTakeData.splice(index + 1, 0, {isNew: true});
@@ -349,38 +345,35 @@ export default {
         this.stockTakeData.splice(index, 1);
       }
     },
-    //新增默认初始化行数
     newStockTakeData() {
-      // 获取所有产品、仓库展示
       Inventory.products({
         warehouseId: this.form.warehouseId,
-        warehouseIds: this.form.warehouseIds.join(","),
+        warehouseIds: (this.form.warehouseIds || []).join(","),
         productId: this.form.productId,
         filter: this.form.filter
       }).then((res) => {
-        this.stockTakeData = res.data || [];
+        this.stockTakeData = res?.data || [];
       });
     },
-    //行是否选中
-    rowIsSelect(rowIndex) {
-      return !this.looked;
+    rowIsSelect() {
+      return !this.isLocked;
     },
-    //行选中事件
     currentChangeEvent({rowIndex}) {
       this.selectRowIndex = rowIndex;
     },
-    //表格行点击事件
     tableCellClick({rowIndex}) {
       console.info(rowIndex);
     },
-    //输入事件
     quantityInput({rowIndex}) {
-      const {actualQuantity, systemQuantity} = this.stockTakeData[rowIndex];
-      if (actualQuantity < 0) {
-        this.stockTakeData[rowIndex].actualQuantity = 0;
-        return
+      const row = this.stockTakeData?.[rowIndex];
+      if (!row) return;
+      let actualQuantity = Number(row.actualQuantity);
+      const systemQuantity = Number(row.systemQuantity) || 0;
+      if (Number.isNaN(actualQuantity) || actualQuantity < 0) {
+        row.actualQuantity = 0;
+        actualQuantity = 0;
       }
-      this.stockTakeData[rowIndex].deficient = actualQuantity - systemQuantity;
+      row.deficient = actualQuantity - systemQuantity;
     },
     changeWarehouseId() {
       if (this.form.warehouseIds && this.form.warehouseIds.length > 0) {
@@ -390,9 +383,7 @@ export default {
       }
       this.doSearch();
     },
-    //加载编辑表单
     loadEditForm(id) {
-      this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
       this.stockTakeData = [];
       StockTake.load(this.stockTakeId || id).then(
@@ -401,7 +392,8 @@ export default {
               this.form.id = data[0].id;
               this.form.warehouseId = data[0].mainWarehouseId;
               if (data[0].mainWarehouseIds) {
-                this.form.warehouseIds = data[0].mainWarehouseIds.split(',');
+                this.form.warehouseIds = String(data[0].mainWarehouseIds).split(',').filter(Boolean);
+                this.warehousePlaceholder = this.form.warehouseIds.length ? "" : "请选择仓库";
               }
               this.form.remarks = data[0].remarks;
               this.form.checkDate = data[0].checkDate;
@@ -409,7 +401,7 @@ export default {
               this.form.orderStatus = data[0].orderStatus;
               let totalQuantity = 0;
               data.forEach(item => {
-                totalQuantity += parseInt(item.quantity);
+                totalQuantity += Number(item.actualQuantity) || 0;
                 this.stockTakeData.push({
                   productUrl: '',
                   productCode: item.productCode,
@@ -433,66 +425,63 @@ export default {
           }
       );
     },
-    //加载字典
     loadDict(callback) {
       LoadingPlugin(true);
       Promise.all([Product.select(), Warehouse.select()])
           .then((results) => {
-            this.productList = results[0].data || [];
-            this.warehouseList = results[1].data || [];
-            if (this.warehouseList != null) {
-              this.form.fromWarehouseId = this.warehouseList.find(
-                  (val) => val.systemDefault
-              )?.id;
-            }
+            this.productList = results[0]?.data || [];
+            this.productList.forEach(item => {
+              item.customName = `${item.code}--${item.name}`;
+            });
+            this.warehouseList = results[1]?.data || [];
             if (callback) {
               callback();
             }
           })
           .finally(() => LoadingPlugin(false));
     },
-    //初始化表单
     initIncreaseForm() {
       this.increase = true;
-      this.newStockTakeData();
-      this.form.adminName = this.user.admin.name;
+      this.form.adminName = this.user?.admin?.name || '';
       this.form.id = null;
-      this.editConfig = {trigger: 'click', mode: 'row'};
+      this.form.orderStatus = '已保存';
+      this.newStockTakeData();
     },
-    //初始化审核表单
-    initAuditsForm() {
-      //表格不可编辑
-      this.editConfig = {};
-    },
-    //审核表单
-    async auditForm(operateType) {
-      const type = this.type;
-      let {id} = this.form;
-      if (!id) {
-        const filterStockTakeData = this.stockTakeData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-        // 校验
-        this.validatorsForm(filterStockTakeData);
-        // 操作对象
-        const params = this.getSaveOrderParams(filterStockTakeData, type);
-        const res = await StockTake.save(params);
-        if (!res.success) {
-          return;
-        }
-        id = res.data.id;
+    approved() {
+      if (!this.form.id) {
+        MessagePlugin.warning("请先保存单据~");
+        return;
       }
-      const params = {id, type: operateType};
-      LoadingPlugin(true);
-      StockTake.approve(params)
-          .then((success) => {
-            if (success) {
-              MessagePlugin.success("审核成功~");
-              setTimeout(() => {
-                this.loadEditForm(id);
-                this.getInventoryList();
-              }, 300);
-            }
-          })
-          .finally(() => LoadingPlugin(false));
+      DialogPlugin.confirm({
+        title: "审核提示",
+        content: `确认审核该订单?`,
+        onConfirm: () => {
+          return StockTake.approved('已审核', [this.form.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.loadEditForm(this.form.id);
+            this.getInventoryList();
+          });
+        }
+      });
+    },
+    backApproved() {
+      if (!this.form.id) {
+        MessagePlugin.warning("请先保存单据~");
+        return;
+      }
+      DialogPlugin.confirm({
+        title: "反审核提示",
+        content: `确认反审核该订单?`,
+        onConfirm: () => {
+          return StockTake.approved('已保存', [this.form.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.inbounds = [];
+            this.outbounds = [];
+            this.form.generatedDisabled = true;
+            this.loadEditForm(this.form.id);
+          });
+        }
+      });
     },
     closeWindow() {
       this.closeSelfTab(this.index);
@@ -503,14 +492,13 @@ export default {
       });
     },
     doSearch() {
-      if (this.stockTakeId) {
+      if (this.stockTakeId || this.form.id) {
         const warehouseId = this.form.warehouseId;
-        const warehouseIds = this.form.warehouseIds;
+        const warehouseIds = this.form.warehouseIds || [];
         const productId = this.form.productId;
         const filter = this.form.filter;
         const newStockTakeData = [];
-        // 搜索当前盘点单数据
-        this.originalStockTakeData.forEach(item => {
+        (this.originalStockTakeData || []).forEach(item => {
           let isDone = true;
           if (warehouseId && warehouseId !== item.warehouseId) {
             isDone = false;
@@ -518,10 +506,10 @@ export default {
           if (productId && productId !== item.productId) {
             isDone = false;
           }
-          if (warehouseIds && warehouseIds.length > 0 && !warehouseIds.includes(item.warehouseId)) {
+          if (warehouseIds.length > 0 && !warehouseIds.includes(item.warehouseId) && !warehouseIds.includes(String(item.warehouseId))) {
             isDone = false;
           }
-          if (!this.isEmpty(filter) && (filter.indexOf(item.productCode) === -1 && filter.indexOf(item.productName) === -1)) {
+          if (!this.isEmpty(filter) && (String(item.productCode || '').indexOf(filter) === -1 && String(item.productName || '').indexOf(filter) === -1)) {
             isDone = false;
           }
           if (isDone) {
@@ -530,60 +518,36 @@ export default {
         });
         this.stockTakeData = newStockTakeData;
       } else {
-        // 搜索所有仓库产品
         this.newStockTakeData();
       }
     },
-    // 获取盘点单据
     getInventoryList() {
-      if (this.stockTakeId) {
-        StockTake.export(this.stockTakeId).then(res => {
-          console.info(res.data)
-          const data = res.data;
-          if (data) {
-            const {outbounds, inbounds} = data;
-            if (outbounds && outbounds.length > 0) {
-              this.outbounds = outbounds;
-            }
-            if (inbounds && inbounds.length > 0) {
-              this.inbounds = inbounds;
-            }
-            this.form.generatedDisabled = !(this.inbounds.length > 0 || this.outbounds.length > 0);
-          } else {
-            this.form.generatedDisabled = true;
-          }
-        });
-      }
+      const id = this.stockTakeId || this.form.id;
+      if (!id) return;
+      StockTake.export(id).then(res => {
+        const data = res?.data;
+        if (data) {
+          const {outbounds, inbounds} = data;
+          this.outbounds = outbounds || [];
+          this.inbounds = inbounds || [];
+          this.form.generatedDisabled = !(this.inbounds.length > 0 || this.outbounds.length > 0);
+        } else {
+          this.outbounds = [];
+          this.inbounds = [];
+          this.form.generatedDisabled = true;
+        }
+      });
     }
-  },
-  beforeDestroy() {
-    DialogPlugin.confirm({
-      title: "系统提示",
-      content: `确认?`,
-      onConfirm: () => {
-      },
-    });
   },
   created() {
     LoadingPlugin(true);
     this.loadDict(() => {
-      //订单详情/编辑订单
       if (this.stockTakeId) {
         this.loadEditForm();
-        // 获取盘点单据
-        if (this.status && this.status === "已审核") {
+        if (this.status === "已审核" || this.isAudited) {
           this.getInventoryList();
         }
-        const type = this.type;
-        switch (type) {
-          case 'audits':
-          case 'antiAudits':
-            this.initAuditsForm();
-            break;
-          default:
-            break;
-        }
-        return
+        return;
       }
       this.initIncreaseForm();
     });

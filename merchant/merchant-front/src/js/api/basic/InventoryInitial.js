@@ -20,11 +20,11 @@ export default {
     select(param) {
         return Ajax.get('/inventoryInitial/select', param)
     },
-    batchSave(param) {
-        return Ajax.post('/inventoryInitial/batchSave', param)
+    batch(param) {
+        return Ajax.post('/inventoryInitial/batch', param)
     },
-    getInfo(id) {
-        return Ajax.get("/inventoryInitial/getInfo/" + id);
+    load(id) {
+        return Ajax.get("/inventoryInitial/load/" + id);
     },
     batchDelete(param) {
         return Ajax.put('/inventoryInitial/batchDelete', param)

@@ -37,7 +37,7 @@ public class FinanceAccountLinkController {
     }
 
 
-    @PostMapping("save")
+    @PostMapping
     public JsonResult save(@RequestBody @Valid FinanceAccountLink financeAccountLink, @SaAccountVal AccountDto accountDto) {
         financeAccountLink.setMerchantId(accountDto.getMerchantId());
         financeAccountLink.setAccountBookId(accountDto.getAccountBookId());
@@ -45,12 +45,20 @@ public class FinanceAccountLinkController {
         return JsonResult.successful();
     }
 
-    @PostMapping("/loadAccountSetsList")
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid FinanceAccountLink financeAccountLink, @SaAccountVal AccountDto accountDto) {
+        financeAccountLink.setMerchantId(accountDto.getMerchantId());
+        financeAccountLink.setAccountBookId(accountDto.getAccountBookId());
+        financeAccountLinkService.save(financeAccountLink, accountDto);
+        return JsonResult.successful();
+    }
+
+    @PostMapping("/accountSets")
     public JsonResult loadAccountSetsList(@RequestBody FinanceAccountLink financeAccountLink, @SaMerchantId Long merchantId) {
         return JsonResult.successful(financeAccountLinkService.loadAccountSetsList(financeAccountLink, merchantId));
     }
 
-    @GetMapping("/loadByAccountBookId/{accountBookId}")
+    @GetMapping("/byAccountBook/{accountBookId}")
     public JsonResult loadByAccountBookId(@PathVariable("accountBookId") Long accountBookId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(financeAccountLinkService.loadByAccountBookId(accountBookId));
     }
@@ -61,34 +69,34 @@ public class FinanceAccountLinkController {
     }
 
 
-    @GetMapping("/loadVoucherWord")
+    @GetMapping("/voucherWord")
     public JsonResult loadVoucherWord(@SaAccountVal AccountDto accountDto) {
         return JsonResult.successful(financeAccountLinkService.loadVoucherWord(accountDto));
     }
 
-    @GetMapping("/loadSubject")
+    @GetMapping("/subject")
     public JsonResult loadSubject(@SaAccountVal AccountDto accountDto) {
         return JsonResult.successful(financeAccountLinkService.loadSubject(accountDto));
     }
 
-    @GetMapping("/loadAccountingCategory")
+    @GetMapping("/accountingCategory")
     public JsonResult loadAccountingCategory(@RequestParam("ids") String ids, @SaAccountVal AccountDto accountDto) {
         return JsonResult.successful(financeAccountLinkService.loadAccountingCategory(ids, accountDto));
     }
 
-    @GetMapping("/loadCode")
+    @GetMapping("/code")
     public JsonResult loadCode(@RequestParam("word") String word,
                                @RequestParam("currentAccountDate") LocalDate currentAccountDate,
                                @SaAccountVal AccountDto accountDto) throws UnsupportedEncodingException {
         return JsonResult.successful(financeAccountLinkService.loadCode(word, currentAccountDate, accountDto));
     }
 
-    @GetMapping("/loadVoucherSelect")
+    @GetMapping("/voucherSelect")
     public JsonResult loadVoucherSelect(@SaAccountVal AccountDto accountDto) {
         return JsonResult.successful(financeAccountLinkService.loadVoucherSelect(accountDto));
     }
 
-    @GetMapping("/loadVoucherSummary")
+    @GetMapping("/voucherSummary")
     public JsonResult loadVoucherSummary(@SaAccountVal AccountDto accountDto) {
         return JsonResult.successful(financeAccountLinkService.loadVoucherSummary(accountDto));
     }

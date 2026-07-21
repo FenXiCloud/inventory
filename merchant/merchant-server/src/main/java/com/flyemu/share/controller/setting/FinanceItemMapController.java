@@ -36,7 +36,7 @@ public class FinanceItemMapController {
         return JsonResult.successful(financeItemMapService.query(query));
     }
 
-    @PostMapping("save")
+    @PostMapping
     public JsonResult save(@RequestBody @Valid FinanceItemMap financeItemMap, @SaAccountVal AccountDto accountDto) {
         financeItemMap.setMerchantId(accountDto.getMerchantId());
         financeItemMap.setAccountBookId(accountDto.getAccountBookId());
@@ -44,8 +44,16 @@ public class FinanceItemMapController {
         return JsonResult.successful();
     }
 
-    @PostMapping("batchSave")
-    public JsonResult batchSave(@RequestBody @Valid List<FinanceItemMap> financeItemMap, @SaAccountVal AccountDto accountDto) {
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid FinanceItemMap financeItemMap, @SaAccountVal AccountDto accountDto) {
+        financeItemMap.setMerchantId(accountDto.getMerchantId());
+        financeItemMap.setAccountBookId(accountDto.getAccountBookId());
+        financeItemMapService.save(financeItemMap, accountDto);
+        return JsonResult.successful();
+    }
+
+    @PostMapping("batch")
+    public JsonResult batch(@RequestBody @Valid List<FinanceItemMap> financeItemMap, @SaAccountVal AccountDto accountDto) {
         for (FinanceItemMap itemMap : financeItemMap) {
             itemMap.setMerchantId(accountDto.getMerchantId());
             itemMap.setAccountBookId(accountDto.getAccountBookId());
@@ -60,10 +68,9 @@ public class FinanceItemMapController {
         return JsonResult.successful();
     }
 
-
-    @GetMapping("/load/{id}")
-    public JsonResult load(@PathVariable Long id) {
-        return JsonResult.successful(financeItemMapService.load(id));
+    @GetMapping("load/{id}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+        return JsonResult.successful(financeItemMapService.load(merchantId, id));
     }
 
 }

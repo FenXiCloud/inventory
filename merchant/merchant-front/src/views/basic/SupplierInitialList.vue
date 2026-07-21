@@ -70,7 +70,8 @@
 
 <script>
 import {mapMutations} from 'vuex';
-import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import SupplierInitial from '@js/api/basic/SupplierInitial';
 import Supplier from '@js/api/basic/Supplier';
 

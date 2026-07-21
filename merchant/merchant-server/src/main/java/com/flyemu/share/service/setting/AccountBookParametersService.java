@@ -4,6 +4,7 @@ package com.flyemu.share.service.setting;
 import cn.hutool.core.lang.Assert;
 import com.flyemu.share.entity.setting.AccountBookParameters;
 import com.flyemu.share.entity.setting.QAccountBookParameters;
+import com.flyemu.share.entity.setting.AccountBook;
 import com.flyemu.share.repository.AccountBookParametersRepository;
 import com.flyemu.share.service.AbsService;
 import jakarta.persistence.LockModeType;
@@ -27,7 +28,15 @@ public class AccountBookParametersService extends AbsService {
     private static final QAccountBookParameters Q_ACCOUNT_BOOK_PARAMETERS = QAccountBookParameters.accountBookParameters;
 
     private final AccountBookParametersRepository accountBookParametersRepository;
+    private final AccountBookService accountBookService;
 
+
+    public AccountBookParameters load(Long merchantId, Integer accountBookId) {
+        Assert.notNull(accountBookId, "id不能为空");
+        AccountBook accountBook = accountBookService.loadById(merchantId, accountBookId.longValue());
+        Assert.notNull(accountBook, "账套不存在");
+        return list(accountBookId);
+    }
 
     public AccountBookParameters list(Integer id) {
         Assert.notNull(id, "id不能为空");

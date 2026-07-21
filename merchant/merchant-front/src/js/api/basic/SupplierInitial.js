@@ -1,5 +1,5 @@
 /**
- * @功能描述: 客户交易流水
+ * @功能描述: 货商期初
  * @创建时间: 2023年08月08日
  * @公司官网: www.fenxi365.com
  * @公司信息: 纷析云（杭州）科技有限公司
@@ -20,11 +20,11 @@ export default {
     select(param) {
         return Ajax.get('/supplierInitial/select', param)
     },
-    batchSave(param) {
-        return Ajax.post('/supplierInitial/batchSave', param)
+    batch(param) {
+        return Ajax.post('/supplierInitial/batch', param)
     },
-    getInfo(id) {
-        return Ajax.get("/supplierInitial/getInfo/" + id);
+    load(id) {
+        return Ajax.get("/supplierInitial/load/" + id);
     },
     batchDelete(param) {
         return Ajax.put('/supplierInitial/batchDelete', param)

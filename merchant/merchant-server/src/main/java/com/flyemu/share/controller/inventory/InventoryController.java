@@ -47,7 +47,9 @@ public class InventoryController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid Inventory inventory) {
+    public JsonResult update(@RequestBody @Valid Inventory inventory, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        inventory.setMerchantId(merchantId);
+        inventory.setAccountBookId(accountBookId);
         inventoryService.save(inventory);
         return JsonResult.successful();
     }
@@ -79,18 +81,18 @@ public class InventoryController {
         return JsonResult.successful(inventoryService.totalCost(productId, warehouseId, merchantId, accountBookId));
     }
 
-    @GetMapping("report")
-    public JsonResult report(Page page, InventoryService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("balance")
+    public JsonResult balance(Page page, InventoryService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(inventoryService.report(page, query));
+        return JsonResult.successful(inventoryService.balance(page, query));
     }
 
-    @GetMapping("reportInventory")
-    public JsonResult reportInventory(InventoryService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("balanceTotal")
+    public JsonResult balanceTotal(InventoryService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(inventoryService.reportInventory(query));
+        return JsonResult.successful(inventoryService.balanceTotal(query));
     }
 
 

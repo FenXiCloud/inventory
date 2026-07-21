@@ -66,7 +66,8 @@
 <script>
 import AdminForm from './AdminForm.vue';
 import Admin from '@js/api/setting/Admin';
-import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 

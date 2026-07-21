@@ -1,36 +1,39 @@
 package com.flyemu.share.controller.setting;
+
+import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.setting.AccountBookParameters;
 import com.flyemu.share.service.setting.AccountBookParametersService;
-import lombok.AllArgsConstructor;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-
 /**
- * 账套参数设置控制层
- *
- * @author shuaiqi
- * @since 2025-05-13 15:35:33
+ * 账套参数设置
  */
 @RestController
 @RequestMapping("/accountBookParameters")
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class AccountBookParametersController {
 
-    private AccountBookParametersService accountBookParametersService;
+    private final AccountBookParametersService accountBookParametersService;
 
-
-    @GetMapping("/getByAccountBookId")
-    public JsonResult getByAccountBookId(Integer id) {
-        return JsonResult.successful(accountBookParametersService.list(id));
+    @GetMapping("load/{accountBookId}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Integer accountBookId) {
+        return JsonResult.successful(accountBookParametersService.load(merchantId, accountBookId));
     }
 
+    @GetMapping
+    public JsonResult getCurrent(@SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(accountBookParametersService.list(Math.toIntExact(accountBookId)));
+    }
 
-    @PostMapping("update")
-    public JsonResult update(@RequestBody AccountBookParameters accountBookParameters) {
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid AccountBookParameters accountBookParameters, @SaAccountBookId Long accountBookId) {
+        accountBookParameters.setAccountBookId(Math.toIntExact(accountBookId));
         accountBookParametersService.update(accountBookParameters);
         return JsonResult.successful();
     }
 
 }
-

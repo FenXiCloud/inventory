@@ -2,62 +2,65 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="exportData">导 出</t-button>
         <t-select
-            v-model="params.state"
-            :options="stateOptions"
-            clearable
-            placeholder="审核状态"
+            v-model="params.rankingType"
+            :options="rankingTypeOptions"
+            placeholder="排行维度"
             style="width: 140px; border-radius: 4px"
         />
         <t-date-range-picker
             v-model="dateRangeValue"
             clearable
             allow-input
-            placeholder="订单日期"
+            placeholder="销售日期"
             style="width: 260px; border-radius: 4px"
         />
-        <t-input
-            v-model="params.filter"
+        <t-select
+            v-if="params.rankingType === 'CUSTOMER'"
+            v-model="params.customerIds"
+            :options="customerList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
             clearable
-            placeholder="请输入订单号/客户名称"
-            style="width: 240px; background: #fff; border-radius: 4px"
-            @enter="doSearch"
-        >
-          <template #suffixIcon>
-            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
-          </template>
-        </t-input>
+            placeholder="请选择客户"
+            style="width: 180px; border-radius: 4px"
+        />
+        <t-select
+            v-if="params.rankingType === 'PRODUCT'"
+            v-model="params.productIds"
+            :options="productList"
+            :keys="{ value: 'id', label: 'name' }"
+            multiple
+            filterable
+            clearable
+            placeholder="请选择产品"
+            style="width: 180px; border-radius: 4px"
+        />
         <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
       </t-space>
     </div>
 
     <div class="simple-page__table">
       <t-table
-          row-key="id"
+          row-key="rowKey"
           size="medium"
           bordered
           stripe
           hover
           height="100%"
           table-layout="fixed"
-          :data="dataList"
+          :data="displayList"
           :columns="columns"
           :loading="loading"
           :foot-data="footData"
-      >
-        <template #orderStatus="{ row }">
-          <t-tag
-              :theme="row.orderStatus === '已审核' ? 'success' : 'warning'"
-              variant="light"
-          >
-            {{ row.orderStatus === '已保存' ? '未审核' : row.orderStatus }}
-          </t-tag>
-        </template>
-      </t-table>
+          empty="暂无排行数据"
+      />
     </div>
 
     <div class="simple-page__pager">
-      <span class="simple-page__total">合计金额：{{ amountTotal }}元</span>
+      <span class="simple-page__total">合计金额：{{ amountTotal }}</span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -72,70 +75,97 @@
 </template>
 
 <script>
-import manba from "manba";
-import SalesOutbound from "@js/api/sales/SalesOutbound";
+import manba from 'manba';
+import SalesReport from '@js/api/sales/SalesReport';
+import Customer from '@js/api/basic/Customer';
+import Product from '@js/api/basic/Product';
+import { MessagePlugin } from 'tdesign-vue-next';
+import * as XLSX from 'xlsx';
 
-const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
-const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
+const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-DD');
+const endTime = manba().endOf(manba.DAY).format('YYYY-MM-DD');
 
 export default {
-  name: "SalesRankingReport",
+  name: 'SalesRankingReport',
   data() {
     return {
-      dataList: [],
       loading: false,
-      amountTotal: 0,
-      pagination: {
-        page: 1,
-        pageSize: 20,
-        total: 0
-      },
+      dataList: [],
+      customerList: [],
+      productList: [],
+      amountTotal: '0.00',
+      pagination: { page: 1, pageSize: 20, total: 0 },
       params: {
-        filter: null,
-        state: null,
+        rankingType: 'PRODUCT',
+        customerIds: [],
+        productIds: []
       },
       dateRangeValue: [startTime, endTime],
-      stateOptions: [
-        {label: '未审核', value: '已保存'},
-        {label: '已审核', value: '已审核'},
-      ],
-      columns: [
-        {colKey: 'orderDate', title: '订单日期', width: 120, align: 'center'},
-        {colKey: 'orderNo', title: '订单编号', minWidth: 160, ellipsis: true},
-        {colKey: 'salesOrderNos', title: '关联销售出库单', minWidth: 140, ellipsis: true},
-        {colKey: 'customerName', title: '客户', minWidth: 120, ellipsis: true},
-        {colKey: 'totalAmount', title: '销售金额', width: 110, align: 'right'},
-        {colKey: 'discountAmount', title: '折扣金额', width: 110, align: 'right'},
-        {colKey: 'finalAmount', title: '折后金额', width: 110, align: 'right'},
-        {colKey: 'createdName', title: '制单人', width: 90, align: 'center'},
-        {colKey: 'createdAt', title: '制单时间', width: 160, align: 'center', ellipsis: true},
-        {colKey: 'orderStatus', title: '审核状态', width: 100, align: 'center', fixed: 'right'},
+      rankingTypeOptions: [
+        { label: '按产品', value: 'PRODUCT' },
+        { label: '按客户', value: 'CUSTOMER' }
       ]
-    }
+    };
   },
   computed: {
+    isCustomerRank() {
+      return this.params.rankingType === 'CUSTOMER';
+    },
+    columns() {
+      const cols = [
+        { colKey: 'rankNo', title: '排名', width: 80, align: 'center' }
+      ];
+      if (this.isCustomerRank) {
+        cols.push(
+          { colKey: 'customerCode', title: '客户编码', minWidth: 120, ellipsis: true },
+          { colKey: 'customerName', title: '客户名称', minWidth: 160, ellipsis: true }
+        );
+      } else {
+        cols.push(
+          { colKey: 'productCode', title: '产品编码', minWidth: 120, ellipsis: true },
+          { colKey: 'productName', title: '产品名称', minWidth: 160, ellipsis: true },
+          { colKey: 'unitName', title: '单位', width: 80, align: 'center' }
+        );
+      }
+      cols.push(
+        { colKey: 'quantity', title: '数量', width: 110, align: 'right' },
+        { colKey: 'unitPrice', title: '均价', width: 110, align: 'right' },
+        { colKey: 'subtotal', title: '销售金额', width: 130, align: 'right' }
+      );
+      return cols;
+    },
+    displayList() {
+      return (this.dataList || []).map((row, index) => ({
+        ...row,
+        rowKey: `${row.rankNo || index}-${row.productId || ''}-${row.customerId || ''}`
+      }));
+    },
     queryParams() {
       const [start, end] = this.dateRangeValue || [];
       return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
         start: start || null,
-        end: end || null,
-      })
+        end: end || null
+      });
     },
     footData() {
       const sum = (key) => {
         const total = (this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0);
         return total.toFixed(2);
       };
-      const finalAmount = sum('finalAmount');
-      this.amountTotal = finalAmount;
-      return [{
-        orderDate: '合计',
-        totalAmount: sum('totalAmount'),
-        discountAmount: sum('discountAmount'),
-        finalAmount,
-      }];
+      const subtotal = sum('subtotal');
+      this.amountTotal = subtotal;
+      const foot = {
+        quantity: sum('quantity'),
+        subtotal
+      };
+      if (this.isCustomerRank) {
+        foot.customerCode = '合计';
+      } else {
+        foot.productCode = '合计';
+      }
+      return [foot];
     }
   },
   methods: {
@@ -148,18 +178,56 @@ export default {
       this.pagination.page = 1;
       this.loadList();
     },
+    loadSelect() {
+      Promise.all([Customer.select(), Product.select()]).then((results) => {
+        this.customerList = results[0].data || [];
+        this.productList = results[1].data || [];
+      });
+    },
     loadList() {
       this.loading = true;
-      SalesOutbound.list(this.queryParams).then(({data: {results, total}}) => {
-        this.dataList = results || [];
-        this.pagination.total = total;
-      }).finally(() => this.loading = false);
+      SalesReport.ranking(this.queryParams)
+        .then(({ data: { results, total } }) => {
+          this.dataList = results || [];
+          this.pagination.total = total;
+        })
+        .finally(() => (this.loading = false));
     },
+    exportData() {
+      if (!this.dataList.length) {
+        MessagePlugin.warning('没有可导出的数据');
+        return;
+      }
+      const exportData = this.dataList.map((item) => {
+        if (this.isCustomerRank) {
+          return {
+            排名: item.rankNo,
+            客户编码: item.customerCode,
+            客户名称: item.customerName,
+            数量: item.quantity,
+            销售金额: item.subtotal
+          };
+        }
+        return {
+          排名: item.rankNo,
+          产品编码: item.productCode,
+          产品名称: item.productName,
+          数量: item.quantity,
+          销售金额: item.subtotal
+        };
+      });
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '销售排行');
+      XLSX.writeFile(wb, `销售排行表_${manba().format('YYYY-MM-DD')}.xlsx`);
+      MessagePlugin.success('导出成功');
+    }
   },
   created() {
+    this.loadSelect();
     this.loadList();
   }
-}
+};
 </script>
 
 <style scoped>
@@ -194,12 +262,10 @@ export default {
   align-items: center;
   padding: 10px 0;
   border-top: 1px solid var(--td-component-border, #dcdcdc);
-  background: #fff;
 }
 
 .simple-page__total {
   font-size: 14px;
   color: #333639;
-  flex-shrink: 0;
 }
 </style>

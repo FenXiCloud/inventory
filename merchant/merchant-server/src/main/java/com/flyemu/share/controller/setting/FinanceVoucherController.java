@@ -6,6 +6,7 @@ import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
+import com.flyemu.share.controller.Page;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.dto.VoucherDto;
 import com.flyemu.share.form.FinanceVoucherForm;
@@ -41,16 +42,16 @@ public class FinanceVoucherController {
         return JsonResult.successful(financeVoucherService.query(query));
     }
 
-    @PostMapping("save")
-    public JsonResult batchSave(@RequestBody @Valid FinanceVoucherForm financeVoucherForm, @SaAccountVal AccountDto accountDto) throws JsonProcessingException, UnsupportedEncodingException {
+    @PostMapping
+    public JsonResult save(@RequestBody @Valid FinanceVoucherForm financeVoucherForm, @SaAccountVal AccountDto accountDto) throws JsonProcessingException, UnsupportedEncodingException {
         financeVoucherForm.setMerchantId(accountDto.getMerchantId());
         financeVoucherForm.setAccountBookId(accountDto.getAccountBookId());
         financeVoucherService.save(financeVoucherForm);
         return JsonResult.successful();
     }
 
-    @PostMapping("upVoucher")
-    public JsonResult upVoucher(@RequestBody @Valid VoucherDto voucherDto, @SaAccountVal AccountDto accountDto) throws JsonProcessingException, UnsupportedEncodingException {
+    @PostMapping("sync")
+    public JsonResult sync(@RequestBody @Valid VoucherDto voucherDto, @SaAccountVal AccountDto accountDto) throws JsonProcessingException, UnsupportedEncodingException {
         financeVoucherService.upVoucher(voucherDto, accountDto);
         return JsonResult.successful();
     }
@@ -61,18 +62,37 @@ public class FinanceVoucherController {
         return JsonResult.successful(balance);
     }
 
-    @GetMapping("loadAuxiliaryAccountingData")
-    public JsonResult loadAuxiliaryAccountingData(String ids, @SaAccountVal AccountDto accountDto) {
+    @GetMapping("auxiliary")
+    public JsonResult auxiliary(String ids, @SaAccountVal AccountDto accountDto) {
         List<String> categories = Arrays.stream(ids.split(",")).toList();
         Object auxiliaryAccountingData = financeVoucherService.loadAuxiliaryAccountingData(categories, accountDto);
         return JsonResult.successful(auxiliaryAccountingData);
     }
 
-
-    @GetMapping("loadVoucher")
-    public JsonResult loadVoucher(String voucherId, @SaAccountVal AccountDto accountDto) {
+    @GetMapping("remote")
+    public JsonResult remote(String voucherId, @SaAccountVal AccountDto accountDto) {
         Object voucher = financeVoucherService.loadVoucher(voucherId, accountDto);
         return JsonResult.successful(voucher);
+    }
+
+
+    @GetMapping("/candidates")
+    public JsonResult candidates(Page page, FinanceVoucherService.CandidateQuery query, @SaAccountVal AccountDto accountDto) {
+        query.setMerchantId(accountDto.getMerchantId());
+        query.setAccountBookId(accountDto.getAccountBookId());
+        return JsonResult.successful(financeVoucherService.candidates(page, query));
+    }
+
+    @PostMapping("/batch")
+    public JsonResult batchGenerate(@RequestBody List<FinanceVoucherForm> forms, @SaAccountVal AccountDto accountDto) throws JsonProcessingException, UnsupportedEncodingException {
+        financeVoucherService.batchGenerate(forms, accountDto.getMerchantId(), accountDto.getAccountBookId());
+        return JsonResult.successful();
+    }
+
+    @DeleteMapping("/batch")
+    public JsonResult batchDelete(@RequestBody List<Long> ids, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        financeVoucherService.batchDelete(ids, merchantId, accountBookId);
+        return JsonResult.successful();
     }
 
     @DeleteMapping("/{id}")
@@ -83,8 +103,8 @@ public class FinanceVoucherController {
 
 
     @GetMapping("/load/{id}")
-    public JsonResult load(@PathVariable Long id) {
-        return JsonResult.successful(financeVoucherService.load(id));
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+        return JsonResult.successful(financeVoucherService.load(merchantId, id));
     }
 
 }

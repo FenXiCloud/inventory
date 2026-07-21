@@ -9,7 +9,7 @@ import Ajax from "@common/Request";
 
 export default {
     save(param) {
-        return Ajax[param.id ? 'put' : 'post']('/costAdjustment', param)
+        return Ajax[param.costAdjustment?.id ? 'put' : 'post']('/costAdjustment', param)
     },
     list(param) {
         return Ajax.get('/costAdjustment', param)
@@ -23,10 +23,7 @@ export default {
     load(id) {
         return Ajax.get('/costAdjustment/load/' + id)
     },
-    approve(param) {
-        return Ajax.get("/costAdjustment/approve", param);
-    },
-    approves(param) {
-        return Ajax.get("/costAdjustment/approves", param);
+    approved(state, ids) {
+        return Ajax.post('/costAdjustment/approved/' + state, ids);
     }
 }

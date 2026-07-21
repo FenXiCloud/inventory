@@ -1,29 +1,32 @@
 import Ajax from '@common/Request';
 
+function toIds(ids) {
+  if (Array.isArray(ids)) {
+    return ids.map(Number).filter(Boolean);
+  }
+  return String(ids ?? '')
+    .split(',')
+    .map((s) => Number(s.trim()))
+    .filter(Boolean);
+}
+
 export default {
   list(param) {
-    return Ajax.get('/verification/list', param);
+    return Ajax.get('/verification', param);
   },
-  details(param) {
-    return Ajax.get('/verification/selectById', param);
+  total(param) {
+    return Ajax.get('/verification/total', param);
+  },
+  load(id) {
+    return Ajax.get('/verification/load/' + id);
   },
   remove(id) {
-    return Ajax.post('/verification/delete', id);
+    return Ajax.delete('/verification/' + id);
   },
-  batchAudit(param) {
-    return Ajax.post('/verification/updateStatus', param);
+  approved(state, ids) {
+    return Ajax.post('/verification/approved/' + state, toIds(ids));
   },
-  addEdit(param) {
-    return Ajax.post('/verification/save', param);
-  },
-  writeOffTheOrder(param) {
-    return Ajax.get(`/verification/writeOffTheOrder`, param);
-  },
-
-  orderStaffList(param) {
-    return Ajax.get('/orderStaff/list', param);
-  },
-  orderStaffAdd(param) {
-    return Ajax.post('/orderStaff/add', param);
+  save(param) {
+    return Ajax[param.order?.id ? 'put' : 'post']('/verification', param);
   }
 };

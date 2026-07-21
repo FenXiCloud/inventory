@@ -1,16 +1,19 @@
 package com.flyemu.share.controller.fund;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
-import com.flyemu.share.entity.fund.OtherExpense;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.service.fund.OtherExpenseService;
-import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
-import com.flyemu.share.service.fund.dto.OtherExpenseSaveDTO;
+import com.flyemu.share.form.OtherExpenseForm;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * @功能描述: 其他支出单
@@ -26,8 +29,7 @@ public class OtherExpenseController {
 
     private final OtherExpenseService otherExpenseService;
 
-
-    @GetMapping("list")
+    @GetMapping
     public JsonResult list(Page page, OtherExpenseService.Query query,
                            @SaAccountBookId Long accountBookId,
                            @SaMerchantId Long merchantId) {
@@ -36,9 +38,17 @@ public class OtherExpenseController {
         return JsonResult.successful(otherExpenseService.query(page, query));
     }
 
+    @GetMapping("/total")
+    public JsonResult queryTotal(OtherExpenseService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(otherExpenseService.queryTotal(query));
+    }
 
-    @PostMapping("save")
-    public JsonResult save(@RequestBody @Valid OtherExpenseSaveDTO dto,
+
+
+    @PostMapping
+    public JsonResult save(@RequestBody @Valid OtherExpenseForm dto,
                            @SaAccountBookId Long accountBookId,
                            @SaMerchantId Long merchantId) {
         dto.getOrder().setMerchantId(merchantId);
@@ -47,26 +57,32 @@ public class OtherExpenseController {
         return JsonResult.successful();
     }
 
-
-    @PostMapping("updateStatus")
-    public JsonResult updateStatus(@RequestBody OrderPaymentUpdateDTO dto) {
-        otherExpenseService.updateStatus(dto);
-        return JsonResult.successful();
-    }
-
-
-    @PostMapping("delete")
-    public JsonResult delete(@RequestBody OrderPaymentUpdateDTO dto,
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid OtherExpenseForm dto,
                              @SaAccountBookId Long accountBookId,
                              @SaMerchantId Long merchantId) {
-        otherExpenseService.delete(dto.getId(), merchantId, accountBookId);
+        dto.getOrder().setMerchantId(merchantId);
+        dto.getOrder().setAccountBookId(accountBookId);
+        otherExpenseService.save(dto.getOrder(), dto.getItemList());
         return JsonResult.successful();
     }
 
-
-    @GetMapping("selectById")
-    public JsonResult selectById(Long id) {
-        return JsonResult.successful(otherExpenseService.selectById(id));
+    @DeleteMapping("/{otherExpenseId}")
+    public JsonResult delete(@PathVariable Long otherExpenseId,
+                             @SaAccountBookId Long accountBookId,
+                             @SaMerchantId Long merchantId) {
+        otherExpenseService.delete(String.valueOf(otherExpenseId), merchantId, accountBookId);
+        return JsonResult.successful();
     }
 
+    @GetMapping("load/{id}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+        return JsonResult.successful(otherExpenseService.load(merchantId, id));
+    }
+
+    @PostMapping("/approved/{state}")
+    public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
+        otherExpenseService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
+        return JsonResult.successful();
+    }
 }

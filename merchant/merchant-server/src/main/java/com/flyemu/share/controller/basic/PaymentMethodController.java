@@ -40,7 +40,9 @@ public class PaymentMethodController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PaymentMethod paymentMethod) {
+    public JsonResult update(@RequestBody @Valid PaymentMethod paymentMethod, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        paymentMethod.setMerchantId(merchantId);
+        paymentMethod.setAccountBookId(accountBookId);
         paymentMethodService.save(paymentMethod);
         return JsonResult.successful();
     }

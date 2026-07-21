@@ -368,7 +368,9 @@ public class InventoryItemService extends AbsService {
         if (Boolean.TRUE.equals(exclusion)) {
             List<FinanceVoucher> fetch = jqf.selectFrom(qFinanceVoucher).fetch();
             for (FinanceVoucher financeVoucher : fetch) {
-                voucherOrderIds.add(financeVoucher.getOrderId());
+                if (financeVoucher.getOrderId() != null) {
+                    voucherOrderIds.add(financeVoucher.getOrderId());
+                }
             }
         }
         JPAQuery<Tuple> tupleJPAQuery = jqf.selectFrom(qInventoryItem)
@@ -389,10 +391,24 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventoryItem.warehouseId))
                 .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
                 .where(query.builders())
-                .where(qInventoryItem.id.notIn(voucherOrderIds))
                 .where(qProduct.id.isNotNull())
-                .where(qInventoryItem.operationType.ne(OperationType.期初余额))
-                .groupBy(qProduct.id, qWarehouse.id)
+                .where(qInventoryItem.operationType.ne(OperationType.期初余额));
+        if (!voucherOrderIds.isEmpty()) {
+            tupleJPAQuery.where(qInventoryItem.id.notIn(voucherOrderIds));
+        }
+        tupleJPAQuery
+                .groupBy(
+                        qProduct.id,
+                        qProduct.code,
+                        qProduct.name,
+                        qProduct.productCategoryId,
+                        qProductCategory.name,
+                        qProduct.specification,
+                        qWarehouse.name,
+                        qWarehouse.id,
+                        qProduct.remarks,
+                        qUnit.name
+                )
                 .orderBy(qProduct.id.asc(), qWarehouse.id.asc())
                 .orderBy(qWarehouse.id.desc());
         List<Tuple> fetchPage = tupleJPAQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
@@ -402,7 +418,7 @@ public class InventoryItemService extends AbsService {
         for (Tuple tuple : fetchPage) {
             dto = new InventoryItemReportDto();
             dto.setProductId(tuple.get(qProduct.id.as("productId")));
-            dto.setProductCategoryId(tuple.get(qProduct.id.as("productCategoryId")));
+            dto.setProductCategoryId(tuple.get(qProduct.productCategoryId.as("productCategoryId")));
             dto.setProductCode(tuple.get(qProduct.code.as("productCode")));
             dto.setProductName(tuple.get(qProduct.name.as("productName")));
             dto.setProductCategoryName(tuple.get(qProductCategory.name.as("productCategoryName")));
@@ -441,6 +457,8 @@ public class InventoryItemService extends AbsService {
                 .leftJoin(qUnit).on(qInventoryItem.baseUnitId.eq(qUnit.id))
                 .where(query.builders())
                 .where(qInventoryItem.operationType.ne(OperationType.期初余额))
+                .where(qProduct.id.isNotNull())
+                .where(qWarehouse.id.isNotNull())
                 .groupBy(qInventoryItem.operationType, qProduct.id, qWarehouse.id)
                 .orderBy(qProduct.id.asc())
                 .fetch();
@@ -450,7 +468,9 @@ public class InventoryItemService extends AbsService {
             dto = new InventoryItemReportDto();
             dto.setProductId(tuple.get(qProduct.id.as("productId")));
             dto.setWarehouseId(tuple.get(qWarehouse.id.as("warehouseId")));
-            dto.setOperationType(Objects.requireNonNull(tuple.get(qInventoryItem.operationType.as("operationType"))).name());
+            dto.setOperationType(Optional.ofNullable(tuple.get(qInventoryItem.operationType.as("operationType")))
+                    .map(Enum::name)
+                    .orElse(null));
             dto.setQuantity(tuple.get(qInventoryItem.quantity.sum().as("quantity")));
             dto.setSubtotal(tuple.get(qInventoryItem.subtotal.sum().as("subtotal")));
             dtos.add(dto);
@@ -459,7 +479,7 @@ public class InventoryItemService extends AbsService {
     }
 
     @Transactional
-    public void batchSave(InventoryInitialForm inventoryInitialForm) {
+    public void batch(InventoryInitialForm inventoryInitialForm) {
         List<InventoryItem> inventoryItemList = inventoryInitialForm.getInventoryItemList();
         for (InventoryItem inventoryItem : inventoryItemList) {
             inventoryItem.setAccountBookId(inventoryInitialForm.getAccountBookId());
@@ -506,12 +526,15 @@ public class InventoryItemService extends AbsService {
     }
 
     @Transactional
-    public void batchDelete(InventoryInitialForm inventoryInitialForm) {
-        List<Long> ids = inventoryInitialForm.getIds();
-        if (ids.isEmpty()) {
+    public void batchDelete(List<Long> ids, Long merchantId, Long accountBookId) {
+        if (ids == null || ids.isEmpty()) {
             return;
         }
-        inventoryItemRepository.deleteAllByIdInBatch(ids);
+        jqf.delete(qInventoryItem)
+                .where(qInventoryItem.id.in(ids)
+                        .and(qInventoryItem.merchantId.eq(merchantId))
+                        .and(qInventoryItem.accountBookId.eq(accountBookId)))
+                .execute();
     }
 
     public PageResults<InventoryItemBalanceDTO> balance(Page page, Query query) {
@@ -603,7 +626,7 @@ public class InventoryItemService extends AbsService {
         return lazyDao.findBySql("inventoryItemSummaryInitList", map, InventoryItemReportDto.class);
     }
 
-    public Object reportSummary(Query query) {
+    public Object detailTotal(Query query) {
         Map<String, Object> map = query.toMap();
         Date end = query.getEnd();
         map.put("initDate", Objects.requireNonNullElseGet(end, Date::new));
@@ -672,42 +695,54 @@ public class InventoryItemService extends AbsService {
                 builder.and(qInventoryItem.inventoryDate.goe(start));
             }
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
-                builder.and(qInventoryItem.batchNumber.contains(filter))
-                        .or(qProduct.name.contains(filter));
+                String f = filter.trim();
+                builder.and(qInventoryItem.batchNumber.contains(f).or(qProduct.name.contains(f)));
             }
             if (StrUtil.isNotBlank(summaryFilter) && StrUtil.isNotBlank(summaryFilter.trim())) {
-                builder.and(qProduct.code.contains(summaryFilter))
-                        .or(qProduct.name.contains(summaryFilter));
+                String f = summaryFilter.trim();
+                builder.and(qProduct.code.contains(f).or(qProduct.name.contains(f)));
             }
             if (warehouseId != null) {
                 builder.and(qInventoryItem.warehouseId.eq(warehouseId));
             }
-            if (StrUtil.isNotBlank(warehouseIds)) {
-                builder.and(qInventoryItem.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+            List<Long> warehouseIdList = parseIds(warehouseIds);
+            if (!warehouseIdList.isEmpty()) {
+                builder.and(qInventoryItem.warehouseId.in(warehouseIdList));
             }
             if (supplierId != null) {
                 builder.and(qInventoryItem.supplierId.eq(supplierId));
             }
-            if (StrUtil.isNotBlank(supplierIds)) {
-                builder.and(qInventoryItem.supplierId.in(Arrays.stream(supplierIds.split(",")).map(Long::parseLong).toList()));
+            List<Long> supplierIdList = parseIds(supplierIds);
+            if (!supplierIdList.isEmpty()) {
+                builder.and(qInventoryItem.supplierId.in(supplierIdList));
             }
-            if (StrUtil.isNotBlank(customerIds)) {
-                builder.and(qInventoryItem.customerId.in(Arrays.stream(customerIds.split(",")).map(Long::parseLong).toList()));
+            List<Long> customerIdList = parseIds(customerIds);
+            if (!customerIdList.isEmpty()) {
+                builder.and(qInventoryItem.customerId.in(customerIdList));
             }
-            if (StrUtil.isNotBlank(productCategoryIds)) {
-                builder.and(qProduct.productCategoryId.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).toList()));
+            List<Long> productCategoryIdList = parseIds(productCategoryIds);
+            if (!productCategoryIdList.isEmpty()) {
+                builder.and(qProduct.productCategoryId.in(productCategoryIdList));
             }
             if (productId != null) {
                 builder.and(qInventoryItem.productId.eq(productId));
             }
-            if (StrUtil.isNotBlank(productIds)) {
-                builder.and(qInventoryItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+            List<Long> productIdList = parseIds(productIds);
+            if (!productIdList.isEmpty()) {
+                builder.and(qInventoryItem.productId.in(productIdList));
             }
             if (operationType != null) {
                 builder.and(qInventoryItem.operationType.eq(operationType));
             }
             if (StrUtil.isNotBlank(operationTypes)) {
-                builder.and(qInventoryItem.operationType.in(Arrays.stream(operationTypes.split(",")).map(OperationType::valueOf).toList()));
+                List<OperationType> types = Arrays.stream(operationTypes.split(","))
+                        .map(String::trim)
+                        .filter(StrUtil::isNotBlank)
+                        .map(OperationType::valueOf)
+                        .toList();
+                if (!types.isEmpty()) {
+                    builder.and(qInventoryItem.operationType.in(types));
+                }
             }
             return builder;
         }
@@ -725,42 +760,63 @@ public class InventoryItemService extends AbsService {
                 map.put("endDate", addTimeOfFinalMoment(end));
             }
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
-                map.put("filter", filter);
+                map.put("filter", filter.trim());
             }
             if (StrUtil.isNotBlank(summaryFilter) && StrUtil.isNotBlank(summaryFilter.trim())) {
-                map.put("summaryFilter", summaryFilter);
+                map.put("summaryFilter", summaryFilter.trim());
+            }
+            // 明细用 filter、汇总期初用 summaryFilter，互相兜底避免漏传导致条件失效
+            if (map.containsKey("filter") && !map.containsKey("summaryFilter")) {
+                map.put("summaryFilter", map.get("filter"));
+            }
+            if (map.containsKey("summaryFilter") && !map.containsKey("filter")) {
+                map.put("filter", map.get("summaryFilter"));
             }
             if (warehouseId != null) {
                 map.put("warehouseId", warehouseId);
             }
-            if (StrUtil.isNotBlank(warehouseIds)) {
-                map.put("warehouseIds", warehouseIds);
-            }
+            putIds(map, "warehouseIds", warehouseIds);
             if (supplierId != null) {
                 map.put("supplierId", supplierId);
             }
-            if (StrUtil.isNotBlank(supplierIds)) {
-                map.put("supplierIds", supplierIds);
-            }
-            if (StrUtil.isNotBlank(customerIds)) {
-                map.put("customerIds", customerIds);
-            }
-            if (StrUtil.isNotBlank(productCategoryIds)) {
-                map.put("productCategoryIds", productCategoryIds);
-            }
+            putIds(map, "supplierIds", supplierIds);
+            putIds(map, "customerIds", customerIds);
+            putIds(map, "productCategoryIds", productCategoryIds);
             if (productId != null) {
                 map.put("productId", productId);
             }
-            if (StrUtil.isNotBlank(productIds)) {
-                map.put("productIds", productIds);
-            }
+            putIds(map, "productIds", productIds);
             if (operationType != null) {
                 map.put("operationType", operationType.name());
             }
             if (StrUtil.isNotBlank(operationTypes)) {
-                map.put("operationTypes", operationTypes);
+                String types = String.join(",", Arrays.stream(operationTypes.split(","))
+                        .map(String::trim)
+                        .filter(StrUtil::isNotBlank)
+                        .toList());
+                if (StrUtil.isNotBlank(types)) {
+                    map.put("operationTypes", types);
+                }
             }
             return map;
+        }
+
+        private static List<Long> parseIds(String ids) {
+            if (StrUtil.isBlank(ids)) {
+                return List.of();
+            }
+            return Arrays.stream(ids.split(","))
+                    .map(String::trim)
+                    .filter(StrUtil::isNotBlank)
+                    .map(Long::parseLong)
+                    .toList();
+        }
+
+        private static void putIds(Map<String, Object> map, String key, String ids) {
+            List<Long> list = parseIds(ids);
+            if (!list.isEmpty()) {
+                map.put(key, String.join(",", list.stream().map(String::valueOf).toList()));
+            }
         }
 
         public BooleanBuilder buildersV2() {
@@ -771,30 +827,35 @@ public class InventoryItemService extends AbsService {
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
                 builder.and(qProduct.code.contains(filter).or(qProduct.name.contains(filter)));
             }
-            if (StrUtil.isNotBlank(warehouseIds)) {
-                builder.and(qInventoryItem.warehouseId.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+            List<Long> warehouseIdList = parseIds(warehouseIds);
+            if (!warehouseIdList.isEmpty()) {
+                builder.and(qInventoryItem.warehouseId.in(warehouseIdList));
             }
-            if (StrUtil.isNotBlank(productIds)) {
-                builder.and(qInventoryItem.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+            List<Long> productIdList = parseIds(productIds);
+            if (!productIdList.isEmpty()) {
+                builder.and(qInventoryItem.productId.in(productIdList));
             }
             return builder;
         }
 
         public BooleanBuilder balanceBuilders() {
-            if (StrUtil.isNotBlank(productIds)) {
-                builder.and(qProduct.id.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).toList()));
+            List<Long> productIdList = parseIds(productIds);
+            if (!productIdList.isEmpty()) {
+                builder.and(qProduct.id.in(productIdList));
             }
-            if (StrUtil.isNotBlank(productCategoryIds)) {
-                builder.and(qProduct.productCategoryId.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).toList()));
+            List<Long> productCategoryIdList = parseIds(productCategoryIds);
+            if (!productCategoryIdList.isEmpty()) {
+                builder.and(qProduct.productCategoryId.in(productCategoryIdList));
             }
-            if (StrUtil.isNotBlank(warehouseIds)) {
-                builder.and(qWarehouse.id.in(Arrays.stream(warehouseIds.split(",")).map(Long::parseLong).toList()));
+            List<Long> warehouseIdList = parseIds(warehouseIds);
+            if (!warehouseIdList.isEmpty()) {
+                builder.and(qWarehouse.id.in(warehouseIdList));
             }
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
-                builder.and(qProduct.name.contains(filter))
+                builder.and(qProduct.name.contains(filter)
                         .or(qProduct.code.contains(filter))
                         .or(qProductCategory.name.contains(filter))
-                        .or(qProduct.specification.contains(filter));
+                        .or(qProduct.specification.contains(filter)));
             }
             return builder;
         }

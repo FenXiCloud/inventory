@@ -4,25 +4,25 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker v-model="form.transferDate" :disabled="looked"
+          <DatePicker v-model="form.transferDate" :disabled="isLocked"
                       :option="{ start: accountBook.checkoutDate }"
                       :clearable="false">
           </DatePicker>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">调出仓库：</label>
           <Select class="w-178px" filterable required :datas="warehouseList" keyName="id" titleName="name"
                   v-model="form.fromWarehouseId" placeholder="请选择调出仓库"
-                  :disabled="looked"
+                  :disabled="isLocked"
                   @change="changeFromWarehouseId"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">调入仓库：</label>
           <Select class="w-178px" filterable required :datas="warehouseList" keyName="id" titleName="name"
                   v-model="form.toWarehouseId" placeholder="请选择调入仓库"
-                  :disabled="looked"/>
+                  :disabled="isLocked"/>
         </template>
         <template #tools>
-          <Stamp v-if="approved"/>
+          <Stamp v-if="isAudited"/>
         </template>
       </vxe-toolbar>
-      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border="border" show-overflow keep-source
+      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border show-overflow keep-source
                  :edit-config="editConfig" :row-config="{ height: 40, isCurrent: true, isHover: true }"
                  :tooltip-config="tooltipConfig" show-footer :footer-method="footerMethod" stripe
                  :data="inventoryTransferData"
@@ -43,9 +43,9 @@
         <vxe-column field="productCode" title="产品编码" width="240"></vxe-column>
         <vxe-column field="productName" title="产品名称" min-width="350">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!looked">
+            <div class="h-input-group goodsSelect" v-if="!isLocked">
               <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable :equalWidth="false"
-                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="changeRow(scope, 'product')">
+                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="(e) => changeRow(scope, 'product', e)">
                 <template v-slot:top>
                   <table class="h-table" style="width: 100%">
                     <thead class="h-table-header">
@@ -83,14 +83,12 @@
         </vxe-column>
         <vxe-column title="规格型号" field="productSpecification" align="center" width="100"></vxe-column>
         <vxe-column title="产品类别" field="productCategoryName" align="center" width="100"></vxe-column>
-        <!-- <vxe-column title="品牌" field="productBrand" width="90"></vxe-column> -->
-        <!-- <vxe-column title="产地" field="productOrigin" align="center" width="80" /> -->
         <vxe-column title="单位" field="productUnitName" width="100"/>
         <vxe-column title="总库存" field="warehouseTotal" width="100"/>
         <vxe-column title="仓库库存" field="warehouseQuantity" width="100"/>
         <vxe-column title="数量" field="quantity" width="100">
           <template #default="scope">
-            <vxe-input v-if="!looked"
+            <vxe-input v-if="!isLocked"
                        v-model.number="scope.row.quantity" type="int" min="0" :controls="false">
             </vxe-input>
             <div v-else class="flex">
@@ -100,17 +98,12 @@
             </div>
           </template>
         </vxe-column>
-        <!-- <vxe-column title="备注" field="remarks" :edit-render="{}" width="100">
-          <template #edit="scope">
-            <vxe-input v-model="scope.row.remarks"></vxe-input>
-          </template>
-        </vxe-column> -->
       </vxe-table>
       <div class="mt-10px"></div>
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="looked" placeholder="请输入备注" type="text" maxlength="150"
+          <Input :disabled="isLocked" placeholder="请输入备注" type="text" maxlength="150"
                  style="width: 80%"
                  v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
@@ -120,20 +113,21 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button v-if="!approved && !looked" color="primary" @click="saveOrder('increase')" :loading="loading">
+        <Button v-if="!isAudited && !looked" color="primary" @click="saveOrder('add')" :loading="loading">
           保存并新增
         </Button>
-        <Button v-if="!approved && !looked" @click="saveOrder" :loading="loading"> 保存</Button>
-        <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
-        <!-- 仅当状态为审核时显示 -->
-        <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
+        <Button v-if="!isAudited && !looked" @click="saveOrder('save')" :loading="loading"> 保存</Button>
+        <Button @click="doPrint" :loading="loading"> 打印 </Button>
+        <Button v-if="form.id && !isAudited" @click="approved()" :loading="loading"> 审核</Button>
+        <Button v-if="isAudited" @click="backApproved()" :loading="loading"> 反审核</Button>
       </div>
     </div>
   </div>
 </template>
 <script>
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
+import {openPrint} from '@common/print';
 import manba from "manba";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -152,14 +146,14 @@ export default {
   },
   computed: {
     ...mapState(["user", "accountBook"]),
-    auditOperate() {
-      return ['audits', 'antiAudits'].includes(this.type);
-    },
-    approved() {
-      return ['已审核'].includes(this.form.orderStatus);
+    isAudited() {
+      return this.form.orderStatus === '已审核';
     },
     looked() {
-      return ['look'].includes(this.type);
+      return this.type === 'look';
+    },
+    isLocked() {
+      return this.isAudited || this.looked;
     }
   },
   data() {
@@ -186,7 +180,6 @@ export default {
       inventoryTransferData: [],
       selectRowIndex: null,
       increase: true,
-      // 表格校验规则
       validRules: {
         productName: [
           {required: true, message: '请选择产品名称'},
@@ -198,23 +191,38 @@ export default {
           {required: true, message: '请填写数量'},
         ]
       },
-      // 提示配置
       tooltipConfig: {
         showAll: false,
         enterable: false,
       },
-      // 编辑配置
       editConfig: {trigger: 'click', mode: 'row'}
     };
   },
-  // 待优化使用hook方式调用
   methods: {
-    // 关闭tab
+    doPrint() {
+      const items = (this.inventoryTransferData || []).filter(r => r && !r.isNew && r.productId).map(r => {
+        const p = (this.productList || []).find(x => (x.productId || x.id) === r.productId) || {};
+        return {
+          ...r,
+          productName: r.productName || p.productName || p.name || p.customName || '',
+          quantity: r.quantity ?? r.secondaryQuantity,
+          price: r.unitPrice ?? r.secondaryPrice ?? r.price,
+          amount: r.subtotal ?? r.amount,
+        };
+      });
+      openPrint('调拨单', {
+        header: {
+          ...this.form,
+          partner: ((this.warehouseList.find(w => w.id === this.form.fromWarehouseId) || {}).name || '') + ' -> ' + ((this.warehouseList.find(w => w.id === this.form.toWarehouseId) || {}).name || ''),
+          amount: this.form.finalAmount ?? this.form.totalAmount,
+        },
+        items,
+      });
+    },
+
     ...mapMutations(['closeSelfTab', 'pushTab']),
-    //footer合计
     footerMethod({columns, data}) {
       let totalQuantity = 0;
-      let totalAmount = 0.00;
       columns.forEach(column => {
         if (column.property && ['quantity'].includes(column.property)) {
           data.forEach((row) => {
@@ -236,11 +244,17 @@ export default {
         ["", "", "", "", "", "", "", "", "", totalQuantity],
       ];
     },
-    // 设置行数据
-    changeRow({rowIndex}, type) {
+    changeRow({rowIndex}, type, selected) {
       switch (type) {
         case 'product': {
-          const value = this.inventoryTransferData[rowIndex].productId;
+          const selectedProduct = (selected && typeof selected === 'object') ? selected : null;
+          let value = selectedProduct
+              ? (selectedProduct.id ?? selectedProduct.productId)
+              : this.inventoryTransferData[rowIndex].productId;
+          if (value && typeof value === 'object') {
+            value = value.id ?? value.productId;
+          }
+          this.inventoryTransferData[rowIndex].productId = value;
           if (this.isEmpty(value)) {
             return;
           }
@@ -266,22 +280,27 @@ export default {
             }, 0);
             return;
           }
-          // 根据id获取产品信息更新
-          Product.list({id: value}).then(res => {
-            const {success, data} = res;
-            if (success) {
-              const item = data.results[0];
-              console.info("Product info:", item);
-              this.inventoryTransferData[rowIndex].productName = item.name;
-              this.inventoryTransferData[rowIndex].productId = item.id;
-              this.inventoryTransferData[rowIndex].productCode = item.code;
-              this.inventoryTransferData[rowIndex].productSpecification = item.specification;
-              this.inventoryTransferData[rowIndex].productCategoryName = item.productCategoryName;
-              this.inventoryTransferData[rowIndex].productUnitName = item.unitName;
-              this.inventoryTransferData[rowIndex].productUnitId = item.unitId;
-              this.$forceUpdate();
-            }
-          });
+          const applyProduct = (item) => {
+            if (!item) return;
+            this.inventoryTransferData[rowIndex].productName = item.name;
+            this.inventoryTransferData[rowIndex].productId = item.id;
+            this.inventoryTransferData[rowIndex].productCode = item.code;
+            this.inventoryTransferData[rowIndex].productSpecification = item.specification;
+            this.inventoryTransferData[rowIndex].productCategoryName = item.productCategoryName;
+            this.inventoryTransferData[rowIndex].productUnitName = item.unitName;
+            this.inventoryTransferData[rowIndex].productUnitId = item.unitId;
+            this.$forceUpdate();
+          };
+          if (selectedProduct && selectedProduct.name) {
+            applyProduct(selectedProduct);
+          } else {
+            Product.list({id: value}).then(res => {
+              const {success, data} = res;
+              if (success) {
+                applyProduct(data?.results?.[0]);
+              }
+            });
+          }
           break;
         }
         default:
@@ -292,53 +311,28 @@ export default {
     isEmpty(value) {
       return (value !== 0 && !value) || value === '';
     },
-    //保存新增、保存
     saveOrder(type) {
       const filterInventoryTransferData = this.inventoryTransferData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-      // 校验
       this.validatorsForm(filterInventoryTransferData);
-      // 操作对象
       const params = this.getSaveOrderParams(filterInventoryTransferData, type);
       InventoryTransfer.save(params)
-          .then(({success, data}) => {
-            console.info("success", success);
+          .then(({success}) => {
             if (success) {
               MessagePlugin.success("保存成功~");
-              setTimeout(() => {
-                if (type === "increase") {
-                  this.clearForm();
-                  // 刷新列表为编辑
-                  this.closeWindow();
-                  this.pushTab({
-                    key: 'InventoryTransferForm',
-                    title: '编辑调拨单',
-                    params: {type: "edit", inventoryTransferId: data.id}
-                  });
-                } else {
-                  // 刷新列表为编辑
-                  this.closeWindow();
-                  this.pushTab({
-                    key: 'InventoryTransferForm',
-                    title: '编辑调拨单',
-                    params: {type: "edit", inventoryTransferId: data.id}
-                  });
-                  this.$emit("update:inventoryTransferId", data.id);
-                  this.$emit("update:type", "edit");
-                  this.loadEditForm(data.id);
-                }
-              }, 300);
+              this.clearForm();
+              if (type === 'save') {
+                this.closeWindow();
+              }
             }
           })
           .finally(() => LoadingPlugin(false));
     },
-    //校验提交表单
     validatorsForm(filterInventoryTransferData) {
       if (filterInventoryTransferData.length === 0) {
         throw new Error("请填写操作数据~")
       }
       LoadingPlugin(true);
       let productData = filterInventoryTransferData.filter((c) => this.isEmpty(c.productId));
-      console.info("productData:", productData)
       if (productData.length > 0) {
         LoadingPlugin(false);
         throw new Error("请选择产品~")
@@ -360,7 +354,6 @@ export default {
         LoadingPlugin(false);
         throw new Error("请填写数量~")
       }
-      // 校验调出仓库库存是否足够
       let hasQuantity = true;
       filterInventoryTransferData.forEach(item => {
         const {warehouseQuantity, quantity} = item;
@@ -373,8 +366,7 @@ export default {
         throw new Error("调出数量不能大于当前仓库库存~")
       }
     },
-    //获取保存新增、保存方法提交数据
-    getSaveOrderParams(filterInventoryTransferData, type) {
+    getSaveOrderParams(filterInventoryTransferData) {
       const inventoryTransferItems = [];
       const inventoryTransfer = {
         fromWarehouseId: this.form.fromWarehouseId,
@@ -396,23 +388,30 @@ export default {
         inventoryTransferItems: inventoryTransferItems
       };
     },
-    //清除Form
     clearForm() {
       this.form = {
         id: null,
-        orderDate: manba().format("YYYY-MM-dd"),
+        transferDate: manba().format("YYYY-MM-dd"),
         remarks: null,
         toWarehouseId: null,
         fromWarehouseId: null,
         totalAmount: 0.00,
         totalQuantity: 0,
-        quantityTips: ''
+        adminName: this.user?.admin?.name || '',
+        orderStatus: '已保存'
       };
       this.inventoryTransferData = [];
       this.newInventoryTransferData();
+      this.applyWarehouseDefaults();
+    },
+    applyWarehouseDefaults() {
+      const list = this.warehouseList || [];
+      const defaultWh = list.find(w => w.systemDefault || w.isDefault);
+      this.form.fromWarehouseId = defaultWh?.id ?? list[0]?.id ?? null;
+      const toWh = list.find(w => w.id !== this.form.fromWarehouseId);
+      this.form.toWarehouseId = toWh?.id ?? null;
     },
 
-    //添加行或减少行
     adjustRows(type, index) {
       if (type === "insert") {
         this.inventoryTransferData.splice(index + 1, 0, {isNew: true});
@@ -420,25 +419,19 @@ export default {
         this.inventoryTransferData.splice(index, 1);
       }
     },
-    //新增默认初始化行数
     newInventoryTransferData() {
       for (let index = 0; index < 5; index++) {
         this.inventoryTransferData.push({productId: null, quantity: null});
       }
     },
-    //行是否选中
-    rowIsSelect(rowIndex) {
-      return !this.looked;
+    rowIsSelect() {
+      return !this.isLocked;
     },
-    //行选中事件
     currentChangeEvent({rowIndex}) {
       this.selectRowIndex = rowIndex;
     },
-    //表格行点击事件
-    tableCellClick({rowIndex}) {
-      console.info(rowIndex);
+    tableCellClick() {
     },
-    //数量焦点获取库存数量到titile-prefix中
     quantityFocus({rowIndex}) {
       const inventoryTransferItem = this.inventoryTransferData[rowIndex];
       const {productId} = inventoryTransferItem;
@@ -446,7 +439,6 @@ export default {
       if (this.isEmpty(productId) || this.isEmpty(warehouseId)) {
         return;
       }
-      // 获取产品库存进行提示
       Inventory.list({productId}).then(res => {
         const {data} = res;
         if (data && data.results) {
@@ -468,7 +460,6 @@ export default {
         }
       });
     },
-    // 更改调出仓库
     changeFromWarehouseId() {
       const warehouseId = this.form.fromWarehouseId;
       if (this.isEmpty(warehouseId)) {
@@ -480,7 +471,6 @@ export default {
         if (this.isEmpty(productId)) {
           return;
         }
-        // 获取产品库存进行提示
         const {data} = await Inventory.list({productId});
         if (data && data.results) {
           let totalQuantity = 0;
@@ -501,61 +491,54 @@ export default {
         }
       });
     },
-    //失去焦点
-    quantityBlur(type, {rowIndex}) {
-      console.info("quantityBlur:", type, rowIndex);
+    quantityBlur() {
     },
-    //加载编辑表单
     loadEditForm(id) {
       this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
       this.inventoryTransferData = [];
       InventoryTransfer.load(this.inventoryTransferId || id).then(
           ({data}) => {
-            if (data && data.length > 0) {
-              this.form.id = data[0].id;
-              this.form.fromWarehouseId = data[0].fromWarehouseId;
-              this.form.toWarehouseId = data[0].toWarehouseId;
-              this.form.remarks = data[0].remarks;
-              this.form.transferDate = data[0].transferDate;
-              this.form.adminName = data[0].adminName;
-              this.form.orderStatus = data[0].orderStatus;
-              let totalQuantity = 0;
-              data.forEach(item => {
-                totalQuantity += parseInt(item.quantity);
-                this.inventoryTransferData.push({
-                  productUrl: '',
-                  productCode: item.productCode,
-                  productName: item.productName,
-                  productId: item.productId,
-                  productSpecification: item.productSpecification,
-                  productCategoryName: item.productCategoryName,
-                  productUnitId: item.productUnitId,
-                  productUnitName: item.productUnitName,
-                  quantity: item.quantity,
-                  warehouseQuantity: item.warehouseQuantity,
-                  warehouseTotal: item.warehouseTotal,
-                });
+            const first = data?.[0];
+            if (!first) return;
+            this.form.id = first.id;
+            this.form.fromWarehouseId = first.fromWarehouseId;
+            this.form.toWarehouseId = first.toWarehouseId;
+            this.form.remarks = first.remarks;
+            this.form.transferDate = first.transferDate;
+            this.form.adminName = first.adminName;
+            this.form.orderStatus = first.orderStatus;
+            let totalQuantity = 0;
+            data.forEach(item => {
+              totalQuantity += parseInt(item.quantity);
+              this.inventoryTransferData.push({
+                productUrl: '',
+                productCode: item.productCode,
+                productName: item.productName,
+                productId: item.productId,
+                productSpecification: item.productSpecification,
+                productCategoryName: item.productCategoryName,
+                productUnitId: item.productUnitId,
+                productUnitName: item.productUnitName,
+                quantity: item.quantity,
+                warehouseQuantity: item.warehouseQuantity,
+                warehouseTotal: item.warehouseTotal,
               });
-              this.form.totalQuantity = totalQuantity;
-            }
+            });
+            this.form.totalQuantity = totalQuantity;
           }
       );
     },
-    //加载字典
     loadDict(callback) {
       Promise.all([Product.select(), Warehouse.select()])
           .then((results) => {
-            this.productList = results[0].data || [];
-            // 调整productList的name值
+            this.productList = results[0]?.data || [];
             this.productList.forEach(item => {
               item.customName = `${item.code}--${item.name}`;
             });
-            this.warehouseList = results[1].data || [];
-            if (this.warehouseList != null) {
-              this.form.fromWarehouseId = this.warehouseList.find(
-                  (val) => val.systemDefault
-              )?.id;
+            this.warehouseList = results[1]?.data || [];
+            if (!this.inventoryTransferId) {
+              this.applyWarehouseDefaults();
             }
             if (callback) {
               callback();
@@ -563,7 +546,6 @@ export default {
           })
           .finally(() => LoadingPlugin(false));
     },
-    //初始化表单
     initIncreaseForm() {
       this.increase = true;
       this.newInventoryTransferData();
@@ -571,39 +553,29 @@ export default {
       this.form.id = null;
       this.editConfig = {trigger: 'click', mode: 'row'};
     },
-    //初始化审核表单
-    initAuditsForm() {
-      //表格不可编辑
-      this.editConfig = {};
-    },
-    //审核表单
-    async auditForm(operateType) {
-      const type = this.type;
-      let {id} = this.form;
-      if (!id) {
-        const filterInventoryTransferData = this.inventoryTransferData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-        // 校验
-        this.validatorsForm(filterInventoryTransferData);
-        // 操作对象
-        const params = this.getSaveOrderParams(filterInventoryTransferData, type);
-        const res = await InventoryTransfer.save(params);
-        if (!res.success) {
-          return;
+    approved() {
+      DialogPlugin.confirm({
+        title: "审核提示",
+        content: `确认审核该订单?`,
+        onConfirm: () => {
+          return InventoryTransfer.approved('已审核', [this.form.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.closeWindow();
+          });
         }
-        id = res.data.id;
-      }
-      const params = {id, type: operateType};
-      LoadingPlugin(true);
-      InventoryTransfer.approve(params)
-          .then((success) => {
-            if (success) {
-              MessagePlugin.success("审核成功~");
-              setTimeout(() => {
-                this.loadEditForm(id);
-              }, 300);
-            }
-          })
-          .finally(() => LoadingPlugin(false));
+      });
+    },
+    backApproved() {
+      DialogPlugin.confirm({
+        title: "反审核提示",
+        content: `确认反审核该订单?`,
+        onConfirm: () => {
+          return InventoryTransfer.approved('已保存', [this.form.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.closeWindow();
+          });
+        }
+      });
     },
     closeWindow() {
       this.closeSelfTab(this.index);
@@ -614,30 +586,12 @@ export default {
       });
     },
   },
-  beforeDestroy() {
-    DialogPlugin.confirm({
-      title: "系统提示",
-      content: `确认?`,
-      onConfirm: () => {
-      },
-    });
-  },
   created() {
     LoadingPlugin(true);
     this.loadDict(() => {
-      //订单详情/编辑订单
       if (this.inventoryTransferId) {
         this.loadEditForm();
-        const type = this.type;
-        switch (type) {
-          case 'audits':
-          case 'antiAudits':
-            this.initAuditsForm();
-            break;
-          default:
-            break;
-        }
-        return
+        return;
       }
       this.initIncreaseForm();
     });

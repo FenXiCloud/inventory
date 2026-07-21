@@ -7,7 +7,6 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.SalesOrderDTO;
 import com.flyemu.share.dto.SalesOrderItemDTO;
-import com.flyemu.share.dto.SalesOutboundDTO;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.QInventory;
@@ -16,8 +15,10 @@ import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.repository.*;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.setting.CodeSeedService;
@@ -30,12 +31,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -54,6 +54,7 @@ import static com.flyemu.share.entity.sales.QSalesOutboundItem.salesOutboundItem
 @RequiredArgsConstructor
 public class SalesOrderService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
     private final static QInventory qInventory = QInventory.inventory;
     private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
@@ -161,13 +162,20 @@ public class SalesOrderService extends AbsService {
     }
 
     @Transactional
-    public SalesOrder save(SalesOrderForm salesOrderForm) {
+    public SalesOrder save(SalesOrderForm salesOrderForm, Long merchantId) {
         SalesOrder salesOrder = salesOrderForm.getSalesOrder();
+        checkoutService.assertEditable(salesOrder.getMerchantId(), salesOrder.getAccountBookId(), salesOrder.getOrderDate());
+        salesOrder.setMerchantId(merchantId);
         Long id = salesOrder.getId();
         List<SalesOrderItem> salesOrderItemList = salesOrderForm.getSalesOrderItemList();
         if (id != null) {
             //查询
-            SalesOrder original = salesOrderRepository.getById(id);
+            SalesOrder original = bqf.selectFrom(qSalesOrder)
+                    .where(qSalesOrder.id.eq(id).and(qSalesOrder.merchantId.eq(merchantId)))
+                    .fetchFirst();
+            if (original == null) {
+                throw new ServiceException("单据不存在");
+            }
             //已审核单据不能修改
             OrderStatus orderStatus = original.getOrderStatus();
             if (orderStatus.equals(OrderStatus.已审核)) {
@@ -185,7 +193,7 @@ public class SalesOrderService extends AbsService {
                     savePrice(item, update);
                     item.setSalesOrderId(update.getId());
                     item.setAccountBookId(salesOrder.getAccountBookId());
-                    item.setMerchantId(salesOrder.getMerchantId());
+                    item.setMerchantId(merchantId);
                 });
                 //批量修改销售订单商品
                 salesOrderItemRepository.saveAll(salesOrderItemList);
@@ -197,7 +205,7 @@ public class SalesOrderService extends AbsService {
             //初始化订单状态;
             salesOrder.setStatus(0);
             //销售订单编号
-            salesOrder.setOrderNo(codeSeedService.generateCode(salesOrder.getMerchantId(), "销售订单"));
+            salesOrder.setOrderNo(codeSeedService.generateCode(merchantId, salesOrder.getAccountBookId(), "销售订单"));
             //保存销售订单
             SalesOrder save = salesOrderRepository.save(salesOrder);
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
@@ -206,7 +214,7 @@ public class SalesOrderService extends AbsService {
                     savePrice(item, save);
                     item.setSalesOrderId(save.getId());
                     item.setAccountBookId(salesOrder.getAccountBookId());
-                    item.setMerchantId(salesOrder.getMerchantId());
+                    item.setMerchantId(merchantId);
                     item.setCreatedBy(salesOrder.getCreatedBy());
                     item.setCreatedAt(salesOrder.getCreatedAt());
                     //初始化出库数量
@@ -267,17 +275,21 @@ public class SalesOrderService extends AbsService {
         return bqf.selectFrom(qSalesOrder).where(qSalesOrder.merchantId.eq(merchantId).and(qSalesOrder.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public SalesOrderDTO getById(SalesOrder query) {
-        //查询销售订单
-        SalesOrder salesOrder = salesOrderRepository.getById(query.getId());
-        //订单数据转换
+    public SalesOrderDTO load(Long merchantId, Long orderId) {
+        SalesOrder salesOrder = bqf.selectFrom(qSalesOrder)
+                .where(qSalesOrder.merchantId.eq(merchantId).and(qSalesOrder.id.eq(orderId)))
+                .fetchFirst();
+        if (salesOrder == null) {
+            throw new ServiceException("单据不存在");
+        }
         SalesOrderDTO dto = BeanUtil.toBean(salesOrder, SalesOrderDTO.class);
-        //查询销售订单商品
         List<Tuple> fetch = jqf.selectFrom(qSalesOrderItem)
                 .select(qSalesOrderItem, qProduct.code, qProduct.name, qUnit.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qSalesOrderItem.productId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qSalesOrderItem.baseUnitId))
-                .where(qSalesOrderItem.salesOrderId.eq(query.getId())).orderBy(qSalesOrderItem.id.asc()).fetch();
+                .where(qSalesOrderItem.salesOrderId.eq(orderId)
+                        .and(qSalesOrderItem.merchantId.eq(merchantId)))
+                .orderBy(qSalesOrderItem.id.asc()).fetch();
         List<SalesOrderItemDTO> salesOrderItemDTOS = new ArrayList<>();
         fetch.forEach(tuple -> {
             SalesOrderItemDTO salesOrderItemDTO = BeanUtil.toBean(tuple.get(qSalesOrderItem), SalesOrderItemDTO.class);
@@ -291,34 +303,23 @@ public class SalesOrderService extends AbsService {
     }
 
     @Transactional
-    public void batchAudit(SalesOrderForm salesOrderForm) {
-        List<Long> orderIds = salesOrderForm.getOrderIds();
-        if (orderIds == null || orderIds.isEmpty()) {
-            throw new IllegalArgumentException("Order IDs cannot be null or empty");
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new ServiceException("未选择单据");
         }
-
-        List<SalesOrder> salesOrders = salesOrderRepository.findAllById(orderIds);
-
-        if (salesOrders.size() != orderIds.size()) {
-            throw new IllegalArgumentException("Some orders could not be found");
+        List<SalesOrder> salesOrders = bqf.selectFrom(qSalesOrder)
+                .where(qSalesOrder.merchantId.eq(merchantId).and(qSalesOrder.id.in(ids)))
+                .fetch();
+        if (salesOrders.isEmpty()) {
+            throw new ServiceException("未找到数据~");
         }
-        SalesOrder salesOrder = salesOrderForm.getSalesOrder();
         salesOrders.forEach(order -> {
-            if (order.getOrderStatus().equals(OrderStatus.已审核)) {
-                throw new InvalidContextException("批量审核时发现已审核单据,请选择正确的数据");
-            }
-            OrderStatus orderStatus = salesOrderForm.getOrderStatus();
-            if (orderStatus.equals(OrderStatus.已保存)) {
-                //已关联销售出库单不能审核
-                Long salesOrderId = order.getId();
-                if (salesOrderId != null) {
-                    //根据销售单id查询销售出库单商品
-                    List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
-                            .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
-                            .fetch();
-                    if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
-                        throw new InvalidContextException("已关联销售出库单不能反审核");
-                    }
+            if (OrderStatus.已保存.equals(state)) {
+                List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
+                        .where(qSalesOutboundItem.salesOrderId.eq(order.getId()))
+                        .fetch();
+                if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
+                    throw new InvalidContextException("已关联销售出库单不能反审核");
                 }
             }
             List<SalesOrderItem> salesOrderItems = bqf.selectFrom(qSalesOrderItem)
@@ -338,109 +339,43 @@ public class SalesOrderService extends AbsService {
                 Product product = bqf.selectFrom(qProduct)
                         .where(qProduct.id.eq(productId))
                         .fetchOne();
-                if (product==null){
+                if (product == null) {
                     throw new InvalidContextException("产品不存在");
                 }
                 Warehouse warehouse = bqf.selectFrom(qWarehouse)
                         .where(qWarehouse.id.eq(warehouseId))
                         .fetchOne();
-                if (warehouse==null){
+                if (warehouse == null) {
                     throw new InvalidContextException("仓库不存在");
                 }
                 if (inventory == null) {
-                    String productName = product.getName();
-                    String warehouseName = warehouse.getName();
-                    throw new InvalidContextException("仓库中没有该产品的库存: 产品=" + productName + ", 仓库=" + warehouseName);
+                    throw new InvalidContextException("仓库中没有该产品的库存: 产品=" + product.getName() + ", 仓库=" + warehouse.getName());
                 }
                 if (quantity > inventory.getCurrentQuantity()) {
-                    String productName = product.getName();
-                    String warehouseName = warehouse.getName();
-                    throw new InvalidContextException("库存不足: 产品=" + productName + ", 仓库=" + warehouseName +
+                    throw new InvalidContextException("库存不足: 产品=" + product.getName() + ", 仓库=" + warehouse.getName() +
                             ", 需要数量=" + quantity + ", 当前库存=" + inventory.getCurrentQuantity());
                 }
             }
 
-            order.setOrderStatus(orderStatus);
+            order.setOrderStatus(state);
             order.setApprovedAt(LocalDateTime.now());
-            order.setApprovedBy(salesOrder.getApprovedBy());
+            order.setApprovedBy(adminId);
         });
 
         salesOrderRepository.saveAll(salesOrders);
     }
 
-    @Transactional
-    public void audit(SalesOrderForm salesOrderForm) {
-        SalesOrder salesOrder = salesOrderForm.getSalesOrder();
-        Long id = salesOrder.getId();
-        SalesOrder original = salesOrderRepository.getById(id);
-        if (original.getId() == null) {
-            throw new IllegalArgumentException("单据不存在");
-        }
 
-        // 反审核
-        OrderStatus orderStatus = salesOrder.getOrderStatus();
-        if (orderStatus.equals(OrderStatus.已保存)) {
-            // 已关联销售出库单不能反审核
-            Long salesOrderId = original.getId();
-            List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
-                    .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
-                    .fetch();
-            if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
-                throw new InvalidContextException("已关联销售出库单不能反审核");
-            }
-        }
-
-        List<SalesOrderItem> salesOrderItems = bqf.selectFrom(qSalesOrderItem)
-                .where(qSalesOrderItem.salesOrderId.eq(original.getId()))
-                .fetch();
-
-        for (SalesOrderItem item : salesOrderItems) {
-            Long productId = item.getProductId();
-            Long warehouseId = item.getWarehouseId();
-            Double quantity = item.getQuantity();
-
-            Inventory inventory = bqf.selectFrom(qInventory)
-                    .where(qInventory.productId.eq(productId)
-                            .and(qInventory.warehouseId.eq(warehouseId))
-                            .and(qInventory.accountBookId.eq(original.getAccountBookId())))
-                    .fetchOne();
-
-            Product product = bqf.selectFrom(qProduct)
-                    .where(qProduct.id.eq(productId))
-                    .fetchOne();
-            if (product == null) {
-                throw new InvalidContextException("产品不存在");
-            }
-
-            Warehouse warehouse = bqf.selectFrom(qWarehouse)
-                    .where(qWarehouse.id.eq(warehouseId))
-                    .fetchOne();
-            if (warehouse == null) {
-                throw new InvalidContextException("仓库不存在");
-            }
-
-            if (inventory == null) {
-                throw new InvalidContextException("仓库中没有该产品的库存: 产品=" + product.getName() + ", 仓库=" + warehouse.getName());
-            }
-
-            if (quantity > inventory.getCurrentQuantity()) {
-                throw new InvalidContextException("库存不足: 产品=" + product.getName() + ", 仓库=" + warehouse.getName() +
-                        ", 需要数量=" + quantity + ", 当前库存=" + inventory.getCurrentQuantity());
-            }
-        }
-
-        original.setApprovedAt(LocalDateTime.now());
-        original.setApprovedBy(salesOrder.getApprovedBy());
-        original.setOrderStatus(orderStatus);
-        salesOrderRepository.save(original);
+    public BigDecimal queryTotal(Query query) {
+        return bqf.selectFrom(qSalesOrder)
+                .select(qSalesOrder.finalAmount.sum())
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
+                .where(query.builder).fetchFirst();
     }
-
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
-
-        private String start;
-        private String end;
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -460,21 +395,21 @@ public class SalesOrderService extends AbsService {
             }
         }
 
-        public void setState(String state) {
-            if (StringUtils.isNotBlank(state)) {
-                builder.and(qSalesOrder.orderStatus.eq(OrderStatus.valueOf(state)));
+        public void setState(OrderStatus state) {
+            if (state != null) {
+                builder.and(qSalesOrder.orderStatus.eq(state));
             }
         }
 
-        public void setStart(String start) {
-            if (StringUtils.isNotBlank(start)) {
-                builder.and(qSalesOrder.orderDate.goe(LocalDate.parse(start)));
+        public void setStart(LocalDate start) {
+            if (start != null) {
+                builder.and(qSalesOrder.orderDate.goe(start));
             }
         }
 
-        public void setEnd(String end) {
-            if (StringUtils.isNotBlank(end)) {
-                builder.and(qSalesOrder.orderDate.loe(LocalDate.parse(end)));
+        public void setEnd(LocalDate end) {
+            if (end != null) {
+                builder.and(qSalesOrder.orderDate.loe(end));
             }
         }
 

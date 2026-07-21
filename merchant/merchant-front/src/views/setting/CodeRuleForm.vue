@@ -52,7 +52,7 @@ export default {
   },
   data() {
     return {
-      documentTypes: ['产品', '仓库', '客户', '供货商'],
+      documentTypes: ['商品', '仓库', '客户', '供货商'],
       documentTypeDisabled: true,
       loading: false,
       merchantList: [],
@@ -89,8 +89,9 @@ export default {
           {key: '付款单', title: '付款单', type: 1},
           {key: '核销单', title: '核销单', type: 1},
           {key: '其他收款单', title: '其他收款单', type: 1},
+          {key: '其他付款单', title: '其他付款单', type: 1},
           {key: '转帐单', title: '转帐单', type: 1},
-        {key: '产品', title: '产品', type: 2},
+          {key: '商品', title: '商品', type: 2},
           {key: '仓库', title: '仓库', type: 2},
           {key: '客户', title: '客户', type: 2},
           {key: '供货商', title: '供货商', type: 2}

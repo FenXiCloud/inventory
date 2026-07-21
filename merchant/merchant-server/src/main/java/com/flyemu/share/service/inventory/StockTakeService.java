@@ -12,11 +12,12 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
 import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.QAdmin;
-import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.StockTakeForm;
 import com.flyemu.share.repository.StockTakeRepository;
 import com.flyemu.share.repository.StockTakeWarehouseRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.ProductCategoryService;
 import com.flyemu.share.service.basic.ProductService;
@@ -48,6 +49,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class StockTakeService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QStockTake qStockTake = QStockTake.stockTake;
 
     private final StockTakeRepository stockTakeRepository;
@@ -137,10 +139,13 @@ public class StockTakeService extends AbsService {
     }
 
     @Transactional
-    public StockTake save(StockTakeForm stockTakeForm) {
+    public StockTake save(StockTakeForm stockTakeForm, Long merchantId) {
         StockTake result;
         SnowflakeGenerator snowflakeGenerator = new SnowflakeGenerator();
         StockTake stockTake = stockTakeForm.getStockTake();
+        java.time.LocalDate __checkoutOrderDate = stockTake.getCheckDate() == null ? null : new java.sql.Date(stockTake.getCheckDate().getTime()).toLocalDate();
+        checkoutService.assertEditable(stockTake.getMerchantId(), stockTake.getAccountBookId(), __checkoutOrderDate);
+        stockTake.setMerchantId(merchantId);
         if (stockTake.getId() != null) {
             //更新
             StockTake original = stockTakeRepository.getById(stockTake.getId());
@@ -149,6 +154,7 @@ public class StockTakeService extends AbsService {
         } else {
             stockTake.setCreatedAt(LocalDateTime.now());
             stockTake.setOrderNo(snowflakeGenerator.next().toString());
+            stockTake.setOrderStatus(OrderStatus.已保存);
             result = stockTakeRepository.save(stockTake);
         }
         // 处理仓库关联
@@ -188,6 +194,9 @@ public class StockTakeService extends AbsService {
 
     @Transactional
     public void delete(Long stockTakeId, Long merchantId, Long accountBookId) {
+        if (Boolean.TRUE.equals(this.existOrder(stockTakeId))) {
+            throw new ServiceException("已生成对应盘点单据～");
+        }
         jqf.delete(qStockTakeItem).where(qStockTakeItem.StockTakeId.eq(stockTakeId).and(qStockTakeItem.merchantId.eq(merchantId)).and(qStockTakeItem.accountBookId.eq(accountBookId)))
                 .execute();
         jqf.delete(qStockTake)
@@ -199,7 +208,7 @@ public class StockTakeService extends AbsService {
         return bqf.selectFrom(qStockTake).where(qStockTake.merchantId.eq(merchantId).and(qStockTake.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public List<Map<String, Object>> load(Long id) {
+    public List<Map<String, Object>> load(Long merchantId, Long id) {
         StringTemplate dateExpressions = Expressions.
                 stringTemplate("DATE_FORMAT({0},'%Y-%m-%d')", qStockTake.checkDate);
         List<Tuple> fetch = jqf.selectFrom(qStockTake)
@@ -232,7 +241,7 @@ public class StockTakeService extends AbsService {
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qStockTakeItem.warehouseId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
                 .leftJoin(qAdmin).on(qAdmin.id.eq(qStockTake.createdBy))
-                .where(qStockTake.id.eq(id))
+                .where(qStockTake.id.eq(id).and(qStockTake.merchantId.eq(merchantId)))
                 .fetch();
         List<Map<String, Object>> result = new ArrayList<>();
         Map<String, Object> item;
@@ -272,26 +281,41 @@ public class StockTakeService extends AbsService {
     }
 
     @Transactional
-    public void approve(Long id, ApproveType type, Long adminId) {
-        StockTake stockTake = jqf.selectFrom(qStockTake).where(qStockTake.id.eq(id)).fetchOne();
-        switch (type) {
-            case AUDITS -> {
-                stockTake.setOrderStatus(OrderStatus.已审核);
-                stockTake.setApprovedBy(adminId);
-                stockTake.setApprovedAt(LocalDateTime.now());
-                // 调整对应库存
-                stockTakeRepository.save(stockTake);
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new ServiceException("未选择单据");
+        }
+        if (OrderStatus.已保存.equals(state)) {
+            if (Boolean.TRUE.equals(this.existOrders(ids))) {
+                throw new ServiceException("审核数据中有已生成盘点单据的数据～");
             }
-            case ANTI_AUDIT -> {
-                stockTake.setOrderStatus(OrderStatus.未审核);
-                stockTake.setApprovedBy(adminId);
-                stockTake.setApprovedAt(LocalDateTime.now());
-                // 调整对应库存
-                stockTakeRepository.save(stockTake);
-            }
-            default -> {
+        } else if (!OrderStatus.已审核.equals(state)) {
+            throw new ServiceException("不支持的审核状态");
+        }
+        for (Long id : ids) {
+            this.approve(id, state, adminId, merchantId);
+        }
+    }
 
-            }
+    private void approve(Long id, OrderStatus state, Long adminId, Long merchantId) {
+        StockTake stockTake = jqf.selectFrom(qStockTake)
+                .where(qStockTake.id.eq(id).and(qStockTake.merchantId.eq(merchantId)))
+                .fetchOne();
+        if (stockTake == null) {
+            throw new ServiceException("审核数据不存在～");
+        }
+        if (OrderStatus.已审核.equals(state)) {
+            stockTake.setOrderStatus(OrderStatus.已审核);
+            stockTake.setApprovedBy(adminId);
+            stockTake.setApprovedAt(LocalDateTime.now());
+            // 调整对应库存
+            stockTakeRepository.save(stockTake);
+        } else if (OrderStatus.已保存.equals(state)) {
+            stockTake.setOrderStatus(OrderStatus.已保存);
+            stockTake.setApprovedBy(adminId);
+            stockTake.setApprovedAt(LocalDateTime.now());
+            // 调整对应库存
+            stockTakeRepository.save(stockTake);
         }
     }
 
@@ -405,8 +429,7 @@ public class StockTakeService extends AbsService {
                 (otherInbounds != null && !otherInbounds.isEmpty());
     }
 
-    public Boolean existOrders(String ids) {
-        List<Long> idList = Arrays.stream(ids.split(",")).map(Long::parseLong).toList();
+    public Boolean existOrders(List<Long> idList) {
         Boolean result = false;
         for (Long id : idList) {
             result = this.existOrder(id);
@@ -415,6 +438,11 @@ public class StockTakeService extends AbsService {
             }
         }
         return result;
+    }
+
+    public Boolean existOrders(String ids) {
+        List<Long> idList = Arrays.stream(ids.split(",")).map(Long::parseLong).toList();
+        return this.existOrders(idList);
     }
 
     @Data

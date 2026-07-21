@@ -14,9 +14,6 @@ import com.flyemu.share.dto.SupplierDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.SupplierFlow;
 import com.flyemu.share.entity.setting.CodeRule;
-import com.flyemu.share.enums.PolicySource;
-import com.flyemu.share.enums.PriceSource;
-import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.SupplierFlowRepository;
 import com.flyemu.share.repository.SupplierRepository;
@@ -39,9 +36,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static com.flyemu.share.enums.PolicySource.最近采购单价;
-import static com.flyemu.share.enums.PolicyType.采购价格取数;
-
 /**
  * @功能描述: 供货商管理
  * @创建时间: 2023年08月08日
@@ -51,6 +45,7 @@ import static com.flyemu.share.enums.PolicyType.采购价格取数;
  */
 @Service
 @Slf4j
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class SupplierService extends AbsService {
 
@@ -64,12 +59,10 @@ public class SupplierService extends AbsService {
 
     private final static QSupplierCategory qSupplierCategory = QSupplierCategory.supplierCategory;
 
-    private final static QPriceRecord qPriceRecord = QPriceRecord.priceRecord;
-    private final static QPricingPolicy qPricingPolicy = QPricingPolicy.pricingPolicy;
-
     private final SupplierRepository supplierRepository;
     private final CodeRuleService codeRuleService;
     private final SupplierFlowService supplierFlowService;
+    private final PriceResolveService priceResolveService;
 
     public PageResults query(Page page, Query query) {
         PagedList<Tuple> pagedList = bqf.selectFrom(qSupplier).select(qSupplier, qSupplierCategory.name).leftJoin(qSupplierCategory).on(qSupplier.supplierCategoryId.eq(qSupplierCategory.id)).where(query.builder).orderBy(qSupplier.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -179,15 +172,7 @@ public class SupplierService extends AbsService {
     }
 
     public List<SelectProductDto> selectProducts(Long supplierId, Long merchantId, Long accountBookId) {
-        Boolean isPolicy = false;
-        PolicySource policySource = bqf.selectFrom(qPricingPolicy)
-                .select(qPricingPolicy.policySource)
-                .where(qPricingPolicy.policyType.eq(采购价格取数))
-                .orderBy(qPricingPolicy.priority.asc()).fetchFirst();
-        if (policySource != null && (最近采购单价).equals(policySource)) {
-            isPolicy = true;
-        }
-        Boolean finalIsPolicy = isPolicy;
+        priceResolveService.ensureDefaultPolicies(merchantId, accountBookId);
         List<SelectProductDto> dtoList = bqf.selectFrom(qProduct)
                 .select(qProduct.name, qProduct.code, qProduct.specification, qProduct.purchasePrice, qProduct.id, qProductCategory.path, qProduct.imgPath, qProduct.enableMultiUnit,
                         qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name, qProductCategory.name, qProduct.specification)
@@ -206,24 +191,8 @@ public class SupplierService extends AbsService {
                     dto.setSpec(tuple.get(qProduct.specification));
                     dto.setUnitName(tuple.get(qUnit.name));
                     dto.setUnitId(tuple.get(qProduct.unitId));
-                    dto.setPrice(tuple.get(qProduct.purchasePrice));
+                    dto.setPrice(priceResolveService.resolvePurchasePrice(tuple.get(qProduct.id), merchantId, accountBookId));
                     List<AuxiliaryUnitPrice> units = tuple.get(qProduct.auxiliaryUnitPrices);
-
-                    /**
-                     * 最近采购单价
-                     */
-                    if (finalIsPolicy) {
-                        PriceRecord priceRecord = jqf.selectFrom(qPriceRecord).where(
-                                qPriceRecord.productId.eq(tuple.get(qProduct.id))
-                                        .and(qPriceRecord.priceSource.eq(PriceSource.最近采购价格))
-                                        .and(qPriceRecord.priceType.eq(PriceType.最近采购价格))
-                                        .and(qPriceRecord.accountBookId.eq(accountBookId))
-                                        .and(qPriceRecord.merchantId.eq(merchantId))
-                        ).orderBy(qPriceRecord.id.desc()).fetchFirst();
-                        if (priceRecord != null) {
-                            dto.setPrice(priceRecord.getUnitPrice());
-                        }
-                    }
 
                     if (CollUtil.isNotEmpty(units) && tuple.get(qProduct.enableMultiUnit)) {
                         units.add(0, new AuxiliaryUnitPrice(dto.getUnitId(), dto.getUnitName(), 1d, dto.getPrice()));
@@ -234,45 +203,6 @@ public class SupplierService extends AbsService {
                 }, List::addAll);
 
         return dtoList;
-//        List<SelectProductDto> dtoList = bqf.selectFrom(qProduct)
-//                .select(qProduct.name, qProduct.code, qPriceRecord.unitPrice, qPriceRecord.unitPrice, qProduct.specification, qProduct.id, qProductCategory.path, qProduct.imgPath, qProduct.enableMultiUnit, qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name)
-//                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
-//                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
-//                .leftJoin(qPriceRecord).on(qPriceRecord.productId.eq(qProduct.id).and(qPriceRecord.supplierId.eq(supplierId)).and(qPriceRecord.merchantId.eq(merchantId)).and(qPriceRecord.accountBookId.eq(organizationId)))
-//                .where(qProduct.merchantId.eq(merchantId).and(qProduct.enabled.isTrue()).and(qProduct.accountBookId.eq(organizationId)))
-//                .orderBy(qProduct.sort.desc(), qProduct.id.desc())
-//                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
-//                    SelectProductDto dto = new SelectProductDto();
-//                    dto.setProductId(tuple.get(qProduct.id));
-//                    dto.setImgPath(tuple.get(qProduct.imgPath));
-//                    dto.setProductCode(tuple.get(qProduct.code));
-//                    dto.setProductName(tuple.get(qProduct.name));
-//                    dto.setPath(tuple.get(qProductCategory.path));
-//                    dto.setSpec(tuple.get(qProduct.specification));
-//                    dto.setUnitName(tuple.get(qUnit.name));
-//                    dto.setUnitId(tuple.get(qProduct.unitId));
-//                    dto.setPrice(tuple.get(qPriceRecord.unitPrice));
-//                    List<AuxiliaryUnitPrice> units = tuple.get(qProduct.auxiliaryUnitPrices);
-//
-//                    if (CollUtil.isNotEmpty(units) && tuple.get(qProduct.enableMultiUnit)) {
-//                        units.add(0, new AuxiliaryUnitPrice(dto.getUnitId(), dto.getUnitName(), 1d, dto.getPrice()));
-//                        List<AuxiliaryUnitPrice> finalUnits = units;
-//                        if (tuple.get(qPriceRecord.auxiliaryUnitPrices) != null && CollUtil.isNotEmpty(tuple.get(qPriceRecord.auxiliaryUnitPrices))) {
-//                            tuple.get(qPriceRecord.auxiliaryUnitPrices).forEach(item -> {
-//                                finalUnits.forEach(unitPrice -> {
-//                                    if (item.getUnitId().equals(unitPrice.getUnitId())) {
-//                                        unitPrice.setUnitPrice(item.getUnitPrice());
-//                                    }
-//                                });
-//                            });
-//                        }
-//                        dto.setAuxiliaryUnitPrices(finalUnits);
-//                    }
-//                    dto.setTitle();
-//                    list.add(dto);
-//                }, List::addAll);
-//
-//        return dtoList;
     }
 
     /**

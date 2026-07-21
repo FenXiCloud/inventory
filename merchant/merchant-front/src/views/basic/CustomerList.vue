@@ -97,7 +97,8 @@
 <script>
 import CustomerForm from './CustomerForm.vue';
 import Customer from '@js/api/basic/Customer';
-import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 import CustomerCategoryForm from '@views/basic/CustomerCategoryForm.vue';

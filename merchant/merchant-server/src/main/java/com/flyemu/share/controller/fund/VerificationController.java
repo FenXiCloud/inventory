@@ -1,16 +1,19 @@
 package com.flyemu.share.controller.fund;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
-import com.flyemu.share.entity.fund.Verification;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.service.fund.VerificationService;
-import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
-import com.flyemu.share.service.fund.dto.VerificationSaveDTO;
+import com.flyemu.share.form.VerificationForm;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * @创建时间: 2023年08月08日
@@ -25,37 +28,52 @@ public class VerificationController {
 
     private final VerificationService verificationService;
 
-    @GetMapping("list")
+    @GetMapping
     public JsonResult list(Page page, VerificationService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(verificationService.query(page, query));
     }
 
-    @PostMapping("save")
-    public JsonResult save(@RequestBody VerificationSaveDTO verification, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/total")
+    public JsonResult queryTotal(VerificationService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(verificationService.queryTotal(query));
+    }
+
+
+
+    @PostMapping
+    public JsonResult save(@RequestBody @Valid VerificationForm verification, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         verification.getOrder().setMerchantId(merchantId);
         verification.getOrder().setAccountBookId(accountBookId);
         verificationService.save(verification);
         return JsonResult.successful();
     }
 
-
-    @PostMapping("updateStatus")
-    public JsonResult updateStatus(@RequestBody OrderPaymentUpdateDTO orderReceipt) {
-        verificationService.updateStatus(orderReceipt);
-        return JsonResult.successful();
-    }
-    @PostMapping("delete")
-    public JsonResult delete(@RequestBody OrderPaymentUpdateDTO verification, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        verificationService.delete(verification.getId(), merchantId, accountBookId);
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid VerificationForm verification, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        verification.getOrder().setMerchantId(merchantId);
+        verification.getOrder().setAccountBookId(accountBookId);
+        verificationService.save(verification);
         return JsonResult.successful();
     }
 
-    @GetMapping("selectById")
-    public JsonResult selectById(Long id) {
-        return JsonResult.successful(verificationService.selectById(id));
+    @DeleteMapping("/{verificationId}")
+    public JsonResult delete(@PathVariable Long verificationId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        verificationService.delete(String.valueOf(verificationId), merchantId, accountBookId);
+        return JsonResult.successful();
     }
 
+    @GetMapping("load/{id}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+        return JsonResult.successful(verificationService.load(merchantId, id));
+    }
 
+    @PostMapping("/approved/{state}")
+    public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
+        verificationService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
+        return JsonResult.successful();
+    }
 }

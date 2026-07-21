@@ -4,10 +4,8 @@ import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
-import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.fund.CustomerFlow;
 import com.flyemu.share.service.fund.CustomerFlowService;
-import com.flyemu.share.service.fund.SupplierFlowService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -31,8 +29,8 @@ public class CustomerFlowController {
 
     private final CustomerFlowService customerFlowService;
 
-    @GetMapping("/getCustomerBillFlows")
-    public JsonResult getCustomerBillFlows(
+    @GetMapping("/statement")
+    public JsonResult statement(
             Page page,
             @RequestParam Long customerId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startTime,
@@ -47,7 +45,7 @@ public class CustomerFlowController {
         queryDTO.setCustomerId(customerId);
         queryDTO.setStartTime(startDateTime);
         queryDTO.setEndTime(endDateTime);
-        return JsonResult.successful(customerFlowService.getFlowsByCustomerBill(page, queryDTO));
+        return JsonResult.successful(customerFlowService.statement(page, queryDTO));
 
     }
 
@@ -67,7 +65,9 @@ public class CustomerFlowController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid CustomerFlow customerFlow) {
+    public JsonResult update(@RequestBody @Valid CustomerFlow customerFlow, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        customerFlow.setMerchantId(merchantId);
+        customerFlow.setAccountBookId(accountBookId);
         customerFlowService.save(customerFlow);
         return JsonResult.successful();
     }

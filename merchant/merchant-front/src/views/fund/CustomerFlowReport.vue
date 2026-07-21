@@ -2,6 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="exportData">导 出</t-button>
         <t-date-range-picker
             v-model="dateRangeValue"
             clearable
@@ -63,6 +64,8 @@
 </template>
 <script>
 import manba from 'manba';
+import * as XLSX from 'xlsx';
+import {MessagePlugin} from 'tdesign-vue-next';
 import AccountFlow from '@js/api/fund/AccountFlow';
 import Customer from '@js/api/basic/Customer';
 
@@ -126,6 +129,34 @@ export default {
     }
   },
   methods: {
+    exportData() {
+      if (!this.dataList || this.dataList.length === 0) {
+        MessagePlugin.warning('没有可导出的数据');
+        return;
+      }
+      try {
+        const exportData = this.dataList.map(item => ({
+          '业务日期': item.orderDate,
+          '单据编号': item.orderNo,
+          '客户': item.customerName,
+          '业务人员': item.staffName,
+          '业务类型': item.businessType,
+          '增加应收账款': item.receivableAmount,
+          '增加预收款': item.prepaymentAmount,
+          '应收款余额': item.balance,
+          '备注': item.remarks,
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '客户流水');
+        XLSX.writeFile(wb, `客户流水报表_${manba().format('YYYY-MM-DD')}.xlsx`);
+        MessagePlugin.success('导出成功');
+      } catch (error) {
+        console.error('导出错误:', error);
+        MessagePlugin.error('导出失败');
+      }
+    },
+
     onPageChange(pageInfo) {
       this.pagination.page = pageInfo.current;
       this.pagination.pageSize = pageInfo.pageSize;
@@ -142,7 +173,7 @@ export default {
     },
     loadList() {
       this.loading = true;
-      AccountFlow.getReceivableDetailReport(this.queryParams)
+      AccountFlow.receivableDetail(this.queryParams)
         .then(({ data: { results, total } }) => {
           this.dataList = results || [];
           this.pagination.total = total || 0;

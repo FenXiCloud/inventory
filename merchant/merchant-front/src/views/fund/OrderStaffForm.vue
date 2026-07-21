@@ -35,7 +35,7 @@
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 import { MessagePlugin } from 'tdesign-vue-next';
-import OrderReceipt from '@js/api/fund/OrderReceipt';
+import OrderStaff from '@js/api/basic/OrderStaff';
 
 export default {
   name: 'OrderStaffForm',
@@ -60,7 +60,7 @@ export default {
       this.$refs.form.validate().then((result) => {
         if (result !== true) return;
         this.loading = true;
-        OrderReceipt.orderStaffAdd(this.model)
+        OrderStaff.save(this.model)
           .then(() => {
             MessagePlugin.success('保存成功~');
             this.$emit('success');

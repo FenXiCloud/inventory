@@ -78,8 +78,9 @@
 </template>
 
 <script>
+import {DialogPlugin} from '@common/dialog-plugin';
 import SystemLog from '@js/api/setting/SystemLog';
-import { DialogPlugin } from 'tdesign-vue-next';
+
 import manba from 'manba';
 
 const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-DD');

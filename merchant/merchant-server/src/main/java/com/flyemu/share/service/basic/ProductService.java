@@ -20,7 +20,6 @@ import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOrderItem;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.enums.OperationType;
-import com.flyemu.share.enums.PolicySource;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
@@ -69,14 +68,13 @@ import java.util.stream.Collectors;
  */
 @Service
 @Slf4j
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ProductService extends AbsService {
 
     private final static QProduct qProduct = QProduct.product;
 
     private final static QProductCategory qProductCategory = QProductCategory.productCategory;
-    private final static QPriceRecord qPriceRecord = QPriceRecord.priceRecord;
-
     private final QUnit qUnit = QUnit.unit;
 
     private final ProductRepository productRepository;
@@ -85,13 +83,11 @@ public class ProductService extends AbsService {
 
     private final QCustomerLevelPrice qCustomerLevelPrice = QCustomerLevelPrice.customerLevelPrice;
 
-    private final QCustomer qCustomers = QCustomer.customer;
-
     private final PriceRecordService priceRecordService;
 
     private final CustomerLevelRepository customerLevelRepository;
 
-    private final static QPricingPolicy qPricingPolicy = QPricingPolicy.pricingPolicy;
+    private final PriceResolveService priceResolveService;
 
     private final InventoryItemRepository inventoryItemRepository;
     private final CodeRuleService codeRuleService;
@@ -393,8 +389,9 @@ public class ProductService extends AbsService {
         productCategoryService.refreshLeafByProducts(categoryId, merchantId, accountBookId);
     }
     private final static QInventory qInventory = QInventory.inventory;
-    public List<ProductDto> select(Long merchantId, Long accountBookId,Long productCategoryId,Long warehouseId) {
-        //left join 查询商品单位
+
+    public List<ProductDto> select(Long merchantId, Long accountBookId, Long productCategoryId, Long warehouseId, Long customerId) {
+        priceResolveService.ensureDefaultPolicies(merchantId, accountBookId);
         BlazeJPAQuery<Tuple> where = bqf.selectFrom(qProduct).
                 select(qProduct, qUnit.name, qProductCategory.name).
                 leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
@@ -406,44 +403,24 @@ public class ProductService extends AbsService {
                     .where(qInventory.currentQuantity.gt(0));
         }
         where.where(qProduct.merchantId.eq(merchantId)
-                        .and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue()));
-        if (productCategoryId!=null){
+                .and(qProduct.accountBookId.eq(accountBookId)).and(qProduct.enabled.isTrue()));
+        if (productCategoryId != null) {
             where.where(qProduct.productCategoryId.eq(productCategoryId));
         }
-        List<Tuple> fetch =where.fetch();
-        //封装产品单位返回;
+        List<Tuple> fetch = where.fetch();
         ArrayList<ProductDto> result = fetch.stream().collect(ArrayList::new, (list, tuple) -> {
             ProductDto dto = BeanUtil.toBean(tuple.get(qProduct), ProductDto.class);
             dto.setUnitName(tuple.get(qUnit.name));
             dto.setProductCategoryName(tuple.get(qProductCategory.name));
-            list.add(dto);
-            //查询产品QCustomerLevelPrice 的客户等级价格
-            List<CustomerLevelPrice> customerLevelPrices = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(dto.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId).and(qCustomerLevelPrice.accountBookId.eq(accountBookId)))).orderBy(qCustomerLevelPrice.id.desc()).fetch();
+            List<CustomerLevelPrice> customerLevelPrices = jqf.selectFrom(qCustomerLevelPrice)
+                    .where(qCustomerLevelPrice.productId.eq(dto.getId())
+                            .and(qCustomerLevelPrice.merchantId.eq(merchantId))
+                            .and(qCustomerLevelPrice.accountBookId.eq(accountBookId)))
+                    .orderBy(qCustomerLevelPrice.id.desc())
+                    .fetch();
             dto.setCustomerLevelPriceList(customerLevelPrices);
-            //查询产品QPriceRecord 的最近销售价格
-            PriceRecord priceRecord = jqf.selectFrom(qPriceRecord).where(qPriceRecord.productId.eq(dto.getId()).and(qPriceRecord.priceSource.eq(PriceSource.最近销售价格)).and(qPriceRecord.priceType.eq(PriceType.最近销售价格)).and(qPriceRecord.accountBookId.eq(accountBookId)).and(qPriceRecord.merchantId.eq(merchantId))
-                    //降序排序
-            ).orderBy(qPriceRecord.id.desc()).fetchFirst();
-            if (priceRecord != null) {
-                dto.setLastSalePrice(priceRecord.getUnitPrice());
-            }
-
-            //获取当前的价格取数规则qPricingPolicy
-            PricingPolicy pricingPolicy = jqf.selectFrom(qPricingPolicy).where(qPricingPolicy.enabled.eq(true).and(qPricingPolicy.merchantId.eq(merchantId)).and(qPricingPolicy.accountBookId.eq(accountBookId)))
-                    .orderBy(qPricingPolicy.priority.asc()).fetchFirst();
-            if (pricingPolicy != null) {
-                PolicySource policySource = pricingPolicy.getPolicySource();
-                if(policySource == PolicySource.客户等级价格){
-                    Customer customer = jqf.selectFrom(qCustomers).where(qCustomers.merchantId.eq(merchantId).and(qCustomers.accountBookId.eq(accountBookId))).fetchFirst();
-                    Long customerLevelId = customer.getCustomerLevelId();
-                    //获取最新的客户等级价格
-                    CustomerLevelPrice customerLevelPrice = jqf.selectFrom(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(dto.getId()).and(qCustomerLevelPrice.merchantId.eq(merchantId).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).and(qCustomerLevelPrice.customerLevelId.eq(customerLevelId))).orderBy(qCustomerLevelPrice.id.desc()).fetchFirst();
-                    if (customerLevelPrice != null) {
-                        dto.setLastSalePrice(customerLevelPrice.getPrice());
-                    }
-                }
-            }
-
+            dto.setLastSalePrice(priceResolveService.resolveSalesPrice(dto.getId(), customerId, merchantId, accountBookId));
+            list.add(dto);
         }, List::addAll);
         return result;
     }

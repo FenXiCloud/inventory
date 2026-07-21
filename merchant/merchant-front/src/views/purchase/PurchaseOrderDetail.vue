@@ -13,7 +13,8 @@
       <vxe-table
           size="mini"
           ref="xTable"
-          border="border"
+          border
+          show-overflow
           :row-config="{height: 40}"
           show-footer
           stripe
@@ -70,7 +71,8 @@
 </template>
 <script>
 
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 import manba from "manba";
 import {CopyObj} from "@common/utils";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";

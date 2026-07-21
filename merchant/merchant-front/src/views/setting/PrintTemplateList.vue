@@ -79,7 +79,8 @@
 <script>
 import PrintTemplate from '@js/api/setting/PrintTemplate';
 import PrintTemplateForm from './PrintTemplateForm.vue';
-import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import { openDialog, closeDialog } from '@common/dialog';
 import { h } from 'vue';
 

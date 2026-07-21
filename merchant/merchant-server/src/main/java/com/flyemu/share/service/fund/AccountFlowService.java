@@ -35,6 +35,7 @@ import java.util.List;
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 @Service
+@Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
 public class AccountFlowService extends AbsService {
@@ -127,7 +128,7 @@ public class AccountFlowService extends AbsService {
 
         if (merchantId != null) {
             if (type == 1) {
-                condition.and(QOtherIncome.otherIncome.merchantId.eq(merchantId));
+                condition.and(QOtherReceipt.otherReceipt.merchantId.eq(merchantId));
             }
             if (type == 2) {
                 condition.and(QOtherExpense.otherExpense.merchantId.eq(merchantId));
@@ -136,7 +137,7 @@ public class AccountFlowService extends AbsService {
 
         if (accountBookId != null) {
             if (type == 1) {
-                condition.and(QOtherIncome.otherIncome.accountBookId.eq(accountBookId));
+                condition.and(QOtherReceipt.otherReceipt.accountBookId.eq(accountBookId));
             }
             if (type == 2) {
                 condition.and(QOtherExpense.otherExpense.accountBookId.eq(accountBookId));
@@ -146,7 +147,7 @@ public class AccountFlowService extends AbsService {
         if (orderStaffName != null && !orderStaffName.isEmpty()) {
             List<BooleanExpression> staffConditions = new ArrayList<>();
             if (type == 1) {
-                staffConditions.add(QOtherIncome.otherIncome.orderStaffName.like("%" + orderStaffName + "%"));
+                staffConditions.add(QOtherReceipt.otherReceipt.orderStaffName.like("%" + orderStaffName + "%"));
             }
             if (type == 2) {
                 staffConditions.add(QOtherExpense.otherExpense.orderStaffName.like("%" + orderStaffName + "%"));
@@ -159,7 +160,7 @@ public class AccountFlowService extends AbsService {
         Long orderStaffId = query.getOrderStaffId();
         if (orderStaffId != null) {
             if (type == 1) {
-                condition.and(QOtherIncome.otherIncome.orderStaffId.eq(orderStaffId));
+                condition.and(QOtherReceipt.otherReceipt.orderStaffId.eq(orderStaffId));
             }
             if (type == 2) {
                 condition.and(QOtherExpense.otherExpense.orderStaffId.eq(orderStaffId));
@@ -168,7 +169,7 @@ public class AccountFlowService extends AbsService {
 
         if (startTime != null) {
             if (type == 1) {
-                condition.and(QOtherIncome.otherIncome.orderDate.goe(startTime));
+                condition.and(QOtherReceipt.otherReceipt.orderDate.goe(startTime));
             }
             if (type == 2) {
                 condition.and(QOtherExpense.otherExpense.orderDate.goe(startTime));
@@ -177,7 +178,7 @@ public class AccountFlowService extends AbsService {
 
         if (endTime != null) {
             if (type == 1) {
-                condition.and(QOtherIncome.otherIncome.orderDate.loe(endTime));
+                condition.and(QOtherReceipt.otherReceipt.orderDate.loe(endTime));
             }
             if (type == 2) {
                 condition.and(QOtherExpense.otherExpense.orderDate.loe(endTime));
@@ -185,7 +186,7 @@ public class AccountFlowService extends AbsService {
         }
 
         if (type == 1) {
-            condition.and(QOtherIncome.otherIncome.orderStatus.eq(OrderStatus.已审核));
+            condition.and(QOtherReceipt.otherReceipt.orderStatus.eq(OrderStatus.已审核));
         }
         if (type == 2) {
             condition.and(QOtherExpense.otherExpense.orderStatus.eq(OrderStatus.已审核));
@@ -194,19 +195,19 @@ public class AccountFlowService extends AbsService {
         if (type == 1) {
             // 查询收入
             jpaQuery = jqf.select(Projections.bean(OtherFundDetailsVO.class,
-                            QOtherIncome.otherIncome.orderDate.as("date"),
+                            QOtherReceipt.otherReceipt.orderDate.as("date"),
 
-                            QOtherIncome.otherIncome.orderNo.as("documentNumber"),
-                            QOtherIncome.otherIncome.orderStaffName.as("staffName"),
-                            QOtherIncomeItem.otherIncomeItem.accountTypeName.as("accountType"),
-                            QOtherIncomeItem.otherIncomeItem.amount.as("amount"),
-                            QOtherIncomeItem.otherIncomeItem.remarks,
-//                    QOtherIncomeItem.otherIncomeItem.sourceDocNo.as("sourceDocNo"),
-                            QOtherIncomeItem.otherIncomeItem.sourceBusinessName.as("businessPartner")
-//                    QOtherIncomeItem.otherIncomeItem.sourceDate.as("sourceDate")
+                            QOtherReceipt.otherReceipt.orderNo.as("documentNumber"),
+                            QOtherReceipt.otherReceipt.orderStaffName.as("staffName"),
+                            QOtherReceiptItem.otherReceiptItem.accountTypeName.as("accountType"),
+                            QOtherReceiptItem.otherReceiptItem.amount.as("amount"),
+                            QOtherReceiptItem.otherReceiptItem.remarks,
+//                    QOtherReceiptItem.otherReceiptItem.sourceDocNo.as("sourceDocNo"),
+                            QOtherReceiptItem.otherReceiptItem.sourceBusinessName.as("businessPartner")
+//                    QOtherReceiptItem.otherReceiptItem.sourceDate.as("sourceDate")
                     ))
-                    .from(QOtherIncome.otherIncome)
-                    .join(QOtherIncomeItem.otherIncomeItem).on(QOtherIncomeItem.otherIncomeItem.otherIncomeId.eq(QOtherIncome.otherIncome.id))
+                    .from(QOtherReceipt.otherReceipt)
+                    .join(QOtherReceiptItem.otherReceiptItem).on(QOtherReceiptItem.otherReceiptItem.otherReceiptId.eq(QOtherReceipt.otherReceipt.id))
                     .where(condition);
         } else {
             // 查询支出
@@ -229,7 +230,7 @@ public class AccountFlowService extends AbsService {
 
         List<OtherFundDetailsVO> list = jpaQuery.offset(page.getOffset())
                 .limit(page.getSize())
-                .orderBy(type == 1 ? QOtherIncome.otherIncome.orderDate.desc() : QOtherExpense.otherExpense.orderDate.desc())
+                .orderBy(type == 1 ? QOtherReceipt.otherReceipt.orderDate.desc() : QOtherExpense.otherExpense.orderDate.desc())
                 .fetch();
 
         long total = jpaQuery.fetchCount();

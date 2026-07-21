@@ -55,7 +55,8 @@
 <script>
 import PaymentMethod from '@js/api/basic/PaymentMethod';
 import PaymentMethodForm from '@views/basic/PaymentMethodForm.vue';
-import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 

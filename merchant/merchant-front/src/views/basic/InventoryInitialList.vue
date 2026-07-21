@@ -83,7 +83,8 @@ import InventoryInitial from '@js/api/basic/InventoryInitial';
 import {mapMutations} from 'vuex';
 import Warehouse from '@js/api/basic/Warehouse';
 import Product from '@js/api/basic/Product';
-import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 
 export default {
   name: 'InventoryInitialList',

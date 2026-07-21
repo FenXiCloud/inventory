@@ -20,6 +20,7 @@
 /**
  * HeyUI Select → TDesign TSelect
  * 兼容 :datas / keyName / titleName / filterable / deletable
+ * @change 回传选中项对象（与 HeyUI 一致），清空时回传 null
  */
 export default {
   name: 'Select',
@@ -77,8 +78,30 @@ export default {
     }
   },
   methods: {
+    resolveSelected(val) {
+      if (val == null || val === '') return null
+      if (this.multiple && Array.isArray(val)) {
+        return val.map((v) => this.resolveOne(v)).filter((v) => v != null)
+      }
+      return this.resolveOne(val)
+    },
+    resolveOne(val) {
+      if (val != null && typeof val === 'object') return val
+      const datas = this.datas
+      if (Array.isArray(datas)) {
+        const found = datas.find((item) => {
+          if (item == null || typeof item !== 'object') return item === val
+          return String(item[this.keyName]) === String(val)
+        })
+        return found !== undefined ? found : val
+      }
+      if (datas && typeof datas === 'object' && Object.prototype.hasOwnProperty.call(datas, val)) {
+        return { [this.keyName]: val, [this.titleName]: datas[val] }
+      }
+      return val
+    },
     onChange(val, context) {
-      this.$emit('change', val, context)
+      this.$emit('change', this.resolveSelected(val), context)
     }
   }
 }

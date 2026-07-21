@@ -35,9 +35,10 @@
 
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
-import TemplateConfigFrom from "./TemplateConfigFrom.vue";
+import TemplateConfigForm from "./TemplateConfigForm.vue";
 import FinanceVoucherTemplate from "@js/api/setting/FinanceVoucherTemplate";
-import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 
 export default {
   name: "VoucherTemplate",
@@ -53,7 +54,7 @@ export default {
         header: "凭证模板",
         closeOnOverlayClick: false,
         width: '800px',
-        body: h(TemplateConfigFrom, {
+        body: h(TemplateConfigForm, {
           id,
           onClose: () => {
             closeDialog(dialogId);
@@ -100,6 +101,5 @@ export default {
 </script>
 
 <script setup>
-
 
 </script>

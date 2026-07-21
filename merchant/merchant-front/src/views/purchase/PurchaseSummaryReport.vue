@@ -2,7 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px">导 出</t-button>
+        <t-button theme="primary" style="border-radius: 4px" @click="exportData">导 出</t-button>
         <t-button variant="outline" style="border-radius: 4px">打 印</t-button>
         <t-select
             v-model="groupValues"
@@ -110,6 +110,7 @@
 
 <script>
 import manba from "manba";
+import * as XLSX from 'xlsx';
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
@@ -229,6 +230,35 @@ export default {
     }
   },
   methods: {
+    exportData() {
+      if (!this.dataList || this.dataList.length === 0) {
+        MessagePlugin.warning('没有可导出的数据');
+        return;
+      }
+      try {
+        const exportData = this.dataList.map(item => ({
+          '产品信息': item.productInfo,
+          '规格型号': item.spec,
+          '产品分类': item.categoryName,
+          '供应商': item.supplierName,
+          '供应商编码': item.supplierCode,
+          '供应商分类': item.supplierCategoryName,
+          '仓库名称': item.warehouseName,
+          '基本单位': item.baseUnitName,
+          '采购数量': item.baseQuantitySum,
+          '总价': item.subtotalSum,
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '采购汇总');
+        XLSX.writeFile(wb, `采购汇总报表_${manba().format('YYYY-MM-DD')}.xlsx`);
+        MessagePlugin.success('导出成功');
+      } catch (error) {
+        console.error('导出错误:', error);
+        MessagePlugin.error('导出失败');
+      }
+    },
+
     onPageChange(pageInfo) {
       this.pagination.page = pageInfo.current;
       this.pagination.pageSize = pageInfo.pageSize;
@@ -262,7 +292,7 @@ export default {
         return;
       }
       this.loading = true;
-      PurchaseReport.listStat(this.queryParams).then(({data: {results, total}}) => {
+      PurchaseReport.summary(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);

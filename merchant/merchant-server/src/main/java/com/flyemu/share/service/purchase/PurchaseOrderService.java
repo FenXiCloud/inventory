@@ -22,6 +22,7 @@ import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.PurchaseOrderForm;
 import com.flyemu.share.repository.PurchaseOrderItemRepository;
 import com.flyemu.share.repository.PurchaseOrderRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.setting.CodeSeedService;
@@ -53,6 +54,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PurchaseOrderService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QUnit qUnit = QUnit.unit;
     private final static QPurchaseOrder qPurchaseOrder = QPurchaseOrder.purchaseOrder;
     private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
@@ -146,6 +148,7 @@ public class PurchaseOrderService extends AbsService {
     @Transactional
     public PurchaseOrder save(PurchaseOrderForm purchaseOrderForm, Long merchantId) {
         PurchaseOrder order = purchaseOrderForm.getPurchaseOrder();
+        checkoutService.assertEditable(order.getMerchantId(), order.getAccountBookId(), order.getOrderDate());
         if (order.getId() != null) {
             PurchaseOrder original = purchaseOrderRepository.getById(order.getId());
             Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能更新~");
@@ -170,7 +173,7 @@ public class PurchaseOrderService extends AbsService {
             purchaseOrderItemRepository.saveAll(purchaseOrderForm.getPurchaseOrderItemList());
             return purchaseOrderRepository.save(original);
         } else {
-            order.setOrderNo(codeSeedService.generateCode(purchaseOrderForm.getPurchaseOrder().getMerchantId(), "采购订单"));
+            order.setOrderNo(codeSeedService.generateCode(order.getMerchantId(), order.getAccountBookId(), "采购订单"));
 
             Double secondarySum = purchaseOrderForm.getPurchaseOrderItemList()
                     .stream()

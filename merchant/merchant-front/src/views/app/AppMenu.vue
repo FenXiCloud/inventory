@@ -2,6 +2,7 @@
   <div class="app-menu">
     <AppLogo/>
     <t-menu
+        :key="menuRenderKey"
         :value="currentTab"
         theme="dark"
         width="100%"
@@ -90,6 +91,7 @@ export default {
   },
   data() {
     return {
+      menuRenderKey: 0,
       popupProps: {
         overlayClassName: 'app-menu-popup',
         placement: 'right-top',
@@ -120,9 +122,26 @@ export default {
       }
       return 'app';
     },
+    /** 悬浮菜单为 hover 触发，点击后鼠标仍在弹层上时不会自动收起，需主动关闭 */
+    closeFloatingMenu() {
+      const nodes = document.querySelectorAll(
+        'body > .t-popup.app-menu-popup, body > .t-popup.t-menu__popup, .t-menu__popup-wrapper'
+      );
+      nodes.forEach((node) => {
+        const popup = node.classList.contains('t-popup') ? node : (node.closest('.t-popup') || node);
+        if (!popup) return;
+        popup.classList.remove('t-popup--visible');
+        popup.style.display = 'none';
+        popup.style.visibility = 'hidden';
+        popup.style.pointerEvents = 'none';
+      });
+      // 重建菜单，清除内部 hover 状态，保证下次悬停可再次打开
+      this.menuRenderKey += 1;
+    },
     onMenuChange(value) {
       if (value === 'DashboardMain') {
         this.updateTab('DashboardMain');
+        this.closeFloatingMenu();
         return;
       }
       const menu = this.findMenu(this.menus, value);
@@ -134,6 +153,7 @@ export default {
           icon: menu.icon
         });
       }
+      this.closeFloatingMenu();
     },
     findMenu(list, key) {
       const match = (item) => String(item.key ?? item.id) === String(key);

@@ -1,16 +1,20 @@
 package com.flyemu.share.controller.fund;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
+import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.entity.fund.OrderReceipt;
+import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.service.fund.OrderReceiptService;
-import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
-import com.flyemu.share.service.fund.dto.OrderReceiptSaveDTO;
+import com.flyemu.share.form.OrderReceiptForm;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * @功能描述: 收款单
@@ -26,40 +30,61 @@ public class OrderReceiptController {
 
     private final OrderReceiptService orderReceiptService;
 
-    @GetMapping("list")
+    @GetMapping
     public JsonResult list(Page page, OrderReceiptService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderReceiptService.query(query, page));
     }
 
-    @PostMapping("save")
-    public JsonResult save(@RequestBody OrderReceiptSaveDTO orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/total")
+    public JsonResult queryTotal(OrderReceiptService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(orderReceiptService.queryTotal(query));
+    }
+
+
+
+    @PostMapping
+    public JsonResult save(@RequestBody @Valid OrderReceiptForm orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         orderReceipt.getOrderReceipt().setMerchantId(merchantId);
         orderReceipt.getOrderReceipt().setAccountBookId(accountBookId);
         orderReceiptService.save(orderReceipt);
         return JsonResult.successful();
     }
 
-    @PostMapping("updateStatus")
-    public JsonResult updateStatus(@RequestBody OrderPaymentUpdateDTO orderReceipt) {
-        orderReceiptService.updateStatus(orderReceipt);
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid OrderReceiptForm orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        orderReceipt.getOrderReceipt().setMerchantId(merchantId);
+        orderReceipt.getOrderReceipt().setAccountBookId(accountBookId);
+        orderReceiptService.save(orderReceipt);
         return JsonResult.successful();
     }
 
-    @PostMapping("delete")
-    public JsonResult delete(@RequestBody OrderPaymentUpdateDTO orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        orderReceiptService.delete(orderReceipt.getId(), merchantId, accountBookId);
+    @DeleteMapping("/{orderReceiptId}")
+    public JsonResult delete(@PathVariable Long orderReceiptId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        orderReceiptService.delete(String.valueOf(orderReceiptId), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("selectById")
-    public JsonResult selectById(Long id) {
-        return JsonResult.successful(orderReceiptService.selectById(id));
+    @GetMapping("load/{id}")
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+        return JsonResult.successful(orderReceiptService.load(merchantId, id));
     }
 
-    @GetMapping("writeOffTheOrder")
-    public JsonResult aListSalesOrders(Page page, OrderReceiptService.SalesQuery query) {
-        return JsonResult.successful(orderReceiptService.aListSalesOrders(page,query));
+    @PostMapping("/approved/{state}")
+    public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
+        orderReceiptService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
+        return JsonResult.successful();
+    }
+
+    @GetMapping("writeOff")
+    public JsonResult writeOff(Page page, OrderReceiptService.SalesQuery query,
+                               @SaAccountBookId Long accountBookId,
+                               @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(orderReceiptService.writeOffCandidates(page, query));
     }
 }

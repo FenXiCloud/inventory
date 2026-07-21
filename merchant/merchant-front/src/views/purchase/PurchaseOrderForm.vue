@@ -31,7 +31,8 @@
       <vxe-table
         size="mini"
         ref="xTable"
-        border="border"
+        border
+        show-overflow
         :row-config="{ height: 40 }"
         show-footer
         :footer-method="footerMethod"
@@ -68,14 +69,14 @@
           <template #default="{ row }">
             <img
               :src="
-                productList.find((item) => item.id === row.productId)
+                productList.find((item) => item.productId === row.productId)
                   ?.imgPath || '-'
               "
               alt=""
               class="product-img cursor-pointer"
               @click="
                 previewImage(
-                  productList.find((item) => item.id === row.productId)?.imgPath
+                  productList.find((item) => item.productId === row.productId)?.imgPath
                 )
               "
             />
@@ -93,6 +94,7 @@
                 :equalWidth="false"
                 placeholder="输入编码/名称"
                 keyName="productId"
+                titleName="productName"
               >
                 <template v-slot:top>
                   <table class="h-table" style="width: 100%">
@@ -332,6 +334,7 @@
           保存并新增
         </Button>
         <Button @click="saveOrder('save')" :loading="loading"> 保存 </Button>
+        <Button @click="doPrint" :loading="loading"> 打印 </Button>
         <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
         <Button @click="approved()" :loading="loading" v-if="form.id">
           审核
@@ -341,7 +344,9 @@
   </div>
 </template>
 <script>
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {LoadingPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
+import {openPrint} from '@common/print';
 import manba from 'manba';
 import {CopyObj} from '@common/utils';
 import PurchaseOrder from '@js/api/purchase/PurchaseOrder';
@@ -405,6 +410,27 @@ export default {
     }
   },
   methods: {
+    doPrint() {
+      const items = (this.productData || []).filter(r => r && !r.isNew && r.productId).map(r => {
+        const p = (this.productList || []).find(x => x.productId === r.productId) || {};
+        return {
+          ...r,
+          productName: r.productName || p.name || '',
+          quantity: r.quantity ?? r.secondaryQuantity,
+          price: r.unitPrice ?? r.secondaryPrice ?? r.price,
+          amount: r.subtotal ?? r.amount,
+        };
+      });
+      openPrint('采购订单', {
+        header: {
+          ...this.form,
+          partner: (this.supplierList.find(s => s.id === this.supplierId) || {}).name || '',
+          amount: this.form.finalAmount ?? this.form.totalAmount,
+        },
+        items,
+      });
+    },
+
     handleEnter(e, index, num) {
       e.$event.stopPropagation();
       if (e.$event.keyCode === 13) {
@@ -517,11 +543,12 @@ export default {
     //选择产品
     selectProduct(d, index) {
       if (d) {
+        const defaultWarehouseId = this.resolveDefaultWarehouseId();
         let g = {
           quantity: 1,
           secondaryQuantity: 1,
           secondaryPrice: d.price || 0,
-          warehouseId: this.warehouseId || null,
+          warehouseId: defaultWarehouseId,
           price: d.price || 0,
           discountAmount: 0.0,
           discountRate: 0.0,
@@ -535,7 +562,10 @@ export default {
           spec: d.spec,
           remark: ''
         };
-        this.productData[index] = Object.assign(Object.assign(g, d), d);
+        this.productData[index] = Object.assign({}, d, g);
+        if (!this.productData[index].warehouseId) {
+          this.productData[index].warehouseId = defaultWarehouseId;
+        }
         if (!this.productData[index + 1]) {
           this.productData.push({ isNew: true });
         }
@@ -554,6 +584,17 @@ export default {
       this.product = null;
     },
 
+    resolveDefaultWarehouseId() {
+      if (this.warehouseId) {
+        return this.warehouseId;
+      }
+      const list = this.warehouseList || [];
+      const found = list.find((w) => w.systemDefault || w.isDefault);
+      const id = found?.id || null;
+      this.warehouseId = id;
+      return id;
+    },
+
     showPrice(productId) {
       if (!productId) {
         console.log('请选择产品');
@@ -563,7 +604,7 @@ export default {
       let param = {
         productId: productId
       };
-      PriceRecord.showPurchasePrice(param)
+      PriceRecord.purchasePrice(param)
         .then(({ data }) => {
           this.recentSales = data || [];
           console.log(this.recentSales);
@@ -573,7 +614,7 @@ export default {
 
     //保存订单
     saveOrder(type) {
-      loading('保存中....');
+      LoadingPlugin(true);
       if (!this.form.supplierId) {
         MessagePlugin.error('请选择购货商~');
         LoadingPlugin(false);
@@ -833,14 +874,14 @@ export default {
     });
   },
   created() {
-    loading('加载中....');
+    LoadingPlugin(true);
     Promise.all([Supplier.select(), Warehouse.select()])
       .then((results) => {
         this.supplierList = results[0].data || [];
         this.warehouseList = results[1].data || [];
         if (this.warehouseList != null) {
           this.warehouseId = this.warehouseList.find(
-            (val) => val.isDefault
+            (val) => val.systemDefault || val.isDefault
           )?.id;
         }
         //订单详情/编辑订单

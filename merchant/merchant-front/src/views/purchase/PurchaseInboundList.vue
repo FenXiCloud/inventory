@@ -99,7 +99,8 @@
 <script>
 import manba from "manba";
 import {mapMutations} from "vuex";
-import {MessagePlugin, DialogPlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
 import Supplier from "@js/api/basic/Supplier";
 

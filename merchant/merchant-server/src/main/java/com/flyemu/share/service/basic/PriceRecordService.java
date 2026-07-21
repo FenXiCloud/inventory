@@ -3,6 +3,7 @@ package com.flyemu.share.service.basic;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
+import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson2.JSON;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.common.PinYinUtil;
@@ -17,6 +18,7 @@ import com.flyemu.share.enums.PolicyType;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.ProductForm;
+import com.flyemu.share.repository.CustomerLevelPriceRepository;
 import com.flyemu.share.repository.PriceRecordRepository;
 import com.flyemu.share.repository.PricingPolicyRepository;
 import com.flyemu.share.repository.ProductRepository;
@@ -64,6 +66,8 @@ public class PriceRecordService extends AbsService {
     private final static QUnit qUnit = QUnit.unit;
 
     private final ProductRepository productRepository;
+    private final CustomerLevelPriceRepository customerLevelPriceRepository;
+    private final static QCustomerLevelPrice qCustomerLevelPrice = QCustomerLevelPrice.customerLevelPrice;
 
     public PageResults<PriceRecordDTO> query(Page page, Query query) {
 
@@ -113,10 +117,49 @@ public class PriceRecordService extends AbsService {
 
     private final PricingPolicyRepository pricingPolicyRepository;
 
+    /**
+     * 成交价流水：每次审核写入一条，不依赖价格策略，不做同价去重。
+     */
+    @Transactional
+    public void appendTradePrice(PriceRecord priceRecord) {
+        if (priceRecord == null || priceRecord.getProductId() == null || priceRecord.getUnitPrice() == null) {
+            log.warn("成交价记录参数不完整，跳过写入");
+            return;
+        }
+        this.save(priceRecord);
+    }
+
+    /**
+     * 反审核时按单据删除对应成交价流水
+     */
+    @Transactional
+    public void removeByOrder(Long orderId, PriceType priceType, PriceSource priceSource, Long merchantId, Long accountBookId) {
+        if (orderId == null || merchantId == null || accountBookId == null) {
+            return;
+        }
+        BooleanBuilder where = new BooleanBuilder();
+        where.and(qPriceRecord.orderId.eq(orderId));
+        where.and(qPriceRecord.merchantId.eq(merchantId));
+        where.and(qPriceRecord.accountBookId.eq(accountBookId));
+        if (priceType != null) {
+            where.and(qPriceRecord.priceType.eq(priceType));
+        }
+        if (priceSource != null) {
+            where.and(qPriceRecord.priceSource.eq(priceSource));
+        }
+        jqf.delete(qPriceRecord).where(where).execute();
+    }
+
     @Transactional
     public void savePriceRecord(PriceRecord priceRecord) {
         if (priceRecord == null) {
             log.info("价格记录不能未空");
+            return;
+        }
+        // 成交价（最近采购/最近销售）始终追加，不依赖策略、不去重
+        if (priceRecord.getPriceType() == PriceType.最近采购价格
+                || priceRecord.getPriceType() == PriceType.最近销售价格) {
+            this.appendTradePrice(priceRecord);
             return;
         }
         //价格策略查询
@@ -150,21 +193,13 @@ public class PriceRecordService extends AbsService {
             predicates.add(cb.equal(root.get("merchantId"), priceRecord.getMerchantId()));
             predicates.add(cb.equal(root.get("accountBookId"), priceRecord.getAccountBookId()));
             predicates.add(cb.equal(root.get("productId"), priceRecord.getProductId()));
-//            Long customerId = priceRecord.getCustomerId();
-//            if (customerId != null) {
-//                predicates.add(cb.equal(root.get("customerId"), customerId));
-//            }
-//            Long supplierId = priceRecord.getSupplierId();
-//            if (supplierId != null) {
-//                predicates.add(cb.equal(root.get("supplierId"), supplierId));
-//            }
             PriceType priceType = priceRecord.getPriceType();
             if (priceType != null) {
                 predicates.add(cb.equal(root.get("priceType"), priceType));
             }
             PriceSource priceSource = priceRecord.getPriceSource();
             if (priceSource != null) {
-                predicates.add(cb.equal(root.get("priceSource"), priceType));
+                predicates.add(cb.equal(root.get("priceSource"), priceSource));
             }
             query.orderBy(cb.desc(root.get("id")));
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -188,11 +223,7 @@ public class PriceRecordService extends AbsService {
     }
 
     /**
-     * 产品价格资料
-     *
-     * @param page
-     * @param query
-     * @return
+     * 产品价格资料列表：默认采购价 + 各客户等级价
      */
     public PageResults<ProductPriceDTO> productList(Page page, ProductService.Query query) {
         PagedList<Tuple> pagedList = bqf.selectFrom(qProduct)
@@ -202,95 +233,99 @@ public class PriceRecordService extends AbsService {
                 .where(query.builders())
                 .orderBy(qProduct.id.desc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
-        ArrayList<ProductPriceDTO> collect = pagedList.stream().collect(ArrayList::new, (list, tuple) -> {
-            ProductPriceDTO dto = BeanUtil.toBean(tuple.get(qProduct), ProductPriceDTO.class);
-            dto.setProductCategoryName(tuple.get(qProductCategory.name));
+
+        List<ProductPriceDTO> rows = new ArrayList<>();
+        List<Long> productIds = new ArrayList<>();
+        for (Tuple tuple : pagedList) {
+            Product product = tuple.get(qProduct);
+            ProductPriceDTO dto = new ProductPriceDTO();
+            dto.setId(product.getId());
+            dto.setCode(product.getCode());
+            dto.setName(product.getName());
+            dto.setSpecification(product.getSpecification());
+            dto.setPurchasePrice(product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
+            dto.setUnitId(product.getUnitId());
             dto.setUnitName(tuple.get(qUnit.name));
-            //最近采购价格
-            BigDecimal recentlyPurchasePrice = getLastPrice(dto, PriceSource.最近采购价格, PriceType.最近采购价格);
-            dto.setRecentlyPurchasePrice(recentlyPurchasePrice);
-            //最近销售价格
-            BigDecimal recentlySalesPrice = getLastPrice(dto, PriceSource.最近销售价格, PriceType.最近销售价格);
-            dto.setRecentlySalesPrice(recentlySalesPrice);
-            //vip价格
-            BigDecimal vipCustomerPrice = getLastPrice(dto, PriceSource.商品价格资料, PriceType.VIP客户价格);
-            dto.setVipCustomerPrice(vipCustomerPrice);
-            //零售客户价格
-            BigDecimal retailCustomerPrice = getLastPrice(dto, PriceSource.商品价格资料, PriceType.零售客户价格);
-            dto.setRetailCustomerPrice(retailCustomerPrice);
-            //批发客户价格
-            BigDecimal wholesaleCustomerPrice = getLastPrice(dto, PriceSource.商品价格资料, PriceType.批发客户价格);
-            dto.setWholesaleCustomerPrice(wholesaleCustomerPrice);
-
-            // 设置最高采购价格和最低销售价格
-            dto.setMaxPurchasePrice(getMaxPurchasePrice(dto));
-            dto.setMinSalesPrice(getMinSalesPrice(dto));
-
-            list.add(dto);
-        }, List::addAll);
-        return new PageResults<>(collect, page, pagedList.getTotalSize());
-    }
-
-
-    private BigDecimal getMaxPurchasePrice(ProductPriceDTO dto) {
-        Specification<PriceRecord> specification = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("merchantId"), dto.getMerchantId()));
-            predicates.add(cb.equal(root.get("accountBookId"), dto.getAccountBookId()));
-            predicates.add(cb.equal(root.get("productId"), dto.getId()));
-            predicates.add(cb.equal(root.get("priceSource"), PriceSource.最近采购价格));
-            predicates.add(cb.equal(root.get("priceType"), PriceType.最近采购价格));
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-        return priceRecordRepository.findAll(specification)
-                .stream()
-                .map(PriceRecord::getUnitPrice)
-                .max(BigDecimal::compareTo)
-                .orElse(BigDecimal.ZERO);
-    }
-
-    private BigDecimal getMinSalesPrice(ProductPriceDTO dto) {
-        Specification<PriceRecord> specification = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("merchantId"), dto.getMerchantId()));
-            predicates.add(cb.equal(root.get("accountBookId"), dto.getAccountBookId()));
-            predicates.add(cb.equal(root.get("productId"), dto.getId()));
-            predicates.add(cb.equal(root.get("priceSource"), PriceSource.最近销售价格));
-            predicates.add(cb.equal(root.get("priceType"), PriceType.最近销售价格));
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-        return priceRecordRepository.findAll(specification)
-                .stream()
-                .map(PriceRecord::getUnitPrice)
-                .filter(price -> price.compareTo(BigDecimal.ZERO) > 0)
-                .min(BigDecimal::compareTo)
-                .orElse(BigDecimal.ZERO);
-    }
-
-    private BigDecimal getLastPrice(ProductPriceDTO dto, PriceSource priceSource, PriceType priceType) {
-        Specification<PriceRecord> priceRecordSpecification = (root, rootQuery, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("merchantId"), dto.getMerchantId()));
-            predicates.add(cb.equal(root.get("accountBookId"), dto.getAccountBookId()));
-            predicates.add(cb.equal(root.get("productId"), dto.getId()));
-            predicates.add(cb.equal(root.get("priceSource"), priceSource));
-            predicates.add(cb.equal(root.get("priceType"), priceType));
-            rootQuery.orderBy(cb.desc(root.get("id")));
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-        PageRequest pageRequest = PageRequest.of(0, 1);
-        List<PriceRecord> priceRecordList = priceRecordRepository.findAll(priceRecordSpecification, pageRequest).getContent();
-        if (CollectionUtils.isEmpty(priceRecordList)) {
-            return BigDecimal.ZERO;
-        } else {
-            PriceRecord priceRecord = priceRecordList.get(0);
-            return priceRecord.getUnitPrice();
+            dto.setProductCategoryId(product.getProductCategoryId());
+            dto.setProductCategoryName(tuple.get(qProductCategory.name));
+            dto.setAccountBookId(product.getAccountBookId());
+            dto.setMerchantId(product.getMerchantId());
+            rows.add(dto);
+            productIds.add(product.getId());
         }
+
+        if (!productIds.isEmpty() && query != null) {
+            Long merchantId = rows.get(0).getMerchantId();
+            Long accountBookId = rows.get(0).getAccountBookId();
+            List<CustomerLevelPrice> levelPriceList = jqf.selectFrom(qCustomerLevelPrice)
+                    .where(qCustomerLevelPrice.productId.in(productIds)
+                            .and(qCustomerLevelPrice.merchantId.eq(merchantId))
+                            .and(qCustomerLevelPrice.accountBookId.eq(accountBookId)))
+                    .fetch();
+            Map<Long, Map<Long, BigDecimal>> byProduct = new HashMap<>();
+            for (CustomerLevelPrice lp : levelPriceList) {
+                byProduct
+                        .computeIfAbsent(lp.getProductId(), k -> new HashMap<>())
+                        .put(lp.getCustomerLevelId(), lp.getPrice() != null ? lp.getPrice() : BigDecimal.ZERO);
+            }
+            for (ProductPriceDTO row : rows) {
+                row.setLevelPrices(byProduct.getOrDefault(row.getId(), new HashMap<>()));
+            }
+        }
+        return new PageResults<>(rows, page, pagedList.getTotalSize());
+    }
+
+    /**
+     * 单元格保存：默认采购价或客户等级价
+     */
+    @Transactional
+    public void productCellSave(com.flyemu.share.form.ProductPriceCellForm form, Long merchantId, Long accountBookId) {
+        if (form.getPrice() == null || form.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new com.flyemu.share.exception.ServiceException("价格不能为负数");
+        }
+        Product dbProduct = productRepository.getById(form.getProductId());
+        if (!Objects.equals(dbProduct.getAccountBookId(), accountBookId)
+                || !Objects.equals(dbProduct.getMerchantId(), merchantId)) {
+            throw new com.flyemu.share.exception.ServiceException("产品不存在或不属于当前账套");
+        }
+
+        if ("purchasePrice".equals(form.getField())) {
+            dbProduct.setPurchasePrice(form.getPrice());
+            productRepository.save(dbProduct);
+            return;
+        }
+
+        if ("levelPrice".equals(form.getField())) {
+            if (form.getCustomerLevelId() == null) {
+                throw new com.flyemu.share.exception.ServiceException("客户等级不能为空");
+            }
+            CustomerLevelPrice existing = jqf.selectFrom(qCustomerLevelPrice)
+                    .where(qCustomerLevelPrice.productId.eq(form.getProductId())
+                            .and(qCustomerLevelPrice.customerLevelId.eq(form.getCustomerLevelId())
+                                    .and(qCustomerLevelPrice.merchantId.eq(merchantId))
+                                    .and(qCustomerLevelPrice.accountBookId.eq(accountBookId))))
+                    .fetchFirst();
+            if (existing != null) {
+                existing.setPrice(form.getPrice());
+                existing.setUnitId(dbProduct.getUnitId());
+                customerLevelPriceRepository.save(existing);
+            } else {
+                CustomerLevelPrice created = new CustomerLevelPrice();
+                created.setProductId(form.getProductId());
+                created.setCustomerLevelId(form.getCustomerLevelId());
+                created.setUnitId(dbProduct.getUnitId());
+                created.setPrice(form.getPrice());
+                created.setMerchantId(merchantId);
+                created.setAccountBookId(accountBookId);
+                customerLevelPriceRepository.save(created);
+            }
+            return;
+        }
+        throw new com.flyemu.share.exception.ServiceException("不支持的字段：" + form.getField());
     }
 
     @Transactional
     public void productSave(ProductForm productForm, Long merchantId, Long accountBookId) {
-
         Product product = productForm.getProduct();
         Long id = product.getId();
         Product dbProduct = productRepository.getById(id);
@@ -304,28 +339,29 @@ public class PriceRecordService extends AbsService {
         if (purchasePrice != null && purchasePrice.compareTo(BigDecimal.ZERO) >= 0) {
             dbProduct.setPurchasePrice(purchasePrice);
         }
-        BigDecimal maxPurchasePrice = product.getMaxPurchasePrice();
-        if (maxPurchasePrice != null && maxPurchasePrice.compareTo(BigDecimal.ZERO) >= 0) {
-            dbProduct.setMaxPurchasePrice(maxPurchasePrice);
-        }
-        BigDecimal retailCustomerPrice = product.getRetailCustomerPrice();
-        if (retailCustomerPrice != null && retailCustomerPrice.compareTo(BigDecimal.ZERO) >= 0) {
-            dbProduct.setRetailCustomerPrice(retailCustomerPrice);
-        }
-        BigDecimal wholesaleCustomerPrice = product.getWholesaleCustomerPrice();
-        if (wholesaleCustomerPrice != null && wholesaleCustomerPrice.compareTo(BigDecimal.ZERO) >= 0) {
-            dbProduct.setWholesaleCustomerPrice(wholesaleCustomerPrice);
-        }
-        BigDecimal vipCustomerPrice = product.getVipCustomerPrice();
-        if (vipCustomerPrice != null && vipCustomerPrice.compareTo(BigDecimal.ZERO) >= 0) {
-            dbProduct.setVipCustomerPrice(vipCustomerPrice);
-        }
-        BigDecimal minSalesPrice = product.getMinSalesPrice();
-        if (minSalesPrice != null && minSalesPrice.compareTo(BigDecimal.ZERO) >= 0) {
-            dbProduct.setMinSalesPrice(minSalesPrice);
-        }
-        log.info("产品价格修改：{}", JSON.toJSONString(dbProduct));
         productRepository.save(dbProduct);
+
+        if (CollUtil.isNotEmpty(productForm.getCustomerLevelPriceList())) {
+            List<CustomerLevelPrice> cps = new ArrayList<>();
+            for (JSONObject cp : productForm.getCustomerLevelPriceList()) {
+                CustomerLevelPrice levelPrice = new CustomerLevelPrice();
+                levelPrice.setProductId(product.getId());
+                levelPrice.setUnitId(dbProduct.getUnitId());
+                levelPrice.setPrice(cp.getBigDecimal("price"));
+                levelPrice.setMerchantId(merchantId);
+                levelPrice.setAccountBookId(accountBookId);
+                levelPrice.setCustomerLevelId(cp.getLong("customerLeveId") != null
+                        ? cp.getLong("customerLeveId")
+                        : cp.getLong("customerLevelId"));
+                cps.add(levelPrice);
+            }
+            jqf.delete(qCustomerLevelPrice)
+                    .where(qCustomerLevelPrice.productId.eq(product.getId())
+                            .and(qCustomerLevelPrice.merchantId.eq(merchantId))
+                            .and(qCustomerLevelPrice.accountBookId.eq(accountBookId)))
+                    .execute();
+            customerLevelPriceRepository.saveAll(cps);
+        }
     }
 
     public PageResults<PriceRecordDTO> showPrice(Page page, Query query) {

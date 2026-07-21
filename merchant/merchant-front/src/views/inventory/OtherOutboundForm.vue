@@ -4,30 +4,30 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker v-model="form.orderDate" :disabled="looked"
+          <DatePicker v-model="form.orderDate" :disabled="isLocked"
                       :option="{ start: accountBook.checkoutDate }"
                       :clearable="false">
           </DatePicker>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">客户：</label>
           <Select class="w-178px" filterable required :datas="customerList" keyName="id" titleName="name"
-                  v-model="form.customerId" placeholder="请选择客户" :disabled="looked"/>
+                  v-model="form.customerId" placeholder="请选择客户" :disabled="isLocked"/>
           <label class="mr-20px ml-16px" style="font-size: 16px !important">业务类型：</label>
           <Select class="w-178px" filterable required :datas="outboundTypeList" keyName="id" titleName="name"
-                  :deletable="false" v-model="form.outboundType" :disabled="looked"
+                  :deletable="false" v-model="form.outboundType" :disabled="isLocked"
                   placeholder="请选择业务类型"/>
         </template>
         <template #tools>
-          <Stamp v-if="approved"/>
+          <Stamp v-if="isAudited"/>
         </template>
       </vxe-toolbar>
-      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border="border" show-overflow keep-source
-                 :edit-config="editConfig" :row-config="{ height: 40, isCurrent: true, isHover: true }"
+      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border show-overflow keep-source
+                 :edit-config="isLocked ? undefined : editConfig" :row-config="{ height: 40, isCurrent: true, isHover: true }"
                  :tooltip-config="tooltipConfig" show-footer :footer-method="footerMethod" stripe
                  :data="otherOutboundData"
                  @current-change="currentChangeEvent" @cell-click="tableCellClick">
         <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
           <template #default="{ row, rowIndex }">
-            <div v-if="rowIsSelect(rowIndex)">
+            <div v-if="!isLocked">
               <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
               <div v-if="otherOutboundData.length !== 1" class="fa fa-minus text-hover-danger"
                    @click="adjustRows('delete', rowIndex)"></div>
@@ -41,9 +41,9 @@
         <vxe-column field="productCode" title="产品编码" width="100"></vxe-column>
         <vxe-column field="productName" title="产品名称" min-width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!looked">
+            <div class="h-input-group goodsSelect" v-if="!isLocked">
               <Select :deletable="false" ref="ms" v-model="scope.row.productId" :datas="productList" filterable :equalWidth="false"
-                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="changeRow(scope, 'product')">
+                      placeholder="输入编码/名称" keyName="id" titleName="customName" @change="(e) => changeRow(scope, 'product', e)">
                 <template v-slot:top>
                   <table class="h-table" style="width: 100%">
                     <thead class="h-table-header">
@@ -86,9 +86,9 @@
         <vxe-column title="单位" field="productUnitName" width="90"/>
         <vxe-column title="仓库" field="warehouseName" width="300">
           <template #default="scope">
-            <div class="h-input-group goodsSelect" v-if="!looked">
+            <div class="h-input-group goodsSelect" v-if="!isLocked">
               <Select :deletable="false" ref="ms" v-model="scope.row.warehouseId" :datas="warehouseList" filterable
-                      placeholder="请选择仓库" keyName="id" titleName="name" @change="changeRow(scope, 'warehouse')">
+                      placeholder="请选择仓库" keyName="id" titleName="name" @change="(e) => changeRow(scope, 'warehouse', e)">
                 <template v-slot:item="{ item }">
                   <div>{{ item.name }}</div>
                 </template>
@@ -103,7 +103,7 @@
         </vxe-column>
         <vxe-column title="数量" field="quantity" width="100">
           <template #default="scope">
-            <vxe-tooltip v-if="!looked" theme="light" :content="scope.row.quantityTips">
+            <vxe-tooltip v-if="!isLocked" theme="light" :content="scope.row.quantityTips">
               <vxe-input @focus="quantityFocus(scope)" @blur="quantityBlur"
                          v-model.number="scope.row.quantity" type="int" min="0" :controls="false">
               </vxe-input>
@@ -127,7 +127,7 @@
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
-          <Input :disabled="looked" placeholder="请输入备注" type="text" maxlength="150"
+          <Input :disabled="isLocked" placeholder="请输入备注" type="text" maxlength="150"
                  style="width: 80%"
                  v-model="form.remarks"/>
           <label class="ml-16px w-180px">制单人：{{ form.adminName }}</label>
@@ -137,23 +137,24 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <Button @click="closeWindow" :loading="loading"> 取消</Button>
       <div>
-        <Button color="primary" v-if="!approved && !looked" @click="saveOrder('increase')"
+        <Button color="primary" v-if="!isLocked" @click="saveOrder('add')"
                 :loading="loading">
           保存并新增
         </Button>
-        <Button @click="saveOrder" v-if="!approved && !looked"
+        <Button @click="saveOrder('save')" v-if="!isLocked"
                 :loading="loading"> 保存
         </Button>
-        <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button v-if="!approved && !looked" @click="auditForm('AUDITS')" :loading="loading"> 审核</Button>
-        <!-- 仅当状态为审核时显示 -->
-        <Button v-if="approved && !looked" @click="auditForm('ANTI_AUDIT')" :loading="loading"> 反审核</Button>
+        <Button @click="doPrint" :loading="loading"> 打印 </Button>
+        <Button v-if="form.id && !isLocked" @click="approved()" :loading="loading"> 审核</Button>
+        <Button v-if="isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</Button>
       </div>
     </div>
   </div>
 </template>
 <script>
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
+import {openPrint} from '@common/print';
 import manba from "manba";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -175,11 +176,14 @@ export default {
   },
   computed: {
     ...mapState(["user", "accountBook"]),
-    approved() {
-      return ['已审核'].includes(this.form.orderStatus);
+    isAudited() {
+      return this.form.orderStatus === '已审核';
     },
     looked() {
-      return ['look'].includes(this.type);
+      return this.type === 'look';
+    },
+    isLocked() {
+      return this.isAudited || this.looked;
     }
   },
   data() {
@@ -232,6 +236,27 @@ export default {
   },
   // 待优化使用hook方式调用
   methods: {
+    doPrint() {
+      const items = (this.otherOutboundData || []).filter(r => r && !r.isNew && r.productId).map(r => {
+        const p = (this.productList || []).find(x => (x.productId || x.id) === r.productId) || {};
+        return {
+          ...r,
+          productName: r.productName || p.productName || p.name || p.customName || '',
+          quantity: r.quantity ?? r.secondaryQuantity,
+          price: r.unitPrice ?? r.secondaryPrice ?? r.price,
+          amount: r.subtotal ?? r.amount,
+        };
+      });
+      openPrint('其他出库单', {
+        header: {
+          ...this.form,
+          partner: (this.customerList.find(s => s.id === this.form.customerId) || {}).name || '',
+          amount: this.form.finalAmount ?? this.form.totalAmount,
+        },
+        items,
+      });
+    },
+
     // 关闭tab
     ...mapMutations(['closeSelfTab', 'pushTab']),
     //footer合计
@@ -267,73 +292,88 @@ export default {
       ];
     },
     // 设置行数据
-    changeRow({rowIndex}, type) {
+    changeRow({rowIndex}, type, selected) {
       switch (type) {
         case 'product': {
-          const value = this.otherOutboundData[rowIndex].productId;
+          const selectedProduct = (selected && typeof selected === 'object') ? selected : null;
+          let value = selectedProduct
+              ? (selectedProduct.id ?? selectedProduct.productId)
+              : this.otherOutboundData[rowIndex].productId;
+          if (value && typeof value === 'object') {
+            value = value.id ?? value.productId;
+          }
+          this.otherOutboundData[rowIndex].productId = value;
           if (this.isEmpty(value)) {
             return;
           }
-          // 根据id获取产品信息更新
-          Product.list({id: value}).then(res => {
-            const {success, data} = res;
-            if (success) {
-              const item = data.results[0];
-              console.info("Product info:", item);
-              this.otherOutboundData[rowIndex].productName = item.name;
-              this.otherOutboundData[rowIndex].productId = item.id;
-              this.otherOutboundData[rowIndex].productCode = item.code;
-              this.otherOutboundData[rowIndex].productSpecification = item.specification;
-              this.otherOutboundData[rowIndex].productCategoryName = item.productCategoryName;
-              this.otherOutboundData[rowIndex].productUnitName = item.unitName;
-              this.otherOutboundData[rowIndex].productUnitId = item.unitId;
-              this.$forceUpdate();
-              const warehouseId = this.otherOutboundData[rowIndex].warehouseId;
-              if (!warehouseId) {
-                let find = this.warehouseList.find(warehouse => {
-                  return warehouse.systemDefault;
-                });
-                if (find) {
-                  const warehouseId = find.id;
-                  this.otherOutboundData[rowIndex].warehouseId = warehouseId;
-                  // 根据id获取仓库信息
-                  Warehouse.list({id: warehouseId}).then(res => {
-                    console.info("Warehouse res:", res);
-                    const {success, data} = res;
-                    if (success) {
-                      const item = data[0];
-                      this.otherOutboundData[rowIndex].warehouseName = item.name;
-                      this.otherOutboundData[rowIndex].warehouseId = item.id;
-                      this.$forceUpdate();
-                    }
-                  });
-                }
+          const applyProduct = (item) => {
+            if (!item) return;
+            this.otherOutboundData[rowIndex].productName = item.name;
+            this.otherOutboundData[rowIndex].productId = item.id;
+            this.otherOutboundData[rowIndex].productCode = item.code;
+            this.otherOutboundData[rowIndex].productSpecification = item.specification;
+            this.otherOutboundData[rowIndex].productCategoryName = item.productCategoryName;
+            this.otherOutboundData[rowIndex].productUnitName = item.unitName;
+            this.otherOutboundData[rowIndex].productUnitId = item.unitId;
+            if (!this.otherOutboundData[rowIndex].warehouseId) {
+              const defaultId = this.resolveDefaultWarehouseId();
+              const find = (this.warehouseList || []).find(w => w.id === defaultId);
+              if (find) {
+                this.otherOutboundData[rowIndex].warehouseId = find.id;
+                this.otherOutboundData[rowIndex].warehouseName = find.name;
               }
             }
-          });
+            this.$forceUpdate();
+          };
+          if (selectedProduct && selectedProduct.name) {
+            applyProduct(selectedProduct);
+          } else {
+            Product.list({id: value}).then(res => {
+              const {success, data} = res;
+              if (success) {
+                applyProduct(data.results?.[0]);
+              }
+            });
+          }
           break;
         }
         case 'warehouse': {
-          const value = this.otherOutboundData[rowIndex].warehouseId;
+          const selectedWarehouse = (selected && typeof selected === 'object') ? selected : null;
+          let value = selectedWarehouse ? selectedWarehouse.id : this.otherOutboundData[rowIndex].warehouseId;
+          if (value && typeof value === 'object') {
+            value = value.id;
+          }
+          this.otherOutboundData[rowIndex].warehouseId = value;
           if (this.isEmpty(value)) {
             return;
           }
-          // 根据id获取仓库信息
-          Warehouse.list({id: value}).then(res => {
-            console.info("Warehouse res:", res);
-            const {success, data} = res;
-            if (success) {
-              const item = data[0];
-              this.otherOutboundData[rowIndex].warehouseName = item.name;
-              this.otherOutboundData[rowIndex].warehouseId = item.id;
-              this.$forceUpdate();
-            }
-          });
+          if (selectedWarehouse && selectedWarehouse.name) {
+            this.otherOutboundData[rowIndex].warehouseName = selectedWarehouse.name;
+            this.otherOutboundData[rowIndex].warehouseId = selectedWarehouse.id;
+            this.$forceUpdate();
+          } else {
+            Warehouse.list({id: value}).then(res => {
+              const {success, data} = res;
+              if (success) {
+                const item = data?.[0];
+                if (!item) return;
+                this.otherOutboundData[rowIndex].warehouseName = item.name;
+                this.otherOutboundData[rowIndex].warehouseId = item.id;
+                this.$forceUpdate();
+              }
+            });
+          }
           break;
         }
         default:
           break;
       }
+    },
+    resolveDefaultWarehouseId() {
+      if (this.warehouseId) return this.warehouseId;
+      const found = (this.warehouseList || []).find(w => w.systemDefault || w.isDefault);
+      this.warehouseId = found?.id || null;
+      return this.warehouseId;
     },
     isEmpty(value) {
       return (value !== 0 && !value) || value === '';
@@ -341,37 +381,19 @@ export default {
     //保存新增、保存
     saveOrder(type) {
       const filterOtherOutboundData = this.otherOutboundData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-      // 校验
-      this.validatorsForm(filterOtherOutboundData);
-      // 操作对象
+      if (!this.validatorsForm(filterOtherOutboundData)) {
+        return;
+      }
       const params = this.getSaveOrderParams(filterOtherOutboundData, type);
+      LoadingPlugin(true);
       OtherOutbound.save(params)
-          .then(({success, data}) => {
+          .then(({success}) => {
             if (success) {
               MessagePlugin.success("保存成功~");
-              setTimeout(() => {
-                if (type === "increase") {
-                  this.clearForm();
-                  // 刷新列表为编辑
-                  this.closeWindow();
-                  this.pushTab({
-                    key: 'OtherOutboundForm',
-                    title: '新增其他出库单',
-                    params: {type: 'add', otherOutboundId: null}
-                  });
-                } else {
-                  // 刷新列表为编辑
-                  this.closeWindow();
-                  this.pushTab({
-                    key: 'OtherOutboundForm',
-                    title: '编辑其他入库单',
-                    params: {type: 'edit', otherOutboundId: data.id}
-                  });
-                  this.$emit("update:otherOutboundId", data.id);
-                  this.$emit("update:type", "edit");
-                  this.loadEditForm(data.id);
-                }
-              }, 300);
+              this.clearForm();
+              if (type === 'save') {
+                this.closeWindow();
+              }
             }
           })
           .finally(() => LoadingPlugin(false));
@@ -387,33 +409,29 @@ export default {
     //校验提交表单
     validatorsForm(filterOtherOutboundData) {
       if (filterOtherOutboundData.length === 0) {
-        throw new Error("请填写操作数据~")
+        MessagePlugin.error("请填写操作数据~");
+        return false;
       }
-      LoadingPlugin(true);
-      let productData = filterOtherOutboundData.filter((c) => this.isEmpty(c.productId));
-      console.info("productData:", productData)
-      if (productData.length > 0) {
-        LoadingPlugin(false);
-        throw new Error("请选择产品~")
+      if (filterOtherOutboundData.some((c) => this.isEmpty(c.productId))) {
+        MessagePlugin.error("请选择产品~");
+        return false;
       }
-      let warehouse = filterOtherOutboundData.filter((c) => this.isEmpty(c.warehouseId));
-      if (warehouse.length > 0) {
-        LoadingPlugin(false);
-        throw new Error("请选择仓库~")
+      if (filterOtherOutboundData.some((c) => this.isEmpty(c.warehouseId))) {
+        MessagePlugin.error("请选择仓库~");
+        return false;
       }
-      let quantity = filterOtherOutboundData.filter((c) => this.isEmpty(c.quantity) || Number(c.quantity) === 0);
-      if (quantity.length > 0) {
-        LoadingPlugin(false);
-        throw new Error("请填写数量~")
+      if (filterOtherOutboundData.some((c) => this.isEmpty(c.quantity) || Number(c.quantity) === 0)) {
+        MessagePlugin.error("请填写数量~");
+        return false;
       }
-      let warehouseQuantity = filterOtherOutboundData.filter((c) => c.warehouseQuantity - c.quantity < 0);
-      if (warehouseQuantity.length > 0) {
-        LoadingPlugin(false);
-        throw new Error("出库数量不能大于仓库库存数量~")
+      if (filterOtherOutboundData.some((c) => c.warehouseQuantity - c.quantity < 0)) {
+        MessagePlugin.error("出库数量不能大于仓库库存数量~");
+        return false;
       }
+      return true;
     },
     //获取保存新增、保存方法提交数据
-    getSaveOrderParams(filterOtherOutboundData, type) {
+    getSaveOrderParams(filterOtherOutboundData) {
       const otherOutboundItems = [];
       const otherOutbound = {
         customerId: this.form.customerId,
@@ -451,6 +469,8 @@ export default {
         outboundType: '其他出库',
         totalAmount: 0.00,
         totalQuantity: 0,
+        adminName: this.user?.admin?.name || '',
+        orderStatus: '已保存',
         quantityTips: ''
       };
       this.otherOutboundData = [];
@@ -470,10 +490,6 @@ export default {
       for (let index = 0; index < 5; index++) {
         this.otherOutboundData.push({productId: null, warehouseId: null, quantity: null});
       }
-    },
-    //行是否选中
-    rowIsSelect(rowIndex) {
-      return !this.looked;
     },
     //行选中事件
     currentChangeEvent({rowIndex}) {
@@ -562,17 +578,14 @@ export default {
       Promise.all([Product.select(), Warehouse.select(), Customer.select()])
           .then((results) => {
             this.productList = results[0].data || [];
-            // 调整productList的name值
             this.productList.forEach(item => {
               item.customName = `${item.code}--${item.name}`;
             });
             this.warehouseList = results[1].data || [];
             this.customerList = results[2].data || [];
-            if (this.warehouseList != null) {
-              this.warehouseId = this.warehouseList.find(
-                  (val) => val.isDefault
-              )?.id;
-            }
+            this.warehouseId = this.warehouseList.find(
+                (val) => val.systemDefault || val.isDefault
+            )?.id;
             if (callback) {
               callback();
             }
@@ -591,65 +604,37 @@ export default {
         this.otherOutboundData = JSON.parse(JSON.stringify(this.importOutbound));
       }
     },
-    //初始化审核表单
-    initAuditsForm() {
-      //表格不可编辑
-      this.editConfig = {};
-    },
-    //审核表单
-    async auditForm(operateType) {
-      const type = this.type;
-      let {id} = this.form;
-      if (!id) {
-        const filterOtherOutboundData = this.otherOutboundData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
-        // 校验
-        this.validatorsForm(filterOtherOutboundData);
-        // 操作对象
-        const params = this.getSaveOrderParams(filterOtherOutboundData, type);
-        const res = await OtherOutbound.save(params);
-        if (!res.success) {
-          return;
+    approved() {
+      DialogPlugin.confirm({
+        title: "审核提示",
+        content: `确认审核该订单?`,
+        onConfirm: () => {
+          return OtherOutbound.approved('已审核', [this.form.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.closeWindow();
+          });
         }
-        id = res.data.id;
-      }
-      const params = {id, type: operateType};
-      LoadingPlugin(true);
-      OtherOutbound.approve(params)
-          .then((success) => {
-            if (success) {
-              MessagePlugin.success("审核成功~");
-              setTimeout(() => {
-                this.loadEditForm(id);
-              }, 300);
-            }
-          })
-          .finally(() => LoadingPlugin(false));
+      });
+    },
+    backApproved() {
+      DialogPlugin.confirm({
+        title: "反审核提示",
+        content: `确认反审核该订单?`,
+        onConfirm: () => {
+          return OtherOutbound.approved('已保存', [this.form.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.closeWindow();
+          });
+        }
+      });
     }
-  },
-  beforeDestroy() {
-    DialogPlugin.confirm({
-      title: "系统提示",
-      content: `确认?`,
-      onConfirm: () => {
-      },
-    });
   },
   created() {
     LoadingPlugin(true);
     this.loadDict(() => {
-      //订单详情/编辑订单
       if (this.otherOutboundId) {
         this.loadEditForm();
-        const type = this.type;
-        switch (type) {
-          case 'audits':
-          case 'antiAudits':
-            this.initAuditsForm();
-            break;
-          default:
-            break;
-        }
-        return
+        return;
       }
       this.initIncreaseForm();
     });

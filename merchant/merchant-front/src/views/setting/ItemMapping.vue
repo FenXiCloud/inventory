@@ -2,19 +2,14 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
+        <t-tabs v-model="selected" @change="changeTab">
+          <t-tab-panel value="0" label="客户" />
+          <t-tab-panel value="1" label="供应商" />
+          <t-tab-panel value="6" label="产品" />
+        </t-tabs>
         <t-button theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
-        <t-input
-            v-model="params.name"
-            clearable
-            placeholder="请输入角色名称"
-            style="width: 240px; border-radius: 4px"
-            @enter="doSearch"
-        >
-          <template #suffixIcon>
-            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
-          </template>
-        </t-input>
-        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" @click="batchShowForm()">批量新增</t-button>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="loadList">刷新</t-button>
       </t-space>
     </div>
 
@@ -26,21 +21,16 @@
           stripe
           hover
           height="100%"
-          table-layout="auto"
+          table-layout="fixed"
           :data="dataList"
           :columns="columns"
           :loading="loading"
+          empty="暂无映射，请点击「新增」"
       >
-        <template #systemDefault="{ row }">
-          <t-tag :theme="row.systemDefault ? 'primary' : 'default'" variant="light">
-            {{ row.systemDefault ? '是' : '否' }}
-          </t-tag>
-        </template>
         <template #ops="{ row }">
-          <t-space v-if="!row.systemDefault" size="small">
-            <t-link theme="primary" @click="showGrantMenu(row)">可用菜单</t-link>
-            <t-link theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
-            <t-link theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
+          <t-space size="small">
+            <t-link theme="primary" @click="showForm(row.id)">编辑</t-link>
+            <t-link theme="danger" @click="doRemove(row.id)">删除</t-link>
           </t-space>
         </template>
       </t-table>
@@ -49,80 +39,61 @@
 </template>
 
 <script>
-import Role from "@js/api/setting/Role";
-import RoleForm from "./RoleForm.vue";
-import GrantMenu from "./GrantMenu.vue";
-import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
-import {openDialog, openDrawer, closeDialog} from '@common/dialog';
-import {h} from "vue";
+import { openDialog, closeDialog } from '@common/dialog';
+import { h } from 'vue';
+import FinanceItemMap from '@js/api/setting/FinanceItemMap';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
+import FinanceItemMapForm from './FinanceItemMapForm.vue';
+import FinanceItemMapBatchForm from './FinanceItemMapBatchForm.vue';
 
-/**
- * @功能描述: 辅助项映射
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
+const CATEGORY_LABEL = { 0: '客户', 1: '供应商', 6: '产品' };
+
 export default {
-  name: "ItemMapping",
+  name: 'ItemMapping',
   data() {
     return {
       loading: false,
-      params: {
-        type: 0
-      },
-      checkedRows: [],
       dataList: [],
-      pagination: {
-        page: 1,
-        size: 20,
-        total: 0
-      },
+      selected: '0',
       columns: [
-        {colKey: 'name', title: '名称', minWidth: 160, ellipsis: true},
-        {colKey: 'systemDefault', title: '是否默认', width: 100, align: 'center'},
-        {colKey: 'ops', title: '操作', width: 200, align: 'center', fixed: 'right'}
+        { colKey: 'financeName', title: '财务软件名称', minWidth: 140, ellipsis: true },
+        { colKey: 'inventoryName', title: '进销存名称', minWidth: 140, ellipsis: true },
+        { colKey: 'financeCode', title: '财务 code', minWidth: 120, ellipsis: true },
+        { colKey: 'inventoryCode', title: '进销存 code', minWidth: 120, ellipsis: true },
+        { colKey: 'ops', title: '操作', width: 120, align: 'center', fixed: 'right' }
       ]
-    }
-  },
-  computed: {
-    queryParams() {
-      return Object.assign({}, this.params, {
-        page: this.pagination.page,
-        pageSize: this.pagination.size
-      })
-    }
+    };
   },
   methods: {
-    showForm(entity) {
-      let type = 0;
-      let dialogId = openDialog({
-        header: "角色信息",
+    showForm(id) {
+      const label = CATEGORY_LABEL[this.selected] || '辅助项';
+      const dialogId = openDialog({
+        header: `${label}-辅助项映射`,
         closeOnOverlayClick: false,
-        closeBtn: false,
-        width: '400px',
-        body: h(RoleForm, {
-          entity, type,
-          onClose: () => {
-            closeDialog(dialogId);
-          },
+        width: '800px',
+        body: h(FinanceItemMapForm, {
+          id,
+          categoryId: this.selected,
+          onClose: () => closeDialog(dialogId),
           onSuccess: () => {
-            this.doSearch();
+            this.loadList();
             closeDialog(dialogId);
           }
         })
       });
     },
-    showGrantMenu(entity) {
-      let dialogId = openDrawer({
-        header: entity.name + "-可用菜单",
-        size: '40vw',
-        body: h(GrantMenu, {
-          entity,
-          onClose: () => {
-            closeDialog(dialogId);
-          },
+    batchShowForm() {
+      const label = CATEGORY_LABEL[this.selected] || '辅助项';
+      const dialogId = openDialog({
+        header: `${label}-批量映射`,
+        closeOnOverlayClick: false,
+        width: '800px',
+        body: h(FinanceItemMapBatchForm, {
+          categoryId: this.selected,
+          onClose: () => closeDialog(dialogId),
           onSuccess: () => {
+            this.loadList();
             closeDialog(dialogId);
           }
         })
@@ -130,35 +101,34 @@ export default {
     },
     loadList() {
       this.loading = true;
-      Role.list(this.queryParams).then(({data}) => {
-        this.dataList = data.results;
-        this.pagination.total = data.total;
-      }).finally(() => this.loading = false);
+      FinanceItemMap.list({ categoryId: this.selected })
+        .then(({ data }) => {
+          this.dataList = data || [];
+        })
+        .finally(() => {
+          this.loading = false;
+        });
     },
-    pageChange() {
-      this.loadList();
-    },
-    doSearch() {
-      this.pagination.page = 1;
-      this.loadList();
-    },
-    doRemove(row) {
+    doRemove(id) {
       DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认删除角色：${row.name}?`,
+        title: '系统提示',
+        content: '是否删除当前映射?',
         onConfirm: () => {
-          Role.remove(row.id).then(() => {
-            MessagePlugin.success("删除成功~");
+          FinanceItemMap.delete(id).then(() => {
+            MessagePlugin.success('删除成功');
             this.loadList();
-          })
+          });
         }
-      })
+      });
+    },
+    changeTab() {
+      this.loadList();
     }
   },
   created() {
     this.loadList();
   }
-}
+};
 </script>
 
 <style scoped>

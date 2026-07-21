@@ -12,13 +12,13 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
 import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.QAdmin;
-import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.InboundType;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.OtherInboundForm;
 import com.flyemu.share.repository.OtherInboundRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class OtherInboundService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QOtherInbound qOtherInbound = QOtherInbound.otherInbound;
 
     private final OtherInboundItemService otherInboundItemService;
@@ -117,10 +118,13 @@ public class OtherInboundService extends AbsService {
     }
 
     @Transactional
-    public OtherInbound save(OtherInboundForm otherInboundForm) {
+    public OtherInbound save(OtherInboundForm otherInboundForm, Long merchantId) {
         OtherInbound result;
         SnowflakeGenerator snowflakeGenerator = new SnowflakeGenerator();
         OtherInbound otherInbound = otherInboundForm.getOtherInbound();
+        java.time.LocalDate __checkoutOrderDate = otherInbound.getInboundDate() == null ? null : new java.sql.Date(otherInbound.getInboundDate().getTime()).toLocalDate();
+        checkoutService.assertEditable(otherInbound.getMerchantId(), otherInbound.getAccountBookId(), __checkoutOrderDate);
+        otherInbound.setMerchantId(merchantId);
         if (otherInbound.getId() != null) {
             //更新
             OtherInbound original = otherInboundRepository.getById(otherInbound.getId());
@@ -129,6 +133,7 @@ public class OtherInboundService extends AbsService {
         } else {
             otherInbound.setCreatedAt(LocalDateTime.now());
             otherInbound.setOrderNo(snowflakeGenerator.next().toString());
+            otherInbound.setOrderStatus(OrderStatus.已保存);
             result = otherInboundRepository.save(otherInbound);
         }
         // 入库明细
@@ -153,8 +158,22 @@ public class OtherInboundService extends AbsService {
     }
 
     @Transactional
-    public void approve(Long id, ApproveType type, Long adminId) {
-        OtherInbound otherInbound = jqf.selectFrom(qOtherInbound).where(qOtherInbound.id.eq(id)).fetchOne();
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new ServiceException("未选择单据");
+        }
+        if (!OrderStatus.已审核.equals(state) && !OrderStatus.已保存.equals(state)) {
+            throw new ServiceException("不支持的审核状态");
+        }
+        for (Long id : ids) {
+            this.approve(id, state, adminId, merchantId);
+        }
+    }
+
+    private void approve(Long id, OrderStatus state, Long adminId, Long merchantId) {
+        OtherInbound otherInbound = jqf.selectFrom(qOtherInbound)
+                .where(qOtherInbound.id.eq(id).and(qOtherInbound.merchantId.eq(merchantId)))
+                .fetchOne();
         if (otherInbound == null) {
             throw new ServiceException("审核数据不存在～");
         }
@@ -168,34 +187,28 @@ public class OtherInboundService extends AbsService {
         List<OtherInboundItem> otherInboundItems = otherInboundItemService.findByOtherInboundId(id);
         List<Inventory> inventories = new ArrayList<>();
         List<InventoryItem> inventoryItems = new ArrayList<>();
-        switch (type) {
-            case AUDITS -> {
-                //处理库存
-                this.getComputedInventory(otherInboundItems, inventories, inventoryItems, operationType, otherInbound);
-                inventories.forEach(item -> {
-                    // 加库存
-                    inventoryService.computedInventory(item, true, id, operationType, inventoryItems);
-                });
-                otherInbound.setOrderStatus(OrderStatus.已审核);
-                otherInbound.setApprovedBy(adminId);
-                otherInbound.setApprovedAt(LocalDateTime.now());
-                otherInboundRepository.save(otherInbound);
-            }
-            case ANTI_AUDIT -> {
-                //处理库存
-                this.getComputedInventory(otherInboundItems, inventories, inventoryItems, operationType, otherInbound);
-                inventories.forEach(item -> {
-                    // 减库存
-                    inventoryService.computedInventory(item, false, id, operationType, null);
-                });
-                otherInbound.setOrderStatus(OrderStatus.未审核);
-                otherInbound.setApprovedBy(adminId);
-                otherInbound.setApprovedAt(LocalDateTime.now());
-                otherInboundRepository.save(otherInbound);
-            }
-            default -> {
-
-            }
+        if (OrderStatus.已审核.equals(state)) {
+            //处理库存
+            this.getComputedInventory(otherInboundItems, inventories, inventoryItems, operationType, otherInbound);
+            inventories.forEach(item -> {
+                // 加库存
+                inventoryService.computedInventory(item, true, id, operationType, inventoryItems);
+            });
+            otherInbound.setOrderStatus(OrderStatus.已审核);
+            otherInbound.setApprovedBy(adminId);
+            otherInbound.setApprovedAt(LocalDateTime.now());
+            otherInboundRepository.save(otherInbound);
+        } else if (OrderStatus.已保存.equals(state)) {
+            //处理库存
+            this.getComputedInventory(otherInboundItems, inventories, inventoryItems, operationType, otherInbound);
+            inventories.forEach(item -> {
+                // 减库存
+                inventoryService.computedInventory(item, false, id, operationType, null);
+            });
+            otherInbound.setOrderStatus(OrderStatus.已保存);
+            otherInbound.setApprovedBy(adminId);
+            otherInbound.setApprovedAt(LocalDateTime.now());
+            otherInboundRepository.save(otherInbound);
         }
     }
 
@@ -277,7 +290,7 @@ public class OtherInboundService extends AbsService {
         return inventoryItem;
     }
 
-    public List<Map<String, Object>> load(Long id) {
+    public List<Map<String, Object>> load(Long merchantId, Long id) {
         StringTemplate dateExpressions = Expressions.
                 stringTemplate("DATE_FORMAT({0},'%Y-%m-%d')", qOtherInbound.inboundDate);
         List<Tuple> fetch = jqf.selectFrom(qOtherInbound)
@@ -313,7 +326,7 @@ public class OtherInboundService extends AbsService {
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
                 .leftJoin(qAdmin).on(qAdmin.id.eq(qOtherInbound.createdBy))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qOtherInboundItem.warehouseId))
-                .where(qOtherInbound.id.eq(id)).fetch();
+                .where(qOtherInbound.id.eq(id).and(qOtherInbound.merchantId.eq(merchantId))).fetch();
         List<Map<String, Object>> result = new ArrayList<>();
         Map<String, Object> item;
         for (Tuple tuple : fetch) {

@@ -5,7 +5,7 @@ export default {
         return Ajax.get('/financeVoucherTemplate')
     },
     save(param) {
-        return Ajax.post('/financeVoucherTemplate/save', param)
+        return Ajax[param.id ? 'put' : 'post']('/financeVoucherTemplate', param)
     },
     delete(id) {
         return Ajax.delete("/financeVoucherTemplate/" + id);

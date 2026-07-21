@@ -1,0 +1,102 @@
+package com.flyemu.share.controller.basic;
+
+import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.controller.JsonResult;
+import com.flyemu.share.controller.Page;
+import com.flyemu.share.entity.basic.PriceRecord;
+import com.flyemu.share.form.ProductForm;
+import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.basic.ProductService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * @功能描述: 价格记录
+ * @创建时间: 2023年08月08日
+ * @公司官网: www.fenxi365.com
+ * @公司信息: 纷析云（杭州）科技有限公司
+ * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
+ */
+@RestController
+@RequestMapping("/priceRecord")
+@RequiredArgsConstructor
+public class PriceRecordController {
+
+    private final PriceRecordService priceRecordService;
+
+    @GetMapping
+    public JsonResult list(Page page, PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(priceRecordService.query(page, query));
+    }
+
+    @PostMapping
+    public JsonResult save(@RequestBody @Valid PriceRecord priceRecord, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        priceRecord.setMerchantId(merchantId);
+        priceRecord.setAccountBookId(accountBookId);
+        priceRecordService.save(priceRecord);
+        return JsonResult.successful();
+    }
+
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid PriceRecord priceRecord, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        priceRecord.setMerchantId(merchantId);
+        priceRecord.setAccountBookId(accountBookId);
+        priceRecordService.save(priceRecord);
+        return JsonResult.successful();
+    }
+
+    @DeleteMapping("/{priceRecordId}")
+    public JsonResult delete(@PathVariable Long priceRecordId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        priceRecordService.delete(priceRecordId, merchantId, accountBookId);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("select")
+    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(priceRecordService.select(merchantId, accountBookId));
+    }
+
+    @GetMapping("product")
+    public JsonResult productList(
+            Page page,
+            ProductService.Query query,
+            @SaMerchantId Long merchantId,
+            @SaAccountBookId Long accountBookId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(priceRecordService.productList(page, query));
+    }
+
+    @PostMapping("product")
+    public JsonResult productSave(@RequestBody ProductForm productForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        priceRecordService.productSave(productForm, merchantId, accountBookId);
+        return JsonResult.successful();
+    }
+
+    @PostMapping("product/cell")
+    public JsonResult productCellSave(@RequestBody @Valid com.flyemu.share.form.ProductPriceCellForm form,
+                                      @SaMerchantId Long merchantId,
+                                      @SaAccountBookId Long accountBookId) {
+        priceRecordService.productCellSave(form, merchantId, accountBookId);
+        return JsonResult.successful();
+    }
+
+    @GetMapping("/price")
+    public JsonResult price(Page page, PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(priceRecordService.showPrice(page, query));
+    }
+
+    @GetMapping("/purchasePrice")
+    public JsonResult purchasePrice(PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        query.setMerchantId(merchantId);
+        query.setAccountBookId(accountBookId);
+        return JsonResult.successful(priceRecordService.showPurchasePrice(query));
+    }
+
+}

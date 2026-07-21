@@ -95,7 +95,7 @@
               :theme="row.orderStatus === '已审核' ? 'success' : 'warning'"
               variant="light"
           >
-            {{ row.orderStatus }}
+            {{ row.orderStatus === '已保存' ? '未审核' : row.orderStatus }}
           </t-tag>
         </template>
       </t-table>
@@ -120,7 +120,8 @@
 import manba from "manba";
 import InventoryTransfer from "@js/api/inventory/InventoryTransfer";
 import {mapMutations} from "vuex";
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
 
@@ -160,7 +161,7 @@ export default {
       },
       dateRangeValue: [startTime, endTime],
       stateOptions: [
-        {label: '未审核', value: '未审核'},
+        {label: '未审核', value: '已保存'},
         {label: '已审核', value: '已审核'},
       ],
       columns: [
@@ -210,7 +211,7 @@ export default {
       this.selectedRows = [];
     },
     editable(row) {
-      return row.orderStatus === '未审核';
+      return row.orderStatus === '已保存';
     },
     auditsForm(type) {
       if (!this.selectedRows.length) {
@@ -218,41 +219,43 @@ export default {
         return;
       }
       if (type === "audits") {
-        const filterRecords = this.selectedRows.filter(item => item.orderStatus === "未审核");
+        const filterRecords = this.selectedRows.filter(item => item.orderStatus === "已保存");
         if (!filterRecords.length) {
           MessagePlugin.warning("请选择状态为未审核的数据，进行审核~");
           return;
         }
         const ids = filterRecords.map(item => item.id);
-        LoadingPlugin(true);
-        InventoryTransfer.approves({ids: ids.join(','), type: "AUDITS"})
-            .then((success) => {
-              if (success) {
-                MessagePlugin.success("审核成功~");
-                this.clearSelection();
-                this.loadList();
-              }
-            })
-            .finally(() => LoadingPlugin(false));
+        DialogPlugin.confirm({
+          title: "批量审核提示",
+          content: `本次审核${ids.length}条?`,
+          onConfirm: () => {
+            return InventoryTransfer.approved('已审核', ids).then(() => {
+              MessagePlugin.success("审核成功~");
+              this.clearSelection();
+              this.loadList();
+            });
+          }
+        });
         return;
       }
       if (type === "antiAudits") {
         const filterRecords = this.selectedRows.filter(item => item.orderStatus === "已审核");
         if (!filterRecords.length) {
-          MessagePlugin.warning("请选择状态为已审核的数据，进行审核~");
+          MessagePlugin.warning("请选择状态为已审核的数据，进行反审核~");
           return;
         }
         const ids = filterRecords.map(item => item.id);
-        LoadingPlugin(true);
-        InventoryTransfer.approves({ids: ids.join(','), type: "ANTI_AUDIT"})
-            .then((success) => {
-              if (success) {
-                MessagePlugin.success("反审核成功~");
-                this.clearSelection();
-                this.loadList();
-              }
-            })
-            .finally(() => LoadingPlugin(false));
+        DialogPlugin.confirm({
+          title: "批量反审核提示",
+          content: `本次反审核${ids.length}条?`,
+          onConfirm: () => {
+            return InventoryTransfer.approved('已保存', ids).then(() => {
+              MessagePlugin.success("反审核成功~");
+              this.clearSelection();
+              this.loadList();
+            });
+          }
+        });
       }
     },
     doSearch() {
@@ -283,7 +286,7 @@ export default {
         title: "系统提示",
         content: `是否删除当前数据?`,
         onConfirm: () => {
-          InventoryTransfer.delete(id).then(() => {
+          return InventoryTransfer.remove(id).then(() => {
             MessagePlugin.success("操作成功～");
             this.loadList();
           });

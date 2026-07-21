@@ -100,7 +100,8 @@
 import manba from "manba";
 import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 import {mapMutations} from "vuex";
-import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 import Supplier from "@js/api/basic/Supplier";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");

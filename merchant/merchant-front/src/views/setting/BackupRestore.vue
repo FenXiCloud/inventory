@@ -61,7 +61,8 @@
 
 <script>
 import DataBackup from '@js/api/setting/DataBackup';
-import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import { downloadBlob } from 'download.js';
 
 /**

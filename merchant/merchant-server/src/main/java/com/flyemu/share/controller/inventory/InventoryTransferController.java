@@ -1,12 +1,13 @@
 package com.flyemu.share.controller.inventory;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
+import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.entity.inventory.InventoryTransfer;
-import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.InventoryTransferForm;
 import com.flyemu.share.service.inventory.InventoryTransferService;
@@ -14,7 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
+import java.util.List;
 
 /**
  * @功能描述: 调拨单
@@ -44,24 +45,16 @@ public class InventoryTransferController {
         InventoryTransfer inventoryTransfer = inventoryTransferForm.getInventoryTransfer();
         inventoryTransfer.setMerchantId(merchantId);
         inventoryTransfer.setAccountBookId(accountBookId);
-        inventoryTransfer.setOrderStatus(OrderStatus.未审核);
+        inventoryTransfer.setOrderStatus(OrderStatus.已保存);
         inventoryTransfer.setCreatedBy(adminId);
-        InventoryTransfer transfer = inventoryTransferService.save(inventoryTransferForm);
+        InventoryTransfer transfer = inventoryTransferService.save(inventoryTransferForm, merchantId);
         return JsonResult.successful(transfer);
     }
 
-    @GetMapping("approve")
-    public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
-        inventoryTransferService.approve(id, type, adminId);
-        return JsonResult.successful();
-    }
-
-    @GetMapping("approves")
-    public JsonResult approves(@RequestParam("ids") String ids, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
-        Arrays.stream(ids.split(",")).map(Long::parseLong).forEach(id -> {
-            inventoryTransferService.approve(id, type, adminId);
-        });
-        return JsonResult.successful();
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid InventoryTransferForm inventoryTransferForm, @SaMerchantId Long merchantId) {
+        InventoryTransfer transfer = inventoryTransferService.save(inventoryTransferForm, merchantId);
+        return JsonResult.successful(transfer);
     }
 
     @DeleteMapping("/{inventoryTransferId}")
@@ -76,7 +69,13 @@ public class InventoryTransferController {
     }
 
     @GetMapping("load/{id}")
-    public JsonResult load(@PathVariable Long id) {
-        return JsonResult.successful(inventoryTransferService.load(id));
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+        return JsonResult.successful(inventoryTransferService.load(merchantId, id));
+    }
+
+    @PostMapping("/approved/{state}")
+    public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
+        inventoryTransferService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
+        return JsonResult.successful();
     }
 }

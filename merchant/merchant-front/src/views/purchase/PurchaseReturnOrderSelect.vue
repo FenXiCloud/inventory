@@ -1,78 +1,73 @@
 <template>
-  <div class="modal-column">
-    <div class="modal-column-full-body flex flex-column">
-      <vxe-toolbar>
-        <template #buttons>
-        </template>
-        <template #tools>
-          <div class="h-input-group">
-            <span class="h-input-addon ml-8px">订单日期：</span>
-            <DateRangePicker v-model="dateRange"></DateRangePicker>
-          </div>
-          <Search v-model.trim="params.filter"
-                  show-search-button class="w-360px ml-8px"
-                  placeholder="请输入订单号" @search="doSearch">
-            <t-icon name="search" />
-          </Search>
-        </template>
-      </vxe-toolbar>
-      <div class="flex1">
-        <vxe-table row-id="id"
-                   ref="table"
-                   height="auto"
-                   :data="dataList"
-                   highlight-hover-row
-                   show-overflow
-                   show-footer
-                   :footer-method="footerMethod"
-                   :row-config="{height: 48}"
-                   :column-config="{resizable: true}"
-                   :sort-config="{remote:true}"
-                   :loading="loading">
-          <vxe-column type="checkbox" width="40" align="center"/>
-          <vxe-column title="入库日期" field="inboundDate" align="center" width="130"/>
-          <vxe-column title="订单编号" field="orderNo" width="200"/>
-          <vxe-column title="供货商" field="supplierName" min-width="120"/>
-          <vxe-column title="采购金额" field="finalAmount" width="120"/>
-          <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-          <vxe-column title="折后金额" field="finalAmount" width="120"/>
-          <vxe-column title="制单人" field="createdName" align="center" width="100"/>
-          <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
-        </vxe-table>
-      </div>
-      <vxe-pager perfect @page-change="loadList(false)"
-                 v-model:current-page="pagination.page"
-                 v-model:page-size="pagination.pageSize"
-                 :total="pagination.total"
-                 :layouts="[ 'PrevPage', 'Number', 'NextPage',  'Sizes', 'Total']">
-        <template #left>
-          <span class="mr-12px text-14px">合计金额：{{ amountTotal }}元</span>
-          <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
-                      :loading="loading"></vxe-button>
-        </template>
-      </vxe-pager>
+  <div class="order-select">
+    <div class="order-select__toolbar">
+      <span class="order-select__label">订单日期：</span>
+      <DateRangePicker v-model="dateRange"/>
+      <Search
+          v-model.trim="params.filter"
+          show-search-button
+          class="order-select__search"
+          placeholder="请输入订单编号"
+          @search="doSearch"
+      >
+        <t-icon name="search"/>
+      </Search>
     </div>
-    <div class="modal-column-between">
-      <Button @click="$emit('close')" :loading="loading">
-        取消
-      </Button>
-      <Button color="primary" @click="confirm" :loading="loading">
-        确认
-      </Button>
+    <div class="order-select__table">
+      <vxe-table
+          row-id="id"
+          ref="table"
+          height="auto"
+          border
+          show-overflow
+          :data="dataList"
+          highlight-hover-row
+          show-footer
+          :footer-method="footerMethod"
+          :row-config="{height: 48}"
+          :column-config="{resizable: true}"
+          :sort-config="{remote:true}"
+          :loading="loading"
+      >
+        <vxe-column type="checkbox" width="40" align="center"/>
+        <vxe-column title="入库日期" field="inboundDate" align="center" width="130"/>
+        <vxe-column title="订单编号" field="orderNo" width="200"/>
+        <vxe-column title="供货商" field="supplierName" min-width="120"/>
+        <vxe-column title="采购金额" field="finalAmount" width="120"/>
+        <vxe-column title="折扣金额" field="discountAmount" width="120"/>
+        <vxe-column title="折后金额" field="finalAmount" width="120"/>
+        <vxe-column title="制单人" field="createdName" align="center" width="100"/>
+        <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
+      </vxe-table>
+    </div>
+    <div class="order-select__pager">
+      <span class="order-select__total">合计金额：{{ amountTotal }}元</span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
+    </div>
+    <div class="order-select__footer">
+      <Button @click="$emit('close')" :loading="loading">取消</Button>
+      <Button color="primary" @click="confirm" :loading="loading">确认</Button>
     </div>
   </div>
 </template>
 <script>
 import manba from "manba";
-import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
-import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
 import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
 
 export default {
-  name: "PurchaseOrderSelect",
+  name: "PurchaseReturnOrderSelect",
   props: {
     supplierId: {
       type: [String, Number],
@@ -84,7 +79,6 @@ export default {
       dataList: [],
       loading: false,
       amountTotal: 0,
-      totalParams: {},
       pagination: {
         page: 1,
         pageSize: 20,
@@ -104,7 +98,7 @@ export default {
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      return Object.assign({}, this.params, {
         supplierId: this.supplierId,
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
@@ -114,15 +108,16 @@ export default {
     },
   },
   methods: {
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
+    },
     confirm() {
       let checkList = this.$refs.table.getCheckboxRecords();
       if (checkList.length && checkList.length > 0) {
         let ids = checkList.map(val => val.id);
-        let params = {
-          orderIds: ids
-        };
-        // 这里可以触发成功事件并传递数据
-        this.$emit('success', params);
+        this.$emit('success', {orderIds: ids});
       } else {
         MessagePlugin.error("未选择数据~");
       }
@@ -160,3 +155,68 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.order-select {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+  min-height: 480px;
+  max-height: calc(100vh - 120px);
+  overflow: hidden;
+  background: #fff;
+}
+
+.order-select__toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--td-component-border, #e7e7e7);
+}
+
+.order-select__label {
+  color: #333;
+  white-space: nowrap;
+}
+
+.order-select__search {
+  width: 320px;
+  max-width: 100%;
+}
+
+.order-select__table {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 16px;
+  overflow: hidden;
+}
+
+.order-select__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--td-component-border, #e7e7e7);
+}
+
+.order-select__total {
+  font-size: 14px;
+  color: #333;
+  white-space: nowrap;
+}
+
+.order-select__footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #f5f5f5;
+  border-top: 1px solid var(--td-component-border, #e7e7e7);
+}
+</style>

@@ -4,47 +4,83 @@
       <vxe-toolbar class-name="!size--mini">
         <template #buttons>
           <label class="mr-20px" style="font-size: 16px !important;">供货商：</label>
-          <Select class="w-300px" filterable required :datas="supplierList" keyName="id" titleName="name"
-                  :deletable="false" @change="changeSupplier($event)" v-model="supplierId" placeholder="请选择供货商"/>
+          <Select
+              class="w-300px"
+              filterable
+              required
+              :datas="supplierList"
+              keyName="id"
+              titleName="name"
+              :deletable="false"
+              :disabled="isAudited"
+              @change="changeSupplier($event)"
+              v-model="supplierId"
+              placeholder="请选择供货商"
+          />
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">入库日期：</label>
-          <DatePicker v-model="form.inboundDate" :option="{start:accountBook.checkoutDate}"
-                      :clearable="false"></DatePicker>
-          <Button v-if="type==='add'" @click="selectPurchaseOrder()" color="primary" style="margin-left: 20px">
+          <DatePicker
+              v-model="form.inboundDate"
+              :option="{start:accountBook.checkoutDate}"
+              :clearable="false"
+              :disabled="isAudited"
+          />
+          <Button
+              v-if="type==='add' && !isAudited"
+              @click="selectPurchaseOrder()"
+              color="primary"
+              style="margin-left: 20px"
+          >
             选择源单
           </Button>
+        </template>
+        <template #tools>
+          <Stamp v-if="isAudited"/>
         </template>
       </vxe-toolbar>
       <vxe-table
           size="mini"
           ref="xTable"
-          border="border"
+          border
+          show-overflow
           :row-config="{height: 40}"
           show-footer
           :footer-method="footerMethod"
           stripe
-          :data="productData">
+          :data="productData"
+      >
         <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
         <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
           <template #default="{row,rowIndex}">
-            <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert',rowIndex)"></div>
-            <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
+            <template v-if="!isAudited">
+              <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert',rowIndex)"></div>
+              <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
+            </template>
           </template>
         </vxe-column>
         <vxe-column field="imgPath" title="产品图片" width="100">
           <template #default="{row}">
             <img
-                :src="productList.find(item => item.id === row.productId)?.imgPath || '-'"
+                :src="productImage(row)"
                 alt=""
                 class="product-img cursor-pointer"
-                @click="previewImage(productList.find(item => item.id === row.productId)?.imgPath)">
+                @click="previewImage(productImage(row))"
+            >
           </template>
         </vxe-column>
         <vxe-column title="产品信息" min-width="300">
           <template #default="{row,rowIndex}">
-            <div class="h-input-group goodsSelect" @keyup.stop="void(0)">
-              <Select ref="ms" @change="selectProduct($event,rowIndex)" v-model="row.productId" :datas="productList"
-                      filterable :equalWidth="false"
-                      placeholder="输入编码/名称" keyName="productId">
+            <div class="h-input-group goodsSelect" @keyup.stop="void(0)" v-if="!isAudited">
+              <Select
+                  ref="ms"
+                  @change="selectProduct($event,rowIndex)"
+                  v-model="row.productId"
+                  :datas="productList"
+                  filterable
+                  :equalWidth="false"
+                  placeholder="输入编码/名称"
+                  keyName="productId"
+                  titleName="productName"
+              >
                 <template v-slot:top>
                   <table class="h-table" style="width: 100%">
                     <thead class="h-table-header">
@@ -73,33 +109,50 @@
                 </template>
               </Select>
             </div>
+            <div v-else>{{ row.productCode }}--{{ row.productName }}</div>
+          </template>
+        </vxe-column>
+        <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
+          <template #default="{row}">
+            <template v-if="!row.isNew && !isAudited">
+              <Select
+                  v-if="row.auxiliaryUnitPrices"
+                  :deletable="false"
+                  @change="changeProductUnit($event,row)"
+                  v-model="row.secondaryUnitId"
+                  :datas="row.auxiliaryUnitPrices"
+                  filterable
+                  placeholder="输入采购单位"
+                  keyName="unitId"
+                  titleName="unitName"
+              />
+              <span v-else>{{ row.secondaryUnitName }}</span>
+            </template>
+            <span v-else-if="!row.isNew">{{ row.secondaryUnitName }}</span>
           </template>
         </vxe-column>
         <vxe-column title="产品类别" field="categoryName" align="center" width="80"/>
         <vxe-column title="规格型号" field="spec" align="center" width="80"/>
-        <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
-          <template #default="{row,rowIndex}">
-            <template v-if="!row.isNew">
-              <Select v-if="row.auxiliaryUnitPrices" :deletable="false" @change="changeProductUnit($event,row)"
-                      v-model="row.secondaryUnitId" :datas="row.auxiliaryUnitPrices" filterable
-                      placeholder="输入采购单位"
-                      keyName="unitId" titleName="unitName"/>
-              <span v-else>{{ row.secondaryUnitName }}</span>
-            </template>
-          </template>
-        </vxe-column>
         <vxe-column title="仓库" field="warehouse" align="center" width="120">
-          <template #default="{row,rowIndex}">
-            <template v-if="!row.isNew">
-              <Select :deletable="false" v-model="row.warehouseId" :datas="warehouseList" filterable keyName="id"
-                      titleName="name" @change="handleWarehouseChange(row, $event)"/>
+          <template #default="{row}">
+            <template v-if="!row.isNew && !isAudited">
+              <Select
+                  :deletable="false"
+                  v-model="row.warehouseId"
+                  :datas="warehouseList"
+                  filterable
+                  keyName="id"
+                  titleName="name"
+                  @change="handleWarehouseChange(row, $event)"
+              />
             </template>
+            <span v-else-if="!row.isNew">{{ warehouseName(row.warehouseId) }}</span>
           </template>
         </vxe-column>
         <vxe-column title="数量" field="secondaryQuantity" width="90">
-          <template #default="{row,rowIndex,columnIndex}">
-            <template v-if="!row.isNew">
-              <vxe-tooltip theme="light" v-if="!row.isNew">
+          <template #default="{row,rowIndex}">
+            <template v-if="!row.isNew && !isAudited">
+              <vxe-tooltip theme="light">
                 <template #content>
                   <div>当前库存: {{ row.currentStockQuantity || 0 }}</div>
                   <div>总库存: {{ row.totalStockQuantity || 0 }}</div>
@@ -108,29 +161,22 @@
                     :id="'r'+rowIndex+''+3"
                     @blur="updateQuantity(row)"
                     @focus="showStockQuantity(row)"
-                    ref="inputQuantity"
                     v-model.number="row.secondaryQuantity"
                     type="float"
                     min="0"
-                    :controls="false">
-                </vxe-input>
+                    :controls="false"
+                />
               </vxe-tooltip>
             </template>
+            <span v-else-if="!row.isNew">{{ row.secondaryQuantity }}</span>
           </template>
         </vxe-column>
         <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
         <vxe-column title="基本数量" field="quantity" width="90"/>
-        <vxe-column title="折扣率(%)" field="discountRate" width="100">
-          <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+5" @keyup="handleEnter($event,rowIndex,5)"
-                       @blur="updateDiscount(row)" v-model.number="row.discountRate" type="float" min="0"
-                       :controls="false"></vxe-input>
-          </template>
-        </vxe-column>
         <vxe-column title="购货单价" field="secondaryPrice" width="100">
           <template #default="{row,rowIndex}">
-            <template v-if="!row.isNew">
-              <vxe-tooltip theme="light" v-if="!row.isNew">
+            <template v-if="!row.isNew && !isAudited">
+              <vxe-tooltip theme="light">
                 <template #content>
                   <div class="recent-sales-table">
                     <table>
@@ -151,78 +197,114 @@
                     </table>
                   </div>
                 </template>
-                <vxe-input :id="'r'+rowIndex+''+4" @keyup="handleEnter($event,rowIndex,4)"
-                           @blur="updatePrice(row)"
-                           @focus="showPrice(row.productId)"
-                           v-model.number="row.secondaryPrice" type="float" min="0"
-                           :controls="false"></vxe-input>
+                <vxe-input
+                    :id="'r'+rowIndex+''+4"
+                    @keyup="handleEnter($event,rowIndex,4)"
+                    @blur="updatePrice(row)"
+                    @focus="showPrice(row.productId)"
+                    v-model.number="row.secondaryPrice"
+                    type="float"
+                    min="0"
+                    :controls="false"
+                />
               </vxe-tooltip>
             </template>
+            <span v-else-if="!row.isNew">{{ row.secondaryPrice }}</span>
           </template>
         </vxe-column>
-       
+        <vxe-column title="折扣率(%)" field="discountRate" width="100">
+          <template #default="{row,rowIndex}">
+            <vxe-input
+                v-if="!row.isNew && !isAudited"
+                :id="'r'+rowIndex+''+5"
+                @keyup="handleEnter($event,rowIndex,5)"
+                @blur="updateDiscount(row)"
+                v-model.number="row.discountRate"
+                type="float"
+                min="0"
+                :controls="false"
+            />
+            <span v-else-if="!row.isNew">{{ row.discountRate }}</span>
+          </template>
+        </vxe-column>
         <vxe-column title="折扣额" field="discountAmount" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+6" @keyup="handleEnter($event,rowIndex,6)"
-                       @blur="updateDiscountAmount(row)" v-model.number="row.discountAmount" type="float" min="0"
-                       :controls="false"></vxe-input>
+            <vxe-input
+                v-if="!row.isNew && !isAudited"
+                :id="'r'+rowIndex+''+6"
+                @keyup="handleEnter($event,rowIndex,6)"
+                @blur="updateDiscountAmount(row)"
+                v-model.number="row.discountAmount"
+                type="float"
+                min="0"
+                :controls="false"
+            />
+            <span v-else-if="!row.isNew">{{ row.discountAmount }}</span>
           </template>
         </vxe-column>
         <vxe-column title="购货金额" field="subtotal" width="100">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+7" @keyup="handleEnter($event,rowIndex,7)"
-                       @blur="updateSubtotal(row)" v-model.number="row.subtotal" type="float" min="0"
-                       :controls="false"></vxe-input>
+            <vxe-input
+                v-if="!row.isNew && !isAudited"
+                :id="'r'+rowIndex+''+7"
+                @keyup="handleEnter($event,rowIndex,7)"
+                @blur="updateSubtotal(row)"
+                v-model.number="row.subtotal"
+                type="float"
+                min="0"
+                :controls="false"
+            />
+            <span v-else-if="!row.isNew">{{ row.subtotal }}</span>
           </template>
         </vxe-column>
         <vxe-column title="备注" field="remark" width="160">
           <template #default="{row,rowIndex}">
-            <vxe-input v-if="!row.isNew" :id="'r'+rowIndex+''+8" @keyup="handleEnter($event,rowIndex,8)"
-                       v-model="row.remark" placeholder="输入备注" :controls="false"></vxe-input>
+            <vxe-input
+                v-if="!row.isNew && !isAudited"
+                :id="'r'+rowIndex+''+8"
+                @keyup="handleEnter($event,rowIndex,8)"
+                v-model="row.remark"
+                placeholder="输入备注"
+                :controls="false"
+            />
+            <span v-else-if="!row.isNew">{{ row.remark }}</span>
           </template>
         </vxe-column>
       </vxe-table>
       <div class="mt-10px"></div>
       <div class="filler-panel">
         <div class="filler-item">
-          <label class="mr-16px  w-80px">备注说明：</label>
-          <Input placeholder="请输入备注" maxlength="150" v-model="form.remarks"/>
+          <label class="mr-16px w-80px">备注说明：</label>
+          <Input placeholder="请输入备注" maxlength="150" v-model="form.remarks" :disabled="isAudited"/>
         </div>
       </div>
       <div class="filler-panel">
         <div class="filler-item">
-          <label class="mr-16px  w-80px">优惠率：</label>
-          <Input v-model="form.discountRate" @blur="changeDiscountRate"/>
-          <label class="ml-10px mr-16px  w-80px">优惠金额：</label>
-          <Input v-model="form.discountAmount" @blur="changeDiscountAmount"/>
-          <label class="ml-16px mr-16px  w-100px">优惠后金额：</label>
-          <Input v-model="form.finalAmount" @blur="changeFinalAmount"/>
+          <label class="mr-16px w-80px">优惠率：</label>
+          <Input v-model="form.discountRate" @blur="changeDiscountRate" :disabled="isAudited"/>
+          <label class="ml-10px mr-16px w-80px">优惠金额：</label>
+          <Input v-model="form.discountAmount" @blur="changeDiscountAmount" :disabled="isAudited"/>
+          <label class="ml-16px mr-16px w-100px">优惠后金额：</label>
+          <Input v-model="form.finalAmount" @blur="changeFinalAmount" :disabled="isAudited"/>
         </div>
       </div>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
-
-      <Button @click="closeWindow" :loading="loading">
-        取消
-      </Button>
+      <Button @click="closeWindow" :loading="loading">取消</Button>
       <div>
-        <Button color="primary" @click="saveOrder('add')" :loading="loading">
-          保存并新增
-        </Button>
-        <Button @click="saveOrder('save')" :loading="loading">
-          保存
-        </Button>
-        <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
-        <Button @click="approved()" :loading="loading" v-if="form.id">
-          审核
-        </Button>
+        <Button color="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</Button>
+        <Button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</Button>
+        <Button @click="doPrint" :loading="loading">打印</Button>
+        <Button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</Button>
+        <Button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</Button>
       </div>
     </div>
   </div>
 </template>
 <script>
-
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
+import {openPrint} from '@common/print';
 import manba from "manba";
 import {CopyObj} from "@common/utils";
 import Supplier from "@js/api/basic/Supplier";
@@ -235,23 +317,19 @@ import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import PriceRecord from "@js/api/basic/PriceRecord";
 import Inventory from "@js/api/inventory/Inventory";
+import Stamp from "@views/common/Stamp.vue";
 
 export default {
   name: "PurchaseInboundForm",
+  components: {Stamp},
   props: {
     orderId: [String, Number],
     type: String,
   },
   computed: {
     ...mapState(['accountBook']),
-    finalAmount() {
-      let total = 0;
-      this.productData.forEach(val => {
-        if (val.quantity > 0) {
-          total += parseFloat(val.subtotal);
-        }
-      });
-      return total.toFixed(2);
+    isAudited() {
+      return this.form.orderStatus === '已审核';
     },
     isDeleting() {
       return this.productData.length > 1;
@@ -276,8 +354,9 @@ export default {
         discountRate: 0.00,
         finalAmount: 0.00,
         remarks: null,
+        orderStatus: null,
       },
-      productData: [],
+      productData: [{isNew: true}],
       recentSales: [],
     }
   },
@@ -288,10 +367,56 @@ export default {
     }
   },
   methods: {
-    selectPurchaseOrder(entity) {
+    productImage(row) {
+      const p = (this.productList || []).find(item => (item.productId || item.id) === row.productId);
+      return p?.imgPath || '-';
+    },
+    warehouseName(id) {
+      return (this.warehouseList || []).find(w => w.id === id)?.name || '';
+    },
+    resolveDefaultWarehouseId() {
+      if (this.warehouseId) return this.warehouseId;
+      const found = (this.warehouseList || []).find(w => w.systemDefault || w.isDefault);
+      this.warehouseId = found?.id || null;
+      return this.warehouseId;
+    },
+    applyDefaultWarehouse(rows) {
+      const defaultId = this.resolveDefaultWarehouseId();
+      (rows || []).forEach(row => {
+        if (row && !row.isNew && !row.warehouseId) {
+          row.warehouseId = defaultId;
+        }
+      });
+      return rows;
+    },
+    doPrint() {
+      const items = (this.productData || []).filter(r => r && !r.isNew && r.productId).map(r => {
+        const p = (this.productList || []).find(x => (x.productId || x.id) === r.productId) || {};
+        return {
+          ...r,
+          productName: r.productName || p.productName || p.name || '',
+          quantity: r.quantity ?? r.secondaryQuantity,
+          price: r.unitPrice ?? r.secondaryPrice ?? r.price,
+          amount: r.subtotal ?? r.amount,
+        };
+      });
+      openPrint('采购入库单', {
+        header: {
+          ...this.form,
+          partner: (this.supplierList.find(s => s.id === this.supplierId) || {}).name || '',
+          amount: this.form.finalAmount ?? this.form.totalAmount,
+        },
+        items,
+      });
+    },
+    previewImage(url) {
+      if (!url || url === '-') return;
+      window.open(url, '_blank');
+    },
+    selectPurchaseOrder() {
       if (!this.form.supplierId) {
         MessagePlugin.error("请选择供货商~");
-        return
+        return;
       }
       let dialogId = openDrawer({
         header: "请选择采购订单",
@@ -300,11 +425,8 @@ export default {
         size: '1200px',
         body: h(PurchaseOrderSelect, {
           supplierId: this.supplierId,
-          onClose: () => {
-            closeDialog(dialogId);
-          },
+          onClose: () => closeDialog(dialogId),
           onSuccess: (params) => {
-            console.log(params)
             this.loadToInbound(params);
             closeDialog(dialogId);
           },
@@ -312,100 +434,66 @@ export default {
       });
     },
     loadToInbound(params) {
-      this.orderIds = params.orderIds
+      this.orderIds = params.orderIds;
       PurchaseOrder.toInbound(this.form.supplierId, params.orderIds).then(({data}) => {
-        this.productData = data || [];
-      })
+        const rows = this.applyDefaultWarehouse(data || []);
+        this.productData = rows.concat([{isNew: true}]);
+        this.$nextTick(() => this.$refs.xTable?.loadData(this.productData));
+      });
     },
     handleEnter(e, index, num) {
       e.$event.stopPropagation();
       if (e.$event.keyCode === 13) {
-        //回车
-        e.$input.blur()
+        e.$input.blur();
         if (num === 8) {
           if (index >= this.productData.length - 2) {
-            this.$refs.ms.$el.querySelector('input').click()
-            this.$refs.ms.$el.querySelector('input').select()
+            this.$refs.ms?.$el?.querySelector('input')?.click();
+            this.$refs.ms?.$el?.querySelector('input')?.select();
           } else {
-            let str = 'r' + (index + 1) + '' + 3
-            document.getElementById(str).querySelector('input').focus()
-            document.getElementById(str).querySelector('input').select()
+            let str = 'r' + (index + 1) + '' + 3;
+            document.getElementById(str)?.querySelector('input')?.focus();
+            document.getElementById(str)?.querySelector('input')?.select();
           }
         } else {
-          let str = 'r' + index + '' + (num + 1)
-          document.getElementById(str).querySelector('input').focus()
-          document.getElementById(str).querySelector('input').select()
-        }
-      } else if (e.$event.keyCode === 38) {
-        //按上
-        if (index > 0) {
-          e.$input.blur()
-          let str = 'r' + (index - 1) + '' + num
-          document.getElementById(str).querySelector('input').focus()
-          document.getElementById(str).querySelector('input').select()
-        }
-      } else if (e.$event.keyCode === 40) {
-        //按下
-        e.$input.blur()
-        if (index < this.productData.length - 2) {
-          let str = 'r' + (index + 1) + '' + num
-          document.getElementById(str).querySelector('input').focus()
-          document.getElementById(str).querySelector('input').select()
-        } else {
-          this.$refs.ms.$el.querySelector('input').click()
-          this.$refs.ms.$el.querySelector('input').select()
+          let str = 'r' + index + '' + (num + 1);
+          document.getElementById(str)?.querySelector('input')?.focus();
+          document.getElementById(str)?.querySelector('input')?.select();
         }
       }
     },
-
-    //footer合计
     footerMethod({columns, data}) {
-      let sums = [];
       let quantity = 0;
-      columns.forEach((column) => {
-        if (column.property && ['quantity','discountAmount','subtotal'].includes(column.property)) {
+      let sums = [];
+      data.forEach((row) => {
+        if (row.quantity > 0) {
+          quantity += Number(row.quantity || 0);
+        }
+      });
+      columns.forEach((column, columnIndex) => {
+        if (columnIndex === 0) {
+          sums.push('合计');
+        } else if (column.property && ['subtotal', 'discountAmount'].includes(column.property)) {
           let total = 0;
           data.forEach((row) => {
-            if (column.property === 'quantity') {
-              let rd = row[column.property];
-              if (rd) {
-                quantity += Number(rd || 0);
-              }
-            } else {
-              let rd = row[column.property];
-              if (rd) {
-                total += Number(rd || 0);
-              }
-            }
+            let rd = row[column.property];
+            if (rd) total += Number(rd || 0);
           });
           if (column.property !== 'quantity') {
             sums.push(total.toFixed(2));
           }
         }
-      })
-      this.allFinalAmount = sums[1]
-      return [["","","","", "", "", "", "", "", "",quantity.toFixed(0), "", ""].concat(sums)];
+      });
+      this.allFinalAmount = sums[1];
+      return [['', '', '', '', '', '', '', '', '', '', quantity.toFixed(0), '', ''].concat(sums)];
     },
-
-    // 仓库选择框变化时触发
     handleWarehouseChange(row) {
       this.showStockQuantity(row);
     },
-
     showStockQuantity(row) {
       let productId = row.productId;
       let warehouseId = row.warehouseId;
-      if (!productId) {
-        console.log("请选择产品")
-        return;
-      }
-      // 获取产品库存进行提示
-      let param = {
-        productId: productId,
-        page: 1,
-        pageSize: 1000
-      }
-      Inventory.list(param).then(res => {
+      if (!productId) return;
+      Inventory.list({productId, page: 1, pageSize: 1000}).then(res => {
         const {data} = res;
         if (data && data.results) {
           let totalQuantity = 0;
@@ -421,83 +509,69 @@ export default {
         }
       });
     },
-
-    //选择产品
     selectProduct(d, index) {
-      if (d) {
-        console.log('d', d)
-        console.log('d', this.warehouseId)
-        let g = {
-          quantity: 1,
-          secondaryQuantity: 1,
-          secondaryPrice: d.price || 0,
-          warehouseId: this.warehouseId || null,
-          price: d.price || 0,
-          discountAmount: 0.00,
-          discountRate: 0.00,
-          subtotal: d.price || 0,
-          conversionRate: 1,
-          secondaryUnitId: d.unitId,
-          secondaryUnitName: d.unitName,
-          baseUnitId: d.unitId,
-          baseUnitName: d.unitName,
-          categoryName: d.categoryName,
-          spec: d.spec,
-          remark: ""
-        };
-        this.productData[index] = Object.assign(Object.assign(g, d), d);
-        if (!this.productData[index + 1]) {
-          this.productData.push({isNew: true});
-        }
-        this.$refs.xTable.loadData(this.productData).then(() => {
-          this.$nextTick(() => {
-            let str = index + '' + 3
-            let element = document.querySelector('#r' + str + ' input');
-            setTimeout(() => {
-              element.focus()
-              element.select()
-            }, 100);
-          })
-        });
-        this.showPrice(d.productId)
+      if (!d) return;
+      const defaultWarehouseId = this.resolveDefaultWarehouseId();
+      let g = {
+        quantity: 1,
+        secondaryQuantity: 1,
+        secondaryPrice: d.price || 0,
+        warehouseId: defaultWarehouseId,
+        price: d.price || 0,
+        discountAmount: 0.00,
+        discountRate: 0.00,
+        subtotal: d.price || 0,
+        conversionRate: 1,
+        secondaryUnitId: d.unitId,
+        secondaryUnitName: d.unitName,
+        baseUnitId: d.unitId,
+        baseUnitName: d.unitName,
+        categoryName: d.categoryName,
+        spec: d.spec,
+        remark: ""
+      };
+      this.productData[index] = Object.assign({}, d, g);
+      if (!this.productData[index].warehouseId) {
+        this.productData[index].warehouseId = defaultWarehouseId;
       }
+      if (!this.productData[index + 1]) {
+        this.productData.push({isNew: true});
+      }
+      this.$refs.xTable.loadData(this.productData).then(() => {
+        this.$nextTick(() => {
+          let element = document.querySelector('#r' + index + '3 input');
+          setTimeout(() => {
+            element?.focus();
+            element?.select();
+          }, 100);
+        });
+      });
+      this.showPrice(d.productId);
       this.product = null;
     },
-
     showPrice(productId) {
-      if (!productId) {
-        console.log("请选择产品")
-        return;
-      }
-      // 获取产品库存进行提示
-      let param = {
-        productId: productId,
-      }
-      PriceRecord.showPurchasePrice(param).then(({data}) => {
+      if (!productId) return;
+      PriceRecord.purchasePrice({productId}).then(({data}) => {
         this.recentSales = data || [];
-        console.log(this.recentSales)
-      }).finally(() => this.loading = false);
+      });
     },
-
-    //保存订单
     saveOrder(type) {
       LoadingPlugin(true);
       if (!this.form.supplierId) {
-        MessagePlugin.error("请选择购货商~");
-        LoadingPlugin(false)
-        return
+        MessagePlugin.error("请选择供货商~");
+        LoadingPlugin(false);
+        return;
       }
-      let productData = this.productData.filter(c => c.quantity > 0);
+      let productData = this.productData.filter(c => !c.isNew && c.quantity > 0);
       if (productData.length <= 0) {
         MessagePlugin.error("请选择产品~");
-        LoadingPlugin(false)
-        return
+        LoadingPlugin(false);
+        return;
       }
-      let warehouse = this.productData.filter(c => c.warehouseId === null);
-      if (warehouse.length > 0) {
+      if (productData.some(c => !c.warehouseId)) {
         MessagePlugin.error("请选择仓库~");
-        LoadingPlugin(false)
-        return
+        LoadingPlugin(false);
+        return;
       }
       PurchaseInbound.save({
         purchaseInbound: Object.assign(this.form, {totalAmount: this.allFinalAmount}),
@@ -507,33 +581,29 @@ export default {
       }).then((success) => {
         if (success) {
           MessagePlugin.success("保存成功~");
-          this.clearForm()
-          //保存
+          this.clearForm();
           if (type === 'save') {
-            this.closeWindow()
+            this.closeWindow();
           }
         }
-      }).finally(() =>
-          LoadingPlugin(false));
+      }).finally(() => LoadingPlugin(false));
     },
-
-    //清除Form
     clearForm() {
       this.form = {
         id: null,
         inboundDate: manba().format("YYYY-MM-dd"),
         supplierId: null,
-        remark: null,
+        remarks: null,
         discountAmount: 0.00,
         discountRate: 0.00,
         finalAmount: 0.00,
-      }
-      this.allFinalAmount = 0
-      this.productData = []
-      this.supplierId = null
+        orderStatus: null,
+      };
+      this.allFinalAmount = 0;
+      this.productData = [{isNew: true}];
+      this.supplierId = null;
+      this.orderIds = [];
     },
-
-    //添加行或减少行
     adjustRows(type, index) {
       if (type === 'insert') {
         this.productData.splice(index + 1, 0, {isNew: true});
@@ -541,13 +611,13 @@ export default {
         this.productData.splice(index, 1);
       }
     },
-
-    //修改供货商
     changeSupplier(e) {
       if (!e) {
         this.form.supplierId = null;
         this.productData = [{isNew: true}];
-      } else if (e.id !== this.form.supplierId) {
+        return;
+      }
+      if (e.id !== this.form.supplierId) {
         if (this.productData.length > 1) {
           DialogPlugin.confirm({
             title: "系统提示",
@@ -557,7 +627,7 @@ export default {
               this.form.supplierId = e.id;
               this.loadProductsBySupplier();
             }
-          })
+          });
         } else {
           this.form.supplierId = e.id;
           this.productData = [{isNew: true}];
@@ -565,54 +635,39 @@ export default {
         }
       }
     },
-
-    //根据供货商加载产品列表
     loadProductsBySupplier() {
-      if (this.form.supplierId) {
-        Supplier.selectProduct(this.form.supplierId).then(({data}) => {
-          this.productList = data || [];
-          if (!this.form.id) {
-            this.productData = [{isNew: true}];
-          }
-        }).finally(() =>
-            this.$refs.xTable.loadData(this.productData).then(() => {
-              this.$nextTick(() => {
-                this.$refs.ms.$el.querySelector('input').click()
-                this.$refs.ms.$el.querySelector('input').select()
-              })
-            })
-        );
-      }
+      if (!this.form.supplierId) return;
+      Supplier.selectProduct(this.form.supplierId).then(({data}) => {
+        this.productList = data || [];
+        if (!this.form.id) {
+          this.productData = [{isNew: true}];
+        }
+      }).finally(() => {
+        this.$refs.xTable?.loadData(this.productData);
+      });
     },
-
-    //修改优惠率
     changeDiscountRate() {
       this.form.discountRate = parseFloat(this.form.discountRate) || 0;
-      this.form.discountAmount = (this.allFinalAmount * this.form.discountRate * 0.01).toFixed(2)
-      this.form.finalAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2)
+      this.form.discountAmount = (this.allFinalAmount * this.form.discountRate * 0.01).toFixed(2);
+      this.form.finalAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2);
     },
-    //修改优惠金额
     changeDiscountAmount() {
       this.form.discountAmount = parseFloat(this.form.discountAmount) || 0;
-      this.form.finalAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2)
-      this.form.discountRate = this.form.discountAmount === 0 ? 0 : ((this.form.discountAmount / this.allFinalAmount) * 100).toFixed(2)
+      this.form.finalAmount = (this.allFinalAmount - this.form.discountAmount).toFixed(2);
+      this.form.discountRate = this.form.discountAmount === 0 ? 0 : ((this.form.discountAmount / this.allFinalAmount) * 100).toFixed(2);
     },
-    //修改优惠后金额
     changeFinalAmount() {
       this.form.finalAmount = parseFloat(this.form.finalAmount) || 0;
-      this.form.discountAmount = (this.allFinalAmount - this.form.finalAmount).toFixed(2)
-      this.form.discountRate = this.form.finalAmount === 0 ? 0 : ((this.form.finalAmount / this.allFinalAmount) * 100).toFixed(2)
+      this.form.discountAmount = (this.allFinalAmount - this.form.finalAmount).toFixed(2);
+      this.form.discountRate = this.allFinalAmount === 0 ? 0 : ((this.form.discountAmount / this.allFinalAmount) * 100).toFixed(2);
     },
-    //修改产品多单位
     changeProductUnit(item, row) {
-      row.secondaryUnitName = item.unitName
-      row.secondaryPrice = (item.price || 0).toFixed(2) || 0
+      row.secondaryUnitName = item.unitName;
+      row.secondaryPrice = (item.price || 0).toFixed(2) || 0;
       row.conversionRate = item.conversionRate || 1;
       row.quantity = (row.secondaryQuantity * row.conversionRate).toFixed(2);
       row.subtotal = (row.secondaryQuantity * row.secondaryPrice).toFixed(2);
     },
-
-    //更新数量
     updateQuantity(item) {
       item.secondaryQuantity = item.secondaryQuantity || 1;
       item.subtotal = ((item.secondaryQuantity * item.secondaryPrice * (100 - item.discountRate)) / 100).toFixed(2);
@@ -620,106 +675,92 @@ export default {
       item.quantity = (item.secondaryQuantity * (item.conversionRate || 1)).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
-
-    //更新单价
     updatePrice(item) {
-      item.secondaryPrice = item.secondaryPrice || 0.00
+      item.secondaryPrice = item.secondaryPrice || 0.00;
       item.discountAmount = (item.secondaryPrice * item.secondaryQuantity * item.discountRate / 100).toFixed(2);
       item.subtotal = (item.secondaryPrice * item.secondaryQuantity - item.discountAmount).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
-
-    //更新折扣
     updateDiscount(item) {
       item.discountRate = item.discountRate || 0.00;
       item.subtotal = ((item.secondaryQuantity || 0) * item.secondaryPrice * (100 - item.discountRate || 0) / 100).toFixed(2);
       item.discountAmount = ((item.secondaryQuantity || 0) * item.secondaryPrice - item.subtotal).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
-
-    //更新折扣金额
     updateDiscountAmount(item) {
       item.discountAmount = item.discountAmount || 0.00;
       item.discountRate = (((item.discountAmount / (item.secondaryPrice * item.secondaryQuantity)) * 100) || 0).toFixed(2);
       item.subtotal = (item.secondaryPrice * item.secondaryQuantity - item.discountAmount).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
-
-    //更新折后金额
     updateSubtotal(item) {
-      item.subtotal = item.subtotal || 0
+      item.subtotal = item.subtotal || 0;
       item.secondaryPrice = ((item.subtotal) / ((100 - item.discountRate)) * 100 / item.secondaryQuantity).toFixed(2);
-      item.discoutPrice = (item.secondaryPrice - item.subtotal).toFixed(2);
       this.$refs.xTable.updateFooter();
     },
-
-    //审核
     approved() {
-      let ids = [this.form.id]
       DialogPlugin.confirm({
         title: "审核提示",
         content: `确认审核该订单?`,
         onConfirm: () => {
-          PurchaseInbound.approved('已审核', ids).then(() => {
+          return PurchaseInbound.approved('已审核', [this.form.id]).then(() => {
             MessagePlugin.success("操作成功~");
             this.closeWindow();
-          })
+          });
         }
-      })
+      });
     },
-
-    //关闭窗口
+    backApproved() {
+      DialogPlugin.confirm({
+        title: "反审核提示",
+        content: `确认反审核该订单?`,
+        onConfirm: () => {
+          return PurchaseInbound.approved('已保存', [this.form.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.closeWindow();
+          });
+        }
+      });
+    },
     closeWindow() {
-      console.log("this.$store.state.currentTab", this.$store.state.currentTab)
       this.$store.commit('closeTabKey', this.$store.state.currentTab);
       this.$store.commit('newTab', "PurchaseInboundList");
-      // 使用 nextTick 确保在 DOM 更新后执行
       this.$nextTick(() => {
-        // 通过 eventBus 或 vuex 触发刷新
         this.$store.commit('SET_TAB_DATA', {refresh: true});
       });
     },
   },
-  beforeDestroy() {
-    DialogPlugin.confirm({
-      title: "系统提示",
-      content: `确认?`,
-      onConfirm: () => {
-
-      }
-    })
-  },
   created() {
     LoadingPlugin(true);
-    Promise.all([
-      Supplier.select(),
-      Warehouse.select()
-    ]).then((results) => {
+    Promise.all([Supplier.select(), Warehouse.select()]).then((results) => {
       this.supplierList = results[0].data || [];
       this.warehouseList = results[1].data || [];
-      if (this.warehouseList != null) {
-        this.warehouseId = this.warehouseList.find(val => val.isDefault)?.id
-      }
-      //订单详情/编辑订单
+      this.warehouseId = this.warehouseList.find(val => val.systemDefault || val.isDefault)?.id;
       if (this.orderId) {
         PurchaseInbound.load(this.orderId).then(({data: {purchaseInbound, purchaseInboundItemList}}) => {
           if (purchaseInbound) {
             CopyObj(this.form, purchaseInbound);
-            this.supplierId = purchaseInbound.supplierId
+            this.supplierId = purchaseInbound.supplierId;
             if ('copy' === this.type) {
               this.form.id = null;
+              this.form.orderStatus = null;
             }
           }
           this.loadProductsBySupplier();
-          this.productData = purchaseInboundItemList || [];
-          this.productData.push({isNew: true});
-        })
+          this.productData = (purchaseInboundItemList || []).concat([{isNew: true}]);
+        });
       }
     }).finally(() => LoadingPlugin(false));
   },
 }
 </script>
 <style scoped>
+.product-img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
 
 .recent-sales-table {
   min-width: 300px;

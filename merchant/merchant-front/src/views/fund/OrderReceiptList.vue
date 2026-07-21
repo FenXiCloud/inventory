@@ -1,783 +1,408 @@
 <template>
-  <div class="page-column">
-    <div class="page-column-full-body">
-      <vxe-toolbar class-name="!size--mini">
-        <template #buttons>
-          <label class="mr-20px" style="font-size: 16px !important">
-            <span style="color: red">*</span>客户：
-          </label>
-          <Select
-            v-model="form.customerName"
-            class="w-200px z-index-1"
-            :datas="customerDataList"
-            keyName="name"
-            titleName="name"
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="doRemove()">删 除</t-button>
+        <t-select
+            v-model="params.orderStatus"
+            :options="stateOptions"
+            clearable
+            placeholder="订单状态"
+            style="width: 140px; border-radius: 4px"
+        />
+        <t-date-range-picker
+            v-model="dateRangeValue"
+            clearable
+            allow-input
+            placeholder="单据日期"
+            style="width: 260px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.orderType"
+            :options="orderTypeOptions"
+            clearable
+            placeholder="单据类型"
+            style="width: 160px; border-radius: 4px"
+        />
+        <t-select
+            v-model="params.customerId"
+            :options="customerList"
+            :keys="{ value: 'id', label: 'name' }"
+            filterable
+            clearable
             placeholder="请选择客户"
-            :filterable="true"
-            :disabled="isAudited"
-            @change="selectCustomer($event)"
-          />
-          <label class="mr-20px ml-16px" style="font-size: 16px !important">总欠款：</label>
-          <Input v-model="form.totalAmountsOwed" class="w-120px" disabled />
-          <label class="mr-20px ml-16px" style="font-size: 16px !important">业务员：</label>
-          <Select
-            ref="selectRef"
-            style="z-index: 1"
-            v-model="form.orderStaffName"
-            class="w-140px"
-            :datas="orderStaffList"
-            keyName="name"
-            titleName="name"
-            placeholder="选择业务员"
-            :filterable="true"
-            :disabled="isAudited"
-            @change="selectOrderStaff($event)"
-          >
-            <template #bottom>
-              <Button no-border icon="add" @click="addOrderStaff()">新建</Button>
-            </template>
-          </Select>
-          <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
-          <DatePicker
-            class="w-140px"
-            v-model="form.orderDate"
-            :clearable="false"
-            :disabled="isAudited"
-          />
-        </template>
-        <template #tools>
-          <Stamp v-if="isAudited" />
-        </template>
-      </vxe-toolbar>
-
-      <vxe-table
-        ref="collectionTable"
-        size="mini"
-        border
-        stripe
-        show-overflow
-        :row-config="{ height: 40 }"
-        :edit-config="isAudited ? undefined : editConfig"
-        :data="tableData"
-        :show-footer="showFooter"
-        :footer-method="footerMethod"
-      >
-        <vxe-column type="seq" title="序号" width="60" align="center" fixed="left" />
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
-          <template #default="{ rowIndex }">
-            <template v-if="!isAudited">
-              <div
-                class="fa fa-plus text-hover mr-5px"
-                @click="adjustRows('insert', rowIndex, tableData)"
-              ></div>
-              <div
-                class="fa fa-minus text-hover"
-                v-if="canDelete(tableData)"
-                @click="adjustRows('delete', rowIndex, tableData)"
-              ></div>
-            </template>
+            style="width: 180px; border-radius: 4px"
+        />
+        <t-input
+            v-model="params.keyword"
+            clearable
+            placeholder="请输入客户名称或订单编号"
+            style="width: 260px; background: #fff; border-radius: 4px"
+            @enter="doSearch"
+        >
+          <template #suffixIcon>
+            <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
           </template>
-        </vxe-column>
-        <vxe-column field="settlementAccount" title="结算账户" min-width="140" :edit-render="{}">
-          <template #header>
-            <span style="color: red">*</span>结算账户
-          </template>
-          <template #default="{ row }">
-            <span>{{ row.settlementAccount }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-select
-              v-model="row.settlementAccount"
-              placeholder="请选择"
-              :multiple="false"
-              transfer
-              @change="changeAccount(row.settlementAccount, row)"
-            >
-              <vxe-option
-                v-for="item in settlementAccount"
-                :key="item.id"
-                :value="item.name"
-                :label="item.name"
-              />
-            </vxe-select>
-          </template>
-        </vxe-column>
-        <vxe-column field="amount" title="收款金额" width="140" :edit-render="{}">
-          <template #header>
-            <span style="color: red">*</span>收款金额
-          </template>
-          <template #default="{ row }">
-            <span>{{ row.amount }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-input
-              v-model="row.amount"
-              type="number"
-              placeholder="请输入数值"
-              min="0"
-              @change="updateFootEvent"
-            />
-          </template>
-        </vxe-column>
-        <vxe-column field="paymentMethodName" title="结算方式" min-width="120" :edit-render="{}">
-          <template #default="{ row }">
-            <span>{{ row.paymentMethodName }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-select
-              v-model="row.paymentMethodName"
-              placeholder="请选择"
-              :multiple="false"
-              transfer
-              @change="changePaymentMethod(row.paymentMethodName, row)"
-            >
-              <vxe-option
-                v-for="item in paymentMethodList"
-                :key="item.id"
-                :value="item.name"
-                :label="item.name"
-              />
-            </vxe-select>
-          </template>
-        </vxe-column>
-        <vxe-column field="remarks" title="备注" min-width="120" :edit-render="{ name: 'input' }" />
-        <vxe-column field="theOnlineTransactionNumber" title="在线交易单号" min-width="160" />
-      </vxe-table>
-
-      <vxe-toolbar>
-        <template v-if="!isAudited" #tools>
-          <Button @click="sourceForm()">选择源单</Button>
-          <Button @click="autoMatic()">自动核销</Button>
-        </template>
-      </vxe-toolbar>
-
-      <vxe-table
-        ref="table"
-        size="mini"
-        border
-        stripe
-        show-overflow
-        :row-config="{ height: 40 }"
-        :edit-config="isAudited ? undefined : editConfig"
-        :data="tableData2"
-        :show-footer="showFooter"
-        :footer-method="footerMethod2"
-      >
-        <vxe-column type="seq" title="序号" width="60" align="center" fixed="left" />
-        <vxe-column title="操作" field="seq" width="70" align="center">
-          <template #default="{ rowIndex }">
-            <template v-if="!isAudited">
-              <div
-                class="fa fa-plus text-hover mr-5px"
-                @click="adjustRows('insert', rowIndex, tableData2)"
-              ></div>
-              <div
-                class="fa fa-minus text-hover"
-                v-if="canDelete(tableData2)"
-                @click="adjustRows('delete', rowIndex, tableData2)"
-              ></div>
-            </template>
-          </template>
-        </vxe-column>
-        <vxe-column field="salesOrderNo" title="源单编号" min-width="140" />
-        <vxe-column field="businessType" title="业务类别" width="110" align="center" />
-        <vxe-column field="businessDate" title="单据日期" width="120" align="center" />
-        <vxe-column field="documentAmount" title="单据金额" width="110" align="right" />
-        <vxe-column field="verifiedAmount" title="已核销金额" width="110" align="right" />
-        <vxe-column field="unverifiedAmount" title="未核销金额" width="110" align="right" />
-        <vxe-column field="currentVerifyAmount" title="本次核销金额" width="130" :edit-render="{}">
-          <template #header>
-            <span style="color: red">*</span>本次核销金额
-          </template>
-          <template #default="{ row }">
-            <span>{{ row.currentVerifyAmount }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-input
-              v-model="row.currentVerifyAmount"
-              type="number"
-              :max="row.documentAmount"
-              min="0"
-              @change="changeDiscountRate"
-            />
-          </template>
-        </vxe-column>
-        <vxe-column field="remarks" title="单据备注" min-width="120" />
-      </vxe-table>
-
-      <div class="mt-10px"></div>
-      <div class="filler-panel">
-        <div class="filler-item">
-          <label class="mr-16px w-80px">备注说明：</label>
-          <Input
-            placeholder="请输入备注"
-            maxlength="150"
-            v-model="form.remarks"
-            :disabled="isAudited"
-          />
-        </div>
-      </div>
-      <div class="filler-panel">
-        <div class="filler-item">
-          <label class="mr-16px w-80px">整单折扣：</label>
-          <Input
-            type="number"
-            v-model="form.discountRate"
-            min="0"
-            :disabled="isAudited"
-            @blur="changeDiscountRate"
-          />
-          <label class="ml-10px mr-16px w-100px">本单预收款：</label>
-          <Input disabled v-model="form.collectionAmount" />
-          <div class="receipt-extra-actions">
-            <Button @click="historyForm()">历史单据</Button>
-            <Button :title="logContent">操作日志</Button>
-          </div>
-        </div>
-      </div>
+        </t-input>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+      </t-space>
     </div>
 
-    <div class="page-column-footer modal-column-between bg-white-color border">
-      <Button :loading="loading" @click="closeWindow">取消</Button>
-      <div>
-        <template v-if="!isAudited">
-          <Button color="primary" :loading="loading" @click="saveForm('add')">保存并新增</Button>
-          <Button :loading="loading" @click="saveForm('save')">保存</Button>
-          <Button
-            v-if="form.orderStatus == '已保存'"
-            :loading="loading"
-            @click="saveForm('audit', '已审核')"
-          >审核</Button>
-        </template>
-        <Button
-          v-else
+    <div class="simple-page__table">
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          stripe
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="dataList"
+          :columns="columns"
           :loading="loading"
-          @click="batchAudit('已保存')"
-        >反审核</Button>
-      </div>
+          :selected-row-keys="selectedRowKeys"
+          :foot-data="footData"
+          @select-change="onSelectChange"
+      >
+        <template #ops="{ row }">
+          <t-space size="small">
+            <template v-if="row.orderStatus != '已审核'">
+              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link theme="danger" @click="doRemove(row)">删除</t-link>
+            </template>
+            <template v-else>
+              <t-link theme="primary" @click="addForm('edit', row.id)">查看</t-link>
+            </template>
+          </t-space>
+        </template>
+        <template #orderStatus="{ row }">
+          <t-tag
+              :theme="row.orderStatus === '已审核' ? 'success' : 'warning'"
+              variant="light"
+          >
+            {{ row.orderStatus === '已保存' ? '未审核' : row.orderStatus }}
+          </t-tag>
+        </template>
+        <template #orderType="{ row }">
+          {{ row.orderType == 1 ? '收款单' : '预收款单' }}
+        </template>
+        <template #salesOrderNo="{ row }">
+          <div v-for="item in (row.itemList || [])" :key="item.id" class="cell-multi">
+            {{ item.salesOrderNo }}
+          </div>
+        </template>
+        <template #settlementAccount="{ row }">
+          <div v-for="item in (row.collectionList || [])" :key="item.id" class="cell-multi">
+            {{ item.settlementAccount }}
+          </div>
+        </template>
+        <template #amount="{ row }">
+          <div v-for="item in (row.collectionList || [])" :key="item.id" class="cell-multi">
+            {{ item.amount }}
+          </div>
+        </template>
+        <template #paymentMethodName="{ row }">
+          <div v-for="item in (row.collectionList || [])" :key="item.id" class="cell-multi">
+            {{ item.paymentMethodName }}
+          </div>
+        </template>
+        <template #theOnlineTransactionNumber="{ row }">
+          <div v-for="item in (row.collectionList || [])" :key="item.id" class="cell-multi">
+            {{ item.theOnlineTransactionNumber }}
+          </div>
+        </template>
+        <template #entryRemarks="{ row }">
+          <div v-for="item in (row.collectionList || [])" :key="item.id" class="cell-multi">
+            {{ item.remarks }}
+          </div>
+        </template>
+      </t-table>
+    </div>
+
+    <div class="simple-page__pager">
+      <span class="simple-page__total">合计金额：{{ amountTotal }}元</span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
     </div>
   </div>
 </template>
+
 <script>
-import manba from 'manba';
-import { DialogPlugin, LoadingPlugin, MessagePlugin } from 'tdesign-vue-next';
-import {openDialog, closeDialog} from '@common/dialog';
-import { h } from 'vue';
-import OrderReceipt from '@js/api/fund/OrderReceipt';
-import Account from '@js/api/fund/Account';
-import PaymentMethod from '@js/api/basic/PaymentMethod';
-import Customer from '@js/api/basic/Customer';
-import OrderStaffForm from './OrderStaffForm';
-import sourceForm from './sourceForm.vue';
-import { mapState, mapMutations } from 'vuex';
-import Stamp from '../common/Stamp.vue';
+import manba from "manba";
+import {mapMutations} from "vuex";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
+import Customer from "@js/api/basic/Customer";
+import OrderReceipt from "@js/api/fund/OrderReceipt";
+
+const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
+const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
+
+/**
+ * @功能描述: 收款单列表
+ * @创建时间: 2023年08月08日
+ * @公司官网: www.fenxi365.com
+ * @公司信息: 纷析云（杭州）科技有限公司
+ * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
+ */
 export default {
-  name: 'OrderReceiptList',
-  components: { Stamp },
-  props: {
-    orderId: [String, Number],
-    type: String,
-    index: Number
-  },
+  name: "OrderReceiptList",
   data() {
-    const tableData = [{}];
-    const tableData2 = [{}];
-    const editConfig = {
-      trigger: 'click',
-      mode: 'cell'
-    };
-    const accountOptions = [
-      // { name: '现金', id: 'cash' },
-      // { name: '银行', id: 'bank_deposit' },
-      // { name: '微信', id: 'wechat_pay' },
-      // { name: '支付宝', id: 'alipay' }
-    ];
-
     return {
-      logContent: null,
-      val1: [],
-
-      form: {
-        customerName: null,
-        orderStaffName: null,
-        orderDate: manba().format('YYYY-MM-DD')
-      },
-      tableData,
-      tableData2,
-      customerDataList: [],
-      orderStaffList: [],
-      paymentMethodList: [],
-      totalTb1: 0,
-      totalTb2: 0,
-
-      // customerData: {},
-      // orderStaffData: {},
-
+      dataList: [],
+      customerList: [],
+      selectedRowKeys: [],
+      selectedRows: [],
       loading: false,
       amountTotal: 0,
-      settlementAccount: [],
       pagination: {
         page: 1,
-        pageSize: 100,
+        pageSize: 20,
         total: 0
       },
       params: {
         filter: null,
         state: null,
         sortCol: null,
-        sort: null
+        sort: null,
+        customerId: null,
+        orderStatus: null,
+        orderType: null,
+        keyword: null,
       },
-      showFooter: true,
-      editConfig,
-      accountOptions
-    };
+      dateRangeValue: [startTime, endTime],
+      stateOptions: [
+        {label: '未审核', value: '已保存'},
+        {label: '已审核', value: '已审核'},
+      ],
+      orderTypeOptions: [
+        {label: '收款单', value: 1},
+        {label: '预收款单', value: 2},
+      ],
+      columns: [
+        {colKey: 'row-select', type: 'multiple', width: 46},
+        {colKey: 'ops', title: '操作', width: 110, fixed: 'left', align: 'center'},
+        {colKey: 'orderStatus', title: '状态', width: 100, align: 'center'},
+        {colKey: 'orderDate', title: '单据日期', width: 120, align: 'center'},
+        {colKey: 'orderNo', title: '单据编号', minWidth: 160, ellipsis: true},
+        {colKey: 'orderType', title: '订单类型', width: 110, align: 'center'},
+        {colKey: 'salesOrderNo', title: '源单编号', minWidth: 140, ellipsis: true},
+        {colKey: 'customerName', title: '客户', minWidth: 120, ellipsis: true},
+        {colKey: 'settlementAccount', title: '结算账户', minWidth: 120, ellipsis: true},
+        {colKey: 'amount', title: '收款金额', width: 110, align: 'right'},
+        {colKey: 'paymentMethodName', title: '收款方式', minWidth: 110, ellipsis: true},
+        {colKey: 'theOnlineTransactionNumber', title: '在线交易单号', minWidth: 140, ellipsis: true},
+        {colKey: 'entryRemarks', title: '分录备注', minWidth: 100, ellipsis: true},
+        {colKey: 'discountAmount', title: '整单折扣', width: 110, align: 'right'},
+        {colKey: 'collectionAmount', title: '本次预收款', width: 110, align: 'right'},
+        {colKey: 'orderStaffName', title: '业务员', width: 90, align: 'center'},
+        {colKey: 'shouldVerificationAmount', title: '本单应核销金额', width: 130, align: 'right'},
+        {colKey: 'hasVerificationAmount', title: '本单已核销金额', width: 130, align: 'right'},
+        {colKey: 'notVerificationAmount', title: '本单未核销金额', width: 130, align: 'right'},
+        {colKey: 'createdBy', title: '制单人', width: 90, align: 'center'},
+        {colKey: 'createdAt', title: '制单时间', width: 160, align: 'center', ellipsis: true},
+        {colKey: 'remarks', title: '备注', minWidth: 100, ellipsis: true},
+      ]
+    }
   },
   computed: {
-    ...mapState(['user']),
-    isAudited() {
-      return this.form.orderStatus === '已审核';
-    },
     queryParams() {
-      return Object.assign(this.params, {
+      const [start, end] = this.dateRangeValue || [];
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
-        pageSize: this.pagination.pageSize
-      });
+        pageSize: this.pagination.pageSize,
+        startTime: start || null,
+        endTime: end || null,
+      })
+    },
+    footData() {
+      const sum = (key, digits = 2) => {
+        const total = (this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0);
+        return total.toFixed(digits);
+      };
+      return [{
+        ops: '合计',
+        discountAmount: sum('discountAmount'),
+        collectionAmount: sum('collectionAmount'),
+        shouldVerificationAmount: sum('shouldVerificationAmount'),
+        hasVerificationAmount: sum('hasVerificationAmount'),
+        notVerificationAmount: sum('notVerificationAmount'),
+      }];
     }
   },
   methods: {
-    ...mapMutations(['pushTab', 'closeSelfTab']),
-    closeWindow() {
-      this.closeSelfTab(this.index);
-      this.pushTab({
-        keepAlive: false,
-        key: 'OrderReceiptList',
-        title: '收款单'
-      });
+    ...mapMutations(['pushTab', 'closeTabKey']),
+    onSelectChange(keys, {selectedRowData}) {
+      this.selectedRowKeys = keys;
+      this.selectedRows = selectedRowData || [];
     },
-    updateFootEvent() {
-      this.$refs.collectionTable && this.$refs.collectionTable.updateFooter();
-      this.form.collectionAmount = this.calcCollectionAmount();
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
     },
-    getLog() {
-      // this.logContent
-      let {
-        createName = this.user.admin.name,
-        updateName,
-        createdAt,
-        updateAt,
-        approvedName
-      } = this.form;
-      const logEntries = [
-        `制单人: ${createName}`,
-        createdAt ? `制单时间: ${createdAt}` : null,
-        updateName ? `最后修改人: ${updateName}` : null,
-        updateAt ? `最后修改时间: ${updateAt}` : null,
-        approvedName ? `审核人: ${approvedName}` : null
-      ].filter((entry) => entry); // 过滤掉 null 的条目
-
-      this.logContent = logEntries.join('\n');
+    clearSelection() {
+      this.selectedRowKeys = [];
+      this.selectedRows = [];
     },
-    calcCollectionAmount() {
-      return (
-        (parseFloat(this.totalTb1) || 0) -
-        (parseFloat(this.totalTb2) || 0) +
-        (parseFloat(this.form.discountRate) || 0)
-      ).toFixed(2);
+    getSelectedIds() {
+      return (this.selectedRowKeys || []).join(',');
     },
-    batchAudit(orderStatus) {
-      let params = {
-        id: this.form.id,
-        orderStatus: orderStatus,
-        approvedBy: this.$store.state.user.admin.id
-      };
-      const isAnti = orderStatus === '已保存';
-      DialogPlugin.confirm({
-        content: isAnti ? '确定反审核该收款单？' : '确定审核该收款单？',
-        onConfirm: () => {
-          OrderReceipt.batchAudit(params)
-            .then((success) => {
-              if (success) {
-                MessagePlugin.success(isAnti ? '反审核成功' : '审核成功');
-                this.loadList();
-              }
-            })
-            .finally(() => LoadingPlugin(false));
-        }
-      });
-    },
-    clerarData() {
-      this.form = {};
-      this.tableData = [{}];
-      this.tableData2 = [{}];
-    },
-
-    updatePage(type = 'add', orderId = null) {
-      this.closeSelfTab(this.index);
+    addForm(type = 'add', orderId = null) {
+      this.closeTabKey('OrderReceiptForm');
       this.pushTab({
         keepAlive: false,
         key: 'OrderReceiptForm',
-        params: { type: type, orderId: orderId },
+        params: {type: type, orderId: orderId},
         title: '收款单'
       });
+    },
+    loadTotal() {
+      OrderReceipt.total(this.queryParams).then(({data}) => {
+        this.amountTotal = data || 0;
+      })
     },
     loadList() {
       this.loading = true;
-      // const params = JSON.parse(JSON.stringify(this.queryParams));
-      // params.customerIds = params.customerIds.join(',');
-      OrderReceipt.details({ id: this.orderId })
-        .then(({ data: { orderReceipt, collectionList, itemList } }) => {
-          this.form = orderReceipt;
-          this.tableData = collectionList || [];
-          this.tableData2 = itemList || [];
-
-          // this.pagination.total = total;
-          this.getLog();
-        })
-        .finally(() => (this.loading = false));
+      OrderReceipt.list(this.queryParams)
+          .then(({data: {results, total}}) => {
+            this.dataList = results || [];
+            this.pagination.total = total;
+          })
+          .finally(() => this.loading = false);
     },
-    addForm(type = 'add', orderId = null) {
-      // this.form = {};
-      // this.tableData = [{}];
-      // this.tableData2 = [{}];
-      // this.updatePage();
-    },
-    historyForm() {
-      this.pushTab({
-        keepAlive: false,
-        key: 'OrderReceiptList',
-        title: '收款单'
+    loadCustomer() {
+      Customer.select().then(({data}) => {
+        this.customerList = data || [];
       });
     },
-    saveForm(type = 'add', orderStatus = '已保存') {
-      // this.type = type;
-      // console.log(
-      //   'saveForm----------------------------------------------------------'
-      // );
-      let orderReceipt = {
-        documentSource: 1,
-        createdBy: this.user.admin.id,
-        updateBy: this.user.admin.id,
-        orderStatus: orderStatus, //||已审核
-
-        ...this.form
-      };
-      if (type === 'audit') {
-        orderReceipt.orderStatus = orderStatus;
-        orderReceipt.approvedBy = this.user.admin.id;
-        orderReceipt.approvedName = this.user.admin.name;
+    doRemove(row = null) {
+      let ids = null;
+      if (!row) {
+        ids = this.getSelectedIds();
+      } else {
+        ids = row.id;
       }
-      // console.log(this.tableData2);
-      const filterEmptyObjects = (arr) =>
-        arr
-          .map(({ _X_ROW_KEY, ...rest }) => rest)
-          .filter((row) => Object.keys(row).length);
-
-      let params = {
-        orderReceipt,
-        collectionList: filterEmptyObjects(this.tableData),
-        itemList: filterEmptyObjects(this.tableData2)
-      };
-
-      if (!this.form.customerId) {
-        return MessagePlugin.error('请选择客户');
-      } else if (
-        !this.tableData.length ||
-        !this.tableData[0].settlementAccountId
-      ) {
-        return MessagePlugin.error('请选择结算账户');
-      } else if (!this.tableData.length || !this.tableData[0].amount) {
-        return MessagePlugin.error('请输入金额');
-      } else if (params.itemList?.length) {
-        if (this.form.collectionAmount > 0) {
-          DialogPlugin.confirm({
-            title: '系统提示',
-            content: `收款金额大于本次折扣后核销金额,是否仍要修改?`,
-            onConfirm: () => {
-              this.addEdit(type, params);
-            }
-          });
-          return;
-        }
-        if (this.form.collectionAmount < 0) {
-          DialogPlugin.confirm({
-            title: '系统提示',
-            content: `收款金额小于本次折扣后核销金额,是否仍要修改?`,
-            onConfirm: () => {
-              this.addEdit(type, params);
-            }
-          });
-          return;
-        }
+      if (!ids) {
+        return MessagePlugin.error('请选择至少一个订单');
       }
-      this.addEdit(type, params);
-    },
-
-    footerMethodFormat({ columns, data }, list, totalName) {
-      // 初始化合计行，默认所有列为空字符串
-      const footerRow = new Array(columns.length).fill('');
-
-      // 设置第一列为“合计”
-      footerRow[0] = '合计';
-
-      // 遍历列，仅对需要合计的字段进行计算
-      columns.forEach((column, index) => {
-        if (list.includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            const value = parseFloat(row[column.property]);
-            if (!isNaN(value)) {
-              total += value;
-            }
+      DialogPlugin.confirm({
+        title: '系统提示',
+        content: `确认删除?`,
+        onConfirm: () => {
+          OrderReceipt.remove({id: ids}).then(() => {
+            MessagePlugin.success('删除成功~');
+            this.clearSelection();
+            this.loadList();
           });
-          footerRow[index] = total.toFixed(2); // 将合计值放入对应位置
-
-          this[totalName] = total;
         }
       });
-
-      this.form.collectionAmount = this.calcCollectionAmount();
-
-      return [footerRow]; // 返回二维数组用于渲染 footer
     },
-    changeDiscountRate() {
-      this.$refs.table && this.$refs.table.updateFooter();
-      this.form.collectionAmount = this.calcCollectionAmount();
-    },
-    footerMethod({ columns, data }) {
-      return this.footerMethodFormat({ columns, data }, ['amount'], 'totalTb1');
-    },
-    footerMethod2({ columns, data }) {
-      return this.footerMethodFormat(
-        { columns, data },
-        [
-          'documentAmount',
-          'verifiedAmount',
-          'unverifiedAmount',
-          'currentVerifyAmount'
-        ],
-        'totalTb2'
-      );
-    },
-
-    canDelete(tableData) {
-      return tableData.length > 1;
-    },
-    adjustRows(type, index, tableData) {
-      if (type === 'insert') {
-        tableData.splice(index + 1, 0, {});
-      } else if (type === 'delete' && this.canDelete(tableData)) {
-        tableData.splice(index, 1);
+    approved() {
+      const selectedRows = this.getSelectedIds();
+      if (!selectedRows) {
+        MessagePlugin.error('请选择至少一个订单');
+        return;
       }
+      DialogPlugin.confirm({
+        content: `确定审核订单？`,
+        onConfirm: () => {
+          OrderReceipt.approved('已审核', selectedRows).then((success) => {
+            if (success !== false) {
+              MessagePlugin.success('审核成功');
+              this.clearSelection();
+              this.loadList();
+            }
+          });
+        }
+      });
+    },
+    backApproved() {
+      const selectedRows = this.getSelectedIds();
+      if (!selectedRows) {
+        MessagePlugin.error('请选择至少一个订单');
+        return;
+      }
+      DialogPlugin.confirm({
+        content: `确定反审核订单？`,
+        onConfirm: () => {
+          OrderReceipt.approved('已保存', selectedRows).then((success) => {
+            if (success !== false) {
+              MessagePlugin.success('反审核成功');
+              this.clearSelection();
+              this.loadList();
+            }
+          });
+        }
+      });
     },
     doSearch() {
       this.pagination.page = 1;
-      // this.loadList();
+      this.clearSelection();
+      this.loadList();
+      this.loadTotal();
     },
-    addEdit(type, params) {
-      this.loading = true;
-      OrderReceipt.addEdit(params)
-        .then(() => {
-          MessagePlugin.success('提交成功~');
-          this.clerarData();
-          if (type == 'save') {
-            this.historyForm();
-          }
-        })
-        .finally(() => (this.loading = false));
-    },
-    //加载客户列表
-    loadCustomer() {
-      this.loading = true;
-      Customer.select()
-        .then(({ data }) => {
-          this.customerDataList = data || [];
-          // this.pagination.total = total;
-        })
-        .finally(() => (this.loading = false));
-    },
-    //加载业务员列表
-    loadOrderStaff() {
-      OrderReceipt.orderStaffList()
-        .then(({ data }) => {
-          this.orderStaffList = data || [];
-          // this.pagination.total = total;
-        })
-        .finally();
-    },
-    loadPaymentMethod() {
-      this.loading = true;
-      PaymentMethod.list()
-        .then(({ data }) => {
-          this.paymentMethodList = data;
-        })
-        .finally(() => (this.loading = false));
-    },
-    loadAccountMethod() {
-      this.loading = true;
-      Account.list()
-        .then(({ data }) => {
-          this.settlementAccount = data;
-        })
-        .finally(() => (this.loading = false));
-    },
-
-    selectCustomer(e) {
-      this.form.customerId = e?.id || null;
-      this.form.totalAmountsOwed = e?.balance || null;
-
-      this.form = {
-        ...this.form
-      };
-    },
-    selectOrderStaff(e) {
-      this.form.orderStaffId = e?.id || null;
-    },
-    changeAccount(value, row) {
-      const selectedItem = this.settlementAccount.find(
-        (item) => item.name === value
-      );
-      if (selectedItem) {
-        row.settlementAccountId = selectedItem.id; // 设置 id
-      }
-
-      console.log(row, 'changeAccount');
-    },
-    changePaymentMethod(value, row) {
-      console.log(value, 'changePaymentMethod');
-      const selectedItem = this.paymentMethodList.find(
-        (item) => item.name === value
-      );
-      if (selectedItem) {
-        row.paymentMethodId = selectedItem.id; // 设置 id
-      }
-    },
-    addOrderStaff() {
-      document.getElementsByClassName('h-dropdown')[0].style.zIndex = 1;
-      this.showForm();
-    },
-
-    showForm(entity) {
-      let type = 0;
-      let dialogId = openDialog({
-        header: '新增职员',
-        closeOnOverlayClick: false,
-        closeBtn: false,
-        width: '600px',
-        body: h(OrderStaffForm, {
-          entity,
-          type,
-          onClose: () => {
-            console.log(this.$refs.selectRef);
-            closeDialog(dialogId);
-          },
-          onSuccess: () => {
-            this.loadOrderStaff();
-            closeDialog(dialogId);
-          }
-        })
-      });
-    },
-    autoMatic() {
-      if (!this.form.customerId) {
-        return MessagePlugin.error('请选择客户');
-      } else if (!this.tableData2[0]?.salesOrderNo) {
-        return MessagePlugin.error('请选择需要核销的单据');
-      }
-
-      this.autoSetVerifyAmount();
-
-      // this.changeDiscountRate();
-    },
-    autoSetVerifyAmount() {
-      let remainingAmount = this.totalTb1; // 剩余可核销金额
-      this.tableData2.forEach((row) => {
-        const { unverifiedAmount = 0 } = row;
-        if (remainingAmount >= unverifiedAmount) {
-          row.currentVerifyAmount = unverifiedAmount;
-          remainingAmount -= unverifiedAmount;
-        } else if (remainingAmount > 0) {
-          row.currentVerifyAmount = remainingAmount; // 取剩余金额作为最大值
-          remainingAmount = 0; // 核销完毕，后续不再处理
-        } else {
-          // 剩余金额为 0，不进行核销
-          row.currentVerifyAmount = 0;
-        }
-      });
-      MessagePlugin.success('已核销');
-      this.$refs.table.updateFooter();
-    },
-    sourceForm() {
-      if (!this.form.customerId) {
-        return MessagePlugin.error('请选择客户');
-      }
-      let params = {
-        customerId: this.form.customerId,
-        balance: this.form.totalAmountsOwed
-      };
-      let dialogId = openDialog({
-        header: '选择源单',
-        closeOnOverlayClick: false,
-        closeBtn: false,
-        width: '900px',
-        body: h(sourceForm, {
-          params,
-          onClose: () => {
-            console.log(this.$refs.selectRef);
-            closeDialog(dialogId);
-          },
-          onSuccess: (checkList) => {
-            const merged = new Map(
-              this.tableData2.map((item) => [item.salesOrderNo, item])
-            );
-            checkList.forEach((item) => {
-              if (!merged.has(item.salesOrderNo)) {
-                merged.set(item.salesOrderNo, item);
-              }
-            });
-            this.tableData2 = Array.from(merged.values())
-              .filter((item) => item.salesOrderNo)
-              .map((item) => {
-                delete item._X_ROW_KEY;
-                return {
-                  ...item,
-                  currentVerifyAmount: item.unverifiedAmount
-                };
-              });
-
-            console.log(this.tableData2, 'tableData2tableData2');
-            // this.loadOrderStaff();
-            closeDialog(dialogId);
-          }
-        })
-      });
-    }
   },
   created() {
-    console.log(this.orderId, this.type, 'orderIdorderId');
-    if (this.orderId) {
-      this.loadList();
-    }
     this.loadCustomer();
-    this.loadOrderStaff();
-    this.loadPaymentMethod();
-    this.loadAccountMethod();
-    setTimeout(() => {
-      this.getLog();
-    }, 500);
-    // this.getLog()
+    this.loadTotal();
+    this.loadList();
   }
-};
+}
 </script>
-<style lang="less" scoped>
-:deep(.vxe-select > .vxe-input) {
-  width: 100%;
+
+<style scoped>
+.simple-page {
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.receipt-extra-actions {
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  margin-left: auto;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
+}
+
+.cell-multi {
+  line-height: 1.6;
 }
 </style>

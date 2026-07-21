@@ -40,7 +40,9 @@ public class PricingPolicyController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PricingPolicy pricingPolicy) {
+    public JsonResult update(@RequestBody @Valid PricingPolicy pricingPolicy, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        pricingPolicy.setMerchantId(merchantId);
+        pricingPolicy.setAccountBookId(accountBookId);
         pricingPolicyService.save(pricingPolicy);
         return JsonResult.successful();
     }
@@ -57,8 +59,9 @@ public class PricingPolicyController {
     }
 
     @PutMapping("sort")
-    public JsonResult sort(@RequestBody @Valid PricingPolicyForm pricingPolicyForm) {
-        pricingPolicyService.sort(pricingPolicyForm);
+    public JsonResult sort(@RequestBody @Valid PricingPolicyForm pricingPolicyForm,
+                           @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        pricingPolicyService.sort(pricingPolicyForm, merchantId, accountBookId);
         return JsonResult.successful();
     }
 

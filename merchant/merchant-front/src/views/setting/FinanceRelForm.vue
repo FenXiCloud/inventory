@@ -97,7 +97,7 @@ export default {
     changeAccountBook(item) {
       const id = item.key;
       // 根据accountBookId加载账套信息
-      FinanceAccountLink.loadByAccountBookId(id).then(({data}) => {
+      FinanceAccountLink.byAccountBook(id).then(({data}) => {
         if (ObjectUtil.isEmpty(data)) {
           this.model.accountBookName = item.title;
           return;
@@ -121,7 +121,7 @@ export default {
         MessagePlugin.success("请输入财务软件密码～");
         return;
       }
-      FinanceAccountLink.loadAccountSetsList({
+      FinanceAccountLink.accountSets({
         url: url,
         financeAccount: financeAccount,
         financePassword: financePassword
@@ -154,7 +154,7 @@ export default {
             this.model.accountBookId = this.accountBook.key;
             this.model.accountBookName = this.accountBook.title;
             // 根据accountBookId加载账套信息
-            FinanceAccountLink.loadByAccountBookId(this.model.accountBookId).then(({data}) => {
+            FinanceAccountLink.byAccountBook(this.model.accountBookId).then(({data}) => {
               console.log(data);
               if (ObjectUtil.isEmpty(data)) {
                 this.model.accountBookId = this.accountBook.key;

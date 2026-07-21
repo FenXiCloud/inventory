@@ -88,7 +88,7 @@ public class PurchaseReportService extends AbsService {
         }
     }
 
-    public PageResults<PurchaseReportSummaryDto> queryStat(Page page, Query query, Set<String> groupValues) {
+    public PageResults<PurchaseReportSummaryDto> summary(Page page, Query query, Set<String> groupValues) {
 
         Map<String, Object> params = new HashMap<>();
         params.put("startDate", query.start);
@@ -131,9 +131,10 @@ public class PurchaseReportService extends AbsService {
             groupBy += ",po.product_id";
         }
 
-        if (!groupBy.isEmpty()) {
-            groupBy = groupBy.substring(1);
+        if (groupBy.isEmpty()) {
+            throw new IllegalArgumentException("请选择有效的统计字段");
         }
+        groupBy = groupBy.substring(1);
 
         org.sagacity.sqltoy.model.Page sqlPage = new org.sagacity.sqltoy.model.Page(page.getSize(), page.getPage());
         params.put("groupBy", groupBy);
@@ -330,7 +331,18 @@ public class PurchaseReportService extends AbsService {
         public List<String> groupValues;
 
         public void setGroupValues(List<String> groupValues) {
-            this.groupValues = groupValues;
+            if (CollUtil.isEmpty(groupValues)) {
+                this.groupValues = groupValues;
+                return;
+            }
+            // 兼容前端 toString() 传参：product,supplier,warehouse
+            this.groupValues = groupValues.stream()
+                    .filter(StrUtil::isNotBlank)
+                    .flatMap(v -> Arrays.stream(v.split(",")))
+                    .map(String::trim)
+                    .filter(StrUtil::isNotBlank)
+                    .distinct()
+                    .collect(Collectors.toList());
         }
 
         public void setMerchantId(Long merchantId) {

@@ -66,11 +66,20 @@ let request = {
 			data: paramJson
 		}, extendParam);
 	},
-	delete: function (url, extendParam) {
-		return this.ajax({
+	delete: function (url, data, extendParam) {
+		let params = {
 			url: url,
 			method: 'DELETE'
-		}, extendParam);
+		};
+		if (data !== undefined && data !== null) {
+			if (arguments.length === 2 && typeof data === 'object' && !Array.isArray(data)
+				&& ('repeatable' in data || 'headers' in data || 'responseType' in data || 'crossDomain' in data)) {
+				extendParam = data;
+			} else {
+				params.data = data;
+			}
+		}
+		return this.ajax(params, extendParam);
 	},
 	ajax: function (param, extendParam) {
 		let params = Object.assign({}, DefaultParam, param, extendParam || {});

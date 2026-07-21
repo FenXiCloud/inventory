@@ -3,8 +3,8 @@
     <div class="simple-page__toolbar">
       <t-space break-line>
         <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="batchAudit('已审核')">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="batchAudit('已保存')">反审核</t-button>
+        <t-button variant="outline" style="border-radius: 4px"           @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
         <t-select
             v-model="params.state"
             :options="stateOptions"
@@ -94,7 +94,8 @@
 <script>
 import manba from "manba";
 import {mapMutations} from "vuex";
-import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 import Customer from "@js/api/basic/Customer";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
 
@@ -172,7 +173,6 @@ export default {
         return total.toFixed(digits);
       };
       const totalAmount = sum('totalAmount');
-      this.amountTotal = totalAmount;
       return [{
         ops: '合计',
         totalAmount,
@@ -204,24 +204,47 @@ export default {
       this.selectedRowKeys = [];
       this.selectedRows = [];
     },
-    batchAudit(orderStatus) {
+    approved() {
       if (!this.selectedRows.length) {
-        MessagePlugin.error("请选择至少一个订单进行审核");
+        MessagePlugin.error("未选择数据~");
+        return;
+      }
+      const ids = this.selectedRows.filter(val => val.orderStatus == '已保存').map(val => val.id);
+      if (!ids.length) {
+        MessagePlugin.error("所选数据无需审核~");
         return;
       }
       DialogPlugin.confirm({
-        content: `确定批量${orderStatus === '已审核' ? '审核' : '反审核'}订单？`,
+        title: "批量审核提示",
+        content: `本次审核${ids.length}条?`,
         onConfirm: () => {
-          SalesOutbound.batchAudit({
-            orderIds: this.selectedRows.map(row => row.id),
-            orderStatus
-          }).then((success) => {
-            if (success) {
-              MessagePlugin.success(orderStatus === '已审核' ? "批量审核成功" : "批量反审核成功");
-              this.clearSelection();
-              this.loadList();
-            }
-          });
+          return SalesOutbound.approved('已审核', ids).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.clearSelection();
+            this.loadList();
+          })
+        }
+      })
+    },
+    backApproved() {
+      if (!this.selectedRows.length) {
+        MessagePlugin.error("未选择数据~");
+        return;
+      }
+      const ids = this.selectedRows.filter(val => val.orderStatus == '已审核').map(val => val.id);
+      if (!ids.length) {
+        MessagePlugin.error("所选数据无需反审核~");
+        return;
+      }
+      DialogPlugin.confirm({
+        title: "批量反审核提示",
+        content: `本次反审核${ids.length}条?`,
+        onConfirm: () => {
+          return SalesOutbound.approved('已保存', ids).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.clearSelection();
+            this.loadList();
+          })
         }
       })
     },
@@ -230,7 +253,7 @@ export default {
         title: "系统提示",
         content: `确认删除：${row.orderNo}?`,
         onConfirm: () => {
-          SalesOutbound.remove(row.id).then(() => {
+          return SalesOutbound.remove(row.id).then(() => {
             MessagePlugin.success("删除成功~");
             this.loadList();
           })
@@ -241,11 +264,17 @@ export default {
       this.pagination.page = 1;
       this.clearSelection();
       this.loadList();
+      this.loadTotal();
     },
     loadCustomer() {
       Customer.select().then(({data}) => {
         this.customerList = data || [];
       });
+    },
+    loadTotal() {
+      SalesOutbound.total(this.queryParams).then(({data}) => {
+        this.amountTotal = data || 0;
+      })
     },
     loadList() {
       this.loading = true;
@@ -257,6 +286,7 @@ export default {
   },
   created() {
     this.loadCustomer();
+    this.loadTotal();
     this.loadList();
   }
 }

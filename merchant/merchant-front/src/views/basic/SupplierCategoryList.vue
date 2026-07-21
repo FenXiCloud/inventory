@@ -45,7 +45,8 @@
 <script>
 import SupplierCategory from '@js/api/basic/SupplierCategory';
 import SupplierCategoryForm from '@views/basic/SupplierCategoryForm.vue';
-import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 

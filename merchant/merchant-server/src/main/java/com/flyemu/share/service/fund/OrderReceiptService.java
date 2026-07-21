@@ -18,12 +18,13 @@ import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.*;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.AccountService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
 import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
-import com.flyemu.share.service.fund.dto.OrderReceiptSaveDTO;
+import com.flyemu.share.form.OrderReceiptForm;
 import com.flyemu.share.service.fund.vo.*;
 import com.flyemu.share.service.fund.vo.report.ReceivableDetailReportVO;
 import com.flyemu.share.service.fund.vo.report.SummaryReceivableDetailsPageVO;
@@ -62,10 +63,12 @@ import java.util.*;
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 @Service
+@Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
 public class OrderReceiptService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QOrderReceipt qOrderReceipt = QOrderReceipt.orderReceipt;
     private final static QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
     private final static QVerification qVerification = QVerification.verification;
@@ -383,8 +386,27 @@ public class OrderReceiptService extends AbsService {
                         .and(qSales.orderStatus.eq(OrderStatus.已审核)))
                 .fetchOne();
 
-        // 其他收入金额
-        BigDecimal otherIncomeAmount = BigDecimal.ZERO;
+        // 其他收入金额（收款金额 + 欠款金额）
+        QOtherReceipt qOtherReceipt = QOtherReceipt.otherReceipt;
+        BooleanBuilder otherBuilder = new BooleanBuilder()
+                .and(qOtherReceipt.customerId.eq(customerId))
+                .and(qOtherReceipt.approvedAt.between(startTime, endTime))
+                .and(qOtherReceipt.orderStatus.eq(OrderStatus.已审核));
+        if (query.getMerchantId() != null) {
+            otherBuilder.and(qOtherReceipt.merchantId.eq(query.getMerchantId()));
+        }
+        if (query.getAccountBookId() != null) {
+            otherBuilder.and(qOtherReceipt.accountBookId.eq(query.getAccountBookId()));
+        }
+        BigDecimal otherCollected = jqf.select(qOtherReceipt.collectionAmount.sum())
+                .from(qOtherReceipt)
+                .where(otherBuilder)
+                .fetchOne();
+        BigDecimal otherArrears = jqf.select(qOtherReceipt.arrearsAmount.sum())
+                .from(qOtherReceipt)
+                .where(otherBuilder)
+                .fetchOne();
+        BigDecimal otherIncomeAmount = nz(otherCollected).add(nz(otherArrears));
 
         // 收款单中的折扣金额
         BigDecimal discountAmount = jqf.select(qReceipt.discountAmount.sum())
@@ -394,9 +416,8 @@ public class OrderReceiptService extends AbsService {
                         .and(qReceipt.orderStatus.eq(OrderStatus.已审核)))
                 .fetchOne();
 
-        salesAmount = salesAmount == null ? BigDecimal.ZERO : salesAmount;
-        otherIncomeAmount = otherIncomeAmount == null ? BigDecimal.ZERO : otherIncomeAmount;
-        discountAmount = discountAmount == null ? BigDecimal.ZERO : discountAmount;
+        salesAmount = nz(salesAmount);
+        discountAmount = nz(discountAmount);
 
         return salesAmount
                 .add(otherIncomeAmount)
@@ -426,18 +447,32 @@ public class OrderReceiptService extends AbsService {
                 .fetchOne();
 
         // 其他收入收款金额
-        BigDecimal otherIncomePayment = BigDecimal.ZERO;
+        QOtherReceipt qOtherReceipt = QOtherReceipt.otherReceipt;
+        BooleanBuilder otherBuilder = new BooleanBuilder()
+                .and(qOtherReceipt.customerId.eq(customerId))
+                .and(qOtherReceipt.approvedAt.between(startTime, endTime))
+                .and(qOtherReceipt.orderStatus.eq(OrderStatus.已审核));
+        if (query.getMerchantId() != null) {
+            otherBuilder.and(qOtherReceipt.merchantId.eq(query.getMerchantId()));
+        }
+        if (query.getAccountBookId() != null) {
+            otherBuilder.and(qOtherReceipt.accountBookId.eq(query.getAccountBookId()));
+        }
+        BigDecimal otherIncomePayment = jqf.select(qOtherReceipt.collectionAmount.sum())
+                .from(qOtherReceipt)
+                .where(otherBuilder)
+                .fetchOne();
 
-        salesPayment = salesPayment == null ? BigDecimal.ZERO : salesPayment;
-        orderPayment = orderPayment == null ? BigDecimal.ZERO : orderPayment;
-        otherIncomePayment = otherIncomePayment == null ? BigDecimal.ZERO : otherIncomePayment;
-
-        return salesPayment
-                .add(orderPayment)
-                .add(otherIncomePayment);
+        return nz(salesPayment)
+                .add(nz(orderPayment))
+                .add(nz(otherIncomePayment));
     }
 
-    public PageResults<ReceivableDetailReportVO> getReceivableDetailReport(Page page, ReceivableDetailReportQuery query) {
+    private static BigDecimal nz(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    public PageResults<ReceivableDetailReportVO> receivableDetail(Page page, ReceivableDetailReportQuery query) {
         QOrderReceipt qReceipt = OrderReceiptService.qOrderReceipt;
         QOrderReceiptItem qItem = OrderReceiptService.qItem;
 
@@ -504,7 +539,7 @@ public class OrderReceiptService extends AbsService {
 
 
     @Transactional
-    public OrderReceipt save(OrderReceiptSaveDTO dto) {
+    public OrderReceipt save(OrderReceiptForm dto) {
         if (dto.getOrderReceipt() == null) {
             throw new ServiceException("主订单参数错误");
         }
@@ -512,6 +547,7 @@ public class OrderReceiptService extends AbsService {
             throw new ServiceException("账户参数错误");
         }
         OrderReceipt orderReceipt = dto.getOrderReceipt();
+        checkoutService.assertEditable(orderReceipt.getMerchantId(), orderReceipt.getAccountBookId(), orderReceipt.getOrderDate());
         if (orderReceipt.getId() != null) {
             jqf.delete(qOrderReceiptItem).where(qOrderReceiptItem.receiptId.eq(orderReceipt.getId())).execute();
             jqf.delete(qOrderReceiptCollection).where(qOrderReceiptCollection.receiptId.eq(Math.toIntExact(orderReceipt.getId()))).execute();
@@ -832,7 +868,7 @@ public class OrderReceiptService extends AbsService {
                 .execute();
     }
 
-    public OrderReceiptDetails selectById(Long id) {
+    public OrderReceiptDetails load(Long merchantId, Long id) {
         QMerchantUser qUpdatedByUser = new QMerchantUser("updatedByUser");
         QMerchantUser approvedNameUser = new QMerchantUser("approvedNameUser");
         OrderReceiptDetailsVO orderReceipt = jqf.select(Projections.bean(OrderReceiptDetailsVO.class,
@@ -847,7 +883,7 @@ public class OrderReceiptService extends AbsService {
                         qUpdatedByUser.name.as("updateName"), approvedNameUser.name.as("approvedName")))
                 .from(qOrderReceipt).leftJoin(qCustomer).on(qCustomer.id.eq(qOrderReceipt.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qOrderReceipt.createdBy)).leftJoin(qUpdatedByUser)
-                .on(qMerchantUser.id.eq(qOrderReceipt.updateBy)).leftJoin(approvedNameUser).on(approvedNameUser.id.eq(qOrderReceipt.approvedBy)).where(qOrderReceipt.id.eq(id)).fetchOne();
+                .on(qMerchantUser.id.eq(qOrderReceipt.updateBy)).leftJoin(approvedNameUser).on(approvedNameUser.id.eq(qOrderReceipt.approvedBy)).where(qOrderReceipt.merchantId.eq(merchantId).and(qOrderReceipt.id.eq(id))).fetchOne();
         if (orderReceipt == null) {
             throw new ServiceException("单据不存在");
         }
@@ -865,6 +901,15 @@ public class OrderReceiptService extends AbsService {
 
         return dto;
 
+    }
+
+    @Transactional
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        OrderPaymentUpdateDTO dto = new OrderPaymentUpdateDTO();
+        dto.setId(ids.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")));
+        dto.setOrderStatus(state);
+        dto.setApprovedBy(adminId);
+        updateStatus(dto);
     }
 
     @Transactional
@@ -956,8 +1001,6 @@ public class OrderReceiptService extends AbsService {
 //                .reduce(BigDecimal.ZERO, BigDecimal::add);
 //
 //        if (actualTotal.compareTo(shouldVerifyAmount) != 0) {
-//            throw new ServiceException("实际到账金额与应核销金额不一致，无法审核");
-//        }
 
         if (targetStatus == OrderStatus.已审核) {
             customer.setBalance(customer.getBalance().subtract(shouldVerifyAmount));
@@ -1037,7 +1080,7 @@ public class OrderReceiptService extends AbsService {
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
 
 
-    public Object aListSalesOrders(Page page, OrderReceiptService.SalesQuery query) {
+    public Object writeOffCandidates(Page page, OrderReceiptService.SalesQuery query) {
         if (query.getCustomerId() == null) {
             throw new ServiceException("客户ID不能为空");
         }
@@ -1131,6 +1174,13 @@ public class OrderReceiptService extends AbsService {
                 builder.and(qSalesOutbound.customerId.eq(customerId));
             }
         }
+    }
+
+
+    public BigDecimal queryTotal(Query query) {
+        return bqf.selectFrom(qOrderReceipt)
+                .select(qOrderReceipt.collectionAmount.sum())
+                .where(query.builder).fetchFirst();
     }
 
     public static class Query {

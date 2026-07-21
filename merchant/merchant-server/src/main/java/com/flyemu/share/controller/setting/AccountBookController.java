@@ -43,20 +43,18 @@ public class AccountBookController {
 
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid AccountBookDto accountBookDto) {
+    public JsonResult update(@RequestBody @Valid AccountBookDto accountBookDto, @SaMerchantId Long merchantId) {
+        accountBookDto.setMerchantId(merchantId);
         accountBookService.save(accountBookDto);
         return JsonResult.successful();
     }
 
     /**
      * 修改默认账套
-     * @param merchantId
-     * @param accountBookId
-     * @return
      */
     @PutMapping("change/current/{accountBookId}")
-    public  JsonResult changeCurrentAccountBook(@SaMerchantId Long merchantId,@PathVariable Long accountBookId){
-        AccountBook accountBook = accountBookService.changeCurrentAccountBook(merchantId,accountBookId);
+    public JsonResult changeCurrentAccountBook(@SaMerchantId Long merchantId, @PathVariable Long accountBookId) {
+        AccountBook accountBook = accountBookService.changeCurrentAccountBook(merchantId, accountBookId);
         AccountDto accountDto = (AccountDto) StpUtil.getTokenSession().get(Constants.SESSION_ACCOUNT);
         accountDto.setAccountBook(accountBook);
         SaSession session = StpUtil.getTokenSession();
@@ -65,7 +63,7 @@ public class AccountBookController {
     }
 
     @DeleteMapping("/{accountBookId}")
-    public JsonResult delete(@PathVariable Long accountBookId, Long merchantId) {
+    public JsonResult delete(@PathVariable Long accountBookId, @SaMerchantId Long merchantId) {
         accountBookService.delete(merchantId, accountBookId);
         return JsonResult.successful();
     }

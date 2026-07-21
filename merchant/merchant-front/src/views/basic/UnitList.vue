@@ -45,7 +45,8 @@
 <script>
 import Unit from '@js/api/basic/Unit';
 import UnitForm from '@views/basic/UnitForm.vue';
-import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 

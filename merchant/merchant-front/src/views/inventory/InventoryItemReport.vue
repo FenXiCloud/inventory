@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
@@ -96,7 +96,7 @@
                  :column-config="{resizable: true}"
                  :sort-config="{remote:true}"
                  :loading="loading">
-        <vxe-column title="产品编号" field="productCode" align="center" width="130"/>
+        <vxe-column title="产品编码" field="productCode" align="center" width="130"/>
         <vxe-column title="产品名称" field="productName" width="200"/>
         <vxe-column title="产品类别" field="productCategoryName" width="200"/>
         <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
@@ -241,7 +241,7 @@ const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
 
 export default {
-  name: "InventoryItemList",
+  name: "InventoryItemReport",
   data() {
     return {
       dataList: [],
@@ -362,24 +362,34 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      const params = JSON.parse(JSON.stringify(this.queryParams));
-      params.warehouseIds = params.warehouseIds.join(",");
-      params.productIds = params.productIds.join(",");
-      params.supplierIds = params.supplierIds.join(",");
-      params.customerIds = params.customerIds.join(",");
-      params.operationTypes = params.operationTypes.join(",");
-      params.productCategoryIds = params.productCategoryIds.join(",");
-      Promise.all([InventoryItem.reportSummary(params)]).then((promiseResults) => {
+      const params = this.buildQueryParams();
+      Promise.all([InventoryItem.itemTotal(params)]).then((promiseResults) => {
         const data = promiseResults[0].data;
         if (data) {
           this.summaryQuantity = data.summaryQuantity || 0;
           this.summaryCost = data.summaryCost || 0;
         }
-        InventoryItem.report(params).then(({data: {results, total}}) => {
+        InventoryItem.item(params).then(({data: {results, total}}) => {
           this.dataList = results || [];
           this.pagination.total = total;
         }).finally(() => this.loading = false);
       });
+    },
+    buildQueryParams(extra = {}) {
+      const params = Object.assign(JSON.parse(JSON.stringify(this.queryParams)), extra);
+      const joinIds = (arr) => (Array.isArray(arr) && arr.length ? arr.join(",") : undefined);
+      params.warehouseIds = joinIds(params.warehouseIds);
+      params.productIds = joinIds(params.productIds);
+      params.supplierIds = joinIds(params.supplierIds);
+      params.customerIds = joinIds(params.customerIds);
+      params.operationTypes = joinIds(params.operationTypes);
+      params.productCategoryIds = joinIds(params.productCategoryIds);
+      Object.keys(params).forEach((key) => {
+        if (params[key] === undefined || params[key] === null || params[key] === "") {
+          delete params[key];
+        }
+      });
+      return params;
     },
     getAbsoluteValue(number) {
       if (number < 0) {
@@ -390,17 +400,11 @@ export default {
     },
     excel() {
       this.loading = true;
-      const params = JSON.parse(JSON.stringify(this.queryParams));
-      params.warehouseIds = params.warehouseIds.join(",");
-      params.productIds = params.productIds.join(",");
-      params.supplierIds = params.supplierIds.join(",");
-      params.operationTypes = params.operationTypes.join(",");
-      params.page = 1;
-      params.pageSize = 99999;
-      InventoryItem.report(params).then(({data: {results, total}}) => {
+      const params = this.buildQueryParams({page: 1, pageSize: 99999});
+      InventoryItem.item(params).then(({data: {results, total}}) => {
         let dataList = results || [];
         let headList = [
-          {label: "产品编号", key: "productCode"},
+          {label: "产品编码", key: "productCode"},
           {label: "产品名称", key: "productName"},
           {label: "产品类别", key: "productCategoryName"},
           {label: "规格型号", key: "productSpecification"},
@@ -423,7 +427,7 @@ export default {
           {label: "单位成本", key: "summaryAverage"},
           {label: "成本", key: "summaryCost"},
         ];
-        const tHeader = ['产品编号', '产品名称', '产品类别', '规格型号', '单据日期', '业务类型', '单据编号', '往来单位', '仓库', '单位', '产品名称备注', '入库数量', '入库',
+        const tHeader = ['产品编码', '产品名称', '产品类别', '规格型号', '单据日期', '业务类型', '单据编号', '往来单位', '仓库', '单位', '产品名称备注', '入库数量', '入库',
           null, null, '出库数量', '出库', null, null, '结存', null, null
         ];
         const merges = [
@@ -446,7 +450,6 @@ export default {
         ];
         const list = [[null, null, null, null, null, null, null, null, null, null, null, null, '基本单位数量', '单位成本', '成本', null, '基本单位数量',
           '单位成本', '成本', '基本单位数量', '单位成本', '成本']];
-        // 处理传递数据
         dataList = this.handleDataList(dataList);
         exportExcelHeader(dataList, tHeader, headList, merges, list, manba(new Date()).format("YYYYMMddHHmmss") + "_进销存明细");
       }).finally(() => this.loading = false);

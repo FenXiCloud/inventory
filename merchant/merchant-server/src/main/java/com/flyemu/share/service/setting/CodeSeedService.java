@@ -11,10 +11,10 @@ import com.flyemu.share.entity.setting.QCodeSeed;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.CodeSeedRepository;
 import com.flyemu.share.service.AbsService;
-import com.querydsl.core.types.dsl.EnumPath;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -27,63 +27,87 @@ import java.util.Date;
  * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class CodeSeedService extends AbsService {
 
     private final CodeSeedRepository codeSeedRepository;
+    private final CodeRuleService codeRuleService;
+    private final StringRedisTemplate redisTemplate;
 
     private final QCodeSeed qCodeSeed = QCodeSeed.codeSeed;
     private final QCodeRule qCodeRule = QCodeRule.codeRule;
 
-    private final StringRedisTemplate redisTemplate;
-
+    /**
+     * 兼容旧调用：仅按商户生成（不推荐，可能跨账套冲突）
+     */
+    @Transactional
+    public String generateCode(Long merchantId, String documentType) {
+        CodeRule codeRule = bqf.selectFrom(qCodeRule)
+                .where(qCodeRule.merchantId.eq(merchantId)
+                        .and(qCodeRule.documentType.eq(CodeRule.DocumentType.valueOf(documentType))))
+                .orderBy(qCodeRule.id.asc())
+                .fetchFirst();
+        Long accountBookId = codeRule != null ? codeRule.getAccountBookId() : null;
+        Assert.notNull(accountBookId, "未配置编码规则，请先在系统设置中初始化编码规则");
+        return generateCode(merchantId, accountBookId, documentType);
+    }
 
     /**
-     * 对外提供的方法
-     *
-     * @param merchantId
-     * @param documentType
-     * @return
-     * @throws InterruptedException
+     * 按商户+账套生成单据编号
      */
-    public  String generateCode(Long merchantId, String documentType) {
-        String resultCode = "";
+    @Transactional
+    public String generateCode(Long merchantId, Long accountBookId, String documentType) {
+        Assert.notNull(merchantId, "商户ID不能为空");
+        Assert.notNull(accountBookId, "账套ID不能为空");
+        Assert.notBlank(documentType, "单据类型不能为空");
 
         CodeRule.DocumentType documentTypeForQuery = CodeRule.DocumentType.valueOf(documentType);
-        EnumPath<CodeRule.DocumentType> documentTypeEnumPath = qCodeRule.documentType;
         CodeRule codeRule = bqf.selectFrom(qCodeRule).where(
-                qCodeRule.merchantId.eq(merchantId).and(documentTypeEnumPath.eq(documentTypeForQuery))
-        ).fetchFirst();
+                qCodeRule.merchantId.eq(merchantId)
+                        .and(qCodeRule.accountBookId.eq(accountBookId))
+                        .and(qCodeRule.documentType.eq(documentTypeForQuery))
+        ).orderBy(qCodeRule.systemDefault.desc(), qCodeRule.id.asc()).fetchFirst();
 
-        if (codeRule != null) {
-            if (CodeRule.ResetPeriod.年.equals(codeRule.getResetPeriod())){
-                resultCode = this.yearIncrease(merchantId,documentType,codeRule);
-            }else if (CodeRule.ResetPeriod.月.equals(codeRule.getResetPeriod())){
-                resultCode = this.monthIncrease(merchantId,documentType,codeRule);
-            }else if (CodeRule.ResetPeriod.日.equals(codeRule.getResetPeriod())){
-                resultCode = this.dayIncrease(merchantId,documentType,codeRule);
-            }else if (CodeRule.ResetPeriod.季.equals(codeRule.getResetPeriod())){
-                resultCode = this.quarterIncrease(merchantId,documentType,codeRule);
-            }
+        if (codeRule == null) {
+            codeRuleService.ensureDefaultRules(merchantId, accountBookId);
+            codeRule = bqf.selectFrom(qCodeRule).where(
+                    qCodeRule.merchantId.eq(merchantId)
+                            .and(qCodeRule.accountBookId.eq(accountBookId))
+                            .and(qCodeRule.documentType.eq(documentTypeForQuery))
+            ).orderBy(qCodeRule.systemDefault.desc(), qCodeRule.id.asc()).fetchFirst();
+        }
+
+        Assert.notNull(codeRule, "未找到【" + documentType + "】编码规则，请先在系统设置中配置");
+
+        String resultCode;
+        if (CodeRule.ResetPeriod.年.equals(codeRule.getResetPeriod())) {
+            resultCode = this.yearIncrease(merchantId, accountBookId, documentType, codeRule);
+        } else if (CodeRule.ResetPeriod.月.equals(codeRule.getResetPeriod())) {
+            resultCode = this.monthIncrease(merchantId, accountBookId, documentType, codeRule);
+        } else if (CodeRule.ResetPeriod.日.equals(codeRule.getResetPeriod())) {
+            resultCode = this.dayIncrease(merchantId, accountBookId, documentType, codeRule);
+        } else if (CodeRule.ResetPeriod.季.equals(codeRule.getResetPeriod())) {
+            resultCode = this.quarterIncrease(merchantId, accountBookId, documentType, codeRule);
+        } else {
+            throw new ServiceException("不支持的流水号重置周期");
+        }
+
+        if (StrUtil.isBlank(resultCode)) {
+            throw new ServiceException("生成【" + documentType + "】单号失败，请检查编码规则配置");
         }
         return resultCode;
     }
 
-    /**
-     * 获取连续编号
-     *
-     * @param merchantId
-     * @param type
-     * @return
-     */
-    private Integer next(Long merchantId, String type,CodeRule codeRule) {
+    private Integer next(Long merchantId, String type, CodeRule codeRule) {
         String lockName = type + ":" + merchantId;
         RedisLock rLock = new RedisLock(redisTemplate, lockName);
         try {
-            //获取订单锁
             boolean res = rLock.lock();
             Assert.isTrue(res, "系统繁忙，请稍后~");
-            CodeSeed codeSeed = bqf.selectFrom(qCodeSeed).where(qCodeSeed.merchantId.eq(merchantId).and(qCodeSeed.type.eq(type))).fetchFirst();
+            CodeSeed codeSeed = bqf.selectFrom(qCodeSeed)
+                    .where(qCodeSeed.merchantId.eq(merchantId).and(qCodeSeed.type.eq(type)))
+                    .fetchFirst();
             if (codeSeed == null) {
                 codeSeed = new CodeSeed();
                 codeSeed.setMerchantId(merchantId);
@@ -101,99 +125,52 @@ public class CodeSeedService extends AbsService {
         }
     }
 
+    private String seedType(Long accountBookId, String documentType, String resetPeriod) {
+        return documentType + ":" + accountBookId + ":" + resetPeriod;
+    }
 
-    /**
-     * 按年份递增的编码：例如:2021001
-     *
-     * @param merchantId
-     * @param documentType
-     * @return
-     * @throws InterruptedException
-     */
-    private String yearIncrease(Long merchantId, String documentType,CodeRule codeRule) {
+    private String yearIncrease(Long merchantId, Long accountBookId, String documentType, CodeRule codeRule) {
         Date currentDate = new Date();
         String resetPeriod = DateUtil.format(currentDate, "yyyy");
-        Integer next = this.next(merchantId, documentType + ":" + resetPeriod,codeRule);
-        return this.generateSerialNumber(next, codeRule,currentDate);
+        Integer next = this.next(merchantId, seedType(accountBookId, documentType, resetPeriod), codeRule);
+        return this.generateSerialNumber(next, codeRule, currentDate);
     }
 
-    /**
-     * 按月份递增的编码：例如:202101001
-     *
-     * @param merchantId
-     * @param documentType
-     * @return
-     * @throws InterruptedException
-     */
-    private String monthIncrease(Long merchantId, String documentType,CodeRule codeRule) {
+    private String monthIncrease(Long merchantId, Long accountBookId, String documentType, CodeRule codeRule) {
         Date currentDate = new Date();
         String resetPeriod = DateUtil.format(currentDate, "yyyyMM");
-        Integer next = this.next(merchantId, documentType + ":" + resetPeriod,codeRule);
-        return this.generateSerialNumber(next, codeRule,currentDate);
-
+        Integer next = this.next(merchantId, seedType(accountBookId, documentType, resetPeriod), codeRule);
+        return this.generateSerialNumber(next, codeRule, currentDate);
     }
 
-    /**
-     * 按日递增的编码：例如:20210101001
-     *
-     * @param merchantId
-     * @param documentType
-     * @return
-     * @throws InterruptedException
-     */
-    private String dayIncrease(Long merchantId, String documentType,CodeRule codeRule) {
+    private String dayIncrease(Long merchantId, Long accountBookId, String documentType, CodeRule codeRule) {
         Date currentDate = new Date();
         String resetPeriod = DateUtil.format(currentDate, "yyyyMMdd");
-        Integer next = this.next(merchantId, documentType + ":" + resetPeriod,codeRule);
-        return this.generateSerialNumber(next, codeRule,currentDate);
+        Integer next = this.next(merchantId, seedType(accountBookId, documentType, resetPeriod), codeRule);
+        return this.generateSerialNumber(next, codeRule, currentDate);
     }
 
-    /**
-     * 按季度递增的编码：例如:202101001
-     *
-     * @param merchantId
-     * @param documentType
-     * @return
-     * @throws InterruptedException
-     */
-    private String quarterIncrease(Long merchantId, String documentType,CodeRule codeRule) {
+    private String quarterIncrease(Long merchantId, Long accountBookId, String documentType, CodeRule codeRule) {
         Date currentDate = new Date();
         SimpleDateFormat yearFormat = new SimpleDateFormat("yyyy");
         String year = yearFormat.format(currentDate);
-        // 季度
         int quarter = DateUtil.quarterEnum(currentDate).getValue();
-        // resetPeriod 末尾追加 字符 quarter 和  按月 做区分
-        String resetPeriod = year + quarter +"quarter";
-        Integer next = this.next(merchantId, documentType + ":" + resetPeriod,codeRule);
-
-        return this.generateSerialNumber(next, codeRule,currentDate);
+        String resetPeriod = year + quarter + "quarter";
+        Integer next = this.next(merchantId, seedType(accountBookId, documentType, resetPeriod), codeRule);
+        return this.generateSerialNumber(next, codeRule, currentDate);
     }
 
-
-    /**
-     *
-     * @param code
-     * @param codeRule
-     * @param currentDate
-     * @return
-     */
-    private static String generateSerialNumber(Integer code, CodeRule codeRule,Date currentDate) {
+    private static String generateSerialNumber(Integer code, CodeRule codeRule, Date currentDate) {
         String codeStr = code.toString();
         String paddedCodeStr = StrUtil.padPre(codeStr, codeRule.getSerialNumberLength(), '0');
 
-        // 商品编码和订单编码区别, 商品编码生成规则,format是分类编码,订单编码format是日期格式
-        String appendCharacter = "";
-        // 目前采用单据类型名称来区分 基础资料 还是 单据
-        if (codeRule.getDocumentType().toString().contains("单")){
+        String appendCharacter;
+        if (codeRule.getDocumentType().toString().contains("单")) {
             appendCharacter = DateUtil.format(currentDate, codeRule.getFormat());
-        }else {
+        } else {
             appendCharacter = codeRule.getFormat();
-
         }
         String str = StrUtil.addPrefixIfNot(paddedCodeStr, appendCharacter);
-
         return StrUtil.addPrefixIfNot(str, codeRule.getPrefix());
     }
-
-
 }

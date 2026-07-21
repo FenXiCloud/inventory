@@ -282,7 +282,7 @@ export default {
     },
     loadList() {
       this.loading = true;
-      SalesReport.salesItem(this.queryParams).then(({data: {results, total}}) => {
+      SalesReport.item(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);

@@ -1,6 +1,7 @@
 package com.flyemu.share.controller.basic;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.hutool.core.lang.Assert;
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
@@ -8,6 +9,7 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.basic.Product;
 import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.service.basic.ProductService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,44 +36,43 @@ public class ProductController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody ProductForm productForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        productService.save(productForm, merchantId,accountBookId);
+    public JsonResult save(@RequestBody @Valid ProductForm productForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        Assert.isNull(productForm.getProduct().getId(), "新增商品Id必须为空~");
+        productService.save(productForm, merchantId, accountBookId);
         return JsonResult.successful();
     }
-    @PostMapping("updateById")
-    public JsonResult updateById(@RequestBody Product product, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        productService.updateById(product, merchantId,accountBookId);
+
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid ProductForm productForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        Product product = productForm.getProduct();
+        Assert.notNull(product.getId(), "更新商品Id不允许为空~");
+        if (productForm.getCustomerLevelPriceList() == null && product.getEnabled() != null) {
+            productService.updateById(product, merchantId, accountBookId);
+        } else {
+            productService.save(productForm, merchantId, accountBookId);
+        }
         return JsonResult.successful();
     }
-    @GetMapping("/get/{productId}")
-    public JsonResult loadProduct(@PathVariable Long productId, @SaMerchantId Long merchantId) {
+
+    @GetMapping("load/{productId}")
+    public JsonResult load(@PathVariable Long productId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(productService.loadById(productId, merchantId));
     }
 
     @DeleteMapping("/{productId}")
     public JsonResult delete(@PathVariable Long productId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        productService.delete(productId, merchantId,accountBookId);
+        productService.delete(productId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
     @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, Long productCategoryId,Long warehouseId) {
-        return JsonResult.successful(productService.select(merchantId,accountBookId, productCategoryId,warehouseId));
+    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId,
+                             Long productCategoryId, Long warehouseId, Long customerId) {
+        return JsonResult.successful(productService.select(merchantId, accountBookId, productCategoryId, warehouseId, customerId));
     }
-
-//    @GetMapping("loadTo/order")
-//    public JsonResult loadToOrder(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-//        return JsonResult.successful(productService.loadToOrder(merchantId,accountBookId));
-//    }
 
     @GetMapping("/customerLevel/price/{productId}")
     public JsonResult customerLevelPrice(@PathVariable Long productId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(productService.customerLevelPrice(productId, merchantId, accountBookId));
     }
-
-//    @GetMapping("/goods/price/{customersId}")
-//    public JsonResult goodsPrice(@PathVariable Long customersId, @SaMerchantId Long merchantId,@SaAccountBookId Long accountBookId) {
-//        return JsonResult.successful(productService.goodsPriceList(customersId, merchantId, accountBookId,null));
-//    }
-
 }

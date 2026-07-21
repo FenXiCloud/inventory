@@ -39,7 +39,9 @@ public class SystemConfigController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid SystemConfig systemConfig) {
+    public JsonResult update(@RequestBody @Valid SystemConfig systemConfig, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        systemConfig.setMerchantId(merchantId);
+        systemConfig.setAccountBookId(accountBookId);
         systemConfigService.save(systemConfig);
         return JsonResult.successful();
     }

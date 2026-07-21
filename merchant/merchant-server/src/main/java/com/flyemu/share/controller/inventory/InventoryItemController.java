@@ -10,13 +10,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * @功能描述: 库存明细表
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/inventoryItem")
 @RequiredArgsConstructor
@@ -40,7 +33,9 @@ public class InventoryItemController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid InventoryItem inventoryItem) {
+    public JsonResult update(@RequestBody @Valid InventoryItem inventoryItem, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        inventoryItem.setMerchantId(merchantId);
+        inventoryItem.setAccountBookId(accountBookId);
         inventoryItemService.save(inventoryItem);
         return JsonResult.successful();
     }
@@ -56,18 +51,18 @@ public class InventoryItemController {
         return JsonResult.successful(inventoryItemService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("report")
-    public JsonResult report(Page page, InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("item")
+    public JsonResult item(Page page, InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(inventoryItemService.report(page, query));
     }
 
-    @GetMapping("reportSummary")
-    public JsonResult reportSummary(InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("itemTotal")
+    public JsonResult itemTotal(InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(inventoryItemService.reportSummary(query));
+        return JsonResult.successful(inventoryItemService.detailTotal(query));
     }
 
     @GetMapping("summary")
@@ -77,8 +72,8 @@ public class InventoryItemController {
         return JsonResult.successful(inventoryItemService.summary(page, query));
     }
 
-    @GetMapping("summaryOperationType")
-    public JsonResult summaryOperationType(InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("summaryByType")
+    public JsonResult summaryByType(InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(inventoryItemService.summaryOperationType(query));
@@ -98,3 +93,4 @@ public class InventoryItemController {
         return JsonResult.successful(inventoryItemService.balance(page, query));
     }
 }
+

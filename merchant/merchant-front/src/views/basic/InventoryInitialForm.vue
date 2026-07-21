@@ -242,7 +242,7 @@ export default {
         return
       }
       this.loading = true;
-      InventoryInitial.batchSave(requestData).then(({data}) => {
+      InventoryInitial.batch(requestData).then(({data}) => {
         this.dataList = data;
         console.log("data",data)
         this.closeWindow();
@@ -308,7 +308,7 @@ export default {
       });
     },
     editForm(){
-      InventoryInitial.getInfo(this.inventoryInitialId).then(({data}) => {
+      InventoryInitial.load(this.inventoryInitialId).then(({data}) => {
         this.dataList[0] = data;
         console.log("data",data)
       }).finally(() => this.loading = false);

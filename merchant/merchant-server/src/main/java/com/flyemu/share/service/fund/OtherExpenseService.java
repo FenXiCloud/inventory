@@ -15,6 +15,7 @@ import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.OtherExpenseItemRepository;
 import com.flyemu.share.repository.OtherExpenseRepository;
 import com.flyemu.share.repository.SupplierRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.AccountService;
 import com.flyemu.share.service.basic.SupplierService;
@@ -50,6 +51,7 @@ import java.util.*;
 @Transactional(readOnly = true)
 public class OtherExpenseService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QOtherExpense qOtherExpense = QOtherExpense.otherExpense;
     private final static QOtherExpenseItem qotherExpenseItem = QOtherExpenseItem.otherExpenseItem;
 
@@ -102,6 +104,9 @@ public class OtherExpenseService extends AbsService {
 
     @Transactional
     public OtherExpense save(OtherExpense otherExpense, List<OtherExpenseItem> items) {
+        if (otherExpense != null) {
+            checkoutService.assertEditable(otherExpense.getMerchantId(), otherExpense.getAccountBookId(), otherExpense.getOrderDate());
+        }
         if (otherExpense == null) {
             throw new ServiceException("参数错误");
         }
@@ -239,7 +244,7 @@ public class OtherExpenseService extends AbsService {
         return bqf.selectFrom(qOtherExpense).where(qOtherExpense.merchantId.eq(merchantId).and(qOtherExpense.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public OtherExpenseDetails selectById(Long id) {
+    public OtherExpenseDetails load(Long merchantId, Long id) {
         if (id == null || id <= 0) {
             throw new ServiceException("ID不能为空");
         }
@@ -279,7 +284,7 @@ public class OtherExpenseService extends AbsService {
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qOtherExpense.createdBy))
                 .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qOtherExpense.updateBy))
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qOtherExpense.approvedBy))
-                .where(qOtherExpense.id.eq(id))
+                .where(qOtherExpense.merchantId.eq(merchantId).and(qOtherExpense.id.eq(id)))
                 .fetchOne();
 
         if (otherExpenseVO == null) {
@@ -298,6 +303,15 @@ public class OtherExpenseService extends AbsService {
         return details;
     }
 
+
+    @Transactional
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        OrderPaymentUpdateDTO dto = new OrderPaymentUpdateDTO();
+        dto.setId(ids.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")));
+        dto.setOrderStatus(state);
+        dto.setApprovedBy(adminId);
+        updateStatus(dto);
+    }
 
     @Transactional
     public void updateStatus(OrderPaymentUpdateDTO dto) {
@@ -424,6 +438,13 @@ public class OtherExpenseService extends AbsService {
         }
 
         accountService.updateAccountBalanceWithFlow(context);
+    }
+
+
+    public BigDecimal queryTotal(Query query) {
+        return bqf.selectFrom(qOtherExpense)
+                .select(qOtherExpense.collectionAmount.sum())
+                .where(query.builder).fetchFirst();
     }
 
     public static class Query {

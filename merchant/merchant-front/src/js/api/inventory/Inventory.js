@@ -1,9 +1,5 @@
 /**
  * @功能描述: 库存余额表
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
  */
 import Ajax from "@common/Request";
 
@@ -23,11 +19,11 @@ export default {
     products(param) {
         return Ajax.get("/inventory/products", param);
     },
-    report(param) {
-        return Ajax.get("/inventory/report", param);
+    balance(param) {
+        return Ajax.get("/inventory/balance", param);
     },
-    reportInventory(param) {
-        return Ajax.get("/inventory/reportInventory", param);
+    balanceTotal(param) {
+        return Ajax.get("/inventory/balanceTotal", param);
     },
     totalCost(productId, warehouseId) {
         return Ajax.get(`/inventory/totalCost/${productId}/${warehouseId}`);

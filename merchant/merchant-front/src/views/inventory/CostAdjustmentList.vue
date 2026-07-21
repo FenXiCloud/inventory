@@ -3,8 +3,8 @@
     <div class="simple-page__toolbar">
       <t-space break-line>
         <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="auditsForm('audits')">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="auditsForm('antiAudits')">反审核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
         <t-select
             v-model="params.state"
             :options="stateOptions"
@@ -66,7 +66,7 @@
               :theme="row.orderStatus === '已审核' ? 'success' : 'warning'"
               variant="light"
           >
-            {{ row.orderStatus }}
+            {{ row.orderStatus === '已保存' ? '未审核' : row.orderStatus }}
           </t-tag>
         </template>
       </t-table>
@@ -91,7 +91,8 @@
 import manba from "manba";
 import CostAdjustment from "@js/api/inventory/CostAdjustment";
 import {mapMutations} from "vuex";
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
@@ -125,7 +126,7 @@ export default {
       },
       dateRangeValue: [startTime, endTime],
       stateOptions: [
-        {label: '未审核', value: '未审核'},
+        {label: '未审核', value: '已保存'},
         {label: '已审核', value: '已审核'},
       ],
       columns: [
@@ -185,50 +186,51 @@ export default {
       this.selectedRows = [];
     },
     editable(row) {
-      return row.orderStatus === '未审核';
+      return row.orderStatus === '已保存';
     },
-    auditsForm(type) {
+    approved() {
       if (!this.selectedRows.length) {
-        MessagePlugin.warning("请选择要操作的数据~");
+        MessagePlugin.error("未选择数据~");
         return;
       }
-      if (type === "audits") {
-        const filterRecords = this.selectedRows.filter(item => item.orderStatus === "未审核");
-        if (!filterRecords.length) {
-          MessagePlugin.warning("请选择状态为未审核的数据，进行审核~");
-          return;
-        }
-        const ids = filterRecords.map(item => item.id);
-        LoadingPlugin(true);
-        CostAdjustment.approves({ids: ids.join(','), type: "AUDITS"})
-            .then((success) => {
-              if (success) {
-                MessagePlugin.success("审核成功~");
-                this.clearSelection();
-                this.loadList();
-              }
-            })
-            .finally(() => LoadingPlugin(false));
+      const ids = this.selectedRows.filter(val => val.orderStatus === '已保存').map(val => val.id);
+      if (!ids.length) {
+        MessagePlugin.error("所选数据无需审核~");
         return;
       }
-      if (type === "antiAudits") {
-        const filterRecords = this.selectedRows.filter(item => item.orderStatus === "已审核");
-        if (!filterRecords.length) {
-          MessagePlugin.warning("请选择状态为已审核的数据，进行审核~");
-          return;
+      DialogPlugin.confirm({
+        title: "批量审核提示",
+        content: `本次审核${ids.length}条?`,
+        onConfirm: () => {
+          return CostAdjustment.approved('已审核', ids).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.clearSelection();
+            this.loadList();
+          });
         }
-        const ids = filterRecords.map(item => item.id);
-        LoadingPlugin(true);
-        CostAdjustment.approves({ids: ids.join(','), type: "ANTI_AUDIT"})
-            .then((success) => {
-              if (success) {
-                MessagePlugin.success("反审核成功~");
-                this.clearSelection();
-                this.loadList();
-              }
-            })
-            .finally(() => LoadingPlugin(false));
+      });
+    },
+    backApproved() {
+      if (!this.selectedRows.length) {
+        MessagePlugin.error("未选择数据~");
+        return;
       }
+      const ids = this.selectedRows.filter(val => val.orderStatus === '已审核').map(val => val.id);
+      if (!ids.length) {
+        MessagePlugin.error("所选数据无需反审核~");
+        return;
+      }
+      DialogPlugin.confirm({
+        title: "批量反审核提示",
+        content: `本次反审核${ids.length}条?`,
+        onConfirm: () => {
+          return CostAdjustment.approved('已保存', ids).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.clearSelection();
+            this.loadList();
+          });
+        }
+      });
     },
     doSearch() {
       this.pagination.page = 1;
@@ -247,16 +249,16 @@ export default {
         this.amountTotal = amountTotal;
       }).finally(() => this.loading = false);
     },
-    doRemove({id}) {
+    doRemove(row) {
       DialogPlugin.confirm({
         title: "系统提示",
-        content: `是否删除当前数据?`,
+        content: `确认删除：${row.orderNo || row.id}?`,
         onConfirm: () => {
-          CostAdjustment.remove(id).then(() => {
-            MessagePlugin.success("操作成功～");
+          return CostAdjustment.remove(row.id).then(() => {
+            MessagePlugin.success("删除成功~");
             this.loadList();
           });
-        },
+        }
       });
     },
   },

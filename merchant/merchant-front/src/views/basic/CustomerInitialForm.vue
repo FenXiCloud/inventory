@@ -189,7 +189,7 @@ export default {
         return
       }
       this.loading = true;
-      CustomerInitial.batchSave(requestData).then(({data}) => {
+      CustomerInitial.batch(requestData).then(({data}) => {
         this.dataList = data;
         console.log("data",data)
         this.closeWindow();
@@ -247,7 +247,7 @@ export default {
       });
     },
     editForm(){
-      CustomerInitial.getInfo(this.customerInitialId).then(({data}) => {
+      CustomerInitial.load(this.customerInitialId).then(({data}) => {
         this.dataList[0] = data;
         console.log("data",data)
       }).finally(() => this.loading = false);

@@ -27,6 +27,7 @@ import com.flyemu.share.form.PurchaseReturnForm;
 import com.flyemu.share.repository.PurchaseInboundReturnConnectionRepository;
 import com.flyemu.share.repository.PurchaseReturnItemRepository;
 import com.flyemu.share.repository.PurchaseReturnRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.basic.SupplierService;
@@ -60,6 +61,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class PurchaseReturnService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
     private final static QPurchaseInboundItem qPurchaseInboundItem = QPurchaseInboundItem.purchaseInboundItem;
     private final static QPurchaseReturn qPurchaseReturn = QPurchaseReturn.purchaseReturn;
@@ -119,6 +121,7 @@ public class PurchaseReturnService extends AbsService {
     @Transactional
     public PurchaseReturn save(PurchaseReturnForm purchaseReturnForm, Long merchantId) {
         PurchaseReturn order = purchaseReturnForm.getPurchaseReturn();
+        checkoutService.assertEditable(order.getMerchantId(), order.getAccountBookId(), order.getReturnDate());
         if (order.getId() != null) {
             Long returnOrderId = order.getId();
             PurchaseReturn original = purchaseReturnRepository.getById(order.getId());
@@ -228,9 +231,7 @@ public class PurchaseReturnService extends AbsService {
             }
             return purchaseReturnRepository.save(original);
         } else {
-            String code = codeSeedService.generateCode(order.getMerchantId(), "采购退货单");
-            Assert.notNull(code, "生成单号失败~");
-            order.setOrderNo(code);
+            order.setOrderNo(codeSeedService.generateCode(order.getMerchantId(), order.getAccountBookId(), "采购退货单"));
             order.setOrderStatus(OrderStatus.已保存);
 
             final Double[] secondarySum = {0.0};

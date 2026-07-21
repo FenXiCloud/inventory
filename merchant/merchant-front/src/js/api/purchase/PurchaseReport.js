@@ -1,10 +1,10 @@
 import Ajax from "@common/Request";
 
 export default {
-  list(param) {
+  item(param) {
     return Ajax.get('/purchaseReport', param)
   },
-  listStat(param) {
-    return Ajax.get('/purchaseReport/stat', param)
+  summary(param) {
+    return Ajax.get('/purchaseReport/summary', param)
   },
 }

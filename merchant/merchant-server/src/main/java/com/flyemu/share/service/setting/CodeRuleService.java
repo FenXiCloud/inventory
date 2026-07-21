@@ -9,12 +9,12 @@ import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.CodeRuleRepository;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.types.dsl.EnumPath;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -33,6 +33,31 @@ public class CodeRuleService extends AbsService {
     private final static QCodeRule qCodeRule = QCodeRule.codeRule;
 
     private final CodeRuleRepository codeRuleRepository;
+
+    private static final List<CodeRule.DocumentType> DEFAULT_DOCUMENT_TYPES = List.of(
+            CodeRule.DocumentType.采购订单,
+            CodeRule.DocumentType.采购入库单,
+            CodeRule.DocumentType.采购退货单,
+            CodeRule.DocumentType.销售订单,
+            CodeRule.DocumentType.销售出库单,
+            CodeRule.DocumentType.销售退货单,
+            CodeRule.DocumentType.调拨单,
+            CodeRule.DocumentType.盘点单,
+            CodeRule.DocumentType.其他入库单,
+            CodeRule.DocumentType.其他出库单,
+            CodeRule.DocumentType.成本调整单,
+            CodeRule.DocumentType.收款单,
+            CodeRule.DocumentType.付款单,
+            CodeRule.DocumentType.核销单,
+            CodeRule.DocumentType.其他收款单,
+            CodeRule.DocumentType.其他付款单,
+            CodeRule.DocumentType.转帐单,
+            CodeRule.DocumentType.商品,
+            CodeRule.DocumentType.仓库,
+            CodeRule.DocumentType.客户,
+            CodeRule.DocumentType.供货商
+    );
+
     /**
      * 根据单据类型、商户ID和账本ID查询系统默认的编码规则（只返回一条）
      */
@@ -46,6 +71,63 @@ public class CodeRuleService extends AbsService {
                 .fetchFirst();
 
         return codeRule;
+    }
+
+    /**
+     * 确保账套下存在默认编码规则（缺失时补齐）
+     */
+    @Transactional
+    public void ensureDefaultRules(Long merchantId, Long accountBookId) {
+        for (CodeRule.DocumentType type : DEFAULT_DOCUMENT_TYPES) {
+            Long count = jqf.select(qCodeRule.id.count())
+                    .from(qCodeRule)
+                    .where(qCodeRule.merchantId.eq(merchantId)
+                            .and(qCodeRule.accountBookId.eq(accountBookId))
+                            .and(qCodeRule.documentType.eq(type)))
+                    .fetchOne();
+            if (count != null && count > 0) {
+                continue;
+            }
+            CodeRule rule = new CodeRule();
+            rule.setName("初始化");
+            rule.setDocumentType(type);
+            rule.setPrefix(getDefaultPrefix(type));
+            rule.setFormat("yyyyMMdd");
+            rule.setSerialNumberLength(5);
+            rule.setStartValue(1);
+            rule.setResetPeriod(CodeRule.ResetPeriod.日);
+            rule.setSystemDefault(true);
+            rule.setMerchantId(merchantId);
+            rule.setAccountBookId(accountBookId);
+            rule.setCreatedAt(LocalDateTime.now());
+            codeRuleRepository.save(rule);
+        }
+    }
+
+    private String getDefaultPrefix(CodeRule.DocumentType type) {
+        return switch (type) {
+            case 采购订单 -> "PO";
+            case 采购入库单 -> "PI";
+            case 采购退货单 -> "PR";
+            case 销售订单 -> "SO";
+            case 销售出库单 -> "DO";
+            case 销售退货单 -> "SR";
+            case 调拨单 -> "TR";
+            case 盘点单 -> "IC";
+            case 其他入库单 -> "OI";
+            case 其他出库单 -> "OO";
+            case 成本调整单 -> "CA";
+            case 收款单 -> "RC";
+            case 付款单 -> "PY";
+            case 核销单 -> "RV";
+            case 其他收款单 -> "OR";
+            case 其他付款单 -> "OP";
+            case 转帐单 -> "TF";
+            case 商品 -> "PD";
+            case 仓库 -> "WH";
+            case 客户 -> "CU";
+            case 供货商 -> "SU";
+        };
     }
     public List<CodeRule> query(Query query) {
         List<CodeRule> codeRules = bqf.selectFrom(qCodeRule)
@@ -68,7 +150,12 @@ public class CodeRuleService extends AbsService {
     @Transactional
     public CodeRule save(CodeRule codeRule) {
         if (codeRule.getId() != null) {
-            //更新
+            if (Boolean.TRUE.equals(codeRule.getSystemDefault())) {
+                List<CodeRule> codeRuleList = queryEnable(codeRule, codeRule.getAccountBookId(), codeRule.getMerchantId());
+                if (!codeRuleList.isEmpty()) {
+                    throw new ServiceException("每种单据类型只能存在一个默认");
+                }
+            }
             CodeRule original = codeRuleRepository.getById(codeRule.getId());
             BeanUtil.copyProperties(codeRule, original, CopyOptions.create().ignoreNullValue());
             return codeRuleRepository.save(original);
@@ -118,8 +205,15 @@ public class CodeRuleService extends AbsService {
         }
         public void setDocumentType(String documentType) {
             if (StrUtil.isNotEmpty(documentType)) {
-                EnumPath<CodeRule.DocumentType> documentTypeEnumPath = qCodeRule.documentType;
-                builder.and(documentTypeEnumPath.eq(CodeRule.DocumentType.valueOf(documentType)));
+                // 前端历史文案「产品」与枚举「商品」对齐
+                if ("产品".equals(documentType)) {
+                    documentType = "商品";
+                }
+                try {
+                    builder.and(qCodeRule.documentType.eq(CodeRule.DocumentType.valueOf(documentType)));
+                } catch (IllegalArgumentException e) {
+                    throw new ServiceException("不支持的单据类型：" + documentType);
+                }
             }
         }
 

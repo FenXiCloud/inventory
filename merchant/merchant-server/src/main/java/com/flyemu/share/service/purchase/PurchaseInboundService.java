@@ -32,6 +32,7 @@ import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.PurchaseInboundForm;
 import com.flyemu.share.repository.PurchaseInboundItemRepository;
 import com.flyemu.share.repository.PurchaseInboundRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.basic.SupplierService;
@@ -65,6 +66,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class PurchaseInboundService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QPurchaseOrder qPurchaseOrder = QPurchaseOrder.purchaseOrder;
     private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
     private final static QPurchaseReturn qPurchaseReturn = QPurchaseReturn.purchaseReturn;
@@ -130,6 +132,7 @@ public class PurchaseInboundService extends AbsService {
     @Transactional
     public PurchaseInbound save(PurchaseInboundForm purchaseInboundForm, Long merchantId) {
         PurchaseInbound purchaseInbound = purchaseInboundForm.getPurchaseInbound();
+        checkoutService.assertEditable(purchaseInbound.getMerchantId(), purchaseInbound.getAccountBookId(), purchaseInbound.getInboundDate());
         if (purchaseInbound.getId() != null) {
             PurchaseInbound original = purchaseInboundRepository.getById(purchaseInbound.getId());
             Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能更新~");
@@ -150,8 +153,6 @@ public class PurchaseInboundService extends AbsService {
                 d.setMerchantId(merchantId);
                 d.setReturnQuantity(d.getSecondaryQuantity());
                 secondarySum += d.getSecondaryQuantity();
-                //保存更新购货商品价格
-                savePrice(d, purchaseInbound);
             }
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
             original.setSecondarySum(secondarySum);
@@ -159,7 +160,7 @@ public class PurchaseInboundService extends AbsService {
             return purchaseInboundRepository.save(original);
         } else {
 
-            purchaseInbound.setOrderNo(codeSeedService.generateCode(merchantId, "采购入库单"));
+            purchaseInbound.setOrderNo(codeSeedService.generateCode(merchantId, purchaseInbound.getAccountBookId(), "采购入库单"));
             purchaseInbound.setOrderStatus(OrderStatus.已保存);
             Double secondarySum = purchaseInboundForm.getPurchaseInboundItemList()
                     .stream()
@@ -182,26 +183,44 @@ public class PurchaseInboundService extends AbsService {
                 d.setPurchaseInboundId(purchaseInbound.getId());
                 d.setMerchantId(merchantId);
                 d.setReturnQuantity(d.getSecondaryQuantity());
-                //保存更新购货商品价格
-                savePrice(d, purchaseInbound);
             }
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
             return purchaseInbound;
         }
     }
 
-    private void savePrice(PurchaseInboundItem item, PurchaseInbound order) {
-        PriceRecord priceRecord = new PriceRecord();
-        priceRecord.setUnitPrice(item.getUnitPrice());
-        priceRecord.setBaseUnitId(item.getBaseUnitId());
-        priceRecord.setProductId(item.getProductId());
-        priceRecord.setMerchantId(item.getMerchantId());
-        priceRecord.setSupplierId(order.getSupplierId());
-        priceRecord.setAccountBookId(order.getAccountBookId());
-        priceRecord.setOrderId(order.getId());
-        priceRecord.setPriceSource(PriceSource.最近采购价格);
-        priceRecord.setPriceType(PriceType.最近采购价格);
-        priceRecordService.savePriceRecord(priceRecord);
+    private void recordInboundPrices(PurchaseInbound order) {
+        List<PurchaseInboundItem> items = inboundItemRepository.findByPurchaseInboundId(order.getId());
+        if (CollUtil.isEmpty(items)) {
+            return;
+        }
+        Date orderDate = order.getInboundDate() == null ? new Date()
+                : Date.from(order.getInboundDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
+        for (PurchaseInboundItem item : items) {
+            PriceRecord priceRecord = new PriceRecord();
+            priceRecord.setUnitPrice(item.getUnitPrice());
+            priceRecord.setBaseUnitId(item.getBaseUnitId());
+            priceRecord.setProductId(item.getProductId());
+            priceRecord.setMerchantId(item.getMerchantId());
+            priceRecord.setSupplierId(order.getSupplierId());
+            priceRecord.setAccountBookId(order.getAccountBookId());
+            priceRecord.setOrderId(order.getId());
+            priceRecord.setOrderDate(orderDate);
+            priceRecord.setQuantity(item.getQuantity());
+            priceRecord.setPriceSource(PriceSource.最近采购价格);
+            priceRecord.setPriceType(PriceType.最近采购价格);
+            priceRecordService.appendTradePrice(priceRecord);
+        }
+    }
+
+    private void removeInboundPrices(PurchaseInbound order) {
+        priceRecordService.removeByOrder(
+                order.getId(),
+                PriceType.最近采购价格,
+                PriceSource.最近采购价格,
+                order.getMerchantId(),
+                order.getAccountBookId()
+        );
     }
 
     @Transactional
@@ -303,6 +322,7 @@ public class PurchaseInboundService extends AbsService {
 
                 inboundSupplierFlows(adminId, order);
                 setIds.add(order.getId());
+                recordInboundPrices(order);
             }
         } else if (OrderStatus.已保存.equals(state)) {
             for (PurchaseInbound order : orders) {
@@ -342,6 +362,7 @@ public class PurchaseInboundService extends AbsService {
                 flow.setBusinessDate(order.getInboundDate());
                 supplierService.updateTheBalance(supplier, flow);
                 setIds.add(order.getId());
+                removeInboundPrices(order);
             }
         }
 

@@ -9,7 +9,7 @@ import Ajax from "@common/Request";
 
 export default {
     save(param) {
-        return Ajax[param.id ? 'put' : 'post']('/otherInbound', param)
+        return Ajax[param.otherInbound?.id ? 'put' : 'post']('/otherInbound', param)
     },
     list(param) {
         return Ajax.get('/otherInbound', param)
@@ -23,13 +23,7 @@ export default {
     load(id) {
         return Ajax.get("/otherInbound/load/" + id);
     },
-    approve(param) {
-        return Ajax.get("/otherInbound/approve", param);
-    },
-    approves(param) {
-        return Ajax.get("/otherInbound/approves", param);
-    },
-    delete(id) {
-        return Ajax.delete("/otherInbound/" + id);
+    approved(state, ids) {
+        return Ajax.post('/otherInbound/approved/' + state, ids);
     },
 }

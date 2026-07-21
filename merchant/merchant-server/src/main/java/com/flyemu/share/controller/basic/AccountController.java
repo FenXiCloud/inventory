@@ -39,7 +39,9 @@ public class AccountController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid Account account) {
+    public JsonResult update(@RequestBody @Valid Account account, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        account.setMerchantId(merchantId);
+        account.setAccountBookId(accountBookId);
         accountService.save(account);
         return JsonResult.successful();
     }

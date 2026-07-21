@@ -121,6 +121,16 @@ public class CheckoutService extends AbsService {
         }
     }
 
+
+    public void assertEditable(Long merchantId, Long accountBookId, LocalDate orderDate) {
+        if (orderDate == null) return;
+        LocalDate checkoutDate = jqf.select(qAccountBook.checkoutDate).from(qAccountBook)
+                .where(qAccountBook.merchantId.eq(merchantId).and(qAccountBook.id.eq(accountBookId))).fetchOne();
+        if (checkoutDate != null && !orderDate.isAfter(checkoutDate)) {
+            throw new ServiceException("单据日期不能早于或等于结账日期：" + checkoutDate);
+        }
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 

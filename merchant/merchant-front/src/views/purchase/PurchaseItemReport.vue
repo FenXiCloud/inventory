@@ -2,6 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="exportData">导 出</t-button>
         <t-select
             v-model="params.orderType"
             :options="orderTypeOptions"
@@ -117,6 +118,8 @@
 
 <script>
 import manba from "manba";
+import * as XLSX from 'xlsx';
+import {MessagePlugin} from 'tdesign-vue-next';
 import PurchaseReport from "@js/api/purchase/PurchaseReport";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -212,6 +215,39 @@ export default {
     }
   },
   methods: {
+    exportData() {
+      if (!this.dataList || this.dataList.length === 0) {
+        MessagePlugin.warning('没有可导出的数据');
+        return;
+      }
+      try {
+        const exportData = this.dataList.map(item => ({
+          '单据日期': item.orderDate,
+          '单据编号': item.orderNo,
+          '业务类别': item.orderType,
+          '供应商': item.supplierName,
+          '供应商编码': item.supplierCode,
+          '供应商分类': item.supplierCategoryName,
+          '仓库名称': item.warehouseName,
+          '产品信息': item.productInfo,
+          '规格型号': item.spec,
+          '产品分类': item.categoryName,
+          '采购单位': item.secondaryUnitName,
+          '采购数量': item.secondaryQuantity,
+          '采购单价': item.secondaryPrice,
+          '采购金额': item.subtotal,
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '采购明细');
+        XLSX.writeFile(wb, `采购明细报表_${manba().format('YYYY-MM-DD')}.xlsx`);
+        MessagePlugin.success('导出成功');
+      } catch (error) {
+        console.error('导出错误:', error);
+        MessagePlugin.error('导出失败');
+      }
+    },
+
     onPageChange(pageInfo) {
       this.pagination.page = pageInfo.current;
       this.pagination.pageSize = pageInfo.pageSize;
@@ -238,7 +274,7 @@ export default {
     },
     loadList() {
       this.loading = true;
-      PurchaseReport.list(this.queryParams).then(({data: {results, total}}) => {
+      PurchaseReport.item(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);

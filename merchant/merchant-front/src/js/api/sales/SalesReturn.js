@@ -2,10 +2,13 @@ import Ajax from "@common/Request";
 
 export default {
     save(param) {
-        return Ajax[param.id ? 'put' : 'post']('/salesReturn', param)
+        return Ajax[param.salesReturn?.id ? 'put' : 'post']('/salesReturn', param)
     },
     list(param) {
         return Ajax.get('/salesReturn', param)
+    },
+    total(param) {
+        return Ajax.get('/salesReturn/total', param)
     },
     remove(id) {
         return Ajax.delete('/salesReturn/' + id);
@@ -13,13 +16,10 @@ export default {
     select(param) {
         return Ajax.get('/salesReturn/select', param)
     },
-    getInfo(id) {
-        return Ajax.get('/salesReturn/getInfo/' + id);
+    load(id) {
+        return Ajax.get('/salesReturn/load/' + id);
     },
-    batchAudit(param) {
-        return Ajax.put('/salesReturn/batchAudit', param)
-    },
-    audit(param) {
-        return Ajax.put('/salesReturn/audit', param)
+    approved(state, ids) {
+        return Ajax.post('/salesReturn/approved/' + state, ids);
     },
 }

@@ -21,8 +21,17 @@
       <div class="simple-page__main">
         <div class="simple-page__toolbar">
           <t-space break-line>
-            <t-button variant="outline" style="border-radius: 4px" @click="showForm()">批量删除凭证</t-button>
-            <t-button theme="primary" style="border-radius: 4px" :loading="loading" @click="doSearch">生成凭证</t-button>
+            <t-date-range-picker
+                v-model="dateRangeValue"
+                clearable
+                allow-input
+                placeholder="单据日期"
+                style="width: 260px; border-radius: 4px"
+            />
+            <t-checkbox v-model="excludeVouchered">仅未生成凭证</t-checkbox>
+            <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">查询</t-button>
+            <t-button theme="primary" style="border-radius: 4px" :loading="generating" :disabled="!selectedRows.length" @click="generateSelected">生成凭证</t-button>
+            <t-button variant="outline" theme="danger" style="border-radius: 4px" :disabled="!voucheredSelected.length" @click="deleteSelectedVouchers">批量删除凭证</t-button>
           </t-space>
         </div>
 
@@ -34,12 +43,35 @@
               stripe
               hover
               height="100%"
-              table-layout="auto"
+              table-layout="fixed"
               :data="dataList"
               :columns="columns"
               :loading="loading"
               :selected-row-keys="selectedRowKeys"
               @select-change="onSelectChange"
+          >
+            <template #ops="{ row }">
+              <t-space size="small">
+                <t-link v-if="!row.voucherCode" theme="primary" @click="generateOne(row)">生成凭证</t-link>
+                <t-link v-else theme="primary" @click="viewVoucher(row)">查看</t-link>
+                <t-link v-if="row.financeVoucherId" theme="danger" @click="deleteOne(row)">删除凭证</t-link>
+              </t-space>
+            </template>
+            <template #amount="{ row }">
+              {{ formatMoney(row.amount) }}
+            </template>
+          </t-table>
+        </div>
+
+        <div class="simple-page__pager">
+          <t-pagination
+              v-model:current="pagination.page"
+              v-model:page-size="pagination.pageSize"
+              :total="pagination.total"
+              :show-jumper="true"
+              :show-page-size="true"
+              :popup-props="{ attach: 'body' }"
+              @change="onPageChange"
           />
         </div>
       </div>
@@ -48,158 +80,218 @@
 </template>
 
 <script>
-import CodeRule from "@js/api/setting/CodeRule";
-import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
-import {openDialog, closeDialog} from '@common/dialog';
-import {h} from "vue";
-import VoucherForm from "@views/setting/VoucherForm.vue";
+import manba from 'manba';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
+import { openDialog, closeDialog } from '@common/dialog';
+import { h } from 'vue';
+import FinanceVoucher from '@js/api/setting/FinanceVoucher';
+import VoucherForm from '@views/setting/VoucherForm.vue';
+
+const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-DD');
+const endTime = manba().endOf(manba.DAY).format('YYYY-MM-DD');
+
+const DOCUMENT_TYPES = [
+  '采购订单', '采购入库单', '采购退货单',
+  '销售订单', '销售出库单', '销售退货单',
+  '调拨单', '盘点单', '其他入库单', '其他出库单', '成本调整单',
+  '收款单', '付款单', '核销单', '其他收款单', '其他付款单', '转帐单'
+];
 
 export default {
-  name: "OrderVoucher",
-  props: {
-    merchant: Object,
-  },
-  components: {VoucherForm},
+  name: 'OrderVoucher',
   data() {
     return {
-      documentTypeDataList: [
-        {id: 1, documentType: '采购订单', type: 1},
-        {id: 2, documentType: '采购入库单', type: 1},
-        {id: 3, documentType: '采购退货单', type: 1},
-        {id: 4, documentType: '销售订单', type: 1},
-        {id: 5, documentType: '销售出库单', type: 1},
-        {id: 6, documentType: '销售退货单', type: 1},
-        {id: 7, documentType: '调拨单', type: 1},
-        {id: 8, documentType: '盘点单', type: 1},
-        {id: 9, documentType: '其他入库单', type: 1},
-        {id: 10, documentType: '其他出库单', type: 1},
-        {id: 11, documentType: '成本调整单', type: 1},
-        {id: 12, documentType: '收款单', type: 1},
-        {id: 13, documentType: '付款单', type: 1},
-        {id: 14, documentType: '核销单', type: 1},
-        {id: 15, documentType: '其他收款单', type: 1},
-        {id: 16, documentType: '转帐单', type: 1},
-        {id: 17, documentType: '产品', type: 2},
-        {id: 18, documentType: '仓库', type: 2},
-        {id: 19, documentType: '客户', type: 2},
-        {id: 20, documentType: '供货商', type: 2}
-      ],
+      documentTypeDataList: DOCUMENT_TYPES.map((documentType, index) => ({
+        id: index + 1,
+        documentType
+      })),
       selectedDocumentTypeKeys: [1],
       selectedRowKeys: [],
-      opened: true,
+      selectedRows: [],
       loading: false,
+      generating: false,
+      excludeVouchered: true,
+      dateRangeValue: [startTime, endTime],
       params: {
-        name: null,
-        documentType: '采购订单',
+        documentType: DOCUMENT_TYPES[0]
       },
-      checkedRows: [],
       dataList: [],
-      areaList: [],
-      merchantList: [],
-      param: [
-        {title: '启用', key: 'enabled'},
-        {title: '禁用', key: 'disabled'},
-      ],
+      pagination: {
+        page: 1,
+        pageSize: 20,
+        total: 0
+      },
       documentTypeColumns: [
-        {colKey: 'row-select', type: 'single', width: 46},
-        {colKey: 'documentType', title: '单据类型', minWidth: 120, ellipsis: true}
+        { colKey: 'row-select', type: 'single', width: 46 },
+        { colKey: 'documentType', title: '单据类型', minWidth: 120, ellipsis: true }
       ],
       columns: [
-        {colKey: 'row-select', type: 'multiple', width: 46},
-        {colKey: 'name', title: '日期', width: 200},
-        {colKey: 'documentType', title: '单据编码', minWidth: 120},
-        {colKey: 'format', title: '单据类型', minWidth: 120},
-        {colKey: 'supplier', title: '供应商', width: 120, cell: (h, {row}) => row.serialNumberLength},
-        {colKey: 'customer', title: '客户', width: 120, cell: (h, {row}) => row.serialNumberLength},
-        {colKey: 'amount', title: '单据金额', width: 120, cell: (h, {row}) => row.serialNumberLength},
-        {colKey: 'creator', title: '制单人', width: 120, cell: (h, {row}) => row.createdAt},
-        {colKey: 'voucherNo', title: '凭证号', width: 120, cell: (h, {row}) => row.createdAt}
+        { colKey: 'row-select', type: 'multiple', width: 46 },
+        { colKey: 'ops', title: '操作', width: 180, align: 'center', fixed: 'left' },
+        { colKey: 'orderDate', title: '日期', width: 120, align: 'center' },
+        { colKey: 'orderNo', title: '单据编码', minWidth: 160, ellipsis: true },
+        { colKey: 'documentType', title: '单据类型', width: 120, align: 'center' },
+        { colKey: 'supplierName', title: '供应商', minWidth: 120, ellipsis: true },
+        { colKey: 'customerName', title: '客户', minWidth: 120, ellipsis: true },
+        { colKey: 'amount', title: '单据金额', width: 120, align: 'right' },
+        { colKey: 'createName', title: '制单人', width: 100, align: 'center' },
+        { colKey: 'voucherCode', title: '凭证号', width: 120, align: 'center' }
       ]
-    }
+    };
   },
   computed: {
     queryParams() {
-      return Object.assign({}, this.params)
+      const [start, end] = this.dateRangeValue || [];
+      return {
+        page: this.pagination.page,
+        pageSize: this.pagination.pageSize,
+        documentType: this.params.documentType,
+        excludeVouchered: this.excludeVouchered,
+        startDate: start || null,
+        endDate: end || null
+      };
     },
-    currentDocumentType() {
-      const row = this.documentTypeDataList.find(item => this.selectedDocumentTypeKeys.includes(item.id));
-      return row ? row.documentType : this.params.documentType;
+    voucheredSelected() {
+      return (this.selectedRows || []).filter((row) => row.financeVoucherId);
     }
   },
   methods: {
+    formatMoney(val) {
+      if (val == null || val === '') return '-';
+      return Number(val).toFixed(2);
+    },
     onDocumentTypeSelect(keys) {
       if (!keys || !keys.length) return;
       this.selectedDocumentTypeKeys = keys.slice(0, 1);
-      const row = this.documentTypeDataList.find(item => item.id === keys[0]);
+      const row = this.documentTypeDataList.find((item) => item.id === keys[0]);
       if (row) {
         this.params.documentType = row.documentType;
-        this.loadList();
+        this.doSearch();
       }
     },
-    onDocumentTypeRowClick({row}) {
+    onDocumentTypeRowClick({ row }) {
       this.onDocumentTypeSelect([row.id]);
     },
-    onSelectChange(keys) {
+    onSelectChange(keys, { selectedRowData }) {
       this.selectedRowKeys = keys;
-      this.checkedRows = this.dataList.filter(item => keys.includes(item.id));
+      this.selectedRows = selectedRowData || [];
     },
-    showForm() {
-      let dialogId = openDialog({
-        header: "规则编码",
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
+    },
+    doSearch() {
+      this.pagination.page = 1;
+      this.loadList();
+    },
+    loadList() {
+      this.loading = true;
+      this.selectedRowKeys = [];
+      this.selectedRows = [];
+      FinanceVoucher.candidates(this.queryParams)
+        .then(({ data }) => {
+          this.dataList = data?.results || [];
+          this.pagination.total = data?.total || 0;
+        })
+        .finally(() => {
+          this.loading = false;
+        });
+    },
+    toForm(row) {
+      return {
+        orderId: row.orderId || row.id,
+        orderName: row.orderName || row.orderNo,
+        amount: row.amount,
+        type: row.documentType || this.params.documentType,
+        orderTime: row.orderDate,
+        customerId: row.customerId,
+        supplierId: row.supplierId,
+        productId: row.productId,
+        remark: row.orderNo
+      };
+    },
+    generateOne(row) {
+      this.generating = true;
+      FinanceVoucher.save(this.toForm(row))
+        .then(() => {
+          MessagePlugin.success('凭证生成成功');
+          this.loadList();
+        })
+        .finally(() => {
+          this.generating = false;
+        });
+    },
+    generateSelected() {
+      const rows = (this.selectedRows || []).filter((row) => !row.voucherCode);
+      if (!rows.length) {
+        return MessagePlugin.warning('请选择尚未生成凭证的单据');
+      }
+      DialogPlugin.confirm({
+        title: '系统提示',
+        content: `确认对选中的 ${rows.length} 张单据生成凭证？`,
+        onConfirm: () => {
+          this.generating = true;
+          FinanceVoucher.batch(rows.map((row) => this.toForm(row)))
+            .then(() => {
+              MessagePlugin.success('批量生成成功');
+              this.loadList();
+            })
+            .finally(() => {
+              this.generating = false;
+            });
+        }
+      });
+    },
+    deleteOne(row) {
+      if (!row.financeVoucherId) return;
+      DialogPlugin.confirm({
+        title: '系统提示',
+        content: `确认删除凭证 ${row.voucherCode || ''}？`,
+        onConfirm: () => {
+          FinanceVoucher.delete(row.financeVoucherId).then(() => {
+            MessagePlugin.success('删除成功');
+            this.loadList();
+          });
+        }
+      });
+    },
+    deleteSelectedVouchers() {
+      const ids = this.voucheredSelected.map((row) => row.financeVoucherId);
+      if (!ids.length) return;
+      DialogPlugin.confirm({
+        title: '系统提示',
+        content: `确认删除选中的 ${ids.length} 条凭证记录？`,
+        onConfirm: () => {
+          FinanceVoucher.batchDelete(ids).then(() => {
+            MessagePlugin.success('批量删除成功');
+            this.loadList();
+          });
+        }
+      });
+    },
+    viewVoucher(row) {
+      const dialogId = openDialog({
+        header: '查看凭证',
         closeOnOverlayClick: false,
-        width: '50vw',
+        width: '90%',
         body: h(VoucherForm, {
-          onClose: () => {
-            closeDialog(dialogId);
-          },
+          voucherId: row.voucherId,
+          type: 'look',
+          onClose: () => closeDialog(dialogId),
           onSuccess: () => {
-            this.doSearch();
+            this.loadList();
             closeDialog(dialogId);
           }
         })
       });
-    },
-    loadList() {
-      this.loading = true;
-      CodeRule.list(this.queryParams).then(({data}) => {
-        this.dataList = data;
-      }).finally(() => this.loading = false);
-    },
-    doSearch() {
-      this.loadList();
-    },
-    doRemove(row) {
-      DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认删除规则：${row.name}?`,
-        onConfirm: () => {
-          CodeRule.remove(row.id).then(() => {
-            MessagePlugin.success("删除成功~");
-            this.doSearch();
-          })
-        }
-      })
-    },
-    trigger(row) {
-      let systemDefault = !row.systemDefault;
-      let documentType = row.documentType;
-      DialogPlugin.confirm({
-        title: "系统提示",
-        content: `确认要「${systemDefault ? "启用" : "禁用"}」规则：${row.name}?`,
-        onConfirm: () => {
-          CodeRule.save({id: row.id, systemDefault: systemDefault, documentType: documentType}).then((success) => {
-            console.log(success);
-            MessagePlugin.success("操作成功~");
-            this.loadList();
-          })
-        }
-      })
     }
   },
   created() {
-    this.doSearch();
+    this.loadList();
   }
-}
+};
 </script>
 
 <style scoped>
@@ -224,7 +316,7 @@ export default {
 }
 
 .simple-page__side {
-  width: 260px;
+  width: 220px;
   flex-shrink: 0;
   min-height: 0;
   overflow: hidden;
@@ -250,5 +342,10 @@ export default {
   height: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  padding: 8px 0;
 }
 </style>

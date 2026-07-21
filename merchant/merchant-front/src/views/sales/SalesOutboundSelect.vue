@@ -1,74 +1,82 @@
 <template>
-  <div class="modal-column">
-    <div class="modal-column-full-body">
-      <vxe-toolbar class="toolbar-left">
-        <template #tools>
-          <Select v-model="params.state" class="w-120px" :datas="{已保存:'未审核',已审核:'已审核'}" placeholder="审核状态："/>
-          <div class="h-input-group">
-            <span class="h-input-addon ml-8px">订单日期：</span>
-            <DateRangePicker v-model="dateRange"></DateRangePicker>
-          </div>
-          <div class="h-input-group">
-            <span class="h-input-addon ml-8px">客户：</span>
-            <Select class="w-180px" filterable :datas="customerList" keyName="id" titleName="name"
-                    v-model="params.customerId" placeholder="请选择客户"  readonly disabled/>
-          </div>
-          <Search v-model.trim="params.filter"
-                  show-search-button class="w-200px ml-8px"
-                  placeholder="请输入订单号" @search="doSearch">
-            <t-icon name="search" />
-          </Search>
-        </template>
-      </vxe-toolbar>
-      <div class="flex1">
-        <vxe-table row-id="id"
-                   ref="table"
-                   :data="dataList"
-                   highlight-hover-row
-                   show-overflow
-                   show-footer
-                   :footer-method="footerMethod"
-                   :row-config="{height: 48}"
-                   :column-config="{resizable: true}"
-                   :sort-config="{remote:true}"
-                   :loading="loading">
-          <vxe-column type="checkbox" width="40" align="center"/>
-          <vxe-column title="单据日期" field="outboundDate" align="center" width="130"/>
-          <vxe-column title="单据编号" field="orderNo" width="200"/>
-          <vxe-column title="客户" field="customerName" min-width="120"/>
-          <vxe-column title="销售金额" field="totalAmount" width="120"/>
-          <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-          <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        </vxe-table>
-      </div>
-      <div class="flex justify-between items-center pt-5px">
-        <vxe-pager perfect @page-change="loadList(false)"
-                   v-model:current-page="pagination.page"
-                   v-model:page-size="pagination.pageSize"
-                   :total="pagination.total"
-                   :layouts="['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'Total']">
-          <template #left>
-            <span class="mr-12px text-16px">总金额：{{ amountTotal }}元</span>
-            <vxe-button @click="loadList(false)" type="text" size="mini" icon="vxe-icon-refresh"
-                        :loading="loading"></vxe-button>
-          </template>
-        </vxe-pager>
-      </div>
+  <div class="order-select">
+    <div class="order-select__toolbar">
+      <Select
+          v-model="params.state"
+          class="order-select__state"
+          :datas="{已保存:'未审核',已审核:'已审核'}"
+          placeholder="审核状态："
+      />
+      <span class="order-select__label">订单日期：</span>
+      <DateRangePicker v-model="dateRange"/>
+      <span class="order-select__label">客户：</span>
+      <Select
+          class="order-select__customer"
+          filterable
+          :datas="customerList"
+          keyName="id"
+          titleName="name"
+          v-model="params.customerId"
+          placeholder="请选择客户"
+          readonly
+          disabled
+      />
+      <Search
+          v-model.trim="params.filter"
+          show-search-button
+          class="order-select__search"
+          placeholder="请输入订单号"
+          @search="doSearch"
+      >
+        <t-icon name="search"/>
+      </Search>
     </div>
-    <div class="modal-column-between">
-      <Button @click="$emit('close')" :loading="loading">
-        取消
-      </Button>
-      <Button color="primary" @click="batchSelect" :loading="loading">
-        保存
-      </Button>
+    <div class="order-select__table">
+      <vxe-table
+          row-id="id"
+          ref="table"
+          height="auto"
+          border
+          show-overflow
+          :data="dataList"
+          highlight-hover-row
+          show-footer
+          :footer-method="footerMethod"
+          :row-config="{height: 48}"
+          :column-config="{resizable: true}"
+          :sort-config="{remote:true}"
+          :loading="loading"
+      >
+        <vxe-column type="checkbox" width="40" align="center"/>
+        <vxe-column title="单据日期" field="outboundDate" align="center" width="130"/>
+        <vxe-column title="单据编号" field="orderNo" width="200"/>
+        <vxe-column title="客户" field="customerName" min-width="120"/>
+        <vxe-column title="销售金额" field="totalAmount" width="120"/>
+        <vxe-column title="折扣金额" field="discountAmount" width="120"/>
+        <vxe-column title="折后金额" field="finalAmount" width="120"/>
+      </vxe-table>
+    </div>
+    <div class="order-select__pager">
+      <span class="order-select__total">合计金额：{{ amountTotal }}元</span>
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
+    </div>
+    <div class="order-select__footer">
+      <Button @click="$emit('close')" :loading="loading">取消</Button>
+      <Button color="primary" @click="batchSelect" :loading="loading">确认</Button>
     </div>
   </div>
 </template>
 <script>
 import manba from "manba";
-import SalesOrder from "@js/api/sales/SalesOrder";
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
 import Customer from "@js/api/basic/Customer";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
 
@@ -88,7 +96,6 @@ export default {
       dataList: [],
       loading: false,
       amountTotal: 0,
-      totalParams: {},
       pagination: {
         page: 1,
         pageSize: 20,
@@ -99,7 +106,7 @@ export default {
         state: '已审核',
         sortCol: null,
         sort: null,
-        customerId:null
+        customerId: null
       },
       customerList: [],
       dateRange: {
@@ -110,7 +117,7 @@ export default {
   },
   computed: {
     queryParams() {
-      return Object.assign(this.params, {
+      return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
         start: this.dateRange.start,
@@ -121,42 +128,37 @@ export default {
     },
   },
   methods: {
-
-    batchSelect(){
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
+    },
+    batchSelect() {
       const selectedRows = this.$refs.table.getCheckboxRecords();
-      console.log(selectedRows);
       if (selectedRows.length === 0) {
         MessagePlugin.error("请选择至少一条订单");
         return;
       }
-      // 创建一个数组存储所有订单明细
       let allItemList = [];
       let selectSalesOutboundIdList = [];
-      console.log("selectedRows",selectedRows)
-      // 遍历选中的订单，收集所有明细
       selectedRows.forEach(row => {
         if (row.salesOutboundItemList && row.salesOutboundItemList.length > 0) {
-          // 将当前订单的明细添加到总列表中
           allItemList = allItemList.concat(row.salesOutboundItemList);
           selectSalesOutboundIdList = selectSalesOutboundIdList.concat(row.id);
         }
       });
 
-      let params = {
-        selectSalesOutboundIdList:selectSalesOutboundIdList,
+      this.$emit('success', {
+        selectSalesOutboundIdList: selectSalesOutboundIdList,
         itemList: allItemList
-      };
-      // 这里可以触发成功事件并传递数据
-      this.$emit('success', params);
+      });
     },
-
     footerMethod({columns, data}) {
       let totalAmount = 0;
       let discountAmount = 0;
       let finalAmount = 0;
       columns.forEach((column) => {
-        if (column.property && ['totalAmount','discountAmount','finalAmount'].includes(column.property)) {
-
+        if (column.property && ['totalAmount', 'discountAmount', 'finalAmount'].includes(column.property)) {
           data.forEach((row) => {
             let rd = row[column.property];
             if (column.property === 'totalAmount') {
@@ -167,8 +169,7 @@ export default {
               if (rd) {
                 discountAmount += Number(rd || 0);
               }
-            }
-            else if (column.property === 'finalAmount') {
+            } else if (column.property === 'finalAmount') {
               if (rd) {
                 finalAmount += Number(rd || 0);
               }
@@ -177,28 +178,25 @@ export default {
         }
       })
       this.amountTotal = totalAmount.toFixed(2);
-      return [["", "", "", "",totalAmount.toFixed(2),discountAmount.toFixed(2),finalAmount.toFixed(2)]];
+      return [["", "", "", "", totalAmount.toFixed(2), discountAmount.toFixed(2), finalAmount.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
     },
-    loadList(type = true) {
+    loadList() {
       this.loading = true;
       SalesOutbound.list(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
       }).finally(() => this.loading = false);
 
-      Promise.all([
-        Customer.select(),
-      ]).then((results) => {
-        this.customerList = results[0].data || [];
-      }).finally(() => LoadingPlugin(false));
+      Customer.select().then(({data}) => {
+        this.customerList = data || [];
+      });
     },
   },
   created() {
-    // 使用传入的参数初始化查询条件
     if (this.customerId) {
       this.params.customerId = this.customerId;
     }
@@ -208,23 +206,74 @@ export default {
 </script>
 
 <style scoped>
-/* 覆盖 vxe-toolbar 的默认样式 */
-.toolbar-left :deep(.vxe-toolbar) {
-  padding: 8px 10px;
-  justify-content: flex-start !important;
+.order-select {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+  min-height: 480px;
+  max-height: calc(100vh - 120px);
+  overflow: hidden;
+  background: #fff;
 }
 
-.toolbar-left :deep(.vxe-tools--wrapper) {
-  justify-content: flex-start !important;
-  width: 100%;
+.order-select__toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--td-component-border, #e7e7e7);
 }
 
-/* 移除不必要的 margin-left */
-.h-input-group {
-  margin-left: 8px;
+.order-select__label {
+  color: #333;
+  white-space: nowrap;
 }
 
-.h-input-group:first-child {
-  margin-left: 0;
+.order-select__state {
+  width: 120px;
+}
+
+.order-select__customer {
+  width: 180px;
+}
+
+.order-select__search {
+  width: 320px;
+  max-width: 100%;
+}
+
+.order-select__table {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 16px;
+  overflow: hidden;
+}
+
+.order-select__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--td-component-border, #e7e7e7);
+}
+
+.order-select__total {
+  font-size: 14px;
+  color: #333;
+  white-space: nowrap;
+}
+
+.order-select__footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #f5f5f5;
+  border-top: 1px solid var(--td-component-border, #e7e7e7);
 }
 </style>

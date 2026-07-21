@@ -41,6 +41,7 @@ import java.util.Map;
  */
 @Service
 @Slf4j
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class DataBackupService extends AbsService {
 

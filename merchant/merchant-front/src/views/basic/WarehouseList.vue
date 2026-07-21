@@ -57,7 +57,8 @@ import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 import WarehouseForm from '@views/basic/WarehouseForm';
 import Warehouse from '@js/api/basic/Warehouse';
-import {DialogPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 
 export default {
   name: 'WarehouseList',

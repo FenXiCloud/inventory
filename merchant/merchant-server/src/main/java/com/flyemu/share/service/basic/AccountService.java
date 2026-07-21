@@ -29,6 +29,7 @@ import java.util.List;
  */
 @Service
 @Slf4j
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class AccountService extends AbsService {
 

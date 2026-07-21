@@ -73,7 +73,7 @@ import {MessagePlugin} from "tdesign-vue-next";
 import {ObjectUtil} from "@js/common/utils";
 
 export default {
-  name: "FinanceItemMapForm",
+  name: "FinanceItemMapBatchForm",
   props: {
     id: [Number, String],
     categoryId: [Number, String],
@@ -124,14 +124,14 @@ export default {
         return;
       }
       this.loading = true;
-      FinanceItemMap.batchSave(filter).then(() => {
+      FinanceItemMap.batch(filter).then(() => {
         MessagePlugin.success("保存成功~");
         this.$emit('success');
       }).finally(() => this.loading = false);
     },
     init() {
       const categoryId = this.categoryId;
-      FinanceAccountLink.loadAccountingCategory({ids: this.categoryId}).then(({data}) => {
+      FinanceAccountLink.accountingCategory({ids: this.categoryId}).then(({data}) => {
         this.model.categoryType = data.data[0].categoryType;
         this.model.categoryId = data.data[0].id;
         this.model.categoryName = data.data[0].name;

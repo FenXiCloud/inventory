@@ -4,7 +4,7 @@
       <div class="simple-page__side">
         <t-table
             row-key="id"
-            size="medium"
+            size="small"
             bordered
             hover
             height="100%"
@@ -75,7 +75,8 @@
 
 <script>
 import CodeRule from "@js/api/setting/CodeRule";
-import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 import CodeRuleForm from "./CodeRuleForm.vue";
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
@@ -104,11 +105,12 @@ export default {
         {id: 13, documentType: '付款单', type: 1},
         {id: 14, documentType: '核销单', type: 1},
         {id: 15, documentType: '其他收款单', type: 1},
-        {id: 16, documentType: '转帐单', type: 1},
-        {id: 17, documentType: '产品', type: 2},
-        {id: 18, documentType: '仓库', type: 2},
-        {id: 19, documentType: '客户', type: 2},
-        {id: 20, documentType: '供货商', type: 2}
+        {id: 16, documentType: '其他付款单', type: 1},
+        {id: 17, documentType: '转帐单', type: 1},
+        {id: 18, documentType: '商品', type: 2},
+        {id: 19, documentType: '仓库', type: 2},
+        {id: 20, documentType: '客户', type: 2},
+        {id: 21, documentType: '供货商', type: 2}
       ],
       selectedDocumentTypeKeys: [1],
       opened: true,
@@ -253,6 +255,14 @@ export default {
   min-height: 0;
   overflow: hidden;
   padding: 8px 0;
+}
+
+.simple-page__side :deep(.t-table__header th),
+.simple-page__side :deep(.t-table__body td) {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  line-height: 22px;
+  height: auto;
 }
 
 .simple-page__main {

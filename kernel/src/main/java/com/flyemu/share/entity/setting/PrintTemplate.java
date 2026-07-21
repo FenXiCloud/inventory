@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.setting;
 
+import com.alibaba.fastjson.JSONArray;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -8,6 +9,8 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -54,6 +57,12 @@ public class PrintTemplate implements Serializable {
 
     @Column(nullable = false)
     private Long merchantId;
+
+    @Comment("模板内容JSON")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private JSONArray content;
+
+
 
     public enum DocumentType {
         采购订单, 采购入库单, 采购退货单, 销售订单, 销售出库单, 销售退货单, 调拨单, 盘点单, 其他入库单, 其他出库单, 成本调整单, 收款单, 付款单, 核销单, 其他收款单, 其他付款单, 转帐单

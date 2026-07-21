@@ -1,3 +1,3 @@
-import SysTabs from './sys-tabs.vue';
+import SysTabs from './SysTabs.vue';
 
 export default SysTabs;

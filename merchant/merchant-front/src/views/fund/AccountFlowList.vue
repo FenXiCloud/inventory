@@ -2,6 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="exportData">导 出</t-button>
         <t-date-range-picker
             v-model="dateRangeValue"
             clearable
@@ -52,6 +53,8 @@
 </template>
 <script>
 import manba from 'manba';
+import * as XLSX from 'xlsx';
+import {MessagePlugin} from 'tdesign-vue-next';
 import { mapMutations } from 'vuex';
 import AccountFlow from '@js/api/fund/AccountFlow';
 import Account from '@js/api/fund/Account';
@@ -60,7 +63,7 @@ const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-DD');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-DD');
 
 export default {
-  name: 'cashBankStatements',
+  name: 'AccountFlowList',
   data() {
     return {
       dataList: [],
@@ -116,6 +119,36 @@ export default {
     }
   },
   methods: {
+    exportData() {
+      if (!this.dataList || this.dataList.length === 0) {
+        MessagePlugin.warning('没有可导出的数据');
+        return;
+      }
+      try {
+        const exportData = this.dataList.map(item => ({
+          '账户': item.accountName,
+          '流水类型': item.accountFlowType,
+          '金额': item.amount,
+          '收入': item.income,
+          '支出': item.spending,
+          '交易对方名称': item.correspondentsName,
+          '收付款人名称': item.amountOperatorName,
+          '交易前余额': item.balanceBefore,
+          '交易后余额': item.balanceAfter,
+          '创建时间': item.createdAt,
+          '备注': item.remarks,
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '账户流水');
+        XLSX.writeFile(wb, `账户流水_${manba().format('YYYY-MM-DD')}.xlsx`);
+        MessagePlugin.success('导出成功');
+      } catch (error) {
+        console.error('导出错误:', error);
+        MessagePlugin.error('导出失败');
+      }
+    },
+
     ...mapMutations(['pushTab']),
     onPageChange(pageInfo) {
       this.pagination.page = pageInfo.current;

@@ -78,7 +78,7 @@ import {MessagePlugin} from "tdesign-vue-next";
 import PriceRecord from "@js/api/basic/PriceRecord";
 
 export default {
-  name: "ProductForm",
+  name: "ProductPriceForm",
   props: {
     entity: Object,
   },

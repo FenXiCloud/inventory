@@ -74,6 +74,17 @@ public class PrintTemplateController {
         return JsonResult.successful();
     }
 
+
+    @GetMapping("/load/{printTemplateId}")
+    public JsonResult load(@PathVariable Long printTemplateId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(printTemplateService.load(printTemplateId, merchantId, accountBookId));
+    }
+
+    @GetMapping("/byType")
+    public JsonResult byType(String documentType, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(printTemplateService.byType(documentType, merchantId, accountBookId));
+    }
+
     @GetMapping("select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(printTemplateService.select(merchantId, accountBookId));

@@ -100,7 +100,8 @@
 import manba from "manba";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
 import {mapMutations} from "vuex";
-import {MessagePlugin, DialogPlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 import Supplier from "@js/api/basic/Supplier";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
@@ -224,7 +225,7 @@ export default {
         title: "批量审核提示",
         content: `本次审核${ids.length}条?`,
         onConfirm: () => {
-          PurchaseOrder.approved('已审核', ids).then(() => {
+          return PurchaseOrder.approved('已审核', ids).then(() => {
             MessagePlugin.success("操作成功~");
             this.clearSelection();
             this.loadList();
@@ -248,7 +249,7 @@ export default {
         title: "批量反审核提示",
         content: `本次反审核${ids.length}条?`,
         onConfirm: () => {
-          PurchaseOrder.approved('已保存', ids).then(() => {
+          return PurchaseOrder.approved('已保存', ids).then(() => {
             MessagePlugin.success("操作成功~");
             this.clearSelection();
             this.loadList();

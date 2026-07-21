@@ -1,48 +1,28 @@
 import Ajax from '@common/Request';
 
 export default {
-  /*  save(param) {
-        return Ajax[param.id ? 'put' : 'post']('/accountFlow', param)
-    },
-    list(param) {
-        return Ajax.get('/accountFlow', param)
-    },
-    remove(id) {
-        return Ajax.delete('/accountFlow/' + id);
-    },
-    select(param) {
-        return Ajax.get('/accountFlow/select', param)
-    } */
-  // 现金流水
   list(param) {
-    return Ajax.get('/accountFlow/list', param);
+    return Ajax.get('/accountFlow', param);
   },
-  //   应付账款明细列表
-  getPayableDetailReport(param) {
-    return Ajax.get('/accountFlow/getPayableDetailReport', param);
+  payableDetail(param) {
+    return Ajax.get('/accountFlow/payableDetail', param);
   },
-  // 应收账款明细列表
-  getReceivableDetailReport(param) {
-    return Ajax.get('/accountFlow/getReceivableDetailReport', param);
+  receivableDetail(param) {
+    return Ajax.get('/accountFlow/receivableDetail', param);
   },
-  //应付汇总列表
-  summaryPayableDetails(param) {
-    return Ajax.get('/accountFlow/summaryPayableDetails', param);
+  summaryPayable(param) {
+    return Ajax.get('/accountFlow/summaryPayable', param);
   },
-  // 应收汇总列表
-  summaryReceivableDetails(param) {
-    return Ajax.get('/accountFlow/summaryReceivableDetails', param);
+  summaryReceivable(param) {
+    return Ajax.get('/accountFlow/summaryReceivable', param);
   },
-  //   其他收支明细列表
-  otherFundDetails(param) {
-    return Ajax.get('/accountFlow/otherFundDetails', param);
+  otherFund(param) {
+    return Ajax.get('/accountFlow/otherFund', param);
   },
-  //   供应商对账单
-  listBySupplier(param) {
-    return Ajax.get('/supplierFlow/listBySupplier', param);
+  supplierStatement(param) {
+    return Ajax.get('/supplierFlow/statement', param);
   },
-  //   客户对账单
-  getCustomerBillFlows(param) {
-    return Ajax.get('/customerFlow/getCustomerBillFlows', param);
+  customerStatement(param) {
+    return Ajax.get('/customerFlow/statement', param);
   }
 };

@@ -1,10 +1,8 @@
 package com.flyemu.share.form;
 
-import com.flyemu.share.entity.sales.SalesReturn;
-import com.flyemu.share.entity.sales.SalesReturnItem;
-import com.flyemu.share.enums.OrderStatus;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -32,4 +30,25 @@ public class SalesReportForm {
     //销售类型 all out return
     private String salesType;
 
+    //排行维度 PRODUCT / CUSTOMER
+    private String rankingType;
+
+    public LocalDate getStartDate() {
+        return parseDate(start);
+    }
+
+    public LocalDate getEndDate() {
+        return parseDate(end);
+    }
+
+    private LocalDate parseDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String text = value.trim();
+        if (text.length() >= 10) {
+            text = text.substring(0, 10);
+        }
+        return LocalDate.parse(text);
+    }
 }

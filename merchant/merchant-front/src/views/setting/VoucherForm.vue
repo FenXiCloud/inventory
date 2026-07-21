@@ -102,15 +102,15 @@ export default {
     }
   },
   methods: {
-    loadVoucherWords() {
+    loadWords() {
       // 加载凭证字
-      FinanceAccountLink.loadVoucherWord().then(({data}) => {
+      FinanceAccountLink.voucherWord().then(({data}) => {
         this.voucherWords = data || [];
         this.form.word = data.find(value => value.isDefault).word
       });
     },
     loadCode() {
-      FinanceAccountLink.loadCode({
+      FinanceAccountLink.code({
         word: this.form.word,
         currentAccountDate: this.form.voucherDate
       }).then(({data}) => {
@@ -166,7 +166,7 @@ export default {
     },
     init() {
       if (this.voucherId) {
-        FinanceVoucher.loadVoucher({
+        FinanceVoucher.remote({
           voucherId: this.voucherId,
         }).then(({data: response}) => {
           const {data} = response;
@@ -188,7 +188,7 @@ export default {
       }
 
 
-      this.loadVoucherWords();
+      this.loadWords();
     },
   },
   mounted() {

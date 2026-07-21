@@ -91,6 +91,28 @@ public class PrintTemplateService extends AbsService {
                 .execute();
     }
 
+
+    public PrintTemplate load(Long printTemplateId, Long merchantId, Long accountBookId) {
+        return bqf.selectFrom(qPrintTemplate)
+                .where(qPrintTemplate.id.eq(printTemplateId)
+                        .and(qPrintTemplate.merchantId.eq(merchantId))
+                        .and(qPrintTemplate.accountBookId.eq(accountBookId)))
+                .fetchOne();
+    }
+
+    public List<PrintTemplate> byType(String documentType, Long merchantId, Long accountBookId) {
+        BooleanBuilder builder = new BooleanBuilder();
+        builder.and(qPrintTemplate.merchantId.eq(merchantId))
+                .and(qPrintTemplate.accountBookId.eq(accountBookId));
+        if (StrUtil.isNotBlank(documentType)) {
+            builder.and(qPrintTemplate.documentType.eq(PrintTemplate.DocumentType.valueOf(documentType)));
+        }
+        return bqf.selectFrom(qPrintTemplate)
+                .where(builder)
+                .orderBy(qPrintTemplate.systemDefault.desc(), qPrintTemplate.id.desc())
+                .fetch();
+    }
+
     public List<PrintTemplate> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qPrintTemplate)
                 .where(qPrintTemplate.merchantId.eq(merchantId).and(qPrintTemplate.accountBookId.eq(accountBookId)))

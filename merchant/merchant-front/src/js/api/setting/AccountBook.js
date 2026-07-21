@@ -33,9 +33,10 @@ export default {
 
 	/* 参数列表 */
 	getByAccountBookId(param) {
-		return Ajax.get(`/accountBookParameters/getByAccountBookId`, param);
+		const id = typeof param === 'object' ? param.id : param;
+		return Ajax.get('/accountBookParameters/load/' + id);
 	},
 	saveParameters(param) {
-		return Ajax.post('/accountBookParameters/update', param);
+		return Ajax.put('/accountBookParameters', param);
 	}
 };

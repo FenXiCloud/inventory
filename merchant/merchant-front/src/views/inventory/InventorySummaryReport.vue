@@ -260,7 +260,7 @@ export default {
         map.salesReturnsQuantity, map.salesReturnsSubtotal.toFixed(2),
         map.channelInQuantity, map.channelInSubtotal.toFixed(2),
         map.otherInQuantity, map.otherInSubtotal.toFixed(2),
-        map.takeProfitQuantity, map.takeProfitQuantity.toFixed(2),
+        map.takeProfitQuantity, map.takeProfitSubtotal.toFixed(2),
         map.inQuantityTotal, map.inSubtotalTotal.toFixed(2),
         map.purchaseReturnsQuantity, map.purchaseReturnsSubtotal.toFixed(2),
         map.sellOutQuantity, map.sellOutSubtotal.toFixed(2),
@@ -277,17 +277,12 @@ export default {
     },
     loadList(type = true) {
       this.loading = true;
-      const params = JSON.parse(JSON.stringify(this.queryParams));
-      params.productCategoryIds = params.productCategoryIds.join(",");
-      params.productIds = params.productIds.join(",");
-      params.warehouseIds = params.warehouseIds.join(",");
-      params.isReport = true;
+      const params = this.buildQueryParams({isReport: true});
       InventoryItem.summary(params).then(({data: {results, total}}) => {
         const dataList = results || [];
         this.pagination.total = total;
-        const operationTypeParams = JSON.parse(JSON.stringify(params));
-        operationTypeParams.isReport = false;
-        InventoryItem.summaryOperationType(operationTypeParams).then(({data}) => {
+        const operationTypeParams = Object.assign({}, params, {isReport: false});
+        InventoryItem.summaryByType(operationTypeParams).then(({data}) => {
           dataList?.forEach((row) => {
             const productId = row.productId;
             const warehouseId = row.warehouseId;
@@ -415,6 +410,19 @@ export default {
         }).finally(() => this.loading = false);
       });
     },
+    buildQueryParams(extra = {}) {
+      const params = Object.assign(JSON.parse(JSON.stringify(this.queryParams)), extra);
+      const joinIds = (arr) => (Array.isArray(arr) && arr.length ? arr.join(",") : undefined);
+      params.productCategoryIds = joinIds(params.productCategoryIds);
+      params.productIds = joinIds(params.productIds);
+      params.warehouseIds = joinIds(params.warehouseIds);
+      Object.keys(params).forEach((key) => {
+        if (params[key] === undefined || params[key] === null || params[key] === "") {
+          delete params[key];
+        }
+      });
+      return params;
+    },
     loadDict(callback) {
       LoadingPlugin(true);
       Promise.all([Product.select(), Warehouse.select(), ProductCategory.select()])
@@ -435,18 +443,11 @@ export default {
     },
     excel() {
       this.loading = true;
-      const params = JSON.parse(JSON.stringify(this.queryParams));
-      params.page = 1;
-      params.pageSize = 1199999;
-      params.productCategoryIds = params.productCategoryIds.join(",");
-      params.productIds = params.productIds.join(",");
-      params.isReport = true;
-      params.warehouseIds = params.warehouseIds.join(",");
+      const params = this.buildQueryParams({page: 1, pageSize: 1199999, isReport: true});
       InventoryItem.summary(params).then(({data: {results, total}}) => {
         const dataList = results || [];
-        const operationTypeParams = JSON.parse(JSON.stringify(params));
-        operationTypeParams.isReport = false;
-        InventoryItem.summaryOperationType(operationTypeParams).then(({data}) => {
+        const operationTypeParams = Object.assign({}, params, {isReport: false});
+        InventoryItem.summaryByType(operationTypeParams).then(({data}) => {
           dataList?.forEach((row) => {
             const productId = row.productId;
             const warehouseId = row.warehouseId;

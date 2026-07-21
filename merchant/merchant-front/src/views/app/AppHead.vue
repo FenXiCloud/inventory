@@ -27,7 +27,8 @@
 
 <script>
 import {mapMutations, mapState} from 'vuex';
-import {DialogPlugin, LoadingPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {LoadingPlugin, MessagePlugin} from 'tdesign-vue-next';
+import {DialogPlugin} from '@common/dialog-plugin';
 import {Logout} from "@js/api/App";
 import AccountBook from "@js/api/setting/AccountBook";
 

@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -36,12 +35,14 @@ public class PurchaseReportController {
         return JsonResult.successful(purchaseReportService.query(page, query));
     }
 
-    @GetMapping("/stat")
-    public JsonResult listStat(Page page, PurchaseReportService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-
-        Set<String> groupValuesSet = Set.of(query.groupValues.toArray(new String[0]));
+    @GetMapping("/summary")
+    public JsonResult summary(Page page, PurchaseReportService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        if (query.groupValues == null || query.groupValues.isEmpty()) {
+            return JsonResult.failure("请选择统计字段");
+        }
+        Set<String> groupValuesSet = Set.copyOf(query.groupValues);
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
-        return JsonResult.successful(purchaseReportService.queryStat(page, query,groupValuesSet));
+        return JsonResult.successful(purchaseReportService.summary(page, query, groupValuesSet));
     }
 }

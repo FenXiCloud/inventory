@@ -29,8 +29,8 @@ public class SupplierFlowController {
 
     private final SupplierFlowService supplierFlowService;
 
-    @GetMapping("/listBySupplier")
-    public JsonResult listBySupplier(
+    @GetMapping("/statement")
+    public JsonResult statement(
             Page page,
             @RequestParam Long supplierId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startTime,
@@ -48,7 +48,7 @@ public class SupplierFlowController {
         queryDTO.setStartTime(startDateTime);
         queryDTO.setEndTime(endDateTime);
 
-        return JsonResult.successful(supplierFlowService.getFlowsBySupplierId(page, queryDTO));
+        return JsonResult.successful(supplierFlowService.statement(page, queryDTO));
     }
 
     @GetMapping
@@ -67,7 +67,9 @@ public class SupplierFlowController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid SupplierFlow supplierFlow) {
+    public JsonResult update(@RequestBody @Valid SupplierFlow supplierFlow, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+        supplierFlow.setMerchantId(merchantId);
+        supplierFlow.setAccountBookId(accountBookId);
         supplierFlowService.save(supplierFlow);
         return JsonResult.successful();
     }

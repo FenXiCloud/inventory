@@ -17,10 +17,11 @@ import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.AccountRepository;
 import com.flyemu.share.repository.AccountTransferItemRepository;
 import com.flyemu.share.repository.AccountTransferRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.AccountService;
 import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
-import com.flyemu.share.service.fund.dto.AccountTransferDTO;
+import com.flyemu.share.form.AccountTransferForm;
 import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.service.fund.vo.AccountTransferDetails;
 import com.flyemu.share.service.fund.vo.AccountTransferDetailsVO;
@@ -55,6 +56,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AccountTransferService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QAccountTransfer qAccountTransfer = QAccountTransfer.accountTransfer;
     private final static QAccount qAccount = QAccount.account;
     private final static QAccountTransferItem qAccountTransferItem = QAccountTransferItem.accountTransferItem;
@@ -119,8 +121,11 @@ public class AccountTransferService extends AbsService {
     }
 
     @Transactional
-    public AccountTransfer save(AccountTransferDTO dto) {
+    public AccountTransfer save(AccountTransferForm dto) {
         AccountTransfer accountTransfer = dto.getOrder();
+        if (accountTransfer != null) {
+            checkoutService.assertEditable(accountTransfer.getMerchantId(), accountTransfer.getAccountBookId(), accountTransfer.getOrderDate());
+        }
         List<AccountTransferItem> items = dto.getItemList();
 
         if (accountTransfer == null) {
@@ -285,7 +290,7 @@ public class AccountTransferService extends AbsService {
         }
     }
 
-    public AccountTransferDetails selectById(Long id) {
+    public AccountTransferDetails load(Long merchantId, Long id) {
         QMerchantUser qCreatedByUser = new QMerchantUser("createdByUser");
         QMerchantUser qUpdatedByUser = new QMerchantUser("updatedByUser");
         QMerchantUser qApprovedByUser = new QMerchantUser("approvedByUser");
@@ -314,7 +319,7 @@ public class AccountTransferService extends AbsService {
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qAccountTransfer.createdBy))
                 .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qAccountTransfer.updateBy))
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qAccountTransfer.approvedBy))
-                .where(qAccountTransfer.id.eq(id))
+                .where(qAccountTransfer.merchantId.eq(merchantId).and(qAccountTransfer.id.eq(id)))
                 .fetchOne();
 
         if (vo == null) {
@@ -336,6 +341,15 @@ public class AccountTransferService extends AbsService {
     /**
      * 审核转账单
      */
+    @Transactional
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        OrderPaymentUpdateDTO dto = new OrderPaymentUpdateDTO();
+        dto.setId(ids.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")));
+        dto.setOrderStatus(state);
+        dto.setApprovedBy(adminId);
+        updateStatus(dto);
+    }
+
     @Transactional
     public void updateStatus(OrderPaymentUpdateDTO dto) {
         String ids = dto.getId();
@@ -531,6 +545,13 @@ public class AccountTransferService extends AbsService {
                 .fetch();
     }
 
+
+    public BigDecimal queryTotal(Query query) {
+        return bqf.selectFrom(qAccountTransfer)
+                .select(qAccountTransfer.amount.sum())
+                .where(query.builder).fetchFirst();
+    }
+
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
@@ -545,11 +566,6 @@ public class AccountTransferService extends AbsService {
                 builder.and(qAccountTransfer.accountBookId.eq(accountBookId));
             }
         }
-
-//        public void setOrderStatus(String orderStatus) {
-//            if (orderStatus != null && !orderStatus.isEmpty()) {
-//                builder.and(qAccountTransfer.orderStatus.eq(orderStatus));
-//            }
 //        }
     }
 }

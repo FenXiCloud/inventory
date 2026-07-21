@@ -12,13 +12,13 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
 import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.QAdmin;
-import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.OutboundType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.OtherOutboundForm;
 import com.flyemu.share.repository.OtherOutboundRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -49,6 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class OtherOutboundService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QOtherOutbound qOtherOutbound = QOtherOutbound.otherOutbound;
 
     private final OtherOutboundRepository otherOutboundRepository;
@@ -107,10 +108,13 @@ public class OtherOutboundService extends AbsService {
     }
 
     @Transactional
-    public OtherOutbound save(OtherOutboundForm otherOutboundForm) {
+    public OtherOutbound save(OtherOutboundForm otherOutboundForm, Long merchantId) {
         OtherOutbound result;
         SnowflakeGenerator snowflakeGenerator = new SnowflakeGenerator();
         OtherOutbound otherOutbound = otherOutboundForm.getOtherOutbound();
+        java.time.LocalDate __checkoutOrderDate = otherOutbound.getInboundDate() == null ? null : new java.sql.Date(otherOutbound.getInboundDate().getTime()).toLocalDate();
+        checkoutService.assertEditable(otherOutbound.getMerchantId(), otherOutbound.getAccountBookId(), __checkoutOrderDate);
+        otherOutbound.setMerchantId(merchantId);
         if (otherOutbound.getId() != null) {
             //更新
             OtherOutbound original = otherOutboundRepository.getById(otherOutbound.getId());
@@ -119,6 +123,7 @@ public class OtherOutboundService extends AbsService {
         } else {
             otherOutbound.setCreatedAt(LocalDateTime.now());
             otherOutbound.setOrderNo(snowflakeGenerator.next().toString());
+            otherOutbound.setOrderStatus(OrderStatus.已保存);
             result = otherOutboundRepository.save(otherOutbound);
         }
         // 出库明细
@@ -130,15 +135,14 @@ public class OtherOutboundService extends AbsService {
 
     @Transactional
     public void delete(Long otherOutboundId, Long merchantId, Long accountBookId) {
+        jqf.delete(qOtherOutboundItem)
+                .where(qOtherOutboundItem.otherOutboundId.eq(otherOutboundId)
+                        .and(qOtherOutboundItem.merchantId.eq(merchantId))
+                        .and(qOtherOutboundItem.accountBookId.eq(accountBookId)))
+                .execute();
         jqf.delete(qOtherOutbound)
                 .where(qOtherOutbound.id.eq(otherOutboundId).and(qOtherOutbound.merchantId.eq(merchantId)).and(qOtherOutbound.accountBookId.eq(accountBookId)))
                 .execute();
-    }
-
-    @Transactional
-    public void delete(Long otherOutboundId) {
-        jqf.delete(qOtherOutbound).where(qOtherOutbound.id.eq(otherOutboundId)).execute();
-        otherOutboundItemService.deleteByOtherOutboundId(otherOutboundId);
     }
 
     public List<OtherOutbound> select(Long merchantId, Long accountBookId) {
@@ -146,8 +150,22 @@ public class OtherOutboundService extends AbsService {
     }
 
     @Transactional
-    public void approve(Long id, ApproveType type, Long adminId) {
-        OtherOutbound otherOutbound = jqf.selectFrom(qOtherOutbound).where(qOtherOutbound.id.eq(id)).fetchOne();
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new ServiceException("未选择单据");
+        }
+        if (!OrderStatus.已审核.equals(state) && !OrderStatus.已保存.equals(state)) {
+            throw new ServiceException("不支持的审核状态");
+        }
+        for (Long id : ids) {
+            this.approve(id, state, adminId, merchantId);
+        }
+    }
+
+    private void approve(Long id, OrderStatus state, Long adminId, Long merchantId) {
+        OtherOutbound otherOutbound = jqf.selectFrom(qOtherOutbound)
+                .where(qOtherOutbound.id.eq(id).and(qOtherOutbound.merchantId.eq(merchantId)))
+                .fetchOne();
         if (otherOutbound == null) {
             throw new ServiceException("审核数据不存在～");
         }
@@ -162,34 +180,28 @@ public class OtherOutboundService extends AbsService {
         List<OtherOutboundItem> otherOutboundItems = otherOutboundItemService.findByOtherOutboundId(id);
         List<Inventory> inventories = new ArrayList<>();
         List<InventoryItem> inventoryItems = new ArrayList<>();
-        switch (type) {
-            case AUDITS -> {
-                //处理库存
-                this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound);
-                inventories.forEach(item -> {
-                    // 减库存
-                    inventoryService.computedInventory(item, false, id, operationType, inventoryItems);
-                });
-                otherOutbound.setOrderStatus(OrderStatus.已审核);
-                otherOutbound.setApprovedBy(adminId);
-                otherOutbound.setApprovedAt(LocalDateTime.now());
-                otherOutboundRepository.save(otherOutbound);
-            }
-            case ANTI_AUDIT -> {
-                //处理库存
-                this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound);
-                inventories.forEach(item -> {
-                    // 加库存
-                    inventoryService.computedInventory(item, true, id, operationType, null);
-                });
-                otherOutbound.setOrderStatus(OrderStatus.未审核);
-                otherOutbound.setApprovedBy(adminId);
-                otherOutbound.setApprovedAt(LocalDateTime.now());
-                otherOutboundRepository.save(otherOutbound);
-            }
-            default -> {
-
-            }
+        if (OrderStatus.已审核.equals(state)) {
+            //处理库存
+            this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound);
+            inventories.forEach(item -> {
+                // 减库存
+                inventoryService.computedInventory(item, false, id, operationType, inventoryItems);
+            });
+            otherOutbound.setOrderStatus(OrderStatus.已审核);
+            otherOutbound.setApprovedBy(adminId);
+            otherOutbound.setApprovedAt(LocalDateTime.now());
+            otherOutboundRepository.save(otherOutbound);
+        } else if (OrderStatus.已保存.equals(state)) {
+            //处理库存
+            this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound);
+            inventories.forEach(item -> {
+                // 加库存
+                inventoryService.computedInventory(item, true, id, operationType, null);
+            });
+            otherOutbound.setOrderStatus(OrderStatus.已保存);
+            otherOutbound.setApprovedBy(adminId);
+            otherOutbound.setApprovedAt(LocalDateTime.now());
+            otherOutboundRepository.save(otherOutbound);
         }
     }
 
@@ -272,7 +284,7 @@ public class OtherOutboundService extends AbsService {
         return inventoryItem;
     }
 
-    public List<Map<String, Object>> load(Long id) {
+    public List<Map<String, Object>> load(Long merchantId, Long id) {
         StringTemplate dateExpressions = Expressions.
                 stringTemplate("DATE_FORMAT({0},'%Y-%m-%d')", qOtherOutbound.inboundDate);
         List<Tuple> fetch = jqf.selectFrom(qOtherOutbound)
@@ -307,7 +319,7 @@ public class OtherOutboundService extends AbsService {
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
                 .leftJoin(qAdmin).on(qAdmin.id.eq(qOtherOutbound.createdBy))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qOtherOutboundItem.warehouseId))
-                .where(qOtherOutbound.id.eq(id))
+                .where(qOtherOutbound.id.eq(id).and(qOtherOutbound.merchantId.eq(merchantId)))
                 .fetch();
         List<Map<String, Object>> result = new ArrayList<>();
         Map<String, Object> item;

@@ -1,12 +1,13 @@
 package com.flyemu.share.controller.inventory;
 
 import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
+import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.entity.inventory.OtherInbound;
-import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.OtherInboundForm;
 import com.flyemu.share.service.inventory.OtherInboundService;
@@ -14,7 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
+import java.util.List;
 
 /**
  * @功能描述: 其他入库单
@@ -43,24 +44,16 @@ public class OtherInboundController {
         OtherInbound otherInbound = otherInboundForm.getOtherInbound();
         otherInbound.setMerchantId(merchantId);
         otherInbound.setAccountBookId(accountBookId);
-        otherInbound.setOrderStatus(OrderStatus.未审核);
+        otherInbound.setOrderStatus(OrderStatus.已保存);
         otherInbound.setCreatedBy(adminId);
-        OtherInbound inbound = otherInboundService.save(otherInboundForm);
+        OtherInbound inbound = otherInboundService.save(otherInboundForm, merchantId);
         return JsonResult.successful(inbound);
     }
 
-    @GetMapping("approve")
-    public JsonResult approve(@RequestParam("id") Long id, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
-        otherInboundService.approve(id, type, adminId);
-        return JsonResult.successful();
-    }
-
-    @GetMapping("approves")
-    public JsonResult approves(@RequestParam("ids") String ids, @RequestParam("type") ApproveType type, @SaAdminId Long adminId) {
-        Arrays.stream(ids.split(",")).map(Long::parseLong).forEach(id -> {
-            otherInboundService.approve(id, type, adminId);
-        });
-        return JsonResult.successful();
+    @PutMapping
+    public JsonResult update(@RequestBody @Valid OtherInboundForm otherInboundForm, @SaMerchantId Long merchantId) {
+        OtherInbound inbound = otherInboundService.save(otherInboundForm, merchantId);
+        return JsonResult.successful(inbound);
     }
 
     @DeleteMapping("/{otherInboundId}")
@@ -75,8 +68,14 @@ public class OtherInboundController {
     }
 
     @GetMapping("load/{id}")
-    public JsonResult load(@PathVariable Long id) {
-        return JsonResult.successful(otherInboundService.load(id));
+    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+        return JsonResult.successful(otherInboundService.load(merchantId, id));
+    }
+
+    @PostMapping("/approved/{state}")
+    public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
+        otherInboundService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
+        return JsonResult.successful();
     }
 
 }

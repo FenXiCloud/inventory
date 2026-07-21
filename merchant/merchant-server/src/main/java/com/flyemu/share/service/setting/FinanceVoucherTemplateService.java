@@ -76,8 +76,10 @@ public class FinanceVoucherTemplateService extends AbsService {
                 .execute();
     }
 
-    public FinanceVoucherTemplate load(Long id) {
-        return financeVoucherTemplateRepository.findById(id).orElseThrow(RuntimeException::new);
+    public FinanceVoucherTemplate load(Long merchantId, Long id) {
+        return jqf.selectFrom(qFinanceVoucherTemplate)
+                .where(qFinanceVoucherTemplate.merchantId.eq(merchantId).and(qFinanceVoucherTemplate.id.eq(id)))
+                .fetchOne();
     }
 
     public static class Query {

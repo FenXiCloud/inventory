@@ -1,28 +1,25 @@
-import Ajax from "@common/Request";
+import Ajax from '@common/Request';
+
+function postWithPage(url, param) {
+  const page = param.page || 1;
+  const pageSize = param.pageSize || 20;
+  const body = Object.assign({}, param);
+  delete body.page;
+  delete body.pageSize;
+  return Ajax.post(`${url}?page=${page}&pageSize=${pageSize}`, body);
+}
 
 export default {
-    save(param) {
-        return Ajax[param.id ? 'put' : 'post']('/salesReport', param)
-    },
-    salesItem(param) {
-        return Ajax.post('/salesReport/salesItem', param)
-    },
-    salesSummary(param) {
-        return Ajax.post('/salesReport/salesSummary', param)
-    },
-    remove(id) {
-        return Ajax.delete('/salesReport/' + id);
-    },
-    select(param) {
-        return Ajax.get('/salesReport/select', param)
-    },
-    getInfo(id) {
-        return Ajax.get('/salesReport/getInfo/' + id);
-    },
-    batchAudit(param) {
-        return Ajax.put('/salesReport/batchAudit', param)
-    },
-    audit(param) {
-        return Ajax.put('/salesReport/audit', param)
-    },
-}
+  item(param) {
+    return postWithPage('/salesReport/item', param || {});
+  },
+  summary(param) {
+    return postWithPage('/salesReport/summary', param || {});
+  },
+  profit(param) {
+    return postWithPage('/salesReport/profit', param || {});
+  },
+  ranking(param) {
+    return postWithPage('/salesReport/ranking', param || {});
+  }
+};

@@ -70,8 +70,10 @@ public class FinanceItemMapService extends AbsService {
                 .execute();
     }
 
-    public FinanceItemMap load(Long id) {
-        return financeItemMapRepository.findById(id).orElseThrow(RuntimeException::new);
+    public FinanceItemMap load(Long merchantId, Long id) {
+        return jqf.selectFrom(qFinanceItemMap)
+                .where(qFinanceItemMap.merchantId.eq(merchantId).and(qFinanceItemMap.id.eq(id)))
+                .fetchOne();
     }
 
     public FinanceItemMap findByCategoryIdAndInventoryId(String categoryId, Long inventoryId) {

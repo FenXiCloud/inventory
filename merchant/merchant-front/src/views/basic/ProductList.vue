@@ -114,7 +114,8 @@
 <script>
 import ProductForm from "./ProductForm.vue";
 import Product from "@js/api/basic/Product";
-import {DialogPlugin, MessagePlugin} from "tdesign-vue-next";
+import {MessagePlugin} from "tdesign-vue-next";
+import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import ProductCategoryForm from "@views/basic/ProductCategoryForm.vue";

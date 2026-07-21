@@ -14,11 +14,12 @@ import com.flyemu.share.entity.basic.QUnit;
 import com.flyemu.share.entity.basic.QWarehouse;
 import com.flyemu.share.entity.inventory.*;
 import com.flyemu.share.entity.setting.QAdmin;
-import com.flyemu.share.enums.ApproveType;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.CostAdjustmentForm;
 import com.flyemu.share.repository.CostAdjustmentRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -48,6 +49,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class CostAdjustmentService extends AbsService {
 
+    private final CheckoutService checkoutService;
     private final static QCostAdjustment qCostAdjustment = QCostAdjustment.costAdjustment;
 
     private final static QCostAdjustmentItem qCostAdjustmentItem = QCostAdjustmentItem.costAdjustmentItem;
@@ -90,10 +92,13 @@ public class CostAdjustmentService extends AbsService {
     }
 
     @Transactional
-    public CostAdjustment save(CostAdjustmentForm costAdjustmentForm) {
+    public CostAdjustment save(CostAdjustmentForm costAdjustmentForm, Long merchantId) {
         CostAdjustment result;
         SnowflakeGenerator snowflakeGenerator = new SnowflakeGenerator();
         CostAdjustment costAdjustment = costAdjustmentForm.getCostAdjustment();
+        java.time.LocalDate __checkoutOrderDate = costAdjustment.getDjustmentDate() == null ? null : new java.sql.Date(costAdjustment.getDjustmentDate().getTime()).toLocalDate();
+        checkoutService.assertEditable(costAdjustment.getMerchantId(), costAdjustment.getAccountBookId(), __checkoutOrderDate);
+        costAdjustment.setMerchantId(merchantId);
         if (costAdjustment.getId() != null) {
             //更新
             CostAdjustment original = costAdjustmentRepository.getById(costAdjustment.getId());
@@ -102,6 +107,7 @@ public class CostAdjustmentService extends AbsService {
         } else {
             costAdjustment.setCreatedAt(LocalDateTime.now());
             costAdjustment.setOrderNo(snowflakeGenerator.next().toString());
+            costAdjustment.setOrderStatus(OrderStatus.已保存);
             result = costAdjustmentRepository.save(costAdjustment);
         }
         // 保存明细
@@ -125,7 +131,7 @@ public class CostAdjustmentService extends AbsService {
         return bqf.selectFrom(qCostAdjustment).where(qCostAdjustment.merchantId.eq(merchantId).and(qCostAdjustment.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public List<Map<String, Object>> load(Long id) {
+    public List<Map<String, Object>> load(Long merchantId, Long id) {
         StringTemplate dateExpressions = Expressions.
                 stringTemplate("DATE_FORMAT({0},'%Y-%m-%d')", qCostAdjustment.djustmentDate);
         List<Tuple> fetch = jqf.selectFrom(qCostAdjustment)
@@ -158,7 +164,7 @@ public class CostAdjustmentService extends AbsService {
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
                 .leftJoin(qAdmin).on(qAdmin.id.eq(qCostAdjustment.createdBy))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qCostAdjustmentItem.warehouseId))
-                .where(qCostAdjustment.id.eq(id))
+                .where(qCostAdjustment.id.eq(id).and(qCostAdjustment.merchantId.eq(merchantId)))
                 .fetch();
         List<Map<String, Object>> result = new ArrayList<>();
         Map<String, Object> item;
@@ -191,29 +197,40 @@ public class CostAdjustmentService extends AbsService {
     }
 
     @Transactional
-    public void approve(Long id, ApproveType type, Long adminId) {
-        CostAdjustment costAdjustment = jqf.selectFrom(qCostAdjustment).where(qCostAdjustment.id.eq(id)).fetchOne();
-        List<CostAdjustmentItem> costAdjustmentItems = costAdjustmentItemService.findByCostAdjustmentId(id);
-        switch (type) {
-            case AUDITS -> {
-                //处理成本
-                this.processingCosts(costAdjustment, costAdjustmentItems, false);
-                costAdjustment.setOrderStatus(OrderStatus.已审核);
-                costAdjustment.setApprovedBy(adminId);
-                costAdjustment.setApprovedAt(LocalDateTime.now());
-                costAdjustmentRepository.save(costAdjustment);
-            }
-            case ANTI_AUDIT -> {
-                //处理成本
-                this.processingCosts(costAdjustment, costAdjustmentItems, true);
-                costAdjustment.setOrderStatus(OrderStatus.未审核);
-                costAdjustment.setApprovedBy(adminId);
-                costAdjustment.setApprovedAt(LocalDateTime.now());
-                costAdjustmentRepository.save(costAdjustment);
-            }
-            default -> {
+    public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
+        if (ids == null || ids.isEmpty()) {
+            throw new ServiceException("未选择单据");
+        }
+        if (!OrderStatus.已审核.equals(state) && !OrderStatus.已保存.equals(state)) {
+            throw new ServiceException("不支持的审核状态");
+        }
+        for (Long id : ids) {
+            this.approve(id, state, adminId, merchantId);
+        }
+    }
 
-            }
+    private void approve(Long id, OrderStatus state, Long adminId, Long merchantId) {
+        CostAdjustment costAdjustment = jqf.selectFrom(qCostAdjustment)
+                .where(qCostAdjustment.id.eq(id).and(qCostAdjustment.merchantId.eq(merchantId)))
+                .fetchOne();
+        if (costAdjustment == null) {
+            throw new ServiceException("审核数据不存在～");
+        }
+        List<CostAdjustmentItem> costAdjustmentItems = costAdjustmentItemService.findByCostAdjustmentId(id);
+        if (OrderStatus.已审核.equals(state)) {
+            //处理成本
+            this.processingCosts(costAdjustment, costAdjustmentItems, false);
+            costAdjustment.setOrderStatus(OrderStatus.已审核);
+            costAdjustment.setApprovedBy(adminId);
+            costAdjustment.setApprovedAt(LocalDateTime.now());
+            costAdjustmentRepository.save(costAdjustment);
+        } else if (OrderStatus.已保存.equals(state)) {
+            //处理成本
+            this.processingCosts(costAdjustment, costAdjustmentItems, true);
+            costAdjustment.setOrderStatus(OrderStatus.已保存);
+            costAdjustment.setApprovedBy(adminId);
+            costAdjustment.setApprovedAt(LocalDateTime.now());
+            costAdjustmentRepository.save(costAdjustment);
         }
     }
 

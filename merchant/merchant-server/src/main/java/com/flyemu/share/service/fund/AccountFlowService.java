@@ -44,7 +44,6 @@ public class AccountFlowService extends AbsService {
 
     private final AccountFlowRepository accountFlowRepository;
 
-
     @Transactional
     public AccountFlow save(AccountFlow accountFlow) {
         if (accountFlow.getId() != null) {
@@ -118,7 +117,6 @@ public class AccountFlowService extends AbsService {
         if (type == null) {
             throw new ServiceException("type 参数不能为空");
         }
-
 
         Long merchantId = query.getMerchantId();
         Long accountBookId = query.getAccountBookId();
@@ -237,7 +235,6 @@ public class AccountFlowService extends AbsService {
 
         return new PageResults<>(list, page, total);
     }
-
 
     @Data
     public static class OtherFundQuery {

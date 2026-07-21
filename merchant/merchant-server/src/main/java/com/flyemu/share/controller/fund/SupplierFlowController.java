@@ -52,14 +52,14 @@ public class SupplierFlowController {
     }
 
     @GetMapping
-    public JsonResult list(SupplierFlowService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(SupplierFlowService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(supplierFlowService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid SupplierFlow supplierFlow, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid SupplierFlow supplierFlow, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         supplierFlow.setMerchantId(merchantId);
         supplierFlow.setAccountBookId(accountBookId);
         supplierFlowService.save(supplierFlow);
@@ -67,7 +67,7 @@ public class SupplierFlowController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid SupplierFlow supplierFlow, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid SupplierFlow supplierFlow, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         supplierFlow.setMerchantId(merchantId);
         supplierFlow.setAccountBookId(accountBookId);
         supplierFlowService.save(supplierFlow);
@@ -75,12 +75,12 @@ public class SupplierFlowController {
     }
 
     @DeleteMapping("/{supplierFlowId}")
-    public JsonResult delete(@PathVariable Long supplierFlowId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long supplierFlowId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         supplierFlowService.delete(supplierFlowId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(supplierFlowService.select(merchantId, accountBookId));
     }

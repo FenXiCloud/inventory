@@ -30,12 +30,11 @@ public class FinanceAccountLinkController {
     private final FinanceAccountLinkService financeAccountLinkService;
 
     @GetMapping
-    public JsonResult list(@SaAccountVal AccountDto accountDto, FinanceAccountLinkService.Query query) {
+    public JsonResult list(FinanceAccountLinkService.Query query, @SaAccountVal AccountDto accountDto) {
         query.setMerchantId(accountDto.getMerchantId());
         query.setAccountBookId(accountDto.getAccountBookId());
         return JsonResult.successful(financeAccountLinkService.query(query));
     }
-
 
     @PostMapping
     public JsonResult save(@RequestBody @Valid FinanceAccountLink financeAccountLink, @SaAccountVal AccountDto accountDto) {

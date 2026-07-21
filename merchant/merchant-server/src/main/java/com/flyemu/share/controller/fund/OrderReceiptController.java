@@ -31,7 +31,7 @@ public class OrderReceiptController {
     private final OrderReceiptService orderReceiptService;
 
     @GetMapping
-    public JsonResult list(Page page, OrderReceiptService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, OrderReceiptService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderReceiptService.query(query, page));
@@ -44,10 +44,8 @@ public class OrderReceiptController {
         return JsonResult.successful(orderReceiptService.queryTotal(query));
     }
 
-
-
     @PostMapping
-    public JsonResult save(@RequestBody @Valid OrderReceiptForm orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid OrderReceiptForm orderReceipt, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         orderReceipt.getOrderReceipt().setMerchantId(merchantId);
         orderReceipt.getOrderReceipt().setAccountBookId(accountBookId);
         orderReceiptService.save(orderReceipt);
@@ -55,7 +53,7 @@ public class OrderReceiptController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid OrderReceiptForm orderReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid OrderReceiptForm orderReceipt, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         orderReceipt.getOrderReceipt().setMerchantId(merchantId);
         orderReceipt.getOrderReceipt().setAccountBookId(accountBookId);
         orderReceiptService.save(orderReceipt);
@@ -63,13 +61,13 @@ public class OrderReceiptController {
     }
 
     @DeleteMapping("/{orderReceiptId}")
-    public JsonResult delete(@PathVariable Long orderReceiptId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long orderReceiptId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         orderReceiptService.delete(String.valueOf(orderReceiptId), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(orderReceiptService.load(merchantId, id));
     }
 
@@ -79,10 +77,10 @@ public class OrderReceiptController {
         return JsonResult.successful();
     }
 
-    @GetMapping("writeOff")
+    @GetMapping("/writeOff")
     public JsonResult writeOff(Page page, OrderReceiptService.SalesQuery query,
-                               @SaAccountBookId Long accountBookId,
-                               @SaMerchantId Long merchantId) {
+                               @SaMerchantId Long merchantId,
+                               @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderReceiptService.writeOffCandidates(page, query));

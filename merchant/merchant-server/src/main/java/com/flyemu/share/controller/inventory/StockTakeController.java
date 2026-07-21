@@ -32,15 +32,15 @@ public class StockTakeController {
     private final StockTakeService stockTakeService;
 
     @GetMapping
-    public JsonResult list(Page page, StockTakeService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, StockTakeService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(stockTakeService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid StockTakeForm stockTakeForm, @SaAccountBookId Long accountBookId,
-                           @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+    public JsonResult save(@RequestBody @Valid StockTakeForm stockTakeForm, @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId, @SaAdminId Long adminId) {
         StockTake stockTake = stockTakeForm.getStockTake();
         stockTake.setMerchantId(merchantId);
         stockTake.setAccountBookId(accountBookId);
@@ -57,18 +57,18 @@ public class StockTakeController {
     }
 
     @DeleteMapping("/{stockTakeId}")
-    public JsonResult delete(@PathVariable Long stockTakeId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long stockTakeId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         stockTakeService.delete(stockTakeId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(stockTakeService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(stockTakeService.load(merchantId, id));
     }
 

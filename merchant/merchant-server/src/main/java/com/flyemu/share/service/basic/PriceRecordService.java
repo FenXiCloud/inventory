@@ -384,7 +384,7 @@ public class PriceRecordService extends AbsService {
 
     public List<PriceRecordDTO> showPurchasePrice(Query query) {
         List<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
-                .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification,qSupplier.name,qProduct.purchasePrice)
+                .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification, qSupplier.name, qProduct.purchasePrice)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPriceRecord.productId))
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPriceRecord.supplierId))
                 .where(query.builder.and(qPriceRecord.priceType.eq(PriceType.最近采购价格))

@@ -25,8 +25,8 @@ public class OrderPaymentController {
 
     @GetMapping
     public JsonResult list(Page page, OrderPaymentService.Query query,
-                           @SaAccountBookId Long accountBookId,
-                           @SaMerchantId Long merchantId) {
+                           @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderPaymentService.query(query, page));
@@ -39,12 +39,10 @@ public class OrderPaymentController {
         return JsonResult.successful(orderPaymentService.queryTotal(query));
     }
 
-
-
     @PostMapping
     public JsonResult save(@RequestBody @Valid OrderPaymentForm orderPaymentForm,
-                           @SaAccountBookId Long accountBookId,
-                           @SaMerchantId Long merchantId) {
+                           @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId) {
         OrderPayment orderPayment = orderPaymentForm.getOrderPayment();
         orderPayment.setMerchantId(merchantId);
         orderPayment.setAccountBookId(accountBookId);
@@ -54,8 +52,8 @@ public class OrderPaymentController {
 
     @PutMapping
     public JsonResult update(@RequestBody @Valid OrderPaymentForm orderPaymentForm,
-                             @SaAccountBookId Long accountBookId,
-                             @SaMerchantId Long merchantId) {
+                             @SaMerchantId Long merchantId,
+                             @SaAccountBookId Long accountBookId) {
         OrderPayment orderPayment = orderPaymentForm.getOrderPayment();
         orderPayment.setMerchantId(merchantId);
         orderPayment.setAccountBookId(accountBookId);
@@ -65,14 +63,14 @@ public class OrderPaymentController {
 
     @DeleteMapping("/{orderPaymentId}")
     public JsonResult delete(@PathVariable Long orderPaymentId,
-                             @SaAccountBookId Long accountBookId,
-                             @SaMerchantId Long merchantId) {
+                             @SaMerchantId Long merchantId,
+                             @SaAccountBookId Long accountBookId) {
         orderPaymentService.delete(String.valueOf(orderPaymentId), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(orderPaymentService.load(merchantId, id));
     }
 
@@ -82,10 +80,10 @@ public class OrderPaymentController {
         return JsonResult.successful();
     }
 
-    @GetMapping("writeOff")
+    @GetMapping("/writeOff")
     public JsonResult writeOff(Page page, OrderPaymentService.SupplierQuery query,
-                               @SaAccountBookId Long accountBookId,
-                               @SaMerchantId Long merchantId) {
+                               @SaMerchantId Long merchantId,
+                               @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderPaymentService.writeOffCandidates(page, query));

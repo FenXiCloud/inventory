@@ -28,7 +28,7 @@ public class PrintTemplateController {
     private final SystemLogService systemLogService;
 
     @GetMapping
-    public JsonResult list(PrintTemplateService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(PrintTemplateService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(printTemplateService.query(query));
@@ -36,8 +36,8 @@ public class PrintTemplateController {
 
     @PostMapping
     public JsonResult save(@RequestBody @Valid PrintTemplate printTemplate,
-                           @SaAccountBookId Long accountBookId,
                            @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId,
                            @SaAdminId Long adminId) {
         printTemplate.setMerchantId(merchantId);
         printTemplate.setAccountBookId(accountBookId);
@@ -51,8 +51,8 @@ public class PrintTemplateController {
 
     @PutMapping
     public JsonResult update(@RequestBody @Valid PrintTemplate printTemplate,
-                             @SaAccountBookId Long accountBookId,
                              @SaMerchantId Long merchantId,
+                             @SaAccountBookId Long accountBookId,
                              @SaAdminId Long adminId) {
         PrintTemplate saved = printTemplateService.save(printTemplate);
         systemLogService.record("打印模板", SystemLog.OperationType.修改,
@@ -64,8 +64,8 @@ public class PrintTemplateController {
 
     @DeleteMapping("/{printTemplateId}")
     public JsonResult delete(@PathVariable Long printTemplateId,
-                             @SaAccountBookId Long accountBookId,
                              @SaMerchantId Long merchantId,
+                             @SaAccountBookId Long accountBookId,
                              @SaAdminId Long adminId) {
         printTemplateService.delete(printTemplateId, merchantId, accountBookId);
         systemLogService.record("打印模板", SystemLog.OperationType.删除,
@@ -85,9 +85,8 @@ public class PrintTemplateController {
         return JsonResult.successful(printTemplateService.byType(documentType, merchantId, accountBookId));
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(printTemplateService.select(merchantId, accountBookId));
     }
-
 }

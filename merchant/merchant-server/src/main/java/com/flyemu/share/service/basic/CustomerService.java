@@ -34,7 +34,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
-
 /**
  * @功能描述: 客户管理
  * @创建时间: 2023年08月08日
@@ -47,7 +46,6 @@ import java.util.*;
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class CustomerService extends AbsService {
-
 
     private static final QCustomer qCustomer = QCustomer.customer;
 
@@ -159,7 +157,6 @@ public class CustomerService extends AbsService {
         }
         jqf.delete(qCustomer).where(qCustomer.id.eq(customersId).and(qCustomer.merchantId.eq(merchantId)).and(qCustomer.accountBookId.eq(accountBookId))).execute();
     }
-
 
     public List<Customer> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qCustomer).where(qCustomer.merchantId.eq(merchantId).and(qCustomer.accountBookId.eq(accountBookId))).fetch();
@@ -277,8 +274,7 @@ public class CustomerService extends AbsService {
         if (optionalAccount.isEmpty()) {
             throw new ServiceException("客户不存在");
         }
-        Customer account = optionalAccount.get();
-        return account;
+        return optionalAccount.get();
 
     }
 
@@ -333,7 +329,6 @@ public class CustomerService extends AbsService {
             }
         }
     }
-
 
     public Customer selectByPrimaryKey(Long id) {
         return jqf.selectFrom(qCustomer).where(qCustomer.id.eq(id)).fetchOne();

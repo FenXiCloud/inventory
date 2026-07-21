@@ -28,7 +28,7 @@ public class CustomerLevelController {
     private final CustomerLevelService customerLevelService;
 
     @GetMapping
-    public JsonResult list(@SaAccountVal AccountDto accountDto, CustomerLevelService.Query query) {
+    public JsonResult list(CustomerLevelService.Query query, @SaAccountVal AccountDto accountDto) {
         query.setMerchantId(accountDto.getMerchantId());
         query.setAccountBookId(accountDto.getAccountBookId());
         return JsonResult.successful(customerLevelService.query(query));
@@ -52,12 +52,12 @@ public class CustomerLevelController {
 
     @DeleteMapping("/{customerLevelId}")
     public JsonResult delete(@PathVariable Long customerLevelId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        customerLevelService.delete(customerLevelId, merchantId,accountBookId);
+        customerLevelService.delete(customerLevelId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(customerLevelService.select(merchantId,accountBookId));
+        return JsonResult.successful(customerLevelService.select(merchantId, accountBookId));
     }
 }

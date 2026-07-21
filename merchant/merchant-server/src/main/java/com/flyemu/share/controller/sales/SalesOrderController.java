@@ -32,7 +32,7 @@ public class SalesOrderController {
     private final SalesOrderService salesOrderService;
 
     @GetMapping
-    public JsonResult list(Page page, SalesOrderService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, SalesOrderService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(salesOrderService.query(page, query));
@@ -45,13 +45,11 @@ public class SalesOrderController {
         return JsonResult.successful(salesOrderService.queryTotal(query));
     }
 
-
-
     @PostMapping
     public JsonResult save(
             @RequestBody @Valid SalesOrderForm salesOrderForm,
-            @SaAccountBookId Long accountBookId,
             @SaMerchantId Long merchantId,
+            @SaAccountBookId Long accountBookId,
             @SaAdminId Long adminId
     ) {
         salesOrderForm.getSalesOrder().setMerchantId(merchantId);
@@ -70,18 +68,18 @@ public class SalesOrderController {
     }
 
     @DeleteMapping("/{salesOrderId}")
-    public JsonResult delete(@PathVariable Long salesOrderId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long salesOrderId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         salesOrderService.delete(salesOrderId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(salesOrderService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("load/{orderId}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long orderId) {
+    @GetMapping("/load/{orderId}")
+    public JsonResult load(@PathVariable Long orderId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(salesOrderService.load(merchantId, orderId));
     }
 

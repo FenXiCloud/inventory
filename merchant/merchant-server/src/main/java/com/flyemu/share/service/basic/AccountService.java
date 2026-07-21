@@ -83,6 +83,7 @@ public class AccountService extends AbsService {
         flow.setRemarks(context.getRemarks());
         accountFlowRepository.save(flow);
     }
+
     protected Account getAccountByIdAndContext(Long accountId, Long merchantId, Long accountBookId) {
         return jqf.select(qAccount)
                 .from(qAccount)
@@ -91,13 +92,14 @@ public class AccountService extends AbsService {
                         .and(qAccount.accountBookId.eq(accountBookId)))
                 .fetchFirst();
     }
+
     public List<Account> query(Query query) {
-        List<Account> accounts = bqf.selectFrom(qAccount)
+        return bqf.selectFrom(qAccount)
                 .where(query.builder)
                 .orderBy(qAccount.id.desc())
                 .fetch();
-        return accounts;
     }
+
     @Transactional
     public Account save(Account account) {
         if (account.getId() != null) {

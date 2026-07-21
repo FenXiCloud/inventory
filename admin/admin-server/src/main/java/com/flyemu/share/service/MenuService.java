@@ -46,7 +46,7 @@ public class MenuService extends AbsService {
     public List<Menu> query(Query query) {
         return bqf.selectFrom(qMenu)
                 .where(query.builder)
-                .orderBy(qMenu.menuModule.asc(),qMenu.menuGroup.asc(), qMenu.pos.asc()).fetch();
+                .orderBy(qMenu.menuModule.asc(), qMenu.menuGroup.asc(), qMenu.pos.asc()).fetch();
     }
 
     @Transactional
@@ -57,9 +57,7 @@ public class MenuService extends AbsService {
             //同步更新子节点状态
             if (menu.getEnabled() != null && menu.getEnabled() != original.getEnabled()) {
                 List<Menu> parentMenu = bqf.selectFrom(qMenu).where(qMenu.parentId.eq(original.getId())).fetch();
-                parentMenu.forEach(parent -> {
-                    parent.setEnabled(menu.getEnabled());
-                });
+                parentMenu.forEach(parent -> parent.setEnabled(menu.getEnabled()));
                 if (CollUtil.isNotEmpty(parentMenu)) {
                     menuRepository.saveAll(parentMenu);
                 }
@@ -130,14 +128,16 @@ public class MenuService extends AbsService {
                 builder.and(qMenu.enabled.eq(enabled));
             }
         }
+
         public void setName(String name) {
             if (StrUtil.isNotEmpty(name)) {
                 builder.and(qMenu.name.contains(name));
             }
         }
+
         public void setMenuModule(String menuModule) {
             if (StrUtil.isNotEmpty(menuModule)) {
-                builder.and(qMenu.menuModule.eq(Enum.valueOf(Menu.MenuModule.class,menuModule)));
+                builder.and(qMenu.menuModule.eq(Enum.valueOf(Menu.MenuModule.class, menuModule)));
             }
         }
     }

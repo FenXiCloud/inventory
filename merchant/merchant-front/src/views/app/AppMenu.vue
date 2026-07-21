@@ -129,13 +129,17 @@ export default {
         return;
       }
       const menu = this.findMenu(this.menus, value);
-      if (menu) {
+      // 必须用前端组件名（menu.key）；缺 key 时勿回退到数字 id，否则 :is 渲染会失败
+      const componentKey = menu && menu.key;
+      if (menu && componentKey) {
         this.pushTab({
           keepAlive: false,
-          key: menu.key || menu.id,
+          key: componentKey,
           title: menu.title,
           icon: menu.icon
         });
+      } else if (menu) {
+        console.warn('[AppMenu] 菜单缺少 component/key，无法打开：', menu.title, menu.id);
       }
       this.closeFloatingMenu();
     },

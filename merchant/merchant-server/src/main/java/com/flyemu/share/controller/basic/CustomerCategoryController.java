@@ -28,7 +28,7 @@ public class CustomerCategoryController {
     private final CustomerCategoryService customerCategoryService;
 
     @GetMapping
-    public JsonResult list(@SaAccountVal AccountDto accountDto, CustomerCategoryService.Query query) {
+    public JsonResult list(CustomerCategoryService.Query query, @SaAccountVal AccountDto accountDto) {
         query.setMerchantId(accountDto.getMerchantId());
         query.setAccountBookId(accountDto.getAccountBookId());
         return JsonResult.successful(customerCategoryService.query(query));
@@ -42,7 +42,6 @@ public class CustomerCategoryController {
         return JsonResult.successful();
     }
 
-
     @PutMapping
     public JsonResult update(@RequestBody @Valid CustomerCategory customerCategory, @SaAccountVal AccountDto accountDto) {
         customerCategory.setMerchantId(accountDto.getMerchantId());
@@ -53,12 +52,12 @@ public class CustomerCategoryController {
 
     @DeleteMapping("/{customerCategoryId}")
     public JsonResult delete(@PathVariable Long customerCategoryId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        customerCategoryService.delete(customerCategoryId, merchantId,accountBookId);
+        customerCategoryService.delete(customerCategoryId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(customerCategoryService.select(merchantId,accountBookId));
+        return JsonResult.successful(customerCategoryService.select(merchantId, accountBookId));
     }
 }

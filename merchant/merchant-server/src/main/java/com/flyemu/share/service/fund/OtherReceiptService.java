@@ -96,13 +96,11 @@ public class OtherReceiptService extends AbsService {
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qOtherReceipt.approvedBy))
                 .where(query.builder).orderBy(qOtherReceipt.id.desc());
 
-
         List<OtherReceiptDetailsVO> mainList = mainQuery.offset(page.getOffset()).limit(page.getPageSize()).fetch();
         long total = mainQuery.fetchCount();
 
         return new PageResults<>(mainList, page, total);
     }
-
 
     @Transactional
     public OtherReceipt save(OtherReceiptForm dto) {
@@ -151,7 +149,6 @@ public class OtherReceiptService extends AbsService {
                     .where(qOtherReceiptItem.otherReceiptId.eq(otherReceipt.getId()))
                     .execute();
         }
-
 
         otherReceipt = otherReceiptRepository.save(otherReceipt);
         if (items != null && !items.isEmpty()) {
@@ -263,7 +260,6 @@ public class OtherReceiptService extends AbsService {
                         .and(qOtherReceipt.accountBookId.eq(accountBookId)))
                 .execute();
     }
-
 
     public List<OtherReceipt> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qOtherReceipt).where(qOtherReceipt.merchantId.eq(merchantId).and(qOtherReceipt.accountBookId.eq(accountBookId))).fetch();
@@ -471,7 +467,6 @@ public class OtherReceiptService extends AbsService {
         customerFlow.setRemarks(targetStatus == OrderStatus.已审核 ? "其他收入单审核通过" : "其他收入单反审核");
         return customerFlow;
     }
-
 
     public BigDecimal queryTotal(Query query) {
         return bqf.selectFrom(qOtherReceipt)

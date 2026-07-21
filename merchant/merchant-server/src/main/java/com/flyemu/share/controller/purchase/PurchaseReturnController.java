@@ -32,7 +32,7 @@ public class PurchaseReturnController {
     private final PurchaseReturnService purchaseReturnService;
 
     @GetMapping
-    public JsonResult list(Page page, PurchaseReturnService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, PurchaseReturnService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(purchaseReturnService.query(page, query));
@@ -53,7 +53,7 @@ public class PurchaseReturnController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PurchaseReturnForm purchaseReturnForm, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+    public JsonResult save(@RequestBody @Valid PurchaseReturnForm purchaseReturnForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, @SaAdminId Long adminId) {
         purchaseReturnForm.getPurchaseReturn().setMerchantId(merchantId);
         purchaseReturnForm.getPurchaseReturn().setAccountBookId(accountBookId);
         purchaseReturnForm.getPurchaseReturn().setCreatedBy(adminId);
@@ -69,12 +69,12 @@ public class PurchaseReturnController {
     }
 
     @DeleteMapping("/{purchaseReturnId}")
-    public JsonResult delete(@PathVariable Long purchaseReturnId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long purchaseReturnId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         purchaseReturnService.delete(purchaseReturnId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(purchaseReturnService.select(merchantId, accountBookId));
     }
@@ -100,8 +100,8 @@ public class PurchaseReturnController {
      * @param orderId
      * @return
      */
-    @GetMapping("load/{orderId}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long orderId) {
+    @GetMapping("/load/{orderId}")
+    public JsonResult load(@PathVariable Long orderId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(purchaseReturnService.load(merchantId, orderId));
     }
 

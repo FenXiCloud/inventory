@@ -32,7 +32,7 @@ public class SalesReturnController {
     private final SalesReturnService salesReturnService;
 
     @GetMapping
-    public JsonResult list(Page page, SalesReturnService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, SalesReturnService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(salesReturnService.query(page, query));
@@ -45,13 +45,11 @@ public class SalesReturnController {
         return JsonResult.successful(salesReturnService.queryTotal(query));
     }
 
-
-
     @PostMapping
     public JsonResult save(
             @RequestBody @Valid SalesReturnForm salesReturnForm,
-            @SaAccountBookId Long accountBookId,
             @SaMerchantId Long merchantId,
+            @SaAccountBookId Long accountBookId,
             @SaAdminId Long adminId
     ) {
         salesReturnForm.getSalesReturn().setMerchantId(merchantId);
@@ -70,18 +68,18 @@ public class SalesReturnController {
     }
 
     @DeleteMapping("/{salesReturnId}")
-    public JsonResult delete(@PathVariable Long salesReturnId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long salesReturnId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         salesReturnService.delete(salesReturnId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(salesReturnService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("load/{orderId}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long orderId) {
+    @GetMapping("/load/{orderId}")
+    public JsonResult load(@PathVariable Long orderId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(salesReturnService.load(merchantId, orderId));
     }
 

@@ -35,12 +35,9 @@ public class SupplierCategoryService extends AbsService {
 
     private final SupplierCategoryRepository supplierCategoryRepository;
 
-
     public List<SupplierCategory> query(Query query) {
-        List<SupplierCategory> supplierCategories = bqf.selectFrom(qSupplierCategory).where(query.builder).orderBy(qSupplierCategory.id.desc()).fetch();
-        return supplierCategories;
+        return bqf.selectFrom(qSupplierCategory).where(query.builder).orderBy(qSupplierCategory.id.desc()).fetch();
     }
-
 
     @Transactional
     public SupplierCategory save(SupplierCategory supplierCategory) {
@@ -53,7 +50,6 @@ public class SupplierCategoryService extends AbsService {
         return supplierCategoryRepository.save(supplierCategory);
     }
 
-
     @Transactional
     public void delete(Long vendorsCategoryId, Long merchantId, Long accountBookId) {
         Assert.isFalse(bqf.selectFrom(qSupplier).where(qSupplier.supplierCategoryId.eq(vendorsCategoryId).and(qSupplier.merchantId.eq(merchantId)).and(qSupplier.accountBookId.eq(accountBookId))).fetchCount() > 0, "分类已使用，不能删除");
@@ -63,7 +59,6 @@ public class SupplierCategoryService extends AbsService {
     public List<SupplierCategory> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qSupplierCategory).where(qSupplierCategory.merchantId.eq(merchantId).and(qSupplierCategory.accountBookId.eq(accountBookId))).fetch();
     }
-
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

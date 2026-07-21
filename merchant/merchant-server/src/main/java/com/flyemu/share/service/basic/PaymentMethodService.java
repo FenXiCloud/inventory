@@ -35,11 +35,10 @@ public class PaymentMethodService extends AbsService {
     private final PaymentMethodRepository paymentMethodRepository;
 
     public List<PaymentMethod> query(Query query) {
-        List<PaymentMethod> paymentMethods = bqf.selectFrom(qPaymentMethod)
+        return bqf.selectFrom(qPaymentMethod)
                 .where(query.builder)
                 .orderBy(qPaymentMethod.id.desc())
                 .fetch();
-        return paymentMethods;
     }
 
     @Transactional
@@ -99,7 +98,6 @@ public class PaymentMethodService extends AbsService {
                         .and(qPaymentMethod.accountBookId.eq(accountBookId)))
                 .execute();
     }
-
 
     public List<PaymentMethod> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qPaymentMethod).where(qPaymentMethod.merchantId.eq(merchantId).and(qPaymentMethod.accountBookId.eq(accountBookId))).fetch();

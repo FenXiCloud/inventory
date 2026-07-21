@@ -32,11 +32,10 @@ public class AccountTypeService extends AbsService {
     private final AccountTypeRepository accountTypeRepository;
 
     public List<AccountType> query(Query query) {
-        List<AccountType> accountTypes = bqf.selectFrom(qAccountType)
+        return bqf.selectFrom(qAccountType)
                 .where(query.builder)
                 .orderBy(qAccountType.id.desc())
                 .fetch();
-        return accountTypes;
     }
 
     @Transactional
@@ -63,6 +62,7 @@ public class AccountTypeService extends AbsService {
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
+
         public void setName(String  name) {
             if (name != null&&name!="") {
                 builder.and(qAccountType.name.like("%" + name + "%"));

@@ -28,7 +28,7 @@ public class SupplierCategoryController {
     private final SupplierCategoryService supplierCategoryService;
 
     @GetMapping
-    public JsonResult list(@SaAccountVal AccountDto accountDto, SupplierCategoryService.Query query) {
+    public JsonResult list(SupplierCategoryService.Query query, @SaAccountVal AccountDto accountDto) {
         query.setMerchantId(accountDto.getMerchantId());
         query.setAccountBookId(accountDto.getAccountBookId());
         return JsonResult.successful(supplierCategoryService.query(query));
@@ -52,12 +52,12 @@ public class SupplierCategoryController {
 
     @DeleteMapping("/{supplierCategoryId}")
     public JsonResult delete(@PathVariable Long supplierCategoryId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        supplierCategoryService.delete(supplierCategoryId, merchantId,accountBookId);
+        supplierCategoryService.delete(supplierCategoryId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(supplierCategoryService.select(merchantId,accountBookId));
+        return JsonResult.successful(supplierCategoryService.select(merchantId, accountBookId));
     }
 }

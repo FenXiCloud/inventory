@@ -44,12 +44,12 @@ public class WarehouseController {
 
     @DeleteMapping("/{warehouseId}")
     public JsonResult delete(@PathVariable Long warehouseId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        warehouseService.delete(warehouseId,merchantId,accountBookId);
+        warehouseService.delete(warehouseId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaAccountVal AccountDto accountDto) {
-        return JsonResult.successful(warehouseService.select(accountDto.getMerchantId(),accountDto.getAccountBookId()));
+        return JsonResult.successful(warehouseService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 }

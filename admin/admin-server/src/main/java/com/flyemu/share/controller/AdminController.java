@@ -25,7 +25,7 @@ public class AdminController {
     private final AdminService adminService;
 
     @GetMapping
-    public JsonResult list(Page page, AdminService.Query query,Long merchantId) {
+    public JsonResult list(Page page, AdminService.Query query, Long merchantId) {
         query.setMerchantId(merchantId);
         return JsonResult.successful(adminService.query(page, query));
     }

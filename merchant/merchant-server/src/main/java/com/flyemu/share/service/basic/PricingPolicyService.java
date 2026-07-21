@@ -39,11 +39,10 @@ public class PricingPolicyService extends AbsService {
         if (query.merchantId != null && query.accountBookId != null) {
             priceResolveService.ensureDefaultPolicies(query.merchantId, query.accountBookId);
         }
-        List<PricingPolicy> pricingPolicys = bqf.selectFrom(qPricingPolicy)
+        return bqf.selectFrom(qPricingPolicy)
                 .where(query.builder)
                 .orderBy(qPricingPolicy.priority.asc())
                 .fetch();
-        return pricingPolicys;
     }
 
     @Transactional

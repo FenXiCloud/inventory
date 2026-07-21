@@ -19,7 +19,7 @@ public class AccountBookParametersController {
 
     private final AccountBookParametersService accountBookParametersService;
 
-    @GetMapping("load/{accountBookId}")
+    @GetMapping("/load/{accountBookId}")
     public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Integer accountBookId) {
         return JsonResult.successful(accountBookParametersService.load(merchantId, accountBookId));
     }

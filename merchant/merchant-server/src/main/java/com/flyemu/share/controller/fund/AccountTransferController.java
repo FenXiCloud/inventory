@@ -31,8 +31,8 @@ public class AccountTransferController {
 
     @GetMapping
     public JsonResult list(Page page, AccountTransferService.Query query,
-                           @SaAccountBookId Long accountBookId,
-                           @SaMerchantId Long merchantId) {
+                           @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(accountTransferService.query(page, query));
@@ -45,12 +45,10 @@ public class AccountTransferController {
         return JsonResult.successful(accountTransferService.queryTotal(query));
     }
 
-
-
     @PostMapping
     public JsonResult save(@RequestBody @Valid AccountTransferForm dto,
-                           @SaAccountBookId Long accountBookId,
-                           @SaMerchantId Long merchantId) {
+                           @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId) {
         dto.getOrder().setMerchantId(merchantId);
         dto.getOrder().setAccountBookId(accountBookId);
         accountTransferService.save(dto);
@@ -59,8 +57,8 @@ public class AccountTransferController {
 
     @PutMapping
     public JsonResult update(@RequestBody @Valid AccountTransferForm dto,
-                             @SaAccountBookId Long accountBookId,
-                             @SaMerchantId Long merchantId) {
+                             @SaMerchantId Long merchantId,
+                             @SaAccountBookId Long accountBookId) {
         dto.getOrder().setMerchantId(merchantId);
         dto.getOrder().setAccountBookId(accountBookId);
         accountTransferService.save(dto);
@@ -69,14 +67,14 @@ public class AccountTransferController {
 
     @DeleteMapping("/{accountTransferId}")
     public JsonResult delete(@PathVariable Long accountTransferId,
-                             @SaAccountBookId Long accountBookId,
-                             @SaMerchantId Long merchantId) {
+                             @SaMerchantId Long merchantId,
+                             @SaAccountBookId Long accountBookId) {
         accountTransferService.delete(String.valueOf(accountTransferId), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(accountTransferService.load(merchantId, id));
     }
 

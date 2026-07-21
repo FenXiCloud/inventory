@@ -19,7 +19,7 @@ public class AccountBookController {
         return JsonResult.successful(accountBookService.query(page, query));
     }
 
-    @GetMapping("all")
+    @GetMapping("/all")
     public JsonResult listAll(Long merchantId) {
         return JsonResult.successful(accountBookService.listAll(merchantId));
     }

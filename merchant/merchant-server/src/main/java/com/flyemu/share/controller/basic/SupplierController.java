@@ -33,7 +33,7 @@ public class SupplierController {
     private final SupplierService supplierService;
 
     @GetMapping
-    public JsonResult list(@SaAccountVal AccountDto accountDto, Page page, SupplierService.Query query) {
+    public JsonResult list(Page page, SupplierService.Query query, @SaAccountVal AccountDto accountDto) {
         query.setMerchantId(accountDto.getMerchantId());
         query.setAccountBookId(accountDto.getAccountBookId());
         return JsonResult.successful(supplierService.query(page, query));
@@ -61,14 +61,13 @@ public class SupplierController {
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId,@SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(supplierService.select(merchantId,accountBookId));
+    @GetMapping("/select")
+    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(supplierService.select(merchantId, accountBookId));
     }
 
-
     @GetMapping("/product/select/{supplierId}")
-    public JsonResult select(@PathVariable Long supplierId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult select(@PathVariable Long supplierId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(supplierService.selectProducts(supplierId, merchantId, accountBookId));
     }
 }

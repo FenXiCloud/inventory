@@ -25,7 +25,6 @@ public class MerchantUserController {
 
     @GetMapping
     public JsonResult list(Page page) {
-
         return JsonResult.successful(merchantUserService.query(page));
     }
 
@@ -42,7 +41,6 @@ public class MerchantUserController {
         merchantUserService.save(merchantUser);
         return JsonResult.successful();
     }
-
 
     @DeleteMapping("/{userId}")
     public JsonResult delete(@PathVariable Long userId, Long merchantId) {

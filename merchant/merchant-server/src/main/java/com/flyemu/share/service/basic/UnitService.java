@@ -34,15 +34,12 @@ public class UnitService extends AbsService {
 
     private final UnitRepository unitRepository;
 
-
     public List<Unit> query(Query query) {
-        List<Unit> units = bqf.selectFrom(qUnit)
+        return bqf.selectFrom(qUnit)
                 .where(query.builder)
                 .orderBy(qUnit.id.desc())
                 .fetch();
-        return units;
     }
-
 
     @Transactional
     public Unit save(Unit unit) {
@@ -74,7 +71,6 @@ public class UnitService extends AbsService {
             throw new ServiceException(e.getMessage());
         }
     }
-
 
     private final ProductExistenceChecker existenceChecker;
 
@@ -123,7 +119,6 @@ public class UnitService extends AbsService {
         return unitRepository.getReferenceById(id);
     }
 
-
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
@@ -132,7 +127,6 @@ public class UnitService extends AbsService {
                 builder.and(qUnit.name.contains(name));
             }
         }
-
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {

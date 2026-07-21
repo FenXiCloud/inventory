@@ -21,8 +21,8 @@ public class SystemLogController {
     @GetMapping
     public JsonResult list(Page page,
                            SystemLogService.Query query,
-                           @SaAccountBookId Long accountBookId,
-                           @SaMerchantId Long merchantId) {
+                           @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(systemLogService.query(page, query));
@@ -30,8 +30,8 @@ public class SystemLogController {
 
     @DeleteMapping("/{systemLogId}")
     public JsonResult delete(@PathVariable Long systemLogId,
-                             @SaAccountBookId Long accountBookId,
-                             @SaMerchantId Long merchantId) {
+                             @SaMerchantId Long merchantId,
+                             @SaAccountBookId Long accountBookId) {
         systemLogService.delete(systemLogId, merchantId, accountBookId);
         return JsonResult.successful();
     }

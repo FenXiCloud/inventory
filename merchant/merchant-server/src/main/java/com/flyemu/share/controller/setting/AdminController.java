@@ -30,21 +30,18 @@ public class AdminController {
     private final AdminService adminService;
     private final DDLoginService ddLoginService;
 
-
     @GetMapping
-    public JsonResult list(@SaMerchantId Long merchantId, @SaAccountVal AccountDto accountDto, AdminService.Query query) {
-        return JsonResult.successful(adminService.query(merchantId,  query));
+    public JsonResult list(AdminService.Query query, @SaMerchantId Long merchantId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(adminService.query(merchantId, query));
     }
 
-
-    @PostMapping    
+    @PostMapping
     public JsonResult save(@RequestBody @Valid Admin admin, @SaMerchantId Long merchantId, @SaAccountVal AccountDto accountDto) {
         Assert.isNull(admin.getId(), "新增管理员Id必须为空~");
         admin.setMerchantId(merchantId);
         adminService.save(admin);
         return JsonResult.successful();
     }
-
 
     @PutMapping
     public JsonResult update(@RequestBody @Valid Admin admin, @SaMerchantId Long merchantId) {
@@ -54,7 +51,6 @@ public class AdminController {
         return JsonResult.successful();
     }
 
-
     @DeleteMapping("/{adminId}")
     public JsonResult delete(@PathVariable Long adminId, @SaAdminId Integer saAdminId, @SaMerchantId Long merchantId) {
         Assert.isFalse(saAdminId.equals(adminId), "不允许删除自己~");
@@ -62,16 +58,14 @@ public class AdminController {
         return JsonResult.successful();
     }
 
-
     @PutMapping("/reset/password/{adminId}")
     public JsonResult resetPassword(@PathVariable Long adminId, @SaMerchantId Long merchantId) {
         adminService.resetPassword(adminId, merchantId);
         return JsonResult.successful();
     }
 
-
     @PutMapping("/update/password")
-    public JsonResult updatePassword(@SaAdminId Long adminId, String oldPassword, String newPassword, @SaMerchantId Long merchantId) {
+    public JsonResult updatePassword(String oldPassword, String newPassword, @SaAdminId Long adminId, @SaMerchantId Long merchantId) {
         adminService.updatePassword(adminId, oldPassword, newPassword, merchantId);
         return JsonResult.successful();
     }

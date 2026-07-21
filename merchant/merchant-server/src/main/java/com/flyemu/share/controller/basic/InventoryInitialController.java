@@ -27,25 +27,25 @@ public class InventoryInitialController {
     private final InventoryItemService inventoryItemService;
 
     @GetMapping
-    public JsonResult list(Page page, InventoryItemService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, InventoryItemService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(inventoryItemService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid InventoryItem inventoryItem, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid InventoryItem inventoryItem, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         inventoryItem.setMerchantId(merchantId);
         inventoryItem.setAccountBookId(accountBookId);
         inventoryItemService.save(inventoryItem);
         return JsonResult.successful();
     }
 
-    @PostMapping("batch")
+    @PostMapping("/batch")
     public JsonResult batch(@RequestBody @Valid InventoryInitialForm inventoryInitialForm,
-                                @SaAccountBookId Long accountBookId,
-                                @SaMerchantId Long merchantId,
-                                @SaAdminId Long adminId) {
+                            @SaMerchantId Long merchantId,
+                            @SaAccountBookId Long accountBookId,
+                            @SaAdminId Long adminId) {
         inventoryInitialForm.setMerchantId(merchantId);
         inventoryInitialForm.setAccountBookId(accountBookId);
         inventoryInitialForm.setCreatedBy(adminId);
@@ -54,7 +54,7 @@ public class InventoryInitialController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid InventoryItem inventoryItem, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid InventoryItem inventoryItem, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         inventoryItem.setMerchantId(merchantId);
         inventoryItem.setAccountBookId(accountBookId);
         inventoryItemService.save(inventoryItem);
@@ -62,18 +62,18 @@ public class InventoryInitialController {
     }
 
     @DeleteMapping("/{inventoryItemId}")
-    public JsonResult delete(@PathVariable Long inventoryItemId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long inventoryItemId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         inventoryItemService.delete(inventoryItemId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(inventoryItemService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         InventoryItem query = new InventoryItem();
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
@@ -83,7 +83,7 @@ public class InventoryInitialController {
 
     @PutMapping("/batchDelete")
     public JsonResult batchDelete(@RequestBody InventoryInitialForm inventoryInitialForm,
-                                  @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+                                  @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         inventoryItemService.batchDelete(inventoryInitialForm.getIds(), merchantId, accountBookId);
         return JsonResult.successful();
     }

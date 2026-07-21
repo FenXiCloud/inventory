@@ -77,7 +77,6 @@ public class OtherInboundService extends AbsService {
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final SqlToyLazyDao sqlToyLazyDao;
 
-
     public PageResults<OtherInboundDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qOtherInbound)
                 .select(qOtherInbound, qOtherInboundItem.quantity.sum().as("item_quantity"))

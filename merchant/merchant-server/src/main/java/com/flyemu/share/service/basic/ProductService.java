@@ -73,27 +73,22 @@ import java.util.stream.Collectors;
 public class ProductService extends AbsService {
 
     private final static QProduct qProduct = QProduct.product;
-
     private final static QProductCategory qProductCategory = QProductCategory.productCategory;
+    private final static QCustomerLevel qCustomerLevel = QCustomerLevel.customerLevel;
+    private final static QInventory qInventory = QInventory.inventory;
+
     private final QUnit qUnit = QUnit.unit;
-
-    private final ProductRepository productRepository;
-
-    private final CustomerLevelPriceRepository customerLevelPriceRepository;
-
     private final QCustomerLevelPrice qCustomerLevelPrice = QCustomerLevelPrice.customerLevelPrice;
 
-    private final PriceRecordService priceRecordService;
-
+    private final ProductRepository productRepository;
+    private final CustomerLevelPriceRepository customerLevelPriceRepository;
     private final CustomerLevelRepository customerLevelRepository;
-
-    private final PriceResolveService priceResolveService;
-
     private final InventoryItemRepository inventoryItemRepository;
+    private final PriceRecordService priceRecordService;
+    private final PriceResolveService priceResolveService;
     private final CodeRuleService codeRuleService;
     private final ProductCategoryService productCategoryService;
-
-    private final static QCustomerLevel qCustomerLevel = QCustomerLevel.customerLevel;
+    private final ProductExistenceChecker existenceChecker;
 
     public PageResults<ProductDto> query(Page page, Query query) {
         PagedList<Tuple> pagedList = bqf.selectFrom(qProduct).select(qProduct, qUnit.name, qProductCategory.name).leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId)).where(query.builders()).orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -199,7 +194,6 @@ public class ProductService extends AbsService {
 
             }
             product.setAccountBookId(accountBookId);
-            product.setMerchantId(merchantId);
             product.setMerchantId(merchantId);
             product.setEnabled(true);
             product.setPinyin(PinYinUtil.getFirstLettersLo(product.getName()) + "," + PinYinUtil.getPinyinString(product.getName()));
@@ -344,51 +338,48 @@ public class ProductService extends AbsService {
     }
 
 
-    private final ProductExistenceChecker existenceChecker;
     @Transactional
-    public void delete(Long productsId, Long merchantId, Long accountBookId) {
-
-        if (existenceChecker.existsInPurchaseOrder(productsId, 1)) {
+    public void delete(Long productId, Long merchantId, Long accountBookId) {
+        if (existenceChecker.existsInPurchaseOrder(productId, 1)) {
             throw new ServiceException("该商品已存在采购单,不能删除");
         }
-        if (existenceChecker.existsInPurchaseInbound(productsId, 1)) {
+        if (existenceChecker.existsInPurchaseInbound(productId, 1)) {
             throw new ServiceException("该商品已存在采购入库单,不能删除");
         }
-        if (existenceChecker.existsInPurchaseReturn(productsId, 1)) {
+        if (existenceChecker.existsInPurchaseReturn(productId, 1)) {
             throw new ServiceException("该商品已存在采购退货单,不能删除");
         }
-        if (existenceChecker.existsInSalesOrder(productsId, 1)) {
+        if (existenceChecker.existsInSalesOrder(productId, 1)) {
             throw new ServiceException("该商品已存在销售单,不能删除");
         }
-        if (existenceChecker.existsInSalesOutbound(productsId, 1)) {
+        if (existenceChecker.existsInSalesOutbound(productId, 1)) {
             throw new ServiceException("该商品已存在销售出库单,不能删除");
         }
-        if (existenceChecker.existsInSalesReturn(productsId, 1)) {
+        if (existenceChecker.existsInSalesReturn(productId, 1)) {
             throw new ServiceException("该商品已存在销售退货单,不能删除");
         }
-        if (existenceChecker.existsInInventoryTransfer(productsId, 1)) {
+        if (existenceChecker.existsInInventoryTransfer(productId, 1)) {
             throw new ServiceException("该商品已存在库存调拨单,不能删除");
         }
-        if (existenceChecker.existsInStockTake(productsId, 1)) {
+        if (existenceChecker.existsInStockTake(productId, 1)) {
             throw new ServiceException("该商品已存在库存盘点单,不能删除");
         }
-        if (existenceChecker.existsInOtherInbound(productsId, 1)) {
+        if (existenceChecker.existsInOtherInbound(productId, 1)) {
             throw new ServiceException("该商品已存在其他入库单,不能删除");
         }
-        if (existenceChecker.existsInOtherOutbound(productsId, 1)) {
+        if (existenceChecker.existsInOtherOutbound(productId, 1)) {
             throw new ServiceException("该商品已存在其他出库单,不能删除");
         }
-        if (existenceChecker.existsInCostAdjustment(productsId, 1)) {
+        if (existenceChecker.existsInCostAdjustment(productId, 1)) {
             throw new ServiceException("该商品已存在成本调整单,不能删除");
         }
 
-        Product deleting = productRepository.getById(productsId);
+        Product deleting = productRepository.getById(productId);
         Long categoryId = deleting.getProductCategoryId();
-        jqf.delete(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(productsId).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).execute();
-        jqf.delete(qProduct).where(qProduct.id.eq(productsId).and(qProduct.merchantId.eq(merchantId)).and(qProduct.accountBookId.eq(accountBookId))).execute();
+        jqf.delete(qCustomerLevelPrice).where(qCustomerLevelPrice.productId.eq(productId).and(qCustomerLevelPrice.merchantId.eq(merchantId)).and(qCustomerLevelPrice.accountBookId.eq(accountBookId))).execute();
+        jqf.delete(qProduct).where(qProduct.id.eq(productId).and(qProduct.merchantId.eq(merchantId)).and(qProduct.accountBookId.eq(accountBookId))).execute();
         productCategoryService.refreshLeafByProducts(categoryId, merchantId, accountBookId);
     }
-    private final static QInventory qInventory = QInventory.inventory;
 
     public List<ProductDto> select(Long merchantId, Long accountBookId, Long productCategoryId, Long warehouseId, Long customerId) {
         priceResolveService.ensureDefaultPolicies(merchantId, accountBookId);

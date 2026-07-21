@@ -22,28 +22,28 @@ public class SalesReportController {
 
     @PostMapping("/item")
     public JsonResult item(Page page, @RequestBody(required = false) SalesReportForm salesReportForm,
-                           @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+                           @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         salesReportForm = ensureForm(salesReportForm, merchantId, accountBookId);
         return JsonResult.successful(salesReportService.item(page, salesReportForm));
     }
 
     @PostMapping("/summary")
     public JsonResult summary(Page page, @RequestBody(required = false) SalesReportForm salesReportForm,
-                              @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+                              @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         salesReportForm = ensureForm(salesReportForm, merchantId, accountBookId);
         return JsonResult.successful(salesReportService.summary(page, salesReportForm));
     }
 
     @PostMapping("/profit")
     public JsonResult profit(Page page, @RequestBody(required = false) SalesReportForm salesReportForm,
-                             @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+                             @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         salesReportForm = ensureForm(salesReportForm, merchantId, accountBookId);
         return JsonResult.successful(salesReportService.profit(page, salesReportForm));
     }
 
     @PostMapping("/ranking")
     public JsonResult ranking(Page page, @RequestBody(required = false) SalesReportForm salesReportForm,
-                              @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+                              @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         salesReportForm = ensureForm(salesReportForm, merchantId, accountBookId);
         return JsonResult.successful(salesReportService.ranking(page, salesReportForm));
     }

@@ -31,7 +31,6 @@ public class OtherInboundItemService extends AbsService {
 
     private final OtherInboundItemRepository otherInboundItemRepository;
 
-
     /**
      * 其他入库明细
      *

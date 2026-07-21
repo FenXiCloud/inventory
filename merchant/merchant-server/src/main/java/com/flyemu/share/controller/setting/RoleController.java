@@ -37,7 +37,7 @@ public class RoleController {
      * @return
      */
     @GetMapping
-    public JsonResult list(Page page, @SaAccountVal AccountDto accountDto, RoleService.Query query) {
+    public JsonResult list(Page page, RoleService.Query query, @SaAccountVal AccountDto accountDto) {
         query.setMerchantId(accountDto.getMerchantId());
         return JsonResult.successful(roleService.query(page, query));
     }

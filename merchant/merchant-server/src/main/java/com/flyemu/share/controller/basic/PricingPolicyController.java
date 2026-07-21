@@ -25,14 +25,14 @@ public class PricingPolicyController {
     private final PricingPolicyService pricingPolicyService;
 
     @GetMapping
-    public JsonResult list(PricingPolicyService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(PricingPolicyService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(pricingPolicyService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PricingPolicy pricingPolicy, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid PricingPolicy pricingPolicy, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         pricingPolicy.setMerchantId(merchantId);
         pricingPolicy.setAccountBookId(accountBookId);
         pricingPolicyService.save(pricingPolicy);
@@ -40,7 +40,7 @@ public class PricingPolicyController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PricingPolicy pricingPolicy, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid PricingPolicy pricingPolicy, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         pricingPolicy.setMerchantId(merchantId);
         pricingPolicy.setAccountBookId(accountBookId);
         pricingPolicyService.save(pricingPolicy);
@@ -48,19 +48,19 @@ public class PricingPolicyController {
     }
 
     @DeleteMapping("/{pricingPolicyId}")
-    public JsonResult delete(@PathVariable Long pricingPolicyId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long pricingPolicyId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         pricingPolicyService.delete(pricingPolicyId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(pricingPolicyService.select(merchantId, accountBookId));
     }
 
-    @PutMapping("sort")
+    @PutMapping("/sort")
     public JsonResult sort(@RequestBody @Valid PricingPolicyForm pricingPolicyForm,
-                           @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+                           @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         pricingPolicyService.sort(pricingPolicyForm, merchantId, accountBookId);
         return JsonResult.successful();
     }

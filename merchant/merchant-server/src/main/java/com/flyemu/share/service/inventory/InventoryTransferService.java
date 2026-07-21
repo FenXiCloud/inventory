@@ -79,7 +79,6 @@ public class InventoryTransferService extends AbsService {
 
     private final static QInventory qInventory = QInventory.inventory;
 
-
     public PageResults<InventoryTransferDto> query(Page page, InventoryTransferService.Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryTransfer)
                 .select(qInventoryTransfer, toQWarehouse.name, formQWarehouse.name, qAdmin.name)
@@ -334,7 +333,6 @@ public class InventoryTransferService extends AbsService {
         }
         return inventoryItem;
     }
-
 
     /**
      * 处理初始化库存

@@ -47,11 +47,10 @@ public class CheckoutController {
         checkout.setMerchantId(accountDto.getMerchantId());
         checkout.setAccountBookId(accountDto.getAccountBookId());
         checkout.setCheckId(accountDto.getAdminId());
-        LocalDate checkDate= checkoutService.save(checkout).getCheckDate();
+        LocalDate checkDate = checkoutService.save(checkout).getCheckDate();
         SaSession session = StpUtil.getTokenSession();
         accountDto.setCheckDate(checkDate);
         session.set(Constants.SESSION_ACCOUNT, accountDto);
-
         return JsonResult.successful(checkDate);
     }
 
@@ -62,8 +61,8 @@ public class CheckoutController {
      * @return
      */
     @PutMapping
-    public JsonResult cancelCheckout( @SaAccountVal AccountDto accountDto) {
-        LocalDate checkDate = checkoutService.cancelCheckout(accountDto.getAccountBookId(),accountDto.getMerchantId());
+    public JsonResult cancelCheckout(@SaAccountVal AccountDto accountDto) {
+        LocalDate checkDate = checkoutService.cancelCheckout(accountDto.getAccountBookId(), accountDto.getMerchantId());
         SaSession session = StpUtil.getTokenSession();
         accountDto.setCheckDate(checkDate);
         session.set(Constants.SESSION_ACCOUNT, accountDto);

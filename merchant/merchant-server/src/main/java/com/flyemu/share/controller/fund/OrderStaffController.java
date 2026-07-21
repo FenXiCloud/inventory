@@ -21,26 +21,26 @@ public class OrderStaffController {
     private final OrderStaffService orderStaffService;
 
     @GetMapping
-    public JsonResult list(Page page, OrderStaffService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, OrderStaffService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderStaffService.query(page, query));
     }
 
-    @GetMapping("select")
-    public JsonResult select(OrderStaffService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/select")
+    public JsonResult select(OrderStaffService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderStaffService.select(query));
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@PathVariable Integer id, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Integer id, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(orderStaffService.load(id, merchantId, accountBookId));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid OrderStaff orderStaff, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid OrderStaff orderStaff, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         orderStaff.setMerchantId(merchantId);
         orderStaff.setAccountBookId(accountBookId);
         orderStaffService.save(orderStaff);
@@ -48,7 +48,7 @@ public class OrderStaffController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid OrderStaff orderStaff, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid OrderStaff orderStaff, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         orderStaff.setMerchantId(merchantId);
         orderStaff.setAccountBookId(accountBookId);
         orderStaffService.save(orderStaff);
@@ -56,7 +56,7 @@ public class OrderStaffController {
     }
 
     @DeleteMapping("/{id}")
-    public JsonResult delete(@PathVariable Integer id, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Integer id, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         orderStaffService.delete(id, merchantId, accountBookId);
         return JsonResult.successful();
     }

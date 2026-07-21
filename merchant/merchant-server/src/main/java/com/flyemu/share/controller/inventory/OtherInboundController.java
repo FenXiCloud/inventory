@@ -32,15 +32,15 @@ public class OtherInboundController {
     private final OtherInboundService otherInboundService;
 
     @GetMapping
-    public JsonResult list(Page page, OtherInboundService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, OtherInboundService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(otherInboundService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid OtherInboundForm otherInboundForm, @SaAccountBookId Long accountBookId,
-                           @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+    public JsonResult save(@RequestBody @Valid OtherInboundForm otherInboundForm, @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId, @SaAdminId Long adminId) {
         OtherInbound otherInbound = otherInboundForm.getOtherInbound();
         otherInbound.setMerchantId(merchantId);
         otherInbound.setAccountBookId(accountBookId);
@@ -57,18 +57,18 @@ public class OtherInboundController {
     }
 
     @DeleteMapping("/{otherInboundId}")
-    public JsonResult delete(@PathVariable Long otherInboundId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long otherInboundId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         otherInboundService.delete(otherInboundId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(otherInboundService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(otherInboundService.load(merchantId, id));
     }
 

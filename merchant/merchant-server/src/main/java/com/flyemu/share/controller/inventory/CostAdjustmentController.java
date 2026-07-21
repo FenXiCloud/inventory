@@ -32,15 +32,15 @@ public class CostAdjustmentController {
     private final CostAdjustmentService costAdjustmentService;
 
     @GetMapping
-    public JsonResult list(Page page, CostAdjustmentService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, CostAdjustmentService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(costAdjustmentService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid CostAdjustmentForm costAdjustmentForm, @SaAccountBookId Long accountBookId,
-                           @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+    public JsonResult save(@RequestBody @Valid CostAdjustmentForm costAdjustmentForm, @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId, @SaAdminId Long adminId) {
         CostAdjustment costAdjustment = costAdjustmentForm.getCostAdjustment();
         costAdjustment.setMerchantId(merchantId);
         costAdjustment.setAccountBookId(accountBookId);
@@ -57,18 +57,18 @@ public class CostAdjustmentController {
     }
 
     @DeleteMapping("/{costAdjustmentId}")
-    public JsonResult delete(@PathVariable Long costAdjustmentId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long costAdjustmentId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         costAdjustmentService.delete(costAdjustmentId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(costAdjustmentService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(costAdjustmentService.load(merchantId, id));
     }
 

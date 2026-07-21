@@ -28,7 +28,7 @@ public class FinanceVoucherTemplateController {
     private final FinanceVoucherTemplateService financeVoucherTemplateService;
 
     @GetMapping
-    public JsonResult list(@SaAccountVal AccountDto accountDto, FinanceVoucherTemplateService.Query query) {
+    public JsonResult list(FinanceVoucherTemplateService.Query query, @SaAccountVal AccountDto accountDto) {
         query.setMerchantId(accountDto.getMerchantId());
         query.setAccountBookId(accountDto.getAccountBookId());
         return JsonResult.successful(financeVoucherTemplateService.query(query));
@@ -51,13 +51,13 @@ public class FinanceVoucherTemplateController {
     }
 
     @DeleteMapping("/{id}")
-    public JsonResult delete(@PathVariable Long id, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long id, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         financeVoucherTemplateService.delete(id, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(financeVoucherTemplateService.load(merchantId, id));
     }
 

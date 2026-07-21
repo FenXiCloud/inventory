@@ -27,25 +27,25 @@ public class SupplierInitialController {
     private final SupplierFlowService supplierFlowService;
 
     @GetMapping
-    public JsonResult list(Page page, SupplierFlowService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, SupplierFlowService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(supplierFlowService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid SupplierFlow supplierFlow, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid SupplierFlow supplierFlow, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         supplierFlow.setMerchantId(merchantId);
         supplierFlow.setAccountBookId(accountBookId);
         supplierFlowService.save(supplierFlow);
         return JsonResult.successful();
     }
 
-    @PostMapping("batch")
+    @PostMapping("/batch")
     public JsonResult batch(@RequestBody @Valid SupplierInitialForm form,
-                                @SaAccountBookId Long accountBookId,
-                                @SaMerchantId Long merchantId,
-                                @SaAdminId Long adminId) {
+                            @SaMerchantId Long merchantId,
+                            @SaAccountBookId Long accountBookId,
+                            @SaAdminId Long adminId) {
         form.setMerchantId(merchantId);
         form.setAccountBookId(accountBookId);
         form.setCreatedBy(adminId);
@@ -53,8 +53,8 @@ public class SupplierInitialController {
         return JsonResult.successful();
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         SupplierFlow query = new SupplierFlow();
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
@@ -64,13 +64,13 @@ public class SupplierInitialController {
 
     @PutMapping("/batchDelete")
     public JsonResult batchDelete(@RequestBody SupplierInitialForm form,
-                                  @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+                                  @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         supplierFlowService.batchDelete(form.getIds(), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid SupplierFlow supplierFlow, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid SupplierFlow supplierFlow, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         supplierFlow.setMerchantId(merchantId);
         supplierFlow.setAccountBookId(accountBookId);
         supplierFlowService.save(supplierFlow);
@@ -78,12 +78,12 @@ public class SupplierInitialController {
     }
 
     @DeleteMapping("/{supplierFlowId}")
-    public JsonResult delete(@PathVariable Long supplierFlowId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long supplierFlowId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         supplierFlowService.delete(supplierFlowId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(supplierFlowService.select(merchantId, accountBookId));
     }

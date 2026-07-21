@@ -1,6 +1,5 @@
 package com.flyemu.share.controller.purchase;
 
-
 import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
@@ -25,18 +24,17 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PurchaseReportController {
 
-
     private final PurchaseReportService purchaseReportService;
 
     @GetMapping
-    public JsonResult list(Page page, PurchaseReportService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, PurchaseReportService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(purchaseReportService.query(page, query));
     }
 
     @GetMapping("/summary")
-    public JsonResult summary(Page page, PurchaseReportService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult summary(Page page, PurchaseReportService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         if (query.groupValues == null || query.groupValues.isEmpty()) {
             return JsonResult.failure("请选择统计字段");
         }

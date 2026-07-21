@@ -24,42 +24,42 @@ public class AccountFlowController {
     private final OrderReceiptService orderReceiptService;
 
     @GetMapping
-    public JsonResult list(Page page, AccountFlowService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, AccountFlowService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(accountFlowService.query(page, query));
     }
 
-    @GetMapping("payableDetail")
-    public JsonResult payableDetail(Page page, OrderPaymentService.PayableDetailReportQuery query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/payableDetail")
+    public JsonResult payableDetail(Page page, OrderPaymentService.PayableDetailReportQuery query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderPaymentService.payableDetail(page, query));
     }
 
-    @GetMapping("receivableDetail")
-    public JsonResult receivableDetail(Page page, OrderReceiptService.ReceivableDetailReportQuery query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/receivableDetail")
+    public JsonResult receivableDetail(Page page, OrderReceiptService.ReceivableDetailReportQuery query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderReceiptService.receivableDetail(page, query));
     }
 
-    @GetMapping("summaryPayable")
-    public JsonResult summaryPayable(Page page, OrderPaymentService.SummaryPayableDetailsQuery query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/summaryPayable")
+    public JsonResult summaryPayable(Page page, OrderPaymentService.SummaryPayableDetailsQuery query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderPaymentService.summaryPayableDetails(page, query));
     }
 
-    @GetMapping("summaryReceivable")
-    public JsonResult summaryReceivable(Page page, SummaryReceivableDetailsQuery query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/summaryReceivable")
+    public JsonResult summaryReceivable(Page page, SummaryReceivableDetailsQuery query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(orderReceiptService.summaryReceivableDetails(page, query));
     }
 
-    @GetMapping("otherFund")
-    public JsonResult otherFund(Page page, @ModelAttribute AccountFlowService.OtherFundQuery query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/otherFund")
+    public JsonResult otherFund(Page page, @ModelAttribute AccountFlowService.OtherFundQuery query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(accountFlowService.queryOtherFundDetails(page, query));

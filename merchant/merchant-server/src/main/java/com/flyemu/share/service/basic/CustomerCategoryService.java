@@ -34,15 +34,12 @@ public class CustomerCategoryService extends AbsService {
 
     private final CustomerCategoryRepository customerCategoryRepository;
 
-
     public List<CustomerCategory> query(Query query) {
-        List<CustomerCategory> customerCategories = bqf.selectFrom(qCustomerCategory)
+        return bqf.selectFrom(qCustomerCategory)
                 .where(query.builder)
                 .orderBy(qCustomerCategory.id.desc())
                 .fetch();
-        return customerCategories;
     }
-
 
     @Transactional
     public CustomerCategory save(CustomerCategory customerCategory) {
@@ -68,7 +65,9 @@ public class CustomerCategoryService extends AbsService {
         Assert.isTrue(count == 0, customerCategory.getName() + "名称已存在~");
         return customerCategoryRepository.save(customerCategory);
     }
+
     private final QCustomer qCustomer = QCustomer.customer;
+
     /**
      * 删除
      *
@@ -93,7 +92,6 @@ public class CustomerCategoryService extends AbsService {
     public List<CustomerCategory> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qCustomerCategory).where(qCustomerCategory.merchantId.eq(merchantId).and(qCustomerCategory.accountBookId.eq(accountBookId))).fetch();
     }
-
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

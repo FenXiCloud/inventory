@@ -39,14 +39,8 @@ public class AccountBookService extends AbsService {
 
     public PageResults<AccountBookDto> query(Page page, Query query) {
         PagedList<AccountBook> fetchPage = bqf.selectFrom(qAccountBook).where(query.builder).orderBy(qAccountBook.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
-
         List<AccountBookDto> dtos = new ArrayList<>();
-        fetchPage.forEach(tuple -> {
-            AccountBook accountBook = tuple;
-            AccountBookDto accountBookDto = BeanUtil.toBean(accountBook, AccountBookDto.class);
-            dtos.add(accountBookDto);
-        });
-
+        fetchPage.forEach(accountBook -> dtos.add(BeanUtil.toBean(accountBook, AccountBookDto.class)));
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 

@@ -228,6 +228,7 @@ public class WarehouseService extends AbsService {
                 builder.and(qWarehouse.name.contains(name));
             }
         }
+
         public void setEnabled(Boolean enabled) {
              if (enabled!=null) {
                 builder.and(qWarehouse.enabled.eq(enabled));

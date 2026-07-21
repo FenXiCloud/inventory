@@ -520,7 +520,6 @@ public class OrderReceiptService extends AbsService {
 
         long total = mainQuery.fetchCount();
 
-
         List<OrderReceiptQueryVO> voList = new ArrayList<>();
 
         for (OrderReceipt receipt : mainList) {
@@ -536,7 +535,6 @@ public class OrderReceiptService extends AbsService {
         return new PageResults<>(voList, page, total);
 
     }
-
 
     @Transactional
     public OrderReceipt save(OrderReceiptForm dto) {
@@ -560,7 +558,6 @@ public class OrderReceiptService extends AbsService {
         } else {
             orderReceipt.setOrderType(1);
         }
-
 
         if (dto.getOrderReceipt().getOrderStatus() == null) {
             throw new ServiceException("状态为空");
@@ -614,7 +611,6 @@ public class OrderReceiptService extends AbsService {
         orderReceipt.setNotVerificationAmount(notVerifyAmount);
         orderReceipt.setAdvanceCollectionsAmount(notVerifyAmount); // 预收款金额 = 未核销金额
         writeOffStatus(items, orderReceipt);
-
 
         updateYourBalance(orderReceipt);
         if (orderReceipt.getId() == null) {
@@ -707,7 +703,6 @@ public class OrderReceiptService extends AbsService {
                     throw new ServiceException("销售单已全部核销，无法再次引用：" + salesOrderId);
                 }
 
-
                 if (currentVerifyAmount.compareTo(unverifiedAmount) > 0) {
                     throw new ServiceException("核销金额超过销售单剩余未核销金额：" + salesOrderId);
                 }
@@ -798,7 +793,6 @@ public class OrderReceiptService extends AbsService {
         }
     }
 
-
     // 保存明细项
     private void saveItems(OrderReceipt orderReceipt, List<OrderReceiptItem> items) {
         if (items != null && !items.isEmpty()) {
@@ -820,7 +814,6 @@ public class OrderReceiptService extends AbsService {
             }
         }
     }
-
 
     @Transactional
     public void delete(String ids, Long merchantId, Long accountBookId) {
@@ -891,10 +884,8 @@ public class OrderReceiptService extends AbsService {
         OrderReceiptDetails dto = new OrderReceiptDetails();
         dto.setOrderReceipt(orderReceipt);
 
-
         List<OrderReceiptCollection> collectionList = jqf.select(qOrderReceiptCollection).from(qOrderReceiptCollection).where(qOrderReceiptCollection.receiptId.eq(orderReceipt.getId().intValue())).fetch().stream().distinct().toList();
         dto.setCollectionList(collectionList);
-
 
         List<OrderReceiptItem> itemList = jqf.select(qOrderReceiptItem).from(qOrderReceiptItem).where(qOrderReceiptItem.receiptId.eq(orderReceipt.getId())).fetch().stream().distinct().toList();
         dto.setItemList(itemList);
@@ -1011,7 +1002,7 @@ public class OrderReceiptService extends AbsService {
             customer.setBalance(customer.getBalance().add(shouldVerifyAmount));
         }
         CustomerFlow customerFlow = getCustomerFlow(receipt, targetStatus, customer);
-        customerService.updateTheBalance(customer,customerFlow);
+        customerService.updateTheBalance(customer, customerFlow);
         for (OrderReceiptCollection collection : collections) {
             Long accountId = collection.getSettlementAccountId();
             if (accountId == null) {
@@ -1046,8 +1037,8 @@ public class OrderReceiptService extends AbsService {
             accountService.updateAccountBalanceWithFlow(context);
         }
 
-
     }
+
     private static @NotNull CustomerFlow getCustomerFlow(OrderReceipt receipt, OrderStatus targetStatus, Customer customer) {
         CustomerFlow.CustomerFlowType flowType;
         CustomerFlow customerFlow = new CustomerFlow();
@@ -1076,9 +1067,7 @@ public class OrderReceiptService extends AbsService {
         return customerFlow;
     }
 
-
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
-
 
     public Object writeOffCandidates(Page page, OrderReceiptService.SalesQuery query) {
         if (query.getCustomerId() == null) {
@@ -1175,7 +1164,6 @@ public class OrderReceiptService extends AbsService {
             }
         }
     }
-
 
     public BigDecimal queryTotal(Query query) {
         return bqf.selectFrom(qOrderReceipt)
@@ -1288,12 +1276,10 @@ public class OrderReceiptService extends AbsService {
         public void setEndTime(String endTime) {
             if (endTime != null && !endTime.isEmpty()) {
                 LocalDate endDate = LocalDate.parse(endTime);
-                LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay().minusSeconds(1);  
+                LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay().minusSeconds(1);
                 builder.and(qOrderReceipt.createdAt.loe(endDateTime));
             }
         }
-
-
 
         public void setKeyword(String keyword) {
             if (keyword != null && !keyword.isEmpty()) {

@@ -24,14 +24,14 @@ public class CodeRuleController {
     private final CodeRuleService codeRuleService;
 
     @GetMapping
-    public JsonResult list(CodeRuleService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(CodeRuleService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(codeRuleService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid CodeRule codeRule, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid CodeRule codeRule, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         codeRule.setMerchantId(merchantId);
         codeRule.setAccountBookId(accountBookId);
         codeRuleService.save(codeRule);
@@ -39,7 +39,7 @@ public class CodeRuleController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid CodeRule codeRule, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid CodeRule codeRule, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         codeRule.setMerchantId(merchantId);
         codeRule.setAccountBookId(accountBookId);
         codeRuleService.save(codeRule);
@@ -47,14 +47,14 @@ public class CodeRuleController {
     }
 
     @DeleteMapping("/{codeRuleId}")
-    public JsonResult delete(@PathVariable Long codeRuleId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        codeRuleService.delete(codeRuleId,merchantId,accountBookId);
+    public JsonResult delete(@PathVariable Long codeRuleId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        codeRuleService.delete(codeRuleId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId,@SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(codeRuleService.select(merchantId,accountBookId));
+    @GetMapping("/select")
+    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(codeRuleService.select(merchantId, accountBookId));
     }
 
 }

@@ -480,7 +480,6 @@ public class AccountTransferService extends AbsService {
                 throw new ServiceException("转出账户与转入账户不能相同");
             }
 
-
             if (targetStatus == OrderStatus.已审核) {
                 AccountBalanceChangeContext outContext = AccountBalanceChangeContext.builder()
                         .accountId(fromAccountId)
@@ -537,14 +536,12 @@ public class AccountTransferService extends AbsService {
         }
     }
 
-
     private List<AccountTransferItem> findItemsByTransferId(Long transferId) {
         return jqf.select(qAccountTransferItem)
                 .from(qAccountTransferItem)
                 .where(qAccountTransferItem.accountTransferId.eq(transferId))
                 .fetch();
     }
-
 
     public BigDecimal queryTotal(Query query) {
         return bqf.selectFrom(qAccountTransfer)

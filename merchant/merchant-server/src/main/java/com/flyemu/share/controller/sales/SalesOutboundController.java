@@ -32,7 +32,7 @@ public class SalesOutboundController {
     private final SalesOutboundService salesOutboundService;
 
     @GetMapping
-    public JsonResult list(Page page, SalesOutboundService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, SalesOutboundService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(salesOutboundService.query(page, query));
@@ -45,13 +45,11 @@ public class SalesOutboundController {
         return JsonResult.successful(salesOutboundService.queryTotal(query));
     }
 
-
-
     @PostMapping
     public JsonResult save(
             @RequestBody @Valid SalesOutboundForm salesOutboundForm,
-            @SaAccountBookId Long accountBookId,
             @SaMerchantId Long merchantId,
+            @SaAccountBookId Long accountBookId,
             @SaAdminId Long adminId
     ) {
         salesOutboundForm.getSalesOutbound().setMerchantId(merchantId);
@@ -70,18 +68,18 @@ public class SalesOutboundController {
     }
 
     @DeleteMapping("/{salesOutboundId}")
-    public JsonResult delete(@PathVariable Long salesOutboundId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long salesOutboundId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         salesOutboundService.delete(salesOutboundId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(salesOutboundService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("load/{orderId}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long orderId) {
+    @GetMapping("/load/{orderId}")
+    public JsonResult load(@PathVariable Long orderId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(salesOutboundService.load(merchantId, orderId));
     }
 

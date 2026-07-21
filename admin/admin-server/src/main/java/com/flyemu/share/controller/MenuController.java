@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+
 /**
  * @功能描述: 菜单管理
  * @创建时间: 2023年08月08日
@@ -21,12 +22,10 @@ public class MenuController {
 
     private final MenuService menuService;
 
-
     @GetMapping
     public JsonResult list(MenuService.Query query) {
         return JsonResult.successful(menuService.query(query));
     }
-
 
     @PostMapping
     public JsonResult save(@RequestBody @Valid Menu menu) {
@@ -35,7 +34,6 @@ public class MenuController {
         return JsonResult.successful();
     }
 
-
     @PutMapping
     public JsonResult update(@RequestBody @Valid Menu menu) {
         Assert.notNull(menu.getId(), "更新菜单Id不允许为空~");
@@ -43,13 +41,11 @@ public class MenuController {
         return JsonResult.successful();
     }
 
-
     @DeleteMapping("/{menuId}")
     public JsonResult delete(@PathVariable Long menuId) {
         menuService.delete(menuId);
         return JsonResult.successful();
     }
-
 
     @PostMapping("/grant")
     public JsonResult grantMerchant(@RequestBody MenuService.MerchantMenuVo vo) {
@@ -57,12 +53,10 @@ public class MenuController {
         return JsonResult.successful();
     }
 
-
     @GetMapping("/query/grant/{merchantId}")
     public JsonResult queryGrantMenu(@PathVariable Long merchantId) {
         return JsonResult.successful(menuService.queryGrantMenu(merchantId));
     }
-
 
     @GetMapping("/query/merchant/{merchantId}")
     public JsonResult merchantMenu(@PathVariable Long merchantId) {

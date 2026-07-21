@@ -242,7 +242,6 @@ public class OrderPaymentService extends AbsService {
         return result;
     }
 
-
     private SummaryPayableDetailsPageVO handleByStaff(Page page, SummaryPayableDetailsQuery query) {
         QOrderStaff qOrderStaff = QOrderStaff.orderStaff;
 
@@ -317,7 +316,6 @@ public class OrderPaymentService extends AbsService {
         return result;
     }
 
-
     public PageResults<PayableDetailReportVO> payableDetail(Page page, PayableDetailReportQuery query) {
         List<PayableDetailReportVO> result = jqf.select(Projections.bean(PayableDetailReportVO.class, qOrderPayment.supplierName.as("supplierName"), qOrderPayment.orderStaffName.as("staffName"), qOrderPayment.orderDate.as("orderDate"), qOrderPayment.orderNo.as("orderNo"), Expressions.cases().when(qItem.id.isNull()).then("预付款").otherwise("采购付款").as("businessType"), qItem.currentVerifyAmount.as("payableAmount"), Expressions.numberTemplate(BigDecimal.class, "CASE WHEN {0} IS NULL THEN {1} ELSE {2} END", qItem.id, qOrderPayment.advanceCollectionsAmount, BigDecimal.ZERO).as("prepaymentAmount"), qOrderPayment.shouldVerificationAmount.subtract(qOrderPayment.hasVerificationAmount).as("balance"), qOrderPayment.remarks.as("remarks"))).from(qOrderPayment).leftJoin(qItem).on(qItem.paymentId.eq(qOrderPayment.id)).where(query.builder, qOrderPayment.orderStatus.eq(OrderStatus.已审核)).offset(page.getOffset()).limit(page.getPageSize()).fetch();
 
@@ -339,6 +337,7 @@ public class OrderPaymentService extends AbsService {
         purchaseSum = purchaseSum == null ? BigDecimal.ZERO : purchaseSum;
         return purchaseSum.subtract(paymentSum);
     }
+
     private BigDecimal getCurrentPayable(Long supplierId, SummaryPayableDetailsQuery query) {
         LocalDateTime startTime = query.getStartDate().atStartOfDay();
         LocalDateTime endTime = query.getEndDate().atStartOfDay();
@@ -435,7 +434,6 @@ public class OrderPaymentService extends AbsService {
         return value == null ? BigDecimal.ZERO : value;
     }
 
-
     public PageResults<OrderPayment> query(Page page, OrderPaymentService.Query query) {
         PagedList<OrderPayment> fetchPage = bqf.selectFrom(qOrderPayment).where(query.builder).orderBy(qOrderPayment.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
@@ -475,14 +473,12 @@ public class OrderPaymentService extends AbsService {
             throw new ServiceException("状态为空");
         }
 
-
         if (OrderStatus.已审核.equals(orderPayment.getOrderStatus())) {
             if (orderPayment.getApprovedBy() == null) {
                 throw new ServiceException("已审核状态,审核人必填");
             }
             orderPayment.setApprovedAt(LocalDateTime.now());
         }
-
 
         if (orderPayment.getId() == null) {
             orderPayment.setCreatedAt(LocalDateTime.now());
@@ -500,7 +496,6 @@ public class OrderPaymentService extends AbsService {
             }
         }
 
-
         BigDecimal totalPaymentAmount = BigDecimal.ZERO;
         if (!collections.isEmpty()) {
             for (OrderPaymentCollection collection : collections) {
@@ -517,7 +512,6 @@ public class OrderPaymentService extends AbsService {
         // 应核销金额 = 实际支付 + 折扣
         BigDecimal shouldVerifyAmount = totalPaymentAmount.add(discountAmount);
 
-
         orderPayment.setCollectionAmount(totalPaymentAmount);
         orderPayment.setDiscountAmount(discountAmount);
         orderPayment.setShouldVerificationAmount(shouldVerifyAmount);
@@ -527,7 +521,6 @@ public class OrderPaymentService extends AbsService {
         BigDecimal notVerifyAmount = shouldVerifyAmount.subtract(orderPayment.getHasVerificationAmount());
         orderPayment.setNotVerificationAmount(notVerifyAmount);
         orderPayment.setAdvanceCollectionsAmount(notVerifyAmount); // 预付款金额 = 未核销金额
-
 
         writeOffStatus(items, orderPayment);
 
@@ -554,7 +547,6 @@ public class OrderPaymentService extends AbsService {
             saveCollections(orderPayment, collections);
             return orderPaymentRepository.save(original);
         }
-
 
     }
 
@@ -656,7 +648,6 @@ public class OrderPaymentService extends AbsService {
         jqf.delete(qOrderPayment).where(qOrderPayment.id.in(idList).and(qOrderPayment.merchantId.eq(merchantId)).and(qOrderPayment.accountBookId.eq(accountBookId))).execute();
     }
 
-
     public PageResults<OrderPaymentQueryVO> query(OrderPaymentService.Query query, Page page) {
         JPAQuery<OrderPayment> mainQuery = jqf.select(qOrderPayment).from(qOrderPayment).leftJoin(qSupplier).on(qSupplier.id.eq(qOrderPayment.supplierId)).where(query.builder).orderBy(qOrderPayment.id.desc());
 
@@ -741,7 +732,6 @@ public class OrderPaymentService extends AbsService {
                     throw new ServiceException("采购单已全部核销，无法再次引用：" + purchaseOrderId);
                 }
 
-
                 if (currentVerifyAmount.compareTo(unverifiedAmount) > 0) {
                     throw new ServiceException("核销金额超过采购单剩余未核销金额：" + purchaseOrderId);
                 }
@@ -797,7 +787,6 @@ public class OrderPaymentService extends AbsService {
         return dto;
     }
 
-
     @Transactional
     public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
         OrderPaymentUpdateDTO dto = new OrderPaymentUpdateDTO();
@@ -847,7 +836,6 @@ public class OrderPaymentService extends AbsService {
         }
 
     }
-
 
     @Transactional
     public void updateSupplierAndAccountBalances(OrderPayment payment, OrderStatus targetStatus) {
@@ -980,8 +968,6 @@ public class OrderPaymentService extends AbsService {
         private BigDecimal verifiedAmount;
         private BigDecimal unverifiedAmount;
     }
-
-
 
     public BigDecimal queryTotal(Query query) {
         return bqf.selectFrom(qOrderPayment)

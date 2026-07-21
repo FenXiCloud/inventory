@@ -196,7 +196,6 @@ public class OtherExpenseService extends AbsService {
         updateSupplierAndAccountBalances(expense, OrderStatus.已审核);
     }
 
-
     @Transactional
     public void delete(String ids, Long merchantId, Long accountBookId) {
         if (StringUtils.isBlank(ids)) {
@@ -303,7 +302,6 @@ public class OtherExpenseService extends AbsService {
         return details;
     }
 
-
     @Transactional
     public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
         OrderPaymentUpdateDTO dto = new OrderPaymentUpdateDTO();
@@ -371,6 +369,7 @@ public class OtherExpenseService extends AbsService {
                 .where(qOtherExpense.id.in(idList))
                 .execute();
     }
+
     @Transactional
     public void updateSupplierAndAccountBalances(OtherExpense expense, OrderStatus targetStatus) {
         Supplier supplier = supplierService.selectByPrimaryKey(expense.getSupplierId());
@@ -379,7 +378,6 @@ public class OtherExpenseService extends AbsService {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
             amount = BigDecimal.ZERO;
         }
-
 
         SupplierFlow.SupplierFlowType flowType;
         if (targetStatus == OrderStatus.已审核) {
@@ -408,7 +406,7 @@ public class OtherExpenseService extends AbsService {
         supplierFlow.setCreatedAt(LocalDateTime.now());
         supplierFlow.setRemarks(targetStatus == OrderStatus.已审核 ? "其他支出单审核通过" : "其他支出单反审核");
         supplierFlow.setBusinessDate(expense.getOrderDate());
-        supplierService.updateTheBalance(supplier,supplierFlow);
+        supplierService.updateTheBalance(supplier, supplierFlow);
 
         Long settlementAccountId = expense.getSettlementAccountId();
         if (settlementAccountId==null) {
@@ -439,7 +437,6 @@ public class OtherExpenseService extends AbsService {
 
         accountService.updateAccountBalanceWithFlow(context);
     }
-
 
     public BigDecimal queryTotal(Query query) {
         return bqf.selectFrom(qOtherExpense)

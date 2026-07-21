@@ -30,7 +30,7 @@ public class OtherReceiptController {
     private final OtherReceiptService otherReceiptService;
 
     @GetMapping
-    public JsonResult list(Page page, OtherReceiptService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, OtherReceiptService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(otherReceiptService.query(page, query));
@@ -43,10 +43,8 @@ public class OtherReceiptController {
         return JsonResult.successful(otherReceiptService.queryTotal(query));
     }
 
-
-
     @PostMapping
-    public JsonResult save(@RequestBody @Valid OtherReceiptForm otherReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid OtherReceiptForm otherReceipt, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         otherReceipt.getOrder().setMerchantId(merchantId);
         otherReceipt.getOrder().setAccountBookId(accountBookId);
         otherReceiptService.save(otherReceipt);
@@ -54,7 +52,7 @@ public class OtherReceiptController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid OtherReceiptForm otherReceipt, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid OtherReceiptForm otherReceipt, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         otherReceipt.getOrder().setMerchantId(merchantId);
         otherReceipt.getOrder().setAccountBookId(accountBookId);
         otherReceiptService.save(otherReceipt);
@@ -62,13 +60,13 @@ public class OtherReceiptController {
     }
 
     @DeleteMapping("/{otherReceiptId}")
-    public JsonResult delete(@PathVariable Long otherReceiptId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long otherReceiptId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         otherReceiptService.delete(String.valueOf(otherReceiptId), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(otherReceiptService.load(merchantId, id));
     }
 

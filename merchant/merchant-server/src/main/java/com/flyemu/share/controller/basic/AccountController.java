@@ -24,14 +24,14 @@ public class AccountController {
     private final AccountService accountService;
 
     @GetMapping
-    public JsonResult list(AccountService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(AccountService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(accountService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid Account account, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid Account account, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         account.setMerchantId(merchantId);
         account.setAccountBookId(accountBookId);
         accountService.save(account);
@@ -39,7 +39,7 @@ public class AccountController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid Account account, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid Account account, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         account.setMerchantId(merchantId);
         account.setAccountBookId(accountBookId);
         accountService.save(account);
@@ -47,14 +47,14 @@ public class AccountController {
     }
 
     @DeleteMapping("/{accountId}")
-    public JsonResult delete(@PathVariable Long accountId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        accountService.delete(accountId,merchantId,accountBookId);
+    public JsonResult delete(@PathVariable Long accountId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        accountService.delete(accountId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId,@SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(accountService.select(merchantId,accountBookId));
+    @GetMapping("/select")
+    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(accountService.select(merchantId, accountBookId));
     }
 
 }

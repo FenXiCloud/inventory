@@ -6,6 +6,7 @@ import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.basic.PriceRecord;
 import com.flyemu.share.form.ProductForm;
+import com.flyemu.share.form.ProductPriceCellForm;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.basic.ProductService;
 import jakarta.validation.Valid;
@@ -27,14 +28,14 @@ public class PriceRecordController {
     private final PriceRecordService priceRecordService;
 
     @GetMapping
-    public JsonResult list(Page page, PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, PriceRecordService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(priceRecordService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PriceRecord priceRecord, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid PriceRecord priceRecord, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         priceRecord.setMerchantId(merchantId);
         priceRecord.setAccountBookId(accountBookId);
         priceRecordService.save(priceRecord);
@@ -42,7 +43,7 @@ public class PriceRecordController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PriceRecord priceRecord, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid PriceRecord priceRecord, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         priceRecord.setMerchantId(merchantId);
         priceRecord.setAccountBookId(accountBookId);
         priceRecordService.save(priceRecord);
@@ -50,35 +51,34 @@ public class PriceRecordController {
     }
 
     @DeleteMapping("/{priceRecordId}")
-    public JsonResult delete(@PathVariable Long priceRecordId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long priceRecordId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         priceRecordService.delete(priceRecordId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(priceRecordService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("product")
-    public JsonResult productList(
-            Page page,
-            ProductService.Query query,
-            @SaMerchantId Long merchantId,
-            @SaAccountBookId Long accountBookId) {
+    @GetMapping("/product")
+    public JsonResult productList(Page page,
+                                  ProductService.Query query,
+                                  @SaMerchantId Long merchantId,
+                                  @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(priceRecordService.productList(page, query));
     }
 
-    @PostMapping("product")
+    @PostMapping("/product")
     public JsonResult productSave(@RequestBody ProductForm productForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         priceRecordService.productSave(productForm, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @PostMapping("product/cell")
-    public JsonResult productCellSave(@RequestBody @Valid com.flyemu.share.form.ProductPriceCellForm form,
+    @PostMapping("/product/cell")
+    public JsonResult productCellSave(@RequestBody @Valid ProductPriceCellForm form,
                                       @SaMerchantId Long merchantId,
                                       @SaAccountBookId Long accountBookId) {
         priceRecordService.productCellSave(form, merchantId, accountBookId);
@@ -86,14 +86,14 @@ public class PriceRecordController {
     }
 
     @GetMapping("/price")
-    public JsonResult price(Page page, PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult price(Page page, PriceRecordService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(priceRecordService.showPrice(page, query));
     }
 
     @GetMapping("/purchasePrice")
-    public JsonResult purchasePrice(PriceRecordService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult purchasePrice(PriceRecordService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(priceRecordService.showPurchasePrice(query));

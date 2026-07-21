@@ -24,14 +24,14 @@ public class PaymentMethodController {
     private final PaymentMethodService paymentMethodService;
 
     @GetMapping
-    public JsonResult list(PaymentMethodService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(PaymentMethodService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(paymentMethodService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PaymentMethod paymentMethod, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid PaymentMethod paymentMethod, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         paymentMethod.setMerchantId(merchantId);
         paymentMethod.setAccountBookId(accountBookId);
         paymentMethod.setEnabled(true);
@@ -40,7 +40,7 @@ public class PaymentMethodController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PaymentMethod paymentMethod, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid PaymentMethod paymentMethod, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         paymentMethod.setMerchantId(merchantId);
         paymentMethod.setAccountBookId(accountBookId);
         paymentMethodService.save(paymentMethod);
@@ -48,14 +48,14 @@ public class PaymentMethodController {
     }
 
     @DeleteMapping("/{paymentMethodId}")
-    public JsonResult delete(@PathVariable Long paymentMethodId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
-        paymentMethodService.delete(paymentMethodId,merchantId,accountBookId);
+    public JsonResult delete(@PathVariable Long paymentMethodId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        paymentMethodService.delete(paymentMethodId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
-    public JsonResult select(@SaMerchantId Long merchantId,@SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(paymentMethodService.select(merchantId,accountBookId));
+    @GetMapping("/select")
+    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+        return JsonResult.successful(paymentMethodService.select(merchantId, accountBookId));
     }
 
 }

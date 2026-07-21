@@ -62,15 +62,12 @@ public class CodeRuleService extends AbsService {
      * 根据单据类型、商户ID和账本ID查询系统默认的编码规则（只返回一条）
      */
     public CodeRule findByDocumentTypeAndMerchantIdAndAccountBookId(CodeRule.DocumentType documentType, Long merchantId, Long accountBookId) {
-
-        CodeRule codeRule = bqf.selectFrom(qCodeRule)
+        return bqf.selectFrom(qCodeRule)
                 .where(qCodeRule.documentType.eq(documentType)
                         .and(qCodeRule.merchantId.eq(merchantId))
                         .and(qCodeRule.accountBookId.eq(accountBookId))
                         .and(qCodeRule.systemDefault.eq(true)))
                 .fetchFirst();
-
-        return codeRule;
     }
 
     /**
@@ -129,12 +126,12 @@ public class CodeRuleService extends AbsService {
             case 供货商 -> "SU";
         };
     }
+
     public List<CodeRule> query(Query query) {
-        List<CodeRule> codeRules = bqf.selectFrom(qCodeRule)
+        return bqf.selectFrom(qCodeRule)
                 .where(query.builder)
                 .orderBy(qCodeRule.id.desc())
                 .fetch();
-        return codeRules;
     }
 
     public List<CodeRule> queryEnable(CodeRule codeRule, Long accountBookId, Long merchantId) {
@@ -203,6 +200,7 @@ public class CodeRuleService extends AbsService {
                 builder.and(qCodeRule.name.contains(name));
             }
         }
+
         public void setDocumentType(String documentType) {
             if (StrUtil.isNotEmpty(documentType)) {
                 // 前端历史文案「产品」与枚举「商品」对齐

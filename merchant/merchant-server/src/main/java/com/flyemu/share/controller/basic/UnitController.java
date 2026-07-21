@@ -28,7 +28,7 @@ public class UnitController {
     private final UnitService unitService;
 
     @GetMapping
-    public JsonResult list(@SaAccountVal AccountDto accountDto, UnitService.Query query) {
+    public JsonResult list(UnitService.Query query, @SaAccountVal AccountDto accountDto) {
         query.setMerchantId(accountDto.getMerchantId());
         query.setAccountBookId(accountDto.getAccountBookId());
         return JsonResult.successful(unitService.query(query));
@@ -52,12 +52,12 @@ public class UnitController {
 
     @DeleteMapping("/{unitId}")
     public JsonResult delete(@PathVariable Long unitId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        unitService.delete(unitId, merchantId,accountBookId);
+        unitService.delete(unitId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(unitService.select(merchantId,accountBookId));
+        return JsonResult.successful(unitService.select(merchantId, accountBookId));
     }
 }

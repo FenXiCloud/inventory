@@ -125,7 +125,6 @@ public class ProductCategoryService extends AbsService {
                 .execute();
     }
 
-
     public ProductCategory loadById(Long merchantId, Long orgId) {
         return bqf.selectFrom(qProductCategory).where(qProductCategory.merchantId.eq(merchantId).and(qProductCategory.id.eq(orgId))).fetchFirst();
     }

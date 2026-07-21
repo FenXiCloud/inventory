@@ -149,7 +149,9 @@ public class SupplierService extends AbsService {
             throw new ServiceException(e.getMessage());
         }
     }
+
     private final ProductExistenceChecker existenceChecker;
+
     @Transactional
     public void delete(Long supplierId, Long merchantId) {
         if (existenceChecker.existsInPurchaseOrder(supplierId, 3)) {
@@ -173,7 +175,7 @@ public class SupplierService extends AbsService {
 
     public List<SelectProductDto> selectProducts(Long supplierId, Long merchantId, Long accountBookId) {
         priceResolveService.ensureDefaultPolicies(merchantId, accountBookId);
-        List<SelectProductDto> dtoList = bqf.selectFrom(qProduct)
+        return bqf.selectFrom(qProduct)
                 .select(qProduct.name, qProduct.code, qProduct.specification, qProduct.purchasePrice, qProduct.id, qProductCategory.path, qProduct.imgPath, qProduct.enableMultiUnit,
                         qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name, qProductCategory.name, qProduct.specification)
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
@@ -201,8 +203,6 @@ public class SupplierService extends AbsService {
                     dto.setTitle();
                     list.add(dto);
                 }, List::addAll);
-
-        return dtoList;
     }
 
     /**
@@ -218,12 +218,14 @@ public class SupplierService extends AbsService {
         }
         return supplier;
     }
+
     @Transactional
     public void updateTheBalance(Supplier supplier, SupplierFlow flow) {
         validateSupplierFlow(flow);
         jqf.update(qSupplier).set(qSupplier.balance, supplier.getBalance()).where(qSupplier.id.eq(supplier.getId())).execute();
         supplierFlowService.insert(flow);
     }
+
     public void validateSupplierFlow(SupplierFlow flow) {
         if (flow.getBusinessId() == null) {
             throw new ServiceException("单据ID不能为空");
@@ -238,7 +240,6 @@ public class SupplierService extends AbsService {
             throw new ServiceException("应付余额不能为空");
         }
     }
-
 
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

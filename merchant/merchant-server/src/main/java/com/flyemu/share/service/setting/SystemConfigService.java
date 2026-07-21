@@ -32,11 +32,10 @@ public class SystemConfigService extends AbsService {
     private final SystemConfigRepository systemConfigRepository;
 
     public List<SystemConfig> query(Query query) {
-        List<SystemConfig> systemConfigs = bqf.selectFrom(qSystemConfig)
+        return bqf.selectFrom(qSystemConfig)
                 .where(query.builder)
                 .orderBy(qSystemConfig.id.desc())
                 .fetch();
-        return systemConfigs;
     }
 
     @Transactional

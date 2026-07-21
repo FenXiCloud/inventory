@@ -31,8 +31,8 @@ public class OtherExpenseController {
 
     @GetMapping
     public JsonResult list(Page page, OtherExpenseService.Query query,
-                           @SaAccountBookId Long accountBookId,
-                           @SaMerchantId Long merchantId) {
+                           @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(otherExpenseService.query(page, query));
@@ -45,12 +45,10 @@ public class OtherExpenseController {
         return JsonResult.successful(otherExpenseService.queryTotal(query));
     }
 
-
-
     @PostMapping
     public JsonResult save(@RequestBody @Valid OtherExpenseForm dto,
-                           @SaAccountBookId Long accountBookId,
-                           @SaMerchantId Long merchantId) {
+                           @SaMerchantId Long merchantId,
+                           @SaAccountBookId Long accountBookId) {
         dto.getOrder().setMerchantId(merchantId);
         dto.getOrder().setAccountBookId(accountBookId);
         otherExpenseService.save(dto.getOrder(), dto.getItemList());
@@ -59,8 +57,8 @@ public class OtherExpenseController {
 
     @PutMapping
     public JsonResult update(@RequestBody @Valid OtherExpenseForm dto,
-                             @SaAccountBookId Long accountBookId,
-                             @SaMerchantId Long merchantId) {
+                             @SaMerchantId Long merchantId,
+                             @SaAccountBookId Long accountBookId) {
         dto.getOrder().setMerchantId(merchantId);
         dto.getOrder().setAccountBookId(accountBookId);
         otherExpenseService.save(dto.getOrder(), dto.getItemList());
@@ -69,14 +67,14 @@ public class OtherExpenseController {
 
     @DeleteMapping("/{otherExpenseId}")
     public JsonResult delete(@PathVariable Long otherExpenseId,
-                             @SaAccountBookId Long accountBookId,
-                             @SaMerchantId Long merchantId) {
+                             @SaMerchantId Long merchantId,
+                             @SaAccountBookId Long accountBookId) {
         otherExpenseService.delete(String.valueOf(otherExpenseId), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(otherExpenseService.load(merchantId, id));
     }
 

@@ -28,8 +28,8 @@ public class MenuController {
         return JsonResult.successful(menuService.query(merchantId));
     }
 
-    @GetMapping("merchant")
-    public JsonResult merchantMenu(@SaMerchantId Long merchantId, Menu.MenuGroup menuGroup) {
-        return JsonResult.successful(menuService.merchantMenu(merchantId,menuGroup));
+    @GetMapping("/merchant")
+    public JsonResult merchantMenu(Menu.MenuGroup menuGroup, @SaMerchantId Long merchantId) {
+        return JsonResult.successful(menuService.merchantMenu(merchantId, menuGroup));
     }
 }

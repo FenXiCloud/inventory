@@ -36,7 +36,7 @@ public class FinanceVoucherController {
     private final FinanceVoucherService financeVoucherService;
 
     @GetMapping
-    public JsonResult list(@SaAccountVal AccountDto accountDto, FinanceVoucherService.Query query) {
+    public JsonResult list(FinanceVoucherService.Query query, @SaAccountVal AccountDto accountDto) {
         query.setMerchantId(accountDto.getMerchantId());
         query.setAccountBookId(accountDto.getAccountBookId());
         return JsonResult.successful(financeVoucherService.query(query));
@@ -50,31 +50,30 @@ public class FinanceVoucherController {
         return JsonResult.successful();
     }
 
-    @PostMapping("sync")
+    @PostMapping("/sync")
     public JsonResult sync(@RequestBody @Valid VoucherDto voucherDto, @SaAccountVal AccountDto accountDto) throws JsonProcessingException, UnsupportedEncodingException {
         financeVoucherService.upVoucher(voucherDto, accountDto);
         return JsonResult.successful();
     }
 
-    @GetMapping("balance")
+    @GetMapping("/balance")
     public JsonResult balance(String subjectId, String categoryId, String categoryDetailsId, @SaAccountVal AccountDto accountDto) {
         Double balance = financeVoucherService.balance(subjectId, categoryId, categoryDetailsId, accountDto);
         return JsonResult.successful(balance);
     }
 
-    @GetMapping("auxiliary")
+    @GetMapping("/auxiliary")
     public JsonResult auxiliary(String ids, @SaAccountVal AccountDto accountDto) {
         List<String> categories = Arrays.stream(ids.split(",")).toList();
         Object auxiliaryAccountingData = financeVoucherService.loadAuxiliaryAccountingData(categories, accountDto);
         return JsonResult.successful(auxiliaryAccountingData);
     }
 
-    @GetMapping("remote")
+    @GetMapping("/remote")
     public JsonResult remote(String voucherId, @SaAccountVal AccountDto accountDto) {
         Object voucher = financeVoucherService.loadVoucher(voucherId, accountDto);
         return JsonResult.successful(voucher);
     }
-
 
     @GetMapping("/candidates")
     public JsonResult candidates(Page page, FinanceVoucherService.CandidateQuery query, @SaAccountVal AccountDto accountDto) {
@@ -90,20 +89,19 @@ public class FinanceVoucherController {
     }
 
     @DeleteMapping("/batch")
-    public JsonResult batchDelete(@RequestBody List<Long> ids, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult batchDelete(@RequestBody List<Long> ids, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         financeVoucherService.batchDelete(ids, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{id}")
-    public JsonResult delete(@PathVariable Long id, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long id, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         financeVoucherService.delete(id, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-
     @GetMapping("/load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(financeVoucherService.load(merchantId, id));
     }
 

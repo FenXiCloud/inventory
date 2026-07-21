@@ -25,21 +25,21 @@ public class InventoryController {
     private final InventoryService inventoryService;
 
     @GetMapping
-    public JsonResult list(Page page, InventoryService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, InventoryService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(inventoryService.query(page, query));
     }
 
-    @GetMapping("products")
+    @GetMapping("/products")
     public JsonResult products(@RequestParam(required = false) Long warehouseId, @RequestParam(required = false) Long productId,
                                @RequestParam(required = false) String filter, @RequestParam(required = false) String warehouseIds,
-                               @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+                               @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(inventoryService.products(warehouseId, warehouseIds, productId, filter, accountBookId, merchantId));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid Inventory inventory, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid Inventory inventory, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         inventory.setMerchantId(merchantId);
         inventory.setAccountBookId(accountBookId);
         inventoryService.save(inventory);
@@ -47,7 +47,7 @@ public class InventoryController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid Inventory inventory, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid Inventory inventory, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         inventory.setMerchantId(merchantId);
         inventory.setAccountBookId(accountBookId);
         inventoryService.save(inventory);
@@ -55,19 +55,19 @@ public class InventoryController {
     }
 
     @DeleteMapping("/{inventoryId}")
-    public JsonResult delete(@PathVariable Long inventoryId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long inventoryId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         inventoryService.delete(inventoryId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(inventoryService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("selectProduct")
-    public JsonResult selectProduct(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId,
-                                    @RequestParam("warehouseId") Long warehouseId) {
+    @GetMapping("/selectProduct")
+    public JsonResult selectProduct(@RequestParam("warehouseId") Long warehouseId, @SaMerchantId Long merchantId,
+                                    @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(inventoryService.selectProduct(merchantId, accountBookId, warehouseId));
     }
 
@@ -81,19 +81,18 @@ public class InventoryController {
         return JsonResult.successful(inventoryService.totalCost(productId, warehouseId, merchantId, accountBookId));
     }
 
-    @GetMapping("balance")
-    public JsonResult balance(Page page, InventoryService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/balance")
+    public JsonResult balance(Page page, InventoryService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(inventoryService.balance(page, query));
     }
 
-    @GetMapping("balanceTotal")
-    public JsonResult balanceTotal(InventoryService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    @GetMapping("/balanceTotal")
+    public JsonResult balanceTotal(InventoryService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(inventoryService.balanceTotal(query));
     }
-
 
 }

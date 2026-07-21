@@ -54,14 +54,14 @@ public class CustomerController {
     private final CustomerService customerService;
 
     @GetMapping
-    public JsonResult list(Page page, CustomerService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, CustomerService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(customerService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid Customer customer, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId, @SaAccountVal AccountDto accountDto) {
+    public JsonResult save(@RequestBody @Valid Customer customer, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, @SaAccountVal AccountDto accountDto) {
         customer.setMerchantId(merchantId);
         customer.setAccountBookId(accountBookId);
         customerService.save(customer, accountDto.getMerchant().getCode());
@@ -75,12 +75,12 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{customerId}")
-    public JsonResult delete(@PathVariable Long customerId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long customerId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         customerService.delete(customerId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(customerService.select(merchantId, accountBookId));
     }

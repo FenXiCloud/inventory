@@ -26,17 +26,16 @@ public class ProductCategoryController {
     private final ProductCategoryService productCategoryService;
 
     @GetMapping
-    public JsonResult list(@SaMerchantId Long merchantId, ProductCategoryService.Query query, @SaAccountBookId Long accountBookId) {
+    public JsonResult list(ProductCategoryService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(productCategoryService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid ProductCategory productCategory, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId){
+    public JsonResult save(@RequestBody @Valid ProductCategory productCategory, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         productCategory.setMerchantId(merchantId);
         productCategory.setAccountBookId(accountBookId);
-
         productCategoryService.save(productCategory);
         return JsonResult.successful();
     }
@@ -51,13 +50,13 @@ public class ProductCategoryController {
 
     @DeleteMapping("/{productCategoryId}")
     public JsonResult delete(@PathVariable Long productCategoryId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        productCategoryService.delete(merchantId, productCategoryId,accountBookId);
+        productCategoryService.delete(merchantId, productCategoryId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(productCategoryService.select(merchantId,accountBookId));
+        return JsonResult.successful(productCategoryService.select(merchantId, accountBookId));
     }
 
 }

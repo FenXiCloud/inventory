@@ -34,7 +34,7 @@ public class AppController {
     @PostMapping("/login")
     public JsonResult login(String username, String password) {
         MerchantUser merchantUser = merchantUserService.login(username, password);
-        StpUtil.login("admin"+merchantUser.getId(), "pc");
+        StpUtil.login("admin" + merchantUser.getId(), "pc");
         SaSession session = StpUtil.getSession();
         session.set(Constants.SESSION_ACCOUNT, merchantUser);
         return JsonResult.successful(merchantUser);
@@ -43,7 +43,7 @@ public class AppController {
     @GetMapping("/logout")
     @SaCheckLogin
     public JsonResult logout(@SaUserVal MerchantUser merchantUser) {
-        StpUtil.logout("admin"+merchantUser.getId(), "pc");
+        StpUtil.logout("admin" + merchantUser.getId(), "pc");
         return JsonResult.successful();
     }
 }

@@ -32,7 +32,7 @@ public class InventoryTransferController {
     private final InventoryTransferService inventoryTransferService;
 
     @GetMapping
-    public JsonResult list(Page page, InventoryTransferService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, InventoryTransferService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(inventoryTransferService.query(page, query));
@@ -40,7 +40,7 @@ public class InventoryTransferController {
 
     @PostMapping
     public JsonResult save(@RequestBody @Valid InventoryTransferForm inventoryTransferForm,
-                           @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId,
+                           @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId,
                            @SaAdminId Long adminId) {
         InventoryTransfer inventoryTransfer = inventoryTransferForm.getInventoryTransfer();
         inventoryTransfer.setMerchantId(merchantId);
@@ -58,18 +58,18 @@ public class InventoryTransferController {
     }
 
     @DeleteMapping("/{inventoryTransferId}")
-    public JsonResult delete(@PathVariable Long inventoryTransferId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long inventoryTransferId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         inventoryTransferService.delete(inventoryTransferId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(inventoryTransferService.select(merchantId, accountBookId));
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(inventoryTransferService.load(merchantId, id));
     }
 

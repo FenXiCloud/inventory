@@ -49,7 +49,6 @@ import java.util.*;
 @RequiredArgsConstructor
 public class VerificationService extends AbsService {
 
-
     private final CheckoutService checkoutService;
     private final static QVerification qVerification = QVerification.verification;
     private final static QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
@@ -231,7 +230,6 @@ public class VerificationService extends AbsService {
             }
         }
     }
-
 
     private BigDecimal getTotalVerifiedAmount(Integer businessType, Integer businessId) {
         if (businessId == null) {
@@ -494,7 +492,6 @@ public class VerificationService extends AbsService {
         }
     }
 
-
     private void updateReceiptVerificationStatus(OrderReceipt receipt, BigDecimal verifyAmount, boolean isVerify) {
         if (receipt.getHasVerificationAmount() == null) {
             receipt.setHasVerificationAmount(BigDecimal.ZERO);
@@ -521,7 +518,6 @@ public class VerificationService extends AbsService {
             receipt.setWriteOffStatus(1); // 部分核销
         }
     }
-
 
     private void updatePaymentVerificationStatus(OrderPayment payment, BigDecimal verifyAmount, boolean isVerify) {
         if (payment.getHasVerificationAmount() == null) {
@@ -550,7 +546,6 @@ public class VerificationService extends AbsService {
             payment.setWriteOffStatus(1); // 部分核销
         }
     }
-
 
     @Transactional
     public void delete(String ids, Long merchantId, Long accountBookId) {
@@ -669,7 +664,6 @@ public class VerificationService extends AbsService {
 
         return details;
     }
-
 
     public BigDecimal queryTotal(Query query) {
         // sum item verify amounts for matching verifications

@@ -26,7 +26,7 @@ public class AccountBookController {
 
 
     @GetMapping
-    public JsonResult list(Page page, @SaMerchantId Long merchantId, AccountBookService.Query query) {
+    public JsonResult list(Page page, AccountBookService.Query query, @SaMerchantId Long merchantId) {
         query.setMerchantId(merchantId);
         return JsonResult.successful(accountBookService.query(page, query));
     }
@@ -36,11 +36,9 @@ public class AccountBookController {
         accountBookDto.setCurrent(false);
         accountBookDto.setMerchantId(merchantId);
         accountBookDto.setEnabled(true);
-        accountBookDto.setStartDate(accountBookDto.getStartDate());
         accountBookService.save(accountBookDto);
         return JsonResult.successful();
     }
-
 
     @PutMapping
     public JsonResult update(@RequestBody @Valid AccountBookDto accountBookDto, @SaMerchantId Long merchantId) {
@@ -52,7 +50,7 @@ public class AccountBookController {
     /**
      * 修改默认账套
      */
-    @PutMapping("change/current/{accountBookId}")
+    @PutMapping("/change/current/{accountBookId}")
     public JsonResult changeCurrentAccountBook(@SaMerchantId Long merchantId, @PathVariable Long accountBookId) {
         AccountBook accountBook = accountBookService.changeCurrentAccountBook(merchantId, accountBookId);
         AccountDto accountDto = (AccountDto) StpUtil.getTokenSession().get(Constants.SESSION_ACCOUNT);
@@ -68,7 +66,7 @@ public class AccountBookController {
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId) {
         return JsonResult.successful(accountBookService.select(merchantId));
     }

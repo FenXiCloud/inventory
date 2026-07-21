@@ -24,14 +24,14 @@ public class SystemConfigController {
     private final SystemConfigService systemConfigService;
 
     @GetMapping
-    public JsonResult list(SystemConfigService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(SystemConfigService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(systemConfigService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid SystemConfig systemConfig, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid SystemConfig systemConfig, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         systemConfig.setMerchantId(merchantId);
         systemConfig.setAccountBookId(accountBookId);
         systemConfigService.save(systemConfig);
@@ -39,7 +39,7 @@ public class SystemConfigController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid SystemConfig systemConfig, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid SystemConfig systemConfig, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         systemConfig.setMerchantId(merchantId);
         systemConfig.setAccountBookId(accountBookId);
         systemConfigService.save(systemConfig);
@@ -47,12 +47,12 @@ public class SystemConfigController {
     }
 
     @DeleteMapping("/{systemConfigId}")
-    public JsonResult delete(@PathVariable Long systemConfigId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long systemConfigId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         systemConfigService.delete(systemConfigId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(systemConfigService.select(merchantId, accountBookId));
     }

@@ -116,8 +116,7 @@ public class MerchantService extends AbsService {
             admin.setRoleId(role.getId());
             adminRepository.save(admin);
         }
-        Merchant m = merchantRepository.save(merchant);
-        return m;
+        return merchantRepository.save(merchant);
     }
 
 

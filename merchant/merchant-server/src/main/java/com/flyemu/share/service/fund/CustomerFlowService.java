@@ -105,11 +105,10 @@ public class CustomerFlowService extends AbsService {
     }
 
     public List<CustomerFlow> query(Query query) {
-        List<CustomerFlow> customerFlows = bqf.selectFrom(qCustomerFlow)
+        return bqf.selectFrom(qCustomerFlow)
                 .where(query.builder)
                 .orderBy(qCustomerFlow.id.desc())
                 .fetch();
-        return customerFlows;
     }
 
     @Transactional
@@ -189,8 +188,7 @@ public class CustomerFlowService extends AbsService {
 
     public CustomerFlowDTO getById(InventoryItem query) {
         CustomerFlow item = customerFlowRepository.getById(query.getId());
-        CustomerFlowDTO dto = BeanUtil.toBean(item, CustomerFlowDTO.class);
-        return dto;
+        return BeanUtil.toBean(item, CustomerFlowDTO.class);
     }
 
     @Transactional
@@ -224,7 +222,6 @@ public class CustomerFlowService extends AbsService {
         customerFlowRepository.save(form);
     }
 
-
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
@@ -235,7 +232,6 @@ public class CustomerFlowService extends AbsService {
 
         @Enumerated(EnumType.STRING)
         private CustomerFlow.CustomerFlowType customerFlowType;
-
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {

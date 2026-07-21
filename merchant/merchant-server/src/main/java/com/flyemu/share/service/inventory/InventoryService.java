@@ -423,7 +423,6 @@ public class InventoryService extends AbsService {
                 .fetch();
     }
 
-
     @Data
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();

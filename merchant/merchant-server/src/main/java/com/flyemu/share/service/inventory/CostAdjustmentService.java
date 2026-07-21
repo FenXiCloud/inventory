@@ -297,7 +297,6 @@ public class CostAdjustmentService extends AbsService {
         return inventoryItem;
     }
 
-
     private static Date addTimeOfFinalMoment(Date date) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);

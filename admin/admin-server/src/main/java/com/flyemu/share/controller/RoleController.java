@@ -26,7 +26,6 @@ public class RoleController {
 
     private final RoleService roleService;
 
-
     @GetMapping
     public JsonResult list(Page page, RoleService.Query query) {
         return JsonResult.successful(roleService.query(page, query));

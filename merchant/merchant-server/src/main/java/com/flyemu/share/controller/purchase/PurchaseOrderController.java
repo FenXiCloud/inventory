@@ -31,14 +31,14 @@ public class PurchaseOrderController {
     private final PurchaseOrderService purchaseOrderService;
 
     @GetMapping
-    public JsonResult list(Page page, PurchaseOrderService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, PurchaseOrderService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(purchaseOrderService.query(page, query));
     }
 
     @GetMapping("/toInBound")
-    public JsonResult listToInBound(Page page, PurchaseOrderService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult listToInBound(Page page, PurchaseOrderService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(purchaseOrderService.queryToInBound(page, query));
@@ -58,15 +58,13 @@ public class PurchaseOrderController {
         return JsonResult.successful(purchaseOrderService.queryTotal(query));
     }
 
-
     @PostMapping("/toInbound/{supplierId}")
     public JsonResult toInbound(@RequestBody List<Long> orderIds, @PathVariable Long supplierId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(purchaseOrderService.loadToInbound(orderIds, merchantId, supplierId));
     }
 
-
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+    public JsonResult save(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, @SaAdminId Long adminId) {
         purchaseOrderForm.getPurchaseOrder().setCreatedBy(adminId);
         purchaseOrderForm.getPurchaseOrder().setMerchantId(merchantId);
         purchaseOrderForm.getPurchaseOrder().setAccountBookId(accountBookId);
@@ -82,12 +80,12 @@ public class PurchaseOrderController {
     }
 
     @DeleteMapping("/{purchaseOrderId}")
-    public JsonResult delete(@PathVariable Long purchaseOrderId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long purchaseOrderId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         purchaseOrderService.delete(purchaseOrderId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(purchaseOrderService.select(merchantId, accountBookId));
     }
@@ -106,7 +104,6 @@ public class PurchaseOrderController {
         return JsonResult.successful();
     }
 
-
     /**
      * 采购单详情
      *
@@ -114,8 +111,8 @@ public class PurchaseOrderController {
      * @param orderId
      * @return
      */
-    @GetMapping("load/{orderId}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long orderId) {
+    @GetMapping("/load/{orderId}")
+    public JsonResult load(@PathVariable Long orderId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(purchaseOrderService.load(merchantId, orderId));
     }
 

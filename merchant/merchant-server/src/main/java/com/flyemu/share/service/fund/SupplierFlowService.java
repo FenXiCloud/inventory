@@ -55,8 +55,7 @@ public class SupplierFlowService extends AbsService {
     private final SupplierRepository supplierRepository;
 
     public List<SupplierFlow> query(Query query) {
-        List<SupplierFlow> supplierFlows = bqf.selectFrom(qSupplierFlow).where(query.builder).orderBy(qSupplierFlow.id.desc()).fetch();
-        return supplierFlows;
+        return bqf.selectFrom(qSupplierFlow).where(query.builder).orderBy(qSupplierFlow.id.desc()).fetch();
     }
 
     public PageResults<SupplierFlow> statement(Page page, SupplierFlowService.QueryDTO queryDTO) {
@@ -75,7 +74,6 @@ public class SupplierFlowService extends AbsService {
 
         return new PageResults<>(fetchPage, page);
     }
-
 
     public PageResults<SupplierFlowDTO> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qSupplierFlow).select(qSupplierFlow, qSupplier.name, qSupplier.code).leftJoin(qSupplier).on(qSupplier.id.eq(qSupplierFlow.supplierId)).where(query.buildersV2()).orderBy(qSupplierFlow.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -167,8 +165,7 @@ public class SupplierFlowService extends AbsService {
 
     public SupplierFlowDTO getById(SupplierFlow query) {
         SupplierFlow item = supplierFlowRepository.getById(query.getId());
-        SupplierFlowDTO dto = BeanUtil.toBean(item, SupplierFlowDTO.class);
-        return dto;
+        return BeanUtil.toBean(item, SupplierFlowDTO.class);
     }
 
     @Transactional
@@ -247,7 +244,6 @@ public class SupplierFlowService extends AbsService {
             }
             return builder;
         }
-
 
     }
 }

@@ -29,7 +29,7 @@ public class VerificationController {
     private final VerificationService verificationService;
 
     @GetMapping
-    public JsonResult list(Page page, VerificationService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, VerificationService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(verificationService.query(page, query));
@@ -42,10 +42,8 @@ public class VerificationController {
         return JsonResult.successful(verificationService.queryTotal(query));
     }
 
-
-
     @PostMapping
-    public JsonResult save(@RequestBody @Valid VerificationForm verification, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid VerificationForm verification, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         verification.getOrder().setMerchantId(merchantId);
         verification.getOrder().setAccountBookId(accountBookId);
         verificationService.save(verification);
@@ -53,7 +51,7 @@ public class VerificationController {
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid VerificationForm verification, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult update(@RequestBody @Valid VerificationForm verification, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         verification.getOrder().setMerchantId(merchantId);
         verification.getOrder().setAccountBookId(accountBookId);
         verificationService.save(verification);
@@ -61,13 +59,13 @@ public class VerificationController {
     }
 
     @DeleteMapping("/{verificationId}")
-    public JsonResult delete(@PathVariable Long verificationId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long verificationId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         verificationService.delete(String.valueOf(verificationId), merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("load/{id}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long id) {
+    @GetMapping("/load/{id}")
+    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
         return JsonResult.successful(verificationService.load(merchantId, id));
     }
 

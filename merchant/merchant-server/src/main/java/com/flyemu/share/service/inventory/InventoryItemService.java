@@ -85,11 +85,10 @@ public class InventoryItemService extends AbsService {
     private final WarehouseRepository warehouseRepository;
 
     public List<InventoryItem> query(Query query) {
-        List<InventoryItem> inventoryItems = bqf.selectFrom(qInventoryItem)
+        return bqf.selectFrom(qInventoryItem)
                 .where(query.builder)
                 .orderBy(qInventoryItem.id.desc())
                 .fetch();
-        return inventoryItems;
     }
 
     public PageResults<InventoryItemDTO> query(Page page, Query query) {
@@ -175,7 +174,6 @@ public class InventoryItemService extends AbsService {
             add(OperationType.采购入库);
         }};
     }
-
 
     /**
      * 批量插入
@@ -521,8 +519,7 @@ public class InventoryItemService extends AbsService {
 
     public InventoryItemDTO getById(InventoryItem query) {
         InventoryItem inventoryItem = inventoryItemRepository.getById(query.getId());
-        InventoryItemDTO dto = BeanUtil.toBean(inventoryItem, InventoryItemDTO.class);
-        return dto;
+        return BeanUtil.toBean(inventoryItem, InventoryItemDTO.class);
     }
 
     @Transactional

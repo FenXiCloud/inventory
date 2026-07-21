@@ -33,7 +33,7 @@ public class PurchaseInboundController {
     private final PurchaseInboundService purchaseInboundService;
 
     @GetMapping
-    public JsonResult list(Page page, PurchaseInboundService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult list(Page page, PurchaseInboundService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(purchaseInboundService.query(page, query));
@@ -54,7 +54,7 @@ public class PurchaseInboundController {
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PurchaseInboundForm purchaseInboundForm, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId, @SaAdminId Long adminId) {
+    public JsonResult save(@RequestBody @Valid PurchaseInboundForm purchaseInboundForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, @SaAdminId Long adminId) {
         purchaseInboundForm.getPurchaseInbound().setCreatedBy(adminId);
         purchaseInboundForm.getPurchaseInbound().setMerchantId(merchantId);
         purchaseInboundForm.getPurchaseInbound().setAccountBookId(accountBookId);
@@ -70,19 +70,18 @@ public class PurchaseInboundController {
     }
 
     @DeleteMapping("/{purchaseInboundId}")
-    public JsonResult delete(@PathVariable Long purchaseInboundId, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult delete(@PathVariable Long purchaseInboundId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         purchaseInboundService.delete(purchaseInboundId, merchantId, accountBookId);
         return JsonResult.successful();
     }
 
-    @GetMapping("select")
+    @GetMapping("/select")
     public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         return JsonResult.successful(purchaseInboundService.select(merchantId, accountBookId));
     }
 
-
     @GetMapping("/toReturn")
-    public JsonResult listToReturn(Page page, PurchaseInboundService.Query query, @SaAccountBookId Long accountBookId, @SaMerchantId Long merchantId) {
+    public JsonResult listToReturn(Page page, PurchaseInboundService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
         query.setMerchantId(merchantId);
         query.setAccountBookId(accountBookId);
         return JsonResult.successful(purchaseInboundService.listToReturn(page, query));
@@ -114,8 +113,8 @@ public class PurchaseInboundController {
      * @param orderId
      * @return
      */
-    @GetMapping("load/{orderId}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Long orderId) {
+    @GetMapping("/load/{orderId}")
+    public JsonResult load(@PathVariable Long orderId, @SaMerchantId Long merchantId) {
         return JsonResult.successful(purchaseInboundService.load(merchantId, orderId));
     }
 }

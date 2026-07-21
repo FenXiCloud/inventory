@@ -36,15 +36,12 @@ public class CustomerLevelService extends AbsService {
 
     private final CustomerLevelRepository customerLevelRepository;
 
-
     public List<CustomerLevel> query(Query query) {
-        List<CustomerLevel> customerLevels = bqf.selectFrom(qCustomerLevel)
+        return bqf.selectFrom(qCustomerLevel)
                 .where(query.builder)
                 .orderBy(qCustomerLevel.id.desc())
                 .fetch();
-        return customerLevels;
     }
-
 
     @Transactional
     public CustomerLevel save(CustomerLevel customerLevel) {
@@ -86,7 +83,6 @@ public class CustomerLevelService extends AbsService {
         return bqf.selectFrom(qCustomerLevel).where(qCustomerLevel.merchantId.eq(merchantId).and(qCustomerLevel.accountBookId.eq(accountBookId))).fetch();
     }
 
-
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
@@ -109,6 +105,5 @@ public class CustomerLevelService extends AbsService {
         }
 
     }
-
 
 }

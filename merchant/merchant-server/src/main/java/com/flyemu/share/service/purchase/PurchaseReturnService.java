@@ -31,6 +31,7 @@ import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.basic.SupplierService;
+import com.flyemu.share.service.inventory.CostingService;
 import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -80,6 +81,7 @@ public class PurchaseReturnService extends AbsService {
     private final CodeSeedService codeSeedService;
     private final PriceRecordService priceRecordService;
     private final InventoryService inventoryService;
+    private final CostingService costingService;
     private final SupplierService supplierService;
 
     public PageResults<PurchaseReturnDto> query(Page page, Query query) {
@@ -466,19 +468,48 @@ public class PurchaseReturnService extends AbsService {
                 List<Inventory> inventories = new ArrayList<>();
                 List<InventoryItem> inventoryItems = new ArrayList<>();
                 List<PurchaseReturnItem> returnItems = purchaseReturnItemRepository.findByPurchaseReturnId(id);
-                //处理库存
-                this.getComputedInventory(returnItems, inventories, inventoryItems, purchaseReturn);
-                inventories.forEach(item -> {
-                    if (OrderStatus.已审核.equals(state)) {
-                        // 减库存
-                        inventoryService.computedInventory(item, false, id, OperationType.采购退货, inventoryItems);
-                    } else {
-                        // 加库存
-                        inventoryService.computedInventory(item, true, id, OperationType.采购退货, null);
-                    }
-                });
+                if (OrderStatus.已审核.equals(state)) {
+                    applyIssueCost(purchaseReturn, returnItems);
+                    this.getComputedInventory(returnItems, inventories, inventoryItems, purchaseReturn);
+                    inventories.forEach(item ->
+                            inventoryService.computedInventory(item, false, id, OperationType.采购退货, inventoryItems));
+                } else {
+                    this.getComputedInventory(returnItems, inventories, inventoryItems, purchaseReturn);
+                    inventories.forEach(item ->
+                            inventoryService.computedInventory(item, true, id, OperationType.采购退货, null));
+                    costingService.reverseIssue(id, OperationType.采购退货,
+                            purchaseReturn.getMerchantId(), purchaseReturn.getAccountBookId());
+                    clearIssueCost(returnItems);
+                }
             });
         });
+    }
+
+    private void applyIssueCost(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> returnItems) {
+        for (PurchaseReturnItem line : returnItems) {
+            int qty = line.getQuantity() == null ? 0 : (int) Double.parseDouble(line.getQuantity().toString());
+            CostingService.IssueRequest req = new CostingService.IssueRequest();
+            req.setProductId(line.getProductId());
+            req.setWarehouseId(line.getWarehouseId());
+            req.setQty(qty);
+            req.setOrderId(purchaseReturn.getId());
+            req.setOrderType(OperationType.采购退货);
+            req.setItemId(line.getId());
+            req.setMerchantId(purchaseReturn.getMerchantId());
+            req.setAccountBookId(purchaseReturn.getAccountBookId());
+            CostingService.IssueResult result = costingService.issue(req);
+            line.setCostPrice(result.getCostPrice());
+            line.setCostAmount(result.getCostAmount());
+        }
+        purchaseReturnItemRepository.saveAll(returnItems);
+    }
+
+    private void clearIssueCost(List<PurchaseReturnItem> returnItems) {
+        for (PurchaseReturnItem line : returnItems) {
+            line.setCostPrice(null);
+            line.setCostAmount(null);
+        }
+        purchaseReturnItemRepository.saveAll(returnItems);
     }
 
     private void getComputedInventory(List<PurchaseReturnItem> returnItems, List<Inventory> inventories,
@@ -486,7 +517,11 @@ public class PurchaseReturnService extends AbsService {
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         returnItems.forEach(purchaseReturnItem -> {
-            BigDecimal subtotal = purchaseReturnItem.getSubtotal();
+            BigDecimal subtotal = purchaseReturnItem.getCostAmount();
+            if (subtotal == null) {
+                subtotal = purchaseReturnItem.getSubtotal() == null ? BigDecimal.ZERO : purchaseReturnItem.getSubtotal();
+            }
+            BigDecimal finalSubtotal = subtotal;
             Double quantity = purchaseReturnItem.getQuantity();
             inventories.stream()
                     .filter(item -> item.getProductId().equals(purchaseReturnItem.getProductId())
@@ -496,7 +531,7 @@ public class PurchaseReturnService extends AbsService {
                             item -> {
                                 BigDecimal totalCost = item.getTotalCost();
                                 Integer currentQuantity = item.getCurrentQuantity();
-                                BigDecimal added = totalCost.add(subtotal)
+                                BigDecimal added = totalCost.add(finalSubtotal)
                                         .setScale(2, RoundingMode.HALF_EVEN);
                                 double parsed = Double.parseDouble(quantity.toString());
                                 currentQuantity += (int) parsed;
@@ -508,14 +543,14 @@ public class PurchaseReturnService extends AbsService {
                                 inventory.setProductId(purchaseReturnItem.getProductId());
                                 double parsed = Double.parseDouble(purchaseReturnItem.getQuantity().toString());
                                 inventory.setCurrentQuantity((int) parsed);
-                                inventory.setTotalCost(purchaseReturnItem.getSubtotal());
+                                inventory.setTotalCost(finalSubtotal);
                                 inventory.setMerchantId(purchaseReturnItem.getMerchantId());
                                 inventory.setAccountBookId(purchaseReturnItem.getAccountBookId());
                                 inventory.setBaseUnitId(purchaseReturnItem.getBaseUnitId());
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(purchaseReturnItem, purchaseReturn);
+            InventoryItem inventoryItem = getInventoryItem(purchaseReturnItem, purchaseReturn, finalSubtotal);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
@@ -527,7 +562,8 @@ public class PurchaseReturnService extends AbsService {
      * @param purchaseReturnItem 入库明细
      * @return inventoryItem
      */
-    private InventoryItem getInventoryItem(PurchaseReturnItem purchaseReturnItem, PurchaseReturn purchaseReturn) {
+    private InventoryItem getInventoryItem(PurchaseReturnItem purchaseReturnItem, PurchaseReturn purchaseReturn,
+                                           BigDecimal costAmount) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setWarehouseId(purchaseReturnItem.getWarehouseId());
         inventoryItem.setProductId(purchaseReturnItem.getProductId());
@@ -544,8 +580,9 @@ public class PurchaseReturnService extends AbsService {
         inventoryItem.setAccountBookId(purchaseReturnItem.getAccountBookId());
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(purchaseReturnItem.getCreatedBy());
-        inventoryItem.setUnitPrice(purchaseReturnItem.getUnitPrice());
-        inventoryItem.setSubtotal(purchaseReturnItem.getSubtotal());
+        inventoryItem.setUnitPrice(purchaseReturnItem.getCostPrice() != null
+                ? purchaseReturnItem.getCostPrice() : purchaseReturnItem.getUnitPrice());
+        inventoryItem.setSubtotal(costAmount);
         return inventoryItem;
     }
 

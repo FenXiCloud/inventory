@@ -24,6 +24,7 @@ import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.inventory.CostingService;
 import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -83,6 +84,7 @@ public class SalesReturnService extends AbsService {
     private final PriceRecordService priceRecordService;
 
     private final InventoryService inventoryService;
+    private final CostingService costingService;
     private final CustomerService customerService;
 
     public PageResults<SalesReturnDTO> query(Page page, SalesReturnService.Query query) {
@@ -387,26 +389,84 @@ public class SalesReturnService extends AbsService {
     private void salesReturnToInventory(SalesReturn original) {
         List<Inventory> inventories = new ArrayList<>();
         List<InventoryItem> inventoryItems = new ArrayList<>();
-        List<SalesReturnItem> returnItems = jqf.selectFrom(qsalesReturnItem).where(qsalesReturnItem.salesReturnId.eq(original.getId())).fetch();
-        //处理库存
-        this.getComputedInventory(returnItems, inventories, inventoryItems, original);
-        inventories.forEach(item -> {
-            if (OrderStatus.已审核.equals(original.getOrderStatus())) {
-                // 加库存
-                inventoryService.computedInventory(item, false, original.getId(), OperationType.销售退货, inventoryItems);
-            } else {
-                // 减库存
-                inventoryService.computedInventory(item, true, original.getId(), OperationType.销售退货, null);
-            }
-        });
+        List<SalesReturnItem> returnItems = jqf.selectFrom(qsalesReturnItem)
+                .where(qsalesReturnItem.salesReturnId.eq(original.getId())).fetch();
+        if (OrderStatus.已审核.equals(original.getOrderStatus())) {
+            applyReturnReceiptCost(original, returnItems);
+            this.getComputedInventory(returnItems, inventories, inventoryItems, original);
+            inventories.forEach(item ->
+                    inventoryService.computedInventory(item, true, original.getId(), OperationType.销售退货, inventoryItems));
+            createReturnBatches(original, returnItems);
+        } else {
+            costingService.reverseReceipt(original.getId(), OperationType.销售退货,
+                    original.getMerchantId(), original.getAccountBookId());
+            this.getComputedInventory(returnItems, inventories, inventoryItems, original);
+            inventories.forEach(item ->
+                    inventoryService.computedInventory(item, false, original.getId(), OperationType.销售退货, null));
+            clearReturnCost(returnItems);
+        }
     }
 
-    private void getComputedInventory(List<SalesReturnItem> returnItems, List<Inventory> inventories, List<InventoryItem> inventoryItems, SalesReturn salesReturn) {
+    /**
+     * 退货成本：优先取原出库明细成本，否则取当前库存平均成本
+     */
+    private void applyReturnReceiptCost(SalesReturn original, List<SalesReturnItem> returnItems) {
+        for (SalesReturnItem line : returnItems) {
+            BigDecimal costPrice = null;
+            if (line.getOutItemId() != null) {
+                SalesOutboundItem outItem = salesOutboundItemRepository.findById(line.getOutItemId()).orElse(null);
+                if (outItem != null && outItem.getCostPrice() != null) {
+                    costPrice = outItem.getCostPrice();
+                }
+            }
+            if (costPrice == null) {
+                Inventory inv = inventoryService.findByWarehouseIdAndProductId(line.getWarehouseId(), line.getProductId());
+                costPrice = inv != null && inv.getAverageCost() != null ? inv.getAverageCost() : BigDecimal.ZERO;
+            }
+            int qty = line.getQuantity() == null ? 0 : (int) Double.parseDouble(line.getQuantity().toString());
+            line.setCostPrice(costPrice);
+            line.setCostAmount(costPrice.multiply(BigDecimal.valueOf(qty)).setScale(2, RoundingMode.HALF_EVEN));
+        }
+        salesReturnItemRepository.saveAll(returnItems);
+    }
+
+    private void createReturnBatches(SalesReturn original, List<SalesReturnItem> returnItems) {
+        for (SalesReturnItem item : returnItems) {
+            CostingService.ReceiptRequest req = new CostingService.ReceiptRequest();
+            req.setProductId(item.getProductId());
+            req.setWarehouseId(item.getWarehouseId());
+            int qty = item.getQuantity() == null ? 0 : (int) Double.parseDouble(item.getQuantity().toString());
+            req.setQty(qty);
+            req.setUnitCost(item.getCostPrice());
+            req.setInboundDate(original.getReturnDate());
+            req.setOrderId(original.getId());
+            req.setOrderType(OperationType.销售退货);
+            req.setItemId(item.getId());
+            req.setMerchantId(item.getMerchantId());
+            req.setAccountBookId(item.getAccountBookId());
+            costingService.createReceiptBatch(req);
+        }
+    }
+
+    private void clearReturnCost(List<SalesReturnItem> returnItems) {
+        for (SalesReturnItem line : returnItems) {
+            line.setCostPrice(null);
+            line.setCostAmount(null);
+        }
+        salesReturnItemRepository.saveAll(returnItems);
+    }
+
+    private void getComputedInventory(List<SalesReturnItem> returnItems, List<Inventory> inventories,
+                                      List<InventoryItem> inventoryItems, SalesReturn salesReturn) {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         returnItems.forEach(otherOutboundItem -> {
             Double quantity = otherOutboundItem.getQuantity();
-            BigDecimal subtotal = otherOutboundItem.getSubtotal();
+            BigDecimal subtotal = otherOutboundItem.getCostAmount();
+            if (subtotal == null) {
+                subtotal = otherOutboundItem.getSubtotal() == null ? BigDecimal.ZERO : otherOutboundItem.getSubtotal();
+            }
+            BigDecimal finalSubtotal = subtotal;
             inventories.stream()
                     .filter(item -> item.getProductId().equals(otherOutboundItem.getProductId())
                             && item.getWarehouseId().equals(otherOutboundItem.getWarehouseId()))
@@ -415,7 +475,7 @@ public class SalesReturnService extends AbsService {
                             item -> {
                                 Integer currentQuantity = item.getCurrentQuantity();
                                 BigDecimal totalCost = item.getTotalCost();
-                                BigDecimal added = totalCost.add(subtotal)
+                                BigDecimal added = totalCost.add(finalSubtotal)
                                         .setScale(2, RoundingMode.HALF_EVEN);
                                 double parsed = Double.parseDouble(quantity.toString());
                                 currentQuantity += (int) parsed;
@@ -427,20 +487,21 @@ public class SalesReturnService extends AbsService {
                                 inventory.setWarehouseId(otherOutboundItem.getWarehouseId());
                                 double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
                                 inventory.setCurrentQuantity((int) parsed);
-                                inventory.setTotalCost(otherOutboundItem.getSubtotal());
+                                inventory.setTotalCost(finalSubtotal);
                                 inventory.setMerchantId(otherOutboundItem.getMerchantId());
                                 inventory.setBaseUnitId(otherOutboundItem.getBaseUnitId());
                                 inventory.setAccountBookId(otherOutboundItem.getAccountBookId());
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, salesReturn);
+            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, salesReturn, finalSubtotal);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
     }
 
-    private InventoryItem getInventoryItem(SalesReturnItem otherOutboundItem, SalesReturn salesReturn) {
+    private InventoryItem getInventoryItem(SalesReturnItem otherOutboundItem, SalesReturn salesReturn,
+                                           BigDecimal costAmount) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(otherOutboundItem.getProductId());
         inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
@@ -457,8 +518,8 @@ public class SalesReturnService extends AbsService {
         inventoryItem.setInventoryDate(Date.from(salesReturn.getReturnDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(otherOutboundItem.getCreatedBy());
-        inventoryItem.setUnitPrice(otherOutboundItem.getUnitPrice());
-        inventoryItem.setSubtotal(otherOutboundItem.getSubtotal());
+        inventoryItem.setUnitPrice(otherOutboundItem.getCostPrice());
+        inventoryItem.setSubtotal(costAmount);
         return inventoryItem;
     }
 

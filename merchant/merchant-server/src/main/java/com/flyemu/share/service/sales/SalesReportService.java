@@ -322,11 +322,15 @@ public class SalesReportService extends AbsService {
             //退货取反
             BigDecimal subtotal = salesReportItemDTO.getSubtotal();
             Double quantity = salesReportItemDTO.getQuantity();
+            BigDecimal costAmount = salesReportItemDTO.getCostAmount();
             if (subtotal != null) {
                 salesReportItemDTO.setSubtotal(subtotal.negate());
             }
             if (quantity != null) {
                 salesReportItemDTO.setQuantity(-quantity);
+            }
+            if (costAmount != null) {
+                salesReportItemDTO.setCostAmount(costAmount.negate());
             }
             salesReportItemDTO.setSalesType("return");
             return salesReportItemDTO;
@@ -566,7 +570,7 @@ public class SalesReportService extends AbsService {
     }
 
     /**
-     * 销售利润表（按产品汇总，成本取商品预计进货价）
+     * 销售利润表（按产品汇总，成本优先取出库审核落库成本，缺省回退预计进货价）
      */
     public PageResults<SalesReportItemDTO> profit(Page page, SalesReportForm form) {
         form.setSalesGroup(SalesReportConstant.SALES_GROUP_PRODUCT);
@@ -614,9 +618,18 @@ public class SalesReportService extends AbsService {
     private void fillProfitFields(SalesReportItemDTO dto, Product product) {
         BigDecimal qty = BigDecimal.valueOf(dto.getQuantity() == null ? 0D : dto.getQuantity());
         BigDecimal salesAmount = dto.getSubtotal() == null ? BigDecimal.ZERO : dto.getSubtotal();
-        BigDecimal costPrice = product == null || product.getPurchasePrice() == null
-                ? BigDecimal.ZERO : product.getPurchasePrice();
-        BigDecimal costAmount = costPrice.multiply(qty).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal costAmount = dto.getCostAmount();
+        BigDecimal costPrice = dto.getCostPrice();
+        // 历史单据未落成本时，回退产品档案采购价
+        if (costAmount == null || costAmount.compareTo(BigDecimal.ZERO) == 0) {
+            costPrice = product == null || product.getPurchasePrice() == null
+                    ? BigDecimal.ZERO : product.getPurchasePrice();
+            costAmount = costPrice.multiply(qty).setScale(2, RoundingMode.HALF_UP);
+        } else if (costPrice == null && qty.compareTo(BigDecimal.ZERO) != 0) {
+            costPrice = costAmount.divide(qty, 2, RoundingMode.HALF_UP);
+        } else if (costPrice == null) {
+            costPrice = BigDecimal.ZERO;
+        }
         BigDecimal profitAmount = salesAmount.subtract(costAmount).setScale(2, RoundingMode.HALF_UP);
         dto.setCostPrice(costPrice);
         dto.setCostAmount(costAmount);
@@ -661,10 +674,15 @@ public class SalesReportService extends AbsService {
         dto.setSubtotal(items.stream()
                 .map(item -> item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
+        dto.setCostAmount(items.stream()
+                .map(item -> item.getCostAmount() != null ? item.getCostAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
         if (dto.getQuantity() != null && dto.getQuantity() != 0) {
             dto.setUnitPrice(dto.getSubtotal().divide(BigDecimal.valueOf(dto.getQuantity()), 2, RoundingMode.HALF_UP));
+            dto.setCostPrice(dto.getCostAmount().divide(BigDecimal.valueOf(dto.getQuantity()), 2, RoundingMode.HALF_UP));
         } else {
             dto.setUnitPrice(BigDecimal.ZERO);
+            dto.setCostPrice(BigDecimal.ZERO);
         }
     }
 

@@ -56,6 +56,7 @@ public class OtherInboundService extends AbsService {
     private final OtherInboundItemService otherInboundItemService;
 
     private final InventoryService inventoryService;
+    private final CostingService costingService;
 
     private final OtherInboundRepository otherInboundRepository;
 
@@ -194,11 +195,13 @@ public class OtherInboundService extends AbsService {
                 // 加库存
                 inventoryService.computedInventory(item, true, id, operationType, inventoryItems);
             });
+            createCostBatches(otherInbound, otherInboundItems, operationType);
             otherInbound.setOrderStatus(OrderStatus.已审核);
             otherInbound.setApprovedBy(adminId);
             otherInbound.setApprovedAt(LocalDateTime.now());
             otherInboundRepository.save(otherInbound);
         } else if (OrderStatus.已保存.equals(state)) {
+            costingService.reverseReceipt(id, operationType, otherInbound.getMerchantId(), otherInbound.getAccountBookId());
             //处理库存
             this.getComputedInventory(otherInboundItems, inventories, inventoryItems, operationType, otherInbound);
             inventories.forEach(item -> {
@@ -209,6 +212,25 @@ public class OtherInboundService extends AbsService {
             otherInbound.setApprovedBy(adminId);
             otherInbound.setApprovedAt(LocalDateTime.now());
             otherInboundRepository.save(otherInbound);
+        }
+    }
+
+    private void createCostBatches(OtherInbound otherInbound, List<OtherInboundItem> items, OperationType operationType) {
+        for (OtherInboundItem item : items) {
+            CostingService.ReceiptRequest req = new CostingService.ReceiptRequest();
+            req.setProductId(item.getProductId());
+            req.setWarehouseId(item.getWarehouseId());
+            int qty = item.getQuantity() == null ? 0 : (int) Double.parseDouble(item.getQuantity().toString());
+            req.setQty(qty);
+            req.setUnitCost(item.getUnitPrice());
+            req.setInboundDate(CostingService.toLocalDate(otherInbound.getInboundDate()));
+            req.setOrderId(otherInbound.getId());
+            req.setOrderType(operationType);
+            req.setItemId(item.getId());
+            req.setSupplierId(otherInbound.getSupplierId());
+            req.setMerchantId(item.getMerchantId());
+            req.setAccountBookId(item.getAccountBookId());
+            costingService.createReceiptBatch(req);
         }
     }
 

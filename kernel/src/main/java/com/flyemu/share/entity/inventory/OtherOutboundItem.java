@@ -65,6 +65,12 @@ public class OtherOutboundItem {
     @Comment("小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)")
     private BigDecimal subtotal;
 
+    @Comment("出库单位成本（审核时按成本法写入）")
+    private BigDecimal costPrice;
+
+    @Comment("出库成本金额（审核时按成本法写入）")
+    private BigDecimal costAmount;
+
     @Comment("仓库ID")
     private Long warehouseId;
 

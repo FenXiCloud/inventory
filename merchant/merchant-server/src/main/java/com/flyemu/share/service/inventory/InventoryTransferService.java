@@ -61,6 +61,7 @@ public class InventoryTransferService extends AbsService {
     private final InventoryTransferItemService inventoryTransferItemService;
 
     private final InventoryService inventoryService;
+    private final CostingService costingService;
 
     private final static QWarehouse toQWarehouse = new QWarehouse("to_warehouse");
 
@@ -192,16 +193,25 @@ public class InventoryTransferService extends AbsService {
      */
     private void getComputedInventory(InventoryTransfer inventoryTransfer, List<InventoryTransferItem> inventoryTransferItems,
                                       boolean isRevoke) {
+        if (isRevoke) {
+            // 先回补调入仓批次校验，再回补库存余额，最后回补调出仓批次
+            costingService.reverseReceipt(inventoryTransfer.getId(), OperationType.调拨入库,
+                    inventoryTransfer.getMerchantId(), inventoryTransfer.getAccountBookId());
+        }
+
         List<Inventory> increaseInventory = new ArrayList<>();
         List<Inventory> reduceInventory = new ArrayList<>();
         List<InventoryItem> inventoryItems = new ArrayList<>();
+
         for (InventoryTransferItem inventoryTransferItem : inventoryTransferItems) {
             Long fromWarehouseId = inventoryTransferItem.getFromWarehouseId();
             Long toWarehouseId = inventoryTransferItem.getToWarehouseId();
             Long productId = inventoryTransferItem.getProductId();
-            // 调出仓库不会为空，前端已控制
             Inventory fromInventory = inventoryService.findByWarehouseIdAndProductId(fromWarehouseId, productId);
             Inventory toInventory = inventoryService.findByWarehouseIdAndProductId(toWarehouseId, productId);
+            if (fromInventory == null) {
+                throw new ServiceException("调出仓库存不存在");
+            }
             if (toInventory == null) {
                 toInventory = new Inventory();
                 toInventory.setProductId(productId);
@@ -211,54 +221,87 @@ public class InventoryTransferService extends AbsService {
                 toInventory.setAverageCost(BigDecimal.ZERO);
                 toInventory.setTotalCost(BigDecimal.ZERO);
                 toInventory.setCurrentQuantity(0);
+                toInventory.setBaseUnitId(fromInventory.getBaseUnitId());
             }
             Double transferQuantity = inventoryTransferItem.getQuantity();
-            BigDecimal subtotal = fromInventory.getAverageCost().multiply(new BigDecimal(transferQuantity)).setScale(2, RoundingMode.HALF_EVEN);
-            // 调出仓库处理
-            this.operateTransferItem(reduceInventory, fromWarehouseId, productId, fromInventory, transferQuantity, subtotal);
-            // 调入仓库处理
-            this.operateTransferItem(increaseInventory, toWarehouseId, productId, toInventory, transferQuantity, subtotal);
-            // 获取处理仓库明细
+            int qty = transferQuantity == null ? 0 : (int) Math.round(transferQuantity);
+            if (qty <= 0) {
+                continue;
+            }
+            BigDecimal subtotal;
+            BigDecimal unitCost = BigDecimal.ZERO;
+            if (!isRevoke) {
+                CostingService.IssueRequest issueReq = new CostingService.IssueRequest();
+                issueReq.setProductId(productId);
+                issueReq.setWarehouseId(fromWarehouseId);
+                issueReq.setQty(qty);
+                issueReq.setOrderId(inventoryTransfer.getId());
+                issueReq.setOrderType(OperationType.调拨出库);
+                issueReq.setItemId(inventoryTransferItem.getId());
+                issueReq.setMerchantId(inventoryTransfer.getMerchantId());
+                issueReq.setAccountBookId(inventoryTransfer.getAccountBookId());
+                CostingService.IssueResult issueResult = costingService.issue(issueReq);
+                subtotal = issueResult.getCostAmount();
+                unitCost = issueResult.getCostPrice() == null ? BigDecimal.ZERO : issueResult.getCostPrice();
+
+                CostingService.ReceiptRequest receiptReq = new CostingService.ReceiptRequest();
+                receiptReq.setProductId(productId);
+                receiptReq.setWarehouseId(toWarehouseId);
+                receiptReq.setQty(qty);
+                receiptReq.setUnitCost(unitCost);
+                receiptReq.setInboundDate(CostingService.toLocalDate(inventoryTransfer.getTransferDate()));
+                receiptReq.setOrderId(inventoryTransfer.getId());
+                receiptReq.setOrderType(OperationType.调拨入库);
+                receiptReq.setItemId(inventoryTransferItem.getId());
+                receiptReq.setMerchantId(inventoryTransfer.getMerchantId());
+                receiptReq.setAccountBookId(inventoryTransfer.getAccountBookId());
+                costingService.createReceiptBatch(receiptReq);
+            } else {
+                boolean hasConsume = costingService.hasIssueConsumes(inventoryTransfer.getId(), OperationType.调拨出库,
+                        inventoryTransferItem.getId(), inventoryTransfer.getMerchantId(), inventoryTransfer.getAccountBookId());
+                subtotal = costingService.sumIssueCost(inventoryTransfer.getId(), OperationType.调拨出库,
+                        productId, fromWarehouseId, inventoryTransferItem.getId(),
+                        inventoryTransfer.getMerchantId(), inventoryTransfer.getAccountBookId());
+                if (!hasConsume && fromInventory.getAverageCost() != null) {
+                    subtotal = fromInventory.getAverageCost().multiply(BigDecimal.valueOf(qty))
+                            .setScale(2, RoundingMode.HALF_EVEN);
+                }
+            }
+            Double qtyForItem = (double) qty;
+            this.operateTransferItem(reduceInventory, fromWarehouseId, productId, fromInventory, qtyForItem, subtotal);
+            this.operateTransferItem(increaseInventory, toWarehouseId, productId, toInventory, qtyForItem, subtotal);
             InventoryItem toInventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, toInventory,
-                    transferQuantity, subtotal, inventoryTransfer.getToWarehouseId(), false);
+                    qtyForItem, subtotal, toWarehouseId, false);
             inventoryItems.add(toInventoryItem);
             InventoryItem formInventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, fromInventory,
-                    transferQuantity, subtotal, inventoryTransfer.getFromWarehouseId(), true);
+                    qtyForItem, subtotal, fromWarehouseId, true);
             inventoryItems.add(formInventoryItem);
         }
         if (isRevoke) {
-            increaseInventory.forEach(item -> {
-                // 减库存
-                inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨入库, null);
-            });
-            reduceInventory.forEach(item -> {
-                // 加库存
-                inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨出库, null);
-            });
+            increaseInventory.forEach(item ->
+                    inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨入库, null));
+            reduceInventory.forEach(item ->
+                    inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨出库, null));
+            costingService.reverseIssue(inventoryTransfer.getId(), OperationType.调拨出库,
+                    inventoryTransfer.getMerchantId(), inventoryTransfer.getAccountBookId());
             return;
         }
-        // 明细数据排序（出库前，入库后）
         List<InventoryItem> sortedInventoryItems = new ArrayList<>();
         inventoryItems.forEach(item -> {
-            Long warehouseId = item.getWarehouseId();
-            if (warehouseId.equals(inventoryTransfer.getFromWarehouseId())) {
+            if (item.getWarehouseId().equals(inventoryTransfer.getFromWarehouseId())
+                    || Objects.equals(item.getOperationType(), OperationType.调拨出库)) {
                 sortedInventoryItems.add(item);
             }
         });
         inventoryItems.forEach(item -> {
-            Long warehouseId = item.getWarehouseId();
-            if (warehouseId.equals(inventoryTransfer.getToWarehouseId())) {
+            if (Objects.equals(item.getOperationType(), OperationType.调拨入库)) {
                 sortedInventoryItems.add(item);
             }
         });
-        reduceInventory.forEach(item -> {
-            // 减库存
-            inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨出库, sortedInventoryItems);
-        });
-        increaseInventory.forEach(item -> {
-            // 加库存
-            inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨入库, sortedInventoryItems);
-        });
+        reduceInventory.forEach(item ->
+                inventoryService.computedInventory(item, false, inventoryTransfer.getId(), OperationType.调拨出库, sortedInventoryItems));
+        increaseInventory.forEach(item ->
+                inventoryService.computedInventory(item, true, inventoryTransfer.getId(), OperationType.调拨入库, sortedInventoryItems));
     }
 
     /**
@@ -273,7 +316,8 @@ public class InventoryTransferService extends AbsService {
         inventoryItem.setProductId(inventoryTransferItem.getProductId());
         inventoryItem.setWarehouseId(warehouseId);
         inventoryItem.setInventoryDate(inventoryTransfer.getTransferDate());
-        inventoryItem.setQuantity(isOut ? -inventoryTransferItem.getQuantity().intValue() : inventoryTransferItem.getQuantity().intValue());
+        int qty = transferQuantity == null ? 0 : (int) Math.round(transferQuantity);
+        inventoryItem.setQuantity(isOut ? -qty : qty);
         inventoryItem.setOperationType(isOut ? OperationType.调拨出库 : OperationType.调拨入库);
         inventoryItem.setBaseUnitId(inventory.getBaseUnitId());
         inventoryItem.setOrderId(inventoryTransfer.getId());
@@ -283,7 +327,11 @@ public class InventoryTransferService extends AbsService {
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(inventoryTransfer.getCreatedBy());
         inventoryItem.setSubtotal(subtotal);
-        inventoryItem.setUnitPrice(subtotal.divide(BigDecimal.valueOf(transferQuantity), 2, RoundingMode.HALF_EVEN));
+        if (qty != 0 && subtotal != null) {
+            inventoryItem.setUnitPrice(subtotal.divide(BigDecimal.valueOf(qty), 2, RoundingMode.HALF_EVEN));
+        } else {
+            inventoryItem.setUnitPrice(BigDecimal.ZERO);
+        }
         return inventoryItem;
     }
 

@@ -17,6 +17,7 @@ import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.OutboundType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.OtherOutboundForm;
+import com.flyemu.share.repository.OtherOutboundItemRepository;
 import com.flyemu.share.repository.OtherOutboundRepository;
 import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
@@ -57,6 +58,8 @@ public class OtherOutboundService extends AbsService {
     private final OtherOutboundItemService otherOutboundItemService;
 
     private final InventoryService inventoryService;
+    private final CostingService costingService;
+    private final OtherOutboundItemRepository otherOutboundItemRepository;
 
     private final static QOtherOutboundItem qOtherOutboundItem = QOtherOutboundItem.otherOutboundItem;
 
@@ -181,10 +184,9 @@ public class OtherOutboundService extends AbsService {
         List<Inventory> inventories = new ArrayList<>();
         List<InventoryItem> inventoryItems = new ArrayList<>();
         if (OrderStatus.已审核.equals(state)) {
-            //处理库存
+            applyIssueCost(otherOutbound, otherOutboundItems, operationType);
             this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound);
             inventories.forEach(item -> {
-                // 减库存
                 inventoryService.computedInventory(item, false, id, operationType, inventoryItems);
             });
             otherOutbound.setOrderStatus(OrderStatus.已审核);
@@ -192,17 +194,44 @@ public class OtherOutboundService extends AbsService {
             otherOutbound.setApprovedAt(LocalDateTime.now());
             otherOutboundRepository.save(otherOutbound);
         } else if (OrderStatus.已保存.equals(state)) {
-            //处理库存
             this.getComputedInventory(otherOutboundItems, inventories, operationType, inventoryItems, otherOutbound);
             inventories.forEach(item -> {
-                // 加库存
                 inventoryService.computedInventory(item, true, id, operationType, null);
             });
+            costingService.reverseIssue(id, operationType, otherOutbound.getMerchantId(), otherOutbound.getAccountBookId());
+            clearIssueCost(otherOutboundItems);
             otherOutbound.setOrderStatus(OrderStatus.已保存);
             otherOutbound.setApprovedBy(adminId);
             otherOutbound.setApprovedAt(LocalDateTime.now());
             otherOutboundRepository.save(otherOutbound);
         }
+    }
+
+    private void applyIssueCost(OtherOutbound otherOutbound, List<OtherOutboundItem> items, OperationType operationType) {
+        for (OtherOutboundItem line : items) {
+            int qty = line.getQuantity() == null ? 0 : (int) Double.parseDouble(line.getQuantity().toString());
+            CostingService.IssueRequest req = new CostingService.IssueRequest();
+            req.setProductId(line.getProductId());
+            req.setWarehouseId(line.getWarehouseId());
+            req.setQty(qty);
+            req.setOrderId(otherOutbound.getId());
+            req.setOrderType(operationType);
+            req.setItemId(line.getId());
+            req.setMerchantId(otherOutbound.getMerchantId());
+            req.setAccountBookId(otherOutbound.getAccountBookId());
+            CostingService.IssueResult result = costingService.issue(req);
+            line.setCostPrice(result.getCostPrice());
+            line.setCostAmount(result.getCostAmount());
+        }
+        otherOutboundItemRepository.saveAll(items);
+    }
+
+    private void clearIssueCost(List<OtherOutboundItem> items) {
+        for (OtherOutboundItem line : items) {
+            line.setCostPrice(null);
+            line.setCostAmount(null);
+        }
+        otherOutboundItemRepository.saveAll(items);
     }
 
     /**
@@ -221,7 +250,16 @@ public class OtherOutboundService extends AbsService {
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         otherOutboundItems.forEach(otherOutboundItem -> {
             Double quantity = otherOutboundItem.getQuantity();
-            BigDecimal subtotal = otherOutboundItem.getSubtotal();
+            BigDecimal subtotal = otherOutboundItem.getCostAmount() != null
+                    ? otherOutboundItem.getCostAmount() : otherOutboundItem.getSubtotal();
+            if (subtotal == null) {
+                Inventory inv = inventoryService.findByWarehouseIdAndProductId(
+                        otherOutboundItem.getWarehouseId(), otherOutboundItem.getProductId());
+                BigDecimal avg = inv != null && inv.getAverageCost() != null ? inv.getAverageCost() : BigDecimal.ZERO;
+                subtotal = avg.multiply(BigDecimal.valueOf(quantity == null ? 0D : quantity))
+                        .setScale(2, RoundingMode.HALF_EVEN);
+            }
+            BigDecimal finalSubtotal = subtotal;
             inventories.stream()
                     .filter(item -> item.getProductId().equals(otherOutboundItem.getProductId())
                             && item.getWarehouseId().equals(otherOutboundItem.getWarehouseId()))
@@ -230,7 +268,7 @@ public class OtherOutboundService extends AbsService {
                             item -> {
                                 Integer currentQuantity = item.getCurrentQuantity();
                                 BigDecimal totalCost = item.getTotalCost();
-                                BigDecimal added = totalCost.add(subtotal)
+                                BigDecimal added = totalCost.add(finalSubtotal)
                                         .setScale(2, RoundingMode.HALF_EVEN);
                                 double parsed = Double.parseDouble(quantity.toString());
                                 currentQuantity += (int) parsed;
@@ -242,14 +280,14 @@ public class OtherOutboundService extends AbsService {
                                 inventory.setWarehouseId(otherOutboundItem.getWarehouseId());
                                 double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
                                 inventory.setCurrentQuantity((int) parsed);
-                                inventory.setTotalCost(otherOutboundItem.getSubtotal());
+                                inventory.setTotalCost(finalSubtotal);
                                 inventory.setMerchantId(otherOutboundItem.getMerchantId());
                                 inventory.setBaseUnitId(otherOutboundItem.getBaseUnitId());
                                 inventory.setAccountBookId(otherOutboundItem.getAccountBookId());
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, otherOutbound, operationType);
+            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, otherOutbound, operationType, finalSubtotal);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
@@ -262,7 +300,7 @@ public class OtherOutboundService extends AbsService {
      * @return inventoryItem
      */
     private InventoryItem getInventoryItem(OtherOutboundItem otherOutboundItem, OtherOutbound otherOutbound,
-                                           OperationType operationType) {
+                                           OperationType operationType, BigDecimal costAmount) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(otherOutboundItem.getProductId());
         inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
@@ -279,8 +317,9 @@ public class OtherOutboundService extends AbsService {
         inventoryItem.setInventoryDate(otherOutbound.getInboundDate());
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(otherOutboundItem.getCreatedBy());
-        inventoryItem.setUnitPrice(otherOutboundItem.getUnitPrice());
-        inventoryItem.setSubtotal(otherOutboundItem.getSubtotal());
+        inventoryItem.setUnitPrice(otherOutboundItem.getCostPrice() != null
+                ? otherOutboundItem.getCostPrice() : otherOutboundItem.getUnitPrice());
+        inventoryItem.setSubtotal(costAmount);
         return inventoryItem;
     }
 

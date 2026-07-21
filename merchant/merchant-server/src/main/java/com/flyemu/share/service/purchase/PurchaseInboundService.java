@@ -36,6 +36,7 @@ import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.basic.SupplierService;
+import com.flyemu.share.service.inventory.CostingService;
 import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -87,6 +88,7 @@ public class PurchaseInboundService extends AbsService {
     private final SupplierService supplierService;
 
     private final InventoryService inventoryService;
+    private final CostingService costingService;
 
     public PageResults<PurchaseInboundDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInbound)
@@ -432,17 +434,39 @@ public class PurchaseInboundService extends AbsService {
                 List<PurchaseInboundItem> inboundItems = inboundItemRepository.findByPurchaseInboundId(purchaseInbound.getId());
                 //处理库存
                 this.getComputedInventory(inboundItems, inventories, inventoryItems, purchaseInbound);
-                inventories.forEach(item -> {
-                    if (OrderStatus.已审核.equals(state)) {
-                        // 加库存
-                        inventoryService.computedInventory(item, true, id, OperationType.采购入库, inventoryItems);
-                    } else {
-                        // 减库存
-                        inventoryService.computedInventory(item, false, id, OperationType.采购入库, null);
-                    }
-                });
+                if (OrderStatus.已审核.equals(state)) {
+                    // 加库存
+                    inventories.forEach(item ->
+                            inventoryService.computedInventory(item, true, id, OperationType.采购入库, inventoryItems));
+                    createCostBatches(purchaseInbound, inboundItems);
+                } else {
+                    // 先校验并删除批次，再减库存
+                    costingService.reverseReceipt(id, OperationType.采购入库,
+                            purchaseInbound.getMerchantId(), purchaseInbound.getAccountBookId());
+                    inventories.forEach(item ->
+                            inventoryService.computedInventory(item, false, id, OperationType.采购入库, null));
+                }
             });
         });
+    }
+
+    private void createCostBatches(PurchaseInbound purchaseInbound, List<PurchaseInboundItem> inboundItems) {
+        for (PurchaseInboundItem item : inboundItems) {
+            CostingService.ReceiptRequest req = new CostingService.ReceiptRequest();
+            req.setProductId(item.getProductId());
+            req.setWarehouseId(item.getWarehouseId());
+            int qty = item.getQuantity() == null ? 0 : (int) Double.parseDouble(item.getQuantity().toString());
+            req.setQty(qty);
+            req.setUnitCost(item.getUnitPrice());
+            req.setInboundDate(purchaseInbound.getInboundDate());
+            req.setOrderId(purchaseInbound.getId());
+            req.setOrderType(OperationType.采购入库);
+            req.setItemId(item.getId());
+            req.setSupplierId(purchaseInbound.getSupplierId());
+            req.setMerchantId(item.getMerchantId());
+            req.setAccountBookId(item.getAccountBookId());
+            costingService.createReceiptBatch(req);
+        }
     }
 
     private void getComputedInventory(List<PurchaseInboundItem> inboundItems, List<Inventory> inventories,

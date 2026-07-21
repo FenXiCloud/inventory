@@ -28,6 +28,7 @@ import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.AbsService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.inventory.CostingService;
 import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -89,6 +90,8 @@ public class SalesOutboundService extends AbsService {
 
     @Autowired
     private InventoryService inventoryService;
+    @Autowired
+    private CostingService costingService;
     private final PriceRecordService priceRecordService;
     private final CustomerService customerService;
 
@@ -160,11 +163,14 @@ public class SalesOutboundService extends AbsService {
         Long id = salesOutbound.getId();
         List<SalesOutboundItem> salesOutboundItemList = salesOutboundForm.getSalesOutboundItemList();
 
-        //查询账套参数
+        //查询账套参数：availableInventory 1=允许负库存
         AccountBookParameters accountBookParameters = bqf.selectFrom(Q_ACCOUNT_BOOK_PARAMETERS)
                 .where(Q_ACCOUNT_BOOK_PARAMETERS.accountBookId.eq(Math.toIntExact(salesOutbound.getAccountBookId())))
                 .fetchOne();
-        if (accountBookParameters != null && accountBookParameters.getCostAccounting() == 1) {
+        boolean allowNegative = accountBookParameters != null
+                && accountBookParameters.getAvailableInventory() != null
+                && accountBookParameters.getAvailableInventory() == 1;
+        if (allowNegative) {
             log.info("可用库存允许为负,放行 accountBookParameters:{}", JSONUtil.toJsonStr(salesOutboundItemList));
         } else {
             for (SalesOutboundItem item : salesOutboundItemList) {
@@ -557,18 +563,52 @@ public class SalesOutboundService extends AbsService {
     private void salesOutboundToInventory(SalesOutbound original) {
         List<Inventory> inventories = new ArrayList<>();
         List<InventoryItem> inventoryItems = new ArrayList<>();
-        List<SalesOutboundItem> outboundItems = jqf.selectFrom(qSalesOutboundItem).where(qSalesOutboundItem.salesOutboundId.eq(original.getId())).fetch();
-        //处理库存
-        this.getComputedInventory(outboundItems, inventories, inventoryItems, original);
-        inventories.forEach(item -> {
-            if (OrderStatus.已审核.equals(original.getOrderStatus())) {
-                // 减库存
-                inventoryService.computedInventory(item, false, original.getId(), OperationType.销售出库, inventoryItems);
-            } else {
-                // 加库存
-                inventoryService.computedInventory(item, true, original.getId(), OperationType.销售出库, null);
-            }
-        });
+        List<SalesOutboundItem> outboundItems = jqf.selectFrom(qSalesOutboundItem)
+                .where(qSalesOutboundItem.salesOutboundId.eq(original.getId())).fetch();
+        if (OrderStatus.已审核.equals(original.getOrderStatus())) {
+            applyIssueCost(original, outboundItems);
+            this.getComputedInventory(outboundItems, inventories, inventoryItems, original);
+            inventories.forEach(item ->
+                    inventoryService.computedInventory(item, false, original.getId(), OperationType.销售出库, inventoryItems));
+        } else {
+            // 反审：先按明细已落成本回补库存余额，再回补批次
+            this.getComputedInventory(outboundItems, inventories, inventoryItems, original);
+            inventories.forEach(item ->
+                    inventoryService.computedInventory(item, true, original.getId(), OperationType.销售出库, null));
+            costingService.reverseIssue(original.getId(), OperationType.销售出库,
+                    original.getMerchantId(), original.getAccountBookId());
+            clearIssueCost(outboundItems);
+        }
+    }
+
+    /**
+     * 审核出库：按成本法扣批次并回写明细成本
+     */
+    private void applyIssueCost(SalesOutbound original, List<SalesOutboundItem> outboundItems) {
+        for (SalesOutboundItem line : outboundItems) {
+            int qty = line.getQuantity() == null ? 0 : (int) Double.parseDouble(line.getQuantity().toString());
+            CostingService.IssueRequest req = new CostingService.IssueRequest();
+            req.setProductId(line.getProductId());
+            req.setWarehouseId(line.getWarehouseId());
+            req.setQty(qty);
+            req.setOrderId(original.getId());
+            req.setOrderType(OperationType.销售出库);
+            req.setItemId(line.getId());
+            req.setMerchantId(original.getMerchantId());
+            req.setAccountBookId(original.getAccountBookId());
+            CostingService.IssueResult result = costingService.issue(req);
+            line.setCostPrice(result.getCostPrice());
+            line.setCostAmount(result.getCostAmount());
+        }
+        salesOutboundItemRepository.saveAll(outboundItems);
+    }
+
+    private void clearIssueCost(List<SalesOutboundItem> outboundItems) {
+        for (SalesOutboundItem line : outboundItems) {
+            line.setCostPrice(null);
+            line.setCostAmount(null);
+        }
+        salesOutboundItemRepository.saveAll(outboundItems);
     }
 
     private void getComputedInventory(List<SalesOutboundItem> outboundItems, List<Inventory> inventories,
@@ -578,14 +618,16 @@ public class SalesOutboundService extends AbsService {
         outboundItems.forEach(otherOutboundItem -> {
             Double quantity = otherOutboundItem.getQuantity();
             Long productId = otherOutboundItem.getProductId();
-            // 获取商品单价
-            Product product = productRepository.findById(productId).orElse(null);
-            if (product == null) {
-                return;
+            // 优先使用审核写入的成本；反审时回补同样金额
+            BigDecimal subtotal = otherOutboundItem.getCostAmount();
+            if (subtotal == null) {
+                Inventory inv = inventoryService.findByWarehouseIdAndProductId(
+                        otherOutboundItem.getWarehouseId(), productId);
+                BigDecimal avg = inv != null && inv.getAverageCost() != null ? inv.getAverageCost() : BigDecimal.ZERO;
+                subtotal = avg.multiply(BigDecimal.valueOf(quantity == null ? 0D : quantity))
+                        .setScale(2, RoundingMode.HALF_EVEN);
             }
-            BigDecimal price = product.getPurchasePrice();
-            // 金额取数为商品金额加数量
-            BigDecimal subtotal = price.multiply(new BigDecimal(quantity)).setScale(2, RoundingMode.HALF_EVEN);
+            BigDecimal finalSubtotal = subtotal;
             inventories.stream()
                     .filter(item -> item.getProductId().equals(productId)
                             && item.getWarehouseId().equals(otherOutboundItem.getWarehouseId()))
@@ -594,7 +636,7 @@ public class SalesOutboundService extends AbsService {
                             item -> {
                                 Integer currentQuantity = item.getCurrentQuantity();
                                 BigDecimal totalCost = item.getTotalCost();
-                                BigDecimal added = totalCost.add(subtotal)
+                                BigDecimal added = totalCost.add(finalSubtotal)
                                         .setScale(2, RoundingMode.HALF_EVEN);
                                 double parsed = Double.parseDouble(quantity.toString());
                                 currentQuantity += (int) parsed;
@@ -606,20 +648,21 @@ public class SalesOutboundService extends AbsService {
                                 inventory.setWarehouseId(otherOutboundItem.getWarehouseId());
                                 double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
                                 inventory.setCurrentQuantity((int) parsed);
-                                inventory.setTotalCost(otherOutboundItem.getSubtotal());
+                                inventory.setTotalCost(finalSubtotal);
                                 inventory.setMerchantId(otherOutboundItem.getMerchantId());
                                 inventory.setBaseUnitId(otherOutboundItem.getBaseUnitId());
                                 inventory.setAccountBookId(otherOutboundItem.getAccountBookId());
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, salesOutbound);
+            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, salesOutbound, finalSubtotal);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
     }
 
-    private InventoryItem getInventoryItem(SalesOutboundItem otherOutboundItem, SalesOutbound salesOutbound) {
+    private InventoryItem getInventoryItem(SalesOutboundItem otherOutboundItem, SalesOutbound salesOutbound,
+                                           BigDecimal costAmount) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(otherOutboundItem.getProductId());
         inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
@@ -636,8 +679,9 @@ public class SalesOutboundService extends AbsService {
         inventoryItem.setInventoryDate(Date.from(salesOutbound.getOutboundDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         inventoryItem.setCreatedAt(LocalDateTime.now());
         inventoryItem.setCreatedBy(otherOutboundItem.getCreatedBy());
-        inventoryItem.setUnitPrice(otherOutboundItem.getUnitPrice());
-        inventoryItem.setSubtotal(otherOutboundItem.getSubtotal());
+        // 流水记录成本，不再写入销售单价
+        inventoryItem.setUnitPrice(otherOutboundItem.getCostPrice());
+        inventoryItem.setSubtotal(costAmount);
         return inventoryItem;
     }
 

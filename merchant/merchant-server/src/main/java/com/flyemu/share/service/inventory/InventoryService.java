@@ -200,7 +200,7 @@ public class InventoryService extends AbsService {
                 }
             }
             if (!insertList.isEmpty()) {
-                inventoryItemService.batchInsertList(inventoryItems);
+                inventoryItemService.batchInsertList(insertList);
             }
         }
     }

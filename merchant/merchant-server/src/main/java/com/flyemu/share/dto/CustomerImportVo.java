@@ -1,12 +1,10 @@
 package com.flyemu.share.dto;
 
-
 import cn.hutool.core.annotation.Alias;
 import lombok.Data;
 import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
-
 
 @Data
 public class CustomerImportVo {

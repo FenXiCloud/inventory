@@ -9,9 +9,9 @@ import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.dto.AdminDto;
 import com.flyemu.share.dto.MenuDto;
 import com.flyemu.share.entity.setting.*;
-import com.flyemu.share.repository.AdminRepository;
-import com.flyemu.share.repository.RoleRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.AdminRepository;
+import com.flyemu.share.repository.setting.RoleRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
@@ -23,18 +23,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * @功能描述: 管理员
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class AdminService extends AbsService {
+public class AdminService extends BaseService {
     private final RoleRepository roleRepository;
 
     private final static QAdmin qAdmin = QAdmin.admin;
@@ -52,7 +45,6 @@ public class AdminService extends AbsService {
     private final static QMerchantMenu qMerchantMenu = QMerchantMenu.merchantMenu;
 
     private final AdminRepository adminRepository;
-
 
     public List<AdminDto> query(Long merchantId, Query query) {
         List<Tuple> fetchPage = bqf.selectFrom(qAdmin)
@@ -139,7 +131,6 @@ public class AdminService extends AbsService {
         AccountBook accountBook = bqf.selectFrom(qAccountBook).where(qAccountBook.merchantId.eq(admin.getMerchantId()).and(qAccountBook.current.isTrue())).fetchFirst();
 
         return new AccountDto(admin, merchant, role, accountBook);
-
 
     }
 

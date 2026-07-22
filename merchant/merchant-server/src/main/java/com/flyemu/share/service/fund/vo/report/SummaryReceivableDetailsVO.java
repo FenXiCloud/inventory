@@ -4,9 +4,6 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 
-/**
- *@author shuaiqi
- */
 @Data
 public class SummaryReceivableDetailsVO {
     private String customerCode;

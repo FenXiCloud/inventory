@@ -1,10 +1,12 @@
 package com.flyemu.share.service.fund;
 
+import com.flyemu.share.common.TenantAware;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.CustomerFlowDTO;
@@ -19,9 +21,9 @@ import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.form.CustomerInitialForm;
 import com.flyemu.share.form.InventoryInitialForm;
-import com.flyemu.share.repository.CustomerFlowRepository;
-import com.flyemu.share.repository.CustomerRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.fund.CustomerFlowRepository;
+import com.flyemu.share.repository.basic.CustomerRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.Expressions;
@@ -41,18 +43,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * @功能描述: 客户交易流水
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class CustomerFlowService extends AbsService {
+public class CustomerFlowService extends BaseService {
 
     private final static QCustomerFlow qCustomerFlow = QCustomerFlow.customerFlow;
     private final static QCustomer qCustomer = QCustomer.customer;
@@ -76,13 +71,11 @@ public class CustomerFlowService extends AbsService {
     }
 
     @Data
-    public static class CustomerBillQueryDTO {
+    public static class CustomerBillQueryDTO implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qCustomerFlow.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qCustomerFlow.merchantId, merchantId);
         }
 
         public void setCustomerId(Long customerId) {
@@ -90,9 +83,7 @@ public class CustomerFlowService extends AbsService {
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qCustomerFlow.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qCustomerFlow.accountBookId, accountBookId);
         }
 
         public void setStartTime(LocalDateTime startTime) {
@@ -223,7 +214,7 @@ public class CustomerFlowService extends AbsService {
     }
 
     @Data
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         private String filter;
@@ -234,15 +225,11 @@ public class CustomerFlowService extends AbsService {
         private CustomerFlow.CustomerFlowType customerFlowType;
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qCustomerFlow.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qCustomerFlow.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qCustomerFlow.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qCustomerFlow.accountBookId, accountBookId);
         }
 
         public BooleanBuilder buildersV2() {

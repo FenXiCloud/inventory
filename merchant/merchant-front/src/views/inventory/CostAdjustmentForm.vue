@@ -1,93 +1,92 @@
 <template>
   <div class="page-column">
     <div class="page-column-full-body">
-      <vxe-toolbar class-name="!size--mini">
-        <template #buttons>
+      <div class="form-toolbar">
+        <div class="form-toolbar__left">
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
           <t-date-picker v-model="form.orderDate" :disabled="isAudited || looked"
                          :disable-date="{ before: accountBook.checkoutDate }"
                          :clearable="false"/>
+        </div>
+        <Stamp v-if="isAudited"/>
+      </div>
+      <t-table
+          ref="xTable"
+          row-key="_rowKey"
+          size="small"
+          bordered
+          stripe
+          hover
+          table-layout="fixed"
+          :columns="columns"
+          :data="costAdjustmentData"
+          :foot-data="footData"
+          :loading="loading"
+      >
+        <template #ops="{ rowIndex }">
+          <template v-if="rowIsSelect(rowIndex)">
+            <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
+            <div v-if="costAdjustmentData.length !== 1" class="fa fa-minus text-hover-danger"
+                 @click="adjustRows('delete', rowIndex)"></div>
+          </template>
+          <template v-else>{{ rowIndex + 1 }}</template>
         </template>
-        <template #tools>
-          <Stamp v-if="isAudited"/>
+        <template #productUrl="{ row }">
+          <img v-if="row.productUrl" :src="row.productUrl" alt="" class="product-img"/>
         </template>
-      </vxe-toolbar>
-      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border show-overflow keep-source
-                 :edit-config="editConfig" :row-config="{ height: 40, isCurrent: true, isHover: true }"
-                 :tooltip-config="tooltipConfig" show-footer :footer-method="footerMethod" stripe
-                 :data="costAdjustmentData"
-                 @current-change="currentChangeEvent" @cell-click="tableCellClick">
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
-          <template #default="{ row, rowIndex }">
-            <div v-if="rowIsSelect(rowIndex)">
-              <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
-              <div v-if="costAdjustmentData.length !== 1" class="fa fa-minus text-hover-danger"
-                   @click="adjustRows('delete', rowIndex)"></div>
+        <template #productName="{ row, rowIndex }">
+          <div class="input-group goodsSelect" v-if="!isAudited && !looked">
+            <t-select :clearable="false" ref="ms" v-model="row.productId" :options="productList" filterable
+                      placeholder="输入编码/名称" :keys="{ value: 'id', label: 'customName' }"
+                      @change="(e) => changeRow({ rowIndex }, 'product', e)"/>
+          </div>
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.productCode }}--{{ row.productName }}</div>
             </div>
-            <div v-else>
-              {{ rowIndex + 1 }}
+          </div>
+        </template>
+        <template #warehouseName="{ row, rowIndex }">
+          <div class="input-group goodsSelect" v-if="!isAudited && !looked">
+            <t-select :clearable="false" ref="ms" v-model="row.warehouseId" :options="warehouseList" filterable
+                      placeholder="请选择仓库" :keys="{ value: 'id', label: 'name' }"
+                      @change="(e) => changeRow({ rowIndex }, 'warehouse', e)"/>
+          </div>
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.warehouseName }}</div>
             </div>
-          </template>
-        </vxe-column>
-        <vxe-column field="productUrl" title="产品图片" width="100" :cell-render="imgUrlCellRender"></vxe-column>
-        <vxe-column field="productCode" title="产品编码" width="100"></vxe-column>
-        <vxe-column field="productName" title="产品名称" min-width="300">
-          <template #default="scope">
-            <div class="input-group goodsSelect" v-if="!isAudited && !looked">
-              <t-select :clearable="false" ref="ms" v-model="scope.row.productId" :options="productList" filterable
-                        placeholder="输入编码/名称" :keys="{ value: 'id', label: 'customName' }"
-                        @change="(e) => changeRow(scope, 'product', e)"/>
+          </div>
+        </template>
+        <template #adjustmentAmount="{ row, rowIndex }">
+          <t-tooltip v-if="!isAudited && !looked" theme="light">
+            <template #content>
+              <div style="white-space: pre-line">{{ row.quantityTips }}</div>
+            </template>
+            <t-input-number
+                v-model="row.adjustmentAmount"
+                theme="normal"
+                :min="0"
+                :decimal-places="2"
+                style="width: 100%"
+                @focus="getTotalCost({ rowIndex })"
+            />
+          </t-tooltip>
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.adjustmentAmount }}</div>
             </div>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.productCode }}--{{ scope.row.productName }}</div>
-              </div>
+          </div>
+        </template>
+        <template #remarks="{ row }">
+          <t-input v-if="!isAudited && !looked" v-model="row.remarks"/>
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.remarks }}</div>
             </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="规格型号" field="productSpecification" align="center" width="80"></vxe-column>
-        <vxe-column title="产品类别" field="productCategoryName" align="center" width="120"></vxe-column>
-        <vxe-column title="单位" field="productUnitName" width="90"/>
-        <vxe-column title="仓库" field="warehouseName" width="300">
-          <template #default="scope">
-            <div class="input-group goodsSelect" v-if="!isAudited && !looked">
-              <t-select :clearable="false" ref="ms" v-model="scope.row.warehouseId" :options="warehouseList" filterable
-                        placeholder="请选择仓库" :keys="{ value: 'id', label: 'name' }"
-                        @change="(e) => changeRow(scope, 'warehouse', e)"/>
-            </div>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.warehouseName }}</div>
-              </div>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="调整金额" field="adjustmentAmount" width="100">
-          <template #default="scope">
-            <vxe-tooltip v-if="!isAudited && !looked" theme="light" :content="scope.row.quantityTips">
-              <vxe-input @focus="getTotalCost(scope)"
-                         v-model.number="scope.row.adjustmentAmount" type="int" min="0" :controls="false">
-              </vxe-input>
-            </vxe-tooltip>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.adjustmentAmount }}</div>
-              </div>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="备注" field="remarks" width="100">
-          <template #default="scope">
-            <vxe-input v-if="!isAudited && !looked" v-model="scope.row.remarks" :controls="false">
-            </vxe-input>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.remarks }}</div>
-              </div>
-            </div>
-          </template>
-        </vxe-column>
-      </vxe-table>
+          </div>
+        </template>
+      </t-table>
       <div class="mt-10px"></div>
       <div class="filler-panel">
         <div class="filler-item">
@@ -127,6 +126,11 @@ import {mapMutations, mapState} from "vuex";
 import CostAdjustment from "@js/api/inventory/CostAdjustment";
 import Stamp from "../common/Stamp.vue";
 
+let rowSeq = 0;
+function newRow(extra = {}) {
+  return { _rowKey: `r-${++rowSeq}`, productId: null, warehouseId: null, quantity: null, ...extra };
+}
+
 export default {
   name: "CostAdjustmentForm",
   components: {Stamp},
@@ -142,6 +146,34 @@ export default {
     },
     looked() {
       return this.type === 'look';
+    },
+    columns() {
+      return [
+        {
+          colKey: 'ops',
+          title: '操作',
+          width: 70,
+          align: 'center',
+          fixed: 'left',
+          foot: () => '合计'
+        },
+        { colKey: 'productUrl', title: '产品图片', width: 100 },
+        { colKey: 'productCode', title: '产品编码', width: 100 },
+        { colKey: 'productName', title: '产品名称', minWidth: 300 },
+        { colKey: 'productSpecification', title: '规格型号', align: 'center', width: 80 },
+        { colKey: 'productCategoryName', title: '产品类别', align: 'center', width: 120 },
+        { colKey: 'productUnitName', title: '单位', width: 90 },
+        { colKey: 'warehouseName', title: '仓库', width: 300 },
+        { colKey: 'adjustmentAmount', title: '调整金额', width: 100 },
+        { colKey: 'remarks', title: '备注', width: 100 },
+      ];
+    },
+    footData() {
+      let totalAmount = 0;
+      (this.costAdjustmentData || []).forEach((row) => {
+        totalAmount += Number(row.adjustmentAmount || 0);
+      });
+      return [{ ops: '合计', adjustmentAmount: totalAmount.toFixed(2) }];
     }
   },
   data() {
@@ -165,22 +197,8 @@ export default {
       costAdjustmentData: [],
       selectRowIndex: null,
       increase: true,
-      validRules: {
-        productName: [
-          {required: true, message: '请选择产品名称'},
-        ],
-        warehouseName: [
-          {required: true, message: '请选择仓库'},
-        ],
-        quantity: [
-          {required: true, message: '请填写数量'},
-        ]
-      },
-      tooltipConfig: {
-        showAll: false,
-        enterable: false,
-      },
-      editConfig: {trigger: 'click', mode: 'row'}
+      customerList: [],
+      supplierList: [],
     };
   },
   methods: {
@@ -206,37 +224,6 @@ export default {
     },
 
     ...mapMutations(['closeSelfTab', 'pushTab']),
-    footerMethod({columns, data}) {
-      let totalQuantity = 0;
-      let totalAmount = 0.00;
-      (columns || []).forEach(column => {
-        if (column.property && ['quantity', 'subtotal'].includes(column.property)) {
-          (data || []).forEach((row) => {
-            switch (column.property) {
-              case 'quantity': {
-                let rd = row[column.property];
-                if (rd) {
-                  totalQuantity += Number(rd || 0);
-                }
-                break;
-              }
-              case 'subtotal': {
-                let rd = row[column.property];
-                if (rd) {
-                  totalAmount += Number(rd || 0);
-                }
-                break;
-              }
-              default:
-                break;
-            }
-          });
-        }
-      });
-      return [
-        ["", "", "", "", "", "", "", "", totalQuantity, "", totalAmount],
-      ];
-    },
     resolveDefaultWarehouse() {
       return (this.warehouseList || []).find(w => w.systemDefault || w.isDefault) || null;
     },
@@ -439,26 +426,20 @@ export default {
     },
     adjustRows(type, index) {
       if (type === "insert") {
-        this.costAdjustmentData.splice(index + 1, 0, {isNew: true});
+        this.costAdjustmentData.splice(index + 1, 0, newRow({isNew: true}));
       } else {
         this.costAdjustmentData.splice(index, 1);
       }
     },
     newCostAdjustmentData() {
       for (let index = 0; index < 5; index++) {
-        this.costAdjustmentData.push({productId: null, warehouseId: null, quantity: null});
+        this.costAdjustmentData.push(newRow());
       }
     },
     rowIsSelect() {
       return !this.isAudited && !this.looked;
     },
-    currentChangeEvent({rowIndex}) {
-      this.selectRowIndex = rowIndex;
-    },
-    tableCellClick() {
-    },
     loadEditForm(id) {
-      this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
       this.costAdjustmentData = [];
       CostAdjustment.load(this.costAdjustmentId || id).then(
@@ -475,7 +456,7 @@ export default {
               let totalAdjustmentAmount = 0;
               data.forEach(item => {
                 totalAdjustmentAmount += parseFloat(item.adjustmentAmount || 0);
-                this.costAdjustmentData.push({
+                this.costAdjustmentData.push(newRow({
                   productUrl: '',
                   productCode: item.productCode,
                   productName: item.productName,
@@ -489,7 +470,7 @@ export default {
                   remarks: item.remarks,
                   totalCost: item.totalCost,
                   adjustmentAmount: item.adjustmentAmount
-                });
+                }));
               });
               this.form.totalAdjustmentAmount = totalAdjustmentAmount;
             }
@@ -518,10 +499,8 @@ export default {
       this.newCostAdjustmentData();
       this.form.adminName = this.user?.admin?.name || '';
       this.form.id = null;
-      this.editConfig = {trigger: 'click', mode: 'row'};
     },
     initAuditsForm() {
-      this.editConfig = {};
     },
     approved() {
       if (!this.form.id) {
@@ -584,3 +563,11 @@ export default {
   },
 };
 </script>
+<style lang="less" scoped>
+
+.product-img {
+  max-width: 48px;
+  max-height: 48px;
+  object-fit: contain;
+}
+</style>

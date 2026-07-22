@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.setting;
 
+import com.flyemu.share.common.TenantAware;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
 @DynamicUpdate
 @DynamicInsert
 @Comment("财务软件凭证")
-public class FinanceVoucher {
+public class FinanceVoucher implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

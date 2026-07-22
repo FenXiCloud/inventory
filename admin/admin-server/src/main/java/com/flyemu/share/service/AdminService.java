@@ -6,12 +6,13 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.dto.AdminDto;
 import com.flyemu.share.entity.setting.*;
-import com.flyemu.share.repository.AdminRepository;
+import com.flyemu.share.repository.setting.AdminRepository;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
@@ -23,19 +24,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-
-/**
- * @功能描述: 管理员管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class AdminService extends AbsService {
+public class AdminService extends BaseService {
 
     private final static QAdmin qAdmin = QAdmin.admin;
 
@@ -62,7 +55,6 @@ public class AdminService extends AbsService {
         dtos.sort(Comparator.comparing(AdminDto::getId).reversed());
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
-
 
     @Transactional
     public Admin save(Admin admin) {
@@ -94,14 +86,12 @@ public class AdminService extends AbsService {
         return adminRepository.save(admin);
     }
 
-
     @Transactional
     public void delete(Long adminId, Long merchantId) {
         jqf.delete(qAdmin)
                 .where(qAdmin.id.eq(adminId).and(qAdmin.systemDefault.isFalse()).and(qAdmin.merchantId.eq(merchantId)))
                 .execute();
     }
-
 
     public AccountDto login(String username, String password) {
         Admin admin = jqf.selectFrom(qAdmin)
@@ -136,14 +126,11 @@ public class AdminService extends AbsService {
         adminRepository.save(admin);
     }
 
-
     public static class Query {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qAdmin.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qAdmin.merchantId, merchantId);
         }
 
         public void setName(String name) {

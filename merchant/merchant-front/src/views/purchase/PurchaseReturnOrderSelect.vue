@@ -18,31 +18,20 @@
       <t-button theme="primary" variant="outline" style="border-radius: 4px" @click="doSearch">搜索</t-button>
     </div>
     <div class="order-select__table">
-      <vxe-table
-          row-id="id"
+      <t-table
+          row-key="id"
           ref="table"
-          height="auto"
-          border
-          show-overflow
+          size="medium"
+          bordered
+          hover
+          height="100%"
+          table-layout="fixed"
           :data="dataList"
-          highlight-hover-row
-          show-footer
-          :footer-method="footerMethod"
-          :row-config="{height: 48}"
-          :column-config="{resizable: true}"
-          :sort-config="{remote:true}"
+          :columns="columns"
           :loading="loading"
-      >
-        <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="入库日期" field="inboundDate" align="center" width="130"/>
-        <vxe-column title="订单编号" field="orderNo" width="200"/>
-        <vxe-column title="供货商" field="supplierName" min-width="120"/>
-        <vxe-column title="采购金额" field="finalAmount" width="120"/>
-        <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-        <vxe-column title="折后金额" field="finalAmount" width="120"/>
-        <vxe-column title="制单人" field="createdName" align="center" width="100"/>
-        <vxe-column title="制单时间" field="createdAt" align="center" width="100"/>
-      </vxe-table>
+          :selected-row-keys="selectedRowKeys"
+          @select-change="onSelectChange"
+      />
     </div>
     <div class="order-select__pager">
       <span class="order-select__total">合计金额：{{ amountTotal }}元</span>
@@ -83,6 +72,19 @@ export default {
       dataList: [],
       loading: false,
       amountTotal: 0,
+      selectedRowKeys: [],
+      selectedRows: [],
+      columns: [
+        { colKey: 'row-select', type: 'multiple', width: 46 },
+        { colKey: 'inboundDate', title: '入库日期', width: 130, align: 'center' },
+        { colKey: 'orderNo', title: '订单编号', width: 200 },
+        { colKey: 'supplierName', title: '供货商', minWidth: 120 },
+        { colKey: 'purchaseAmount', title: '采购金额', width: 120, cell: (h, { row }) => row.finalAmount },
+        { colKey: 'discountAmount', title: '折扣金额', width: 120 },
+        { colKey: 'finalAmount', title: '折后金额', width: 120 },
+        { colKey: 'createdName', title: '制单人', width: 100, align: 'center' },
+        { colKey: 'createdAt', title: '制单时间', width: 100, align: 'center' },
+      ],
       pagination: {
         page: 1,
         pageSize: 20,
@@ -94,31 +96,33 @@ export default {
         sortCol: null,
         sort: null,
       },
-      dateRange: {
-        start: manba(startTime).format("YYYY-MM-dd"),
-        end: manba(endTime).format("YYYY-MM-dd")
-      },
+      dateRange: [startTime, endTime],
     }
   },
   computed: {
     queryParams() {
+      const [start, end] = this.dateRange || [];
       return Object.assign({}, this.params, {
         supplierId: this.supplierId,
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
+        start,
+        end,
       })
     },
   },
   methods: {
+    onSelectChange(keys, { selectedRowData }) {
+      this.selectedRowKeys = keys;
+      this.selectedRows = selectedRowData || [];
+    },
     onPageChange(pageInfo) {
       this.pagination.page = pageInfo.current;
       this.pagination.pageSize = pageInfo.pageSize;
       this.loadList();
     },
     confirm() {
-      let checkList = this.$refs.table.getCheckboxRecords();
+      let checkList = this.selectedRows;
       if (checkList.length && checkList.length > 0) {
         let ids = checkList.map(val => val.id);
         this.$emit('success', {orderIds: ids});
@@ -126,21 +130,14 @@ export default {
         MessagePlugin.error("未选择数据~");
       }
     },
-    footerMethod({columns, data}) {
-      let sums = [];
-      columns.forEach((column) => {
-        if (column.property && ['finalAmount'].includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) {
-              total += Number(rd || 0);
-            }
-          });
-          sums.push(total.toFixed(2));
+    updateAmountTotal() {
+      let total = 0;
+      (this.dataList || []).forEach((row) => {
+        if (row.finalAmount) {
+          total += Number(row.finalAmount || 0);
         }
-      })
-      return [["", "", "", "", "", ""].concat(sums)];
+      });
+      this.amountTotal = total.toFixed(2);
     },
     doSearch() {
       this.pagination.page = 1;
@@ -148,9 +145,12 @@ export default {
     },
     loadList() {
       this.loading = true;
+      this.selectedRowKeys = [];
+      this.selectedRows = [];
       PurchaseInbound.listToReturn(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
+        this.updateAmountTotal();
       }).finally(() => this.loading = false);
     },
   },

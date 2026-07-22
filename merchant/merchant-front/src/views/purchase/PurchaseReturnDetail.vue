@@ -1,48 +1,27 @@
 <template>
   <div class="page-column">
     <div class="page-column-full-body">
-      <vxe-toolbar class-name="!size--mini">
-        <template #buttons>
+      <div class="detail-toolbar">
+        <div class="detail-toolbar__left">
           <label class="mr-20px" style="font-size: 16px !important;">供货商：{{ form.supplierName }}</label>
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">退货日期：{{ form.returnDate }}</label>
-        </template>
-        <template #tools>
+        </div>
+        <div class="detail-toolbar__right">
           <Stamp v-if="form.orderStatus === '已审核' " />
-        </template>
-      </vxe-toolbar>
-      <vxe-table
-          size="mini"
-          ref="xTable"
-          border
-          show-overflow
-          :row-config="{height: 40}"
-          show-footer
-          :footer-method="footerMethod"
+        </div>
+      </div>
+      <t-table
+          row-key="__rowKey"
+          size="small"
+          bordered
           stripe
-          :data="productData">
-        <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
-        <vxe-column title="产品信息" min-width="300">
-          <template #default="{row,rowIndex}">
-            <div class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ row.productCode }}--{{ row.productName }}</div>
-              </div>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="类别" field="categoryName" align="center" width="80"/>
-        <vxe-column title="规格" field="spec" align="center" width="80"/>
-        <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80"/>
-        <vxe-column title="仓库" field="warehouseName" align="center" width="120"/>
-        <vxe-column title="数量" field="secondaryQuantity" width="90"/>
-        <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
-        <vxe-column title="基本数量" field="quantity" width="90"/>
-        <vxe-column title="退货单价" field="secondaryPrice" width="100"/>
-        <vxe-column title="折扣率(%)" field="discountRate" width="100"/>
-        <vxe-column title="折扣额" field="discountAmount" width="100"/>
-        <vxe-column title="退货金额" field="subtotal" width="100"/>
-        <vxe-column title="备注" field="returnReason"/>
-      </vxe-table>
+          hover
+          table-layout="fixed"
+          :data="tableData"
+          :columns="columns"
+          :foot-data="footData"
+          :loading="loading"
+      />
       <div class="mt-10px"></div>
       <div class="filler-panel">
         <div class="filler-item">
@@ -67,7 +46,6 @@
         取消
       </t-button>
       <div>
-        <!-- 当状态为已审核时不显示,审核后订单上显示已审核图片 -->
         <t-button @click="backApproved()" :loading="loading">
           反审核
         </t-button>
@@ -76,7 +54,6 @@
   </div>
 </template>
 <script>
-
 import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
 import manba from "manba";
@@ -84,6 +61,10 @@ import {CopyObj} from "@common/utils";
 import {mapState} from "vuex";
 import PurchaseReturn from "@js/api/purchase/PurchaseReturn";
 import Stamp from "@views/common/Stamp.vue";
+
+function sumField(list, field) {
+  return (list || []).reduce((acc, row) => acc + Number(row[field] || 0), 0);
+}
 
 export default {
   name: "PurchaseReturnDetail",
@@ -105,6 +86,20 @@ export default {
     },
     isDeleting() {
       return this.productData.length > 1;
+    },
+    tableData() {
+      return (this.productData || []).map((row, index) => ({
+        ...row,
+        __rowKey: row.id != null ? row.id : `row-${index}`
+      }));
+    },
+    footData() {
+      return [{
+        seq: '合计',
+        quantity: sumField(this.productData, 'quantity').toFixed(2),
+        discountAmount: sumField(this.productData, 'discountAmount').toFixed(2),
+        subtotal: sumField(this.productData, 'subtotal').toFixed(2)
+      }];
     }
   },
   data() {
@@ -129,38 +124,37 @@ export default {
         returnReason: null,
       },
       productData: [],
+      columns: [
+        {
+          colKey: 'seq',
+          title: '序号',
+          width: 60,
+          align: 'center',
+          fixed: 'left',
+          cell: (h, { rowIndex }) => rowIndex + 1
+        },
+        {
+          colKey: 'productInfo',
+          title: '产品信息',
+          minWidth: 300,
+          cell: (h, { row }) => `${row.productCode || ''}--${row.productName || ''}`
+        },
+        { colKey: 'categoryName', title: '类别', width: 80, align: 'center' },
+        { colKey: 'spec', title: '规格', width: 80, align: 'center' },
+        { colKey: 'secondaryUnitName', title: '采购单位', width: 80, align: 'center' },
+        { colKey: 'warehouseName', title: '仓库', width: 120, align: 'center' },
+        { colKey: 'secondaryQuantity', title: '数量', width: 90 },
+        { colKey: 'baseUnitName', title: '基本单位', width: 80, align: 'center' },
+        { colKey: 'quantity', title: '基本数量', width: 90 },
+        { colKey: 'secondaryPrice', title: '退货单价', width: 100 },
+        { colKey: 'discountRate', title: '折扣率(%)', width: 100 },
+        { colKey: 'discountAmount', title: '折扣额', width: 100 },
+        { colKey: 'subtotal', title: '退货金额', width: 100 },
+        { colKey: 'returnReason', title: '备注', ellipsis: true }
+      ]
     }
   },
   methods: {
-    //footer合计
-    footerMethod({columns, data}) {
-      let sums = [];
-      let quantity = 0;
-      columns.forEach((column) => {
-        if (column.property && ['quantity', 'discountAmount', 'subtotal'].includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            if (column.property === 'quantity') {
-              let rd = row[column.property];
-              if (rd) {
-                quantity += Number(rd || 0);
-              }
-            } else {
-              let rd = row[column.property];
-              if (rd) {
-                total += Number(rd || 0);
-              }
-            }
-          });
-          if (column.property !== 'quantity') {
-            sums.push(total.toFixed(2));
-          }
-        }
-      })
-      this.allRefundAmount = sums[1]
-      return [["", "", "", "", "", "", "", quantity.toFixed(2), "", ""].concat(sums)];
-    },
-
     backApproved() {
       let ids = [this.form.id]
       DialogPlugin.confirm({
@@ -174,14 +168,10 @@ export default {
         }
       })
     },
-
-    //关闭窗口
     closeWindow() {
       this.$store.commit('closeTabKey', this.$store.state.currentTab);
       this.$store.commit('newTab', "PurchaseReturnList");
-      // 使用 nextTick 确保在 DOM 更新后执行
       this.$nextTick(() => {
-        // 通过 eventBus 或 vuex 触发刷新
         this.$store.commit('SET_TAB_DATA', {refresh: true});
       });
     },
@@ -210,3 +200,16 @@ export default {
   }
 }
 </script>
+<style scoped>
+.detail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 12px;
+}
+.detail-toolbar__left,
+.detail-toolbar__right {
+  display: flex;
+  align-items: center;
+}
+</style>

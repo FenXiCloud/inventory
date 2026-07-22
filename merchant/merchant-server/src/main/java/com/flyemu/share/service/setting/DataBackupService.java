@@ -15,12 +15,12 @@ import com.flyemu.share.entity.setting.PrintTemplate;
 import com.flyemu.share.entity.setting.QCodeRule;
 import com.flyemu.share.entity.setting.QPrintTemplate;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.AccountTypeRepository;
-import com.flyemu.share.repository.CodeRuleRepository;
-import com.flyemu.share.repository.DataBackupRepository;
-import com.flyemu.share.repository.PaymentMethodRepository;
-import com.flyemu.share.repository.PrintTemplateRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.AccountTypeRepository;
+import com.flyemu.share.repository.setting.CodeRuleRepository;
+import com.flyemu.share.repository.setting.DataBackupRepository;
+import com.flyemu.share.repository.basic.PaymentMethodRepository;
+import com.flyemu.share.repository.setting.PrintTemplateRepository;
+import com.flyemu.share.service.BaseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,14 +36,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * @功能描述: 数据备份与恢复（系统设置）
- */
+/** 数据备份与恢复（系统设置） */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class DataBackupService extends AbsService {
+public class DataBackupService extends BaseService {
 
     private static final String BACKUP_VERSION = "1.0";
     private static final DateTimeFormatter FILE_TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");

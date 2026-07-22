@@ -57,7 +57,6 @@ public class UploadController {
         return file;
     }
 
-
     @GetMapping("/attachment/**")
     public ResponseEntity<byte[]> attachment(HttpServletRequest request, String name) {
         try {

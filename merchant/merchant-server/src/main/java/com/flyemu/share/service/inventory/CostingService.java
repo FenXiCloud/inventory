@@ -8,9 +8,9 @@ import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.enums.CostingMethod;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.InventoryCostBatchRepository;
-import com.flyemu.share.repository.InventoryCostConsumeRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.inventory.InventoryCostBatchRepository;
+import com.flyemu.share.repository.inventory.InventoryCostConsumeRepository;
+import com.flyemu.share.service.BaseService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,7 @@ import java.util.Objects;
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class CostingService extends AbsService {
+public class CostingService extends BaseService {
 
     private static final QAccountBookParameters Q_PARAMS = QAccountBookParameters.accountBookParameters;
     private static final DateTimeFormatter BATCH_TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");

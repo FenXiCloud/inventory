@@ -4,7 +4,7 @@
       <div class="simple-page__side">
         <t-table
             row-key="id"
-            size="medium"
+            size="small"
             bordered
             hover
             height="100%"
@@ -90,10 +90,7 @@ const DOCUMENT_TYPES = [
   '调拨单', '盘点单', '其他入库单', '其他出库单', '成本调整单',
   '收款单', '付款单', '核销单', '其他收款单', '其他付款单', '转帐单'
 ];
-
-/**
- * @功能描述: 打印模板列表
- */
+/** 打印模板列表 */
 export default {
   name: 'PrintTemplateList',
   components: { PrintTemplateForm },
@@ -218,17 +215,6 @@ export default {
 </script>
 
 <style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
 
 .simple-page__split {
   flex: 1;
@@ -246,6 +232,14 @@ export default {
   padding: 8px 0;
 }
 
+.simple-page__side :deep(.t-table__header th),
+.simple-page__side :deep(.t-table__body td) {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  line-height: 22px;
+  height: auto;
+}
+
 .simple-page__main {
   flex: 1;
   min-width: 0;
@@ -255,15 +249,4 @@ export default {
   overflow: hidden;
 }
 
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
-
-.simple-page__table {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-}
 </style>

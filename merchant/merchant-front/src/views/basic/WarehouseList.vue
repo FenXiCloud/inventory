@@ -129,27 +129,3 @@ export default {
 };
 </script>
 
-<style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
-
-.simple-page__table {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-</style>

@@ -5,10 +5,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * 应付账款汇总
- *@author shuaiqi
- */
+/** 应付账款汇总 */
 @Data
 public class SummaryPayableDetailsPageVO {
     List<SummaryPayableDetailsVO> payableDetailsList;

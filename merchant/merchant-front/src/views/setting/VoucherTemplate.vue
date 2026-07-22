@@ -1,63 +1,71 @@
 <template>
-  <div class="modal-column">
-    <div>
-      <t-button theme="primary" class="float-right mt-4px mr-16px" @click="showForm()">新 增</t-button>
+  <div class="simple-page">
+    <div class="simple-page__toolbar">
+      <t-space break-line>
+        <t-button theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
+        <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="loadList">刷新</t-button>
+      </t-space>
     </div>
-    <div class="flex-1 p-16px">
-      <div class="border p-8px mb-16px" v-for="(items,key) in dataList" :key="key">
-        <vxe-toolbar>
-          <template #buttons>
-            <div class="text-14px">
-              模板名称：{{ items.title }} 模板类型：{{ items.type }} 凭证：{{ items.word }}
-            </div>
-          </template>
-          <template #tools>
-            <t-button theme="primary" @click="showForm(items.id)">编辑</t-button>
-            <t-button @click="doRemove(items.id)">删除</t-button>
-          </template>
-        </vxe-toolbar>
-        <div class="mt-16px">
-          <vxe-table size="mini" ref="xTable" border="border" show-overflow keep-source
-                     :row-config="{ height: 40, isCurrent: true, isHover: true }"
-                     stripe
-                     :data="items.details">
-            <vxe-column title="会计科目" field="subjectName">
-            </vxe-column>
-            <vxe-column field="balanceDirection" title="借贷方向" width="100"></vxe-column>
-          </vxe-table>
+
+    <div class="simple-page__body">
+      <div v-if="!loading && !dataList.length" class="simple-page__empty">暂无凭证模板，请点击「新增」</div>
+      <div v-for="item in dataList" :key="item.id" class="tpl-card">
+        <div class="tpl-card__header">
+          <div class="tpl-card__meta">
+            <span>模板名称：{{ item.title }}</span>
+            <span>模板类型：{{ item.type }}</span>
+            <span>凭证：{{ item.word }}</span>
+          </div>
+          <t-space size="small">
+            <t-link theme="primary" @click="showForm(item.id)">编辑</t-link>
+            <t-link theme="danger" @click="doRemove(item.id)">删除</t-link>
+          </t-space>
         </div>
+        <t-table
+            row-key="subjectId"
+            size="small"
+            bordered
+            stripe
+            hover
+            table-layout="fixed"
+            :data="item.details || []"
+            :columns="detailColumns"
+            empty="暂无科目明细"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script>
-
-import {openDialog, closeDialog} from '@common/dialog';
-import {h} from "vue";
-import TemplateConfigForm from "./TemplateConfigForm.vue";
-import FinanceVoucherTemplate from "@js/api/setting/FinanceVoucherTemplate";
-import {MessagePlugin} from "tdesign-vue-next";
-import {DialogPlugin} from '@common/dialog-plugin';
+import { openDialog, closeDialog } from '@common/dialog';
+import { h } from 'vue';
+import TemplateConfigForm from './TemplateConfigForm.vue';
+import FinanceVoucherTemplate from '@js/api/setting/FinanceVoucherTemplate';
+import { MessagePlugin } from 'tdesign-vue-next';
+import { DialogPlugin } from '@common/dialog-plugin';
 
 export default {
-  name: "VoucherTemplate",
+  name: 'VoucherTemplate',
   data() {
     return {
-      dataList: []
-    }
+      loading: false,
+      dataList: [],
+      detailColumns: [
+        { colKey: 'subjectName', title: '会计科目', minWidth: 180, ellipsis: true },
+        { colKey: 'balanceDirection', title: '借贷方向', width: 100, align: 'center' }
+      ]
+    };
   },
   methods: {
     showForm(id) {
-      let dialogId = openDialog({
-        header: "凭证模板",
+      const dialogId = openDialog({
+        header: '凭证模板',
         closeOnOverlayClick: false,
         width: '800px',
         body: h(TemplateConfigForm, {
           id,
-          onClose: () => {
-            closeDialog(dialogId);
-          },
+          onClose: () => closeDialog(dialogId),
           onSuccess: () => {
             this.loadList();
             closeDialog(dialogId);
@@ -65,39 +73,72 @@ export default {
         })
       });
     },
-    getDocumentType(id) {
-      let result = '';
-      this.documentTypeDataList.forEach(item => {
-        if (Number(item.id) === Number(id)) {
-          result = item.documentType;
-        }
-      });
-      return result;
-    },
     loadList() {
-      FinanceVoucherTemplate.list({}).then(({data}) => {
-        this.dataList = data;
-      })
+      this.loading = true;
+      FinanceVoucherTemplate.list({})
+        .then(({ data }) => {
+          this.dataList = data || [];
+        })
+        .finally(() => {
+          this.loading = false;
+        });
     },
     doRemove(id) {
       DialogPlugin.confirm({
-        header: "系统提示",
-        body: `是否删除当前数据?`,
+        header: '系统提示',
+        body: '是否删除当前数据?',
         onConfirm: () => {
-          FinanceVoucherTemplate.delete(id).then(({data}) => {
-            MessagePlugin.success("操作成功～");
+          FinanceVoucherTemplate.delete(id).then(() => {
+            MessagePlugin.success('操作成功～');
             this.loadList();
           });
-        },
+        }
       });
     }
   },
   created() {
     this.loadList();
   }
+};
+</script>
+
+<style scoped>
+
+.simple-page__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 12px;
 }
-</script>
 
-<script setup>
+.simple-page__empty {
+  padding: 48px 0;
+  text-align: center;
+  color: #8f959e;
+  font-size: 14px;
+}
 
-</script>
+.tpl-card {
+  border: 1px solid var(--td-component-border, #e7e7e7);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.tpl-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.tpl-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 14px;
+  color: #333;
+  min-width: 0;
+}
+</style>

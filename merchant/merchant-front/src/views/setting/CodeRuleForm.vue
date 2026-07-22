@@ -70,7 +70,6 @@
 </template>
 
 <script>
-
 import CodeRule from "@js/api/setting/CodeRule";
 import {MessagePlugin} from "tdesign-vue-next";
 import {CopyObj} from "@common/utils";
@@ -147,7 +146,6 @@ export default {
     }
   },
   methods: {
-
 
     handleBlurForStartValue(event) {
       let startValue = parseInt(this.model.startValue);

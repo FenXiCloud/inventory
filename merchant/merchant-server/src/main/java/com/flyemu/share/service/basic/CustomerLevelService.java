@@ -1,14 +1,16 @@
 package com.flyemu.share.service.basic;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.entity.basic.CustomerLevel;
 import com.flyemu.share.entity.basic.QCustomerLevel;
 import com.flyemu.share.entity.basic.QCustomerLevelPrice;
-import com.flyemu.share.repository.CustomerLevelRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.CustomerLevelRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,18 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * @功能描述: 客户级别管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class CustomerLevelService extends AbsService {
+public class CustomerLevelService extends BaseService {
 
     private final static QCustomerLevel qCustomerLevel = QCustomerLevel.customerLevel;
 
@@ -83,19 +78,15 @@ public class CustomerLevelService extends AbsService {
         return bqf.selectFrom(qCustomerLevel).where(qCustomerLevel.merchantId.eq(merchantId).and(qCustomerLevel.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qCustomerLevel.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qCustomerLevel.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qCustomerLevel.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qCustomerLevel.accountBookId, accountBookId);
         }
 
         public void setName(String name) {

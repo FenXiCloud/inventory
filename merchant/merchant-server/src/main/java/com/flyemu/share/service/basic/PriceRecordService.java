@@ -1,5 +1,6 @@
 package com.flyemu.share.service.basic;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
@@ -7,28 +8,29 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson2.JSON;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.common.PinYinUtil;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.ProductDto;
 import com.flyemu.share.dto.ProductPriceDTO;
-import com.flyemu.share.dto.price.PriceRecordDTO;
+import com.flyemu.share.dto.price.PriceRecordDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.enums.PolicySource;
 import com.flyemu.share.enums.PolicyType;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.ProductForm;
-import com.flyemu.share.repository.CustomerLevelPriceRepository;
-import com.flyemu.share.repository.PriceRecordRepository;
-import com.flyemu.share.repository.PricingPolicyRepository;
-import com.flyemu.share.repository.ProductRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.CustomerLevelPriceRepository;
+import com.flyemu.share.repository.basic.PriceRecordRepository;
+import com.flyemu.share.repository.basic.PricingPolicyRepository;
+import com.flyemu.share.repository.basic.ProductRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import cn.hutool.core.util.StrUtil;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -43,18 +45,11 @@ import java.util.stream.Collectors;
 
 import static com.flyemu.share.enums.PolicySource.*;
 
-/**
- * @功能描述: 价格记录表
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class PriceRecordService extends AbsService {
+public class PriceRecordService extends BaseService {
 
     private final static QPriceRecord qPriceRecord = QPriceRecord.priceRecord;
 
@@ -67,9 +62,10 @@ public class PriceRecordService extends AbsService {
 
     private final ProductRepository productRepository;
     private final CustomerLevelPriceRepository customerLevelPriceRepository;
+    private final PricingPolicyRepository pricingPolicyRepository;
     private final static QCustomerLevelPrice qCustomerLevelPrice = QCustomerLevelPrice.customerLevelPrice;
 
-    public PageResults<PriceRecordDTO> query(Page page, Query query) {
+    public PageResults<PriceRecordDto> query(Page page, Query query) {
 
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
                 .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification, qProductCategory.id, qProductCategory.name,
@@ -80,9 +76,9 @@ public class PriceRecordService extends AbsService {
                 .where(query.builder)
                 .orderBy(qPriceRecord.id.desc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
-        List<PriceRecordDTO> dtos = new ArrayList<>();
+        List<PriceRecordDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            PriceRecordDTO priceRecordDTO = BeanUtil.toBean(tuple.get(qPriceRecord), PriceRecordDTO.class);
+            PriceRecordDto priceRecordDTO = BeanUtil.toBean(tuple.get(qPriceRecord), PriceRecordDto.class);
             priceRecordDTO.setProductName(tuple.get(qProduct.name));
             priceRecordDTO.setProductCode(tuple.get(qProduct.code));
             priceRecordDTO.setSpecification(tuple.get(qProduct.specification));
@@ -114,8 +110,6 @@ public class PriceRecordService extends AbsService {
     public List<PriceRecord> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qPriceRecord).where(qPriceRecord.merchantId.eq(merchantId).and(qPriceRecord.accountBookId.eq(accountBookId))).fetch();
     }
-
-    private final PricingPolicyRepository pricingPolicyRepository;
 
     /**
      * 成交价流水：每次审核写入一条，不依赖价格策略，不做同价去重。
@@ -364,16 +358,16 @@ public class PriceRecordService extends AbsService {
         }
     }
 
-    public PageResults<PriceRecordDTO> showPrice(Page page, Query query) {
+    public PageResults<PriceRecordDto> showPrice(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
                 .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPriceRecord.productId))
                 .where(query.builder)
                 .orderBy(qPriceRecord.id.desc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
-        List<PriceRecordDTO> dtos = new ArrayList<>();
+        List<PriceRecordDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            PriceRecordDTO priceRecordDTO = BeanUtil.toBean(tuple.get(qPriceRecord), PriceRecordDTO.class);
+            PriceRecordDto priceRecordDTO = BeanUtil.toBean(tuple.get(qPriceRecord), PriceRecordDto.class);
             priceRecordDTO.setProductName(tuple.get(qProduct.name));
             priceRecordDTO.setProductCode(tuple.get(qProduct.code));
             priceRecordDTO.setSpecification(tuple.get(qProduct.specification));
@@ -382,7 +376,7 @@ public class PriceRecordService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-    public List<PriceRecordDTO> showPurchasePrice(Query query) {
+    public List<PriceRecordDto> showPurchasePrice(Query query) {
         List<Tuple> fetchPage = bqf.selectFrom(qPriceRecord)
                 .select(qPriceRecord, qProduct.name, qProduct.code, qProduct.specification, qSupplier.name, qProduct.purchasePrice)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPriceRecord.productId))
@@ -391,9 +385,9 @@ public class PriceRecordService extends AbsService {
                         .and(qPriceRecord.priceSource.eq(PriceSource.最近采购价格)))
                 .orderBy(qPriceRecord.id.desc())
                 .limit(5).fetch();
-        List<PriceRecordDTO> dtos = new ArrayList<>();
+        List<PriceRecordDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            PriceRecordDTO priceRecordDTO = BeanUtil.toBean(tuple.get(qPriceRecord), PriceRecordDTO.class);
+            PriceRecordDto priceRecordDTO = BeanUtil.toBean(tuple.get(qPriceRecord), PriceRecordDto.class);
             priceRecordDTO.setProductName(tuple.get(qProduct.name));
             priceRecordDTO.setProductCode(tuple.get(qProduct.code));
             priceRecordDTO.setSupplierName(tuple.get(qSupplier.name));
@@ -404,19 +398,15 @@ public class PriceRecordService extends AbsService {
         return dtos;
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qPriceRecord.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qPriceRecord.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qPriceRecord.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qPriceRecord.accountBookId, accountBookId);
         }
 
         public void setProductId(Long productId) {
@@ -432,31 +422,31 @@ public class PriceRecordService extends AbsService {
         }
 
         public void setProductIds(String productIds) {
-            if (StringUtils.isNotBlank(productIds)) {
+            if (StrUtil.isNotBlank(productIds)) {
                 builder.and(qPriceRecord.productId.in(Arrays.stream(productIds.split(",")).map(Long::parseLong).collect(Collectors.toList())));
             }
         }
 
         public void setProductCategoryIds(String productCategoryIds) {
-            if (StringUtils.isNotBlank(productCategoryIds)) {
+            if (StrUtil.isNotBlank(productCategoryIds)) {
                 builder.and(qProductCategory.id.in(Arrays.stream(productCategoryIds.split(",")).map(Long::parseLong).collect(Collectors.toList())));
             }
         }
 
         public void setPriceType(String priceType) {
-            if (StringUtils.isNotBlank(priceType)) {
+            if (StrUtil.isNotBlank(priceType)) {
                 builder.and(qPriceRecord.priceType.eq(PriceType.valueOf(priceType)));
             }
         }
 
         public void setPriceSource(String priceSource) {
-            if (StringUtils.isNotBlank(priceSource)) {
+            if (StrUtil.isNotBlank(priceSource)) {
                 builder.and(qPriceRecord.priceSource.eq(PriceSource.valueOf(priceSource)));
             }
         }
 
         public void setFilter(String filter) {
-            if (StringUtils.isNotBlank(filter)) {
+            if (StrUtil.isNotBlank(filter)) {
                 builder.and(qProduct.name.contains(filter).or(qProduct.code.contains(filter)));
             }
         }

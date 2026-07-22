@@ -1,12 +1,14 @@
 package com.flyemu.share.service.setting;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.entity.setting.PrintTemplate;
 import com.flyemu.share.entity.setting.QPrintTemplate;
-import com.flyemu.share.repository.PrintTemplateRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.PrintTemplateRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,18 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * @功能描述: 打印模板
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class PrintTemplateService extends AbsService {
+public class PrintTemplateService extends BaseService {
 
     private final static QPrintTemplate qPrintTemplate = QPrintTemplate.printTemplate;
 
@@ -91,7 +86,6 @@ public class PrintTemplateService extends AbsService {
                 .execute();
     }
 
-
     public PrintTemplate load(Long printTemplateId, Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qPrintTemplate)
                 .where(qPrintTemplate.id.eq(printTemplateId)
@@ -119,19 +113,15 @@ public class PrintTemplateService extends AbsService {
                 .fetch();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qPrintTemplate.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qPrintTemplate.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qPrintTemplate.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qPrintTemplate.accountBookId, accountBookId);
         }
 
         public void setName(String name) {

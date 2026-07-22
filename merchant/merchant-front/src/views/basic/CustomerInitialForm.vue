@@ -1,78 +1,66 @@
 <template>
   <div class="page-column">
     <div class="page-column-full-body">
-      <vxe-table
-                 ref="xTable"
-                 size="mini"
-                 border
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 stripe
-                 :row-config="{height: 40}"
-                 :column-config="{resizable: true}"
-                 :loading="loading">
-        <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left" v-if="this.type === 'add'">
-          <template #default="{row,rowIndex}">
-            <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert',rowIndex)"></div>
-            <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
-          </template>
-        </vxe-column>
-        <vxe-column field="customerCode" title="客户编码" width="200">
-          <template #default="{row}">
-            {{ customerList.find(item => item.id === row.customerId)?.code || '-' }}
-          </template>
-        </vxe-column>
-        <vxe-column field="productName" title="客户名称" min-width="200">
-          <template #default="scope">
-            <div class="input-group goodsSelect" @keyup.stop="void(0)">
-              <t-select ref="ms" @change="selectCustomer($event, scope.rowIndex)" :options="customerList"
-                        v-model="scope.row.customerId"
-                        :keys="{ value: 'id', label: 'name' }" filterable placeholder="输入编码/名称"
-                        :clearable="false" :disabled="type === 'edit'"/>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="期初应收款" field="balanceBefore">
-          <template #default="{row,rowIndex,columnIndex}">
-            <vxe-input
-                :id="'r'+rowIndex+''+3"
-                @blur="updateQuantity(row)"
-                ref="inputQuantity"
-                v-model.number="row.balanceBefore"
-                type="float"
-                min="0"
-                :controls="false">
-            </vxe-input>
-          </template>
-        </vxe-column>
-        <vxe-column title="期初预收款" field="amount">
-          <template #default="{row,rowIndex,}">
-            <vxe-input
-                :id="'r'+rowIndex+''+4"
-                @blur="updatePrice(row)"
-                ref="inputPrice"
-                v-model.number="row.amount"
-                type="float"
-                min="0"
-                :controls="false">
-            </vxe-input>
-          </template>
-        </vxe-column>
-        <vxe-column title="期初余额" field="balanceAfter">
-          <template #default="{row,rowIndex,}">
-            <vxe-input ref="inputAmount"
-                       v-model.number="row.balanceAfter"
-                       type="float"
-                       min="0"
-                       :controls="false"
-                       @blur="updateSubtotal(row)"
-            >
-            </vxe-input>
-          </template>
-        </vxe-column>
-      </vxe-table>
+      <t-table
+          ref="xTable"
+          row-key="_rowKey"
+          size="small"
+          bordered
+          stripe
+          hover
+          table-layout="fixed"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+      >
+        <template #ops="{ rowIndex }">
+          <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
+          <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete', rowIndex)"></div>
+        </template>
+        <template #customerCode="{ row }">
+          {{ customerList.find(item => item.id === row.customerId)?.code || '-' }}
+        </template>
+        <template #customerName="{ row, rowIndex }">
+          <div class="input-group goodsSelect" @keyup.stop="void(0)">
+            <t-select ref="ms" @change="selectCustomer($event, rowIndex)" :options="customerList"
+                      v-model="row.customerId"
+                      :keys="{ value: 'id', label: 'name' }" filterable placeholder="输入编码/名称"
+                      :clearable="false" :disabled="type === 'edit'"/>
+          </div>
+        </template>
+        <template #balanceBefore="{ row, rowIndex }">
+          <t-input-number
+              :id="'r' + rowIndex + '3'"
+              v-model="row.balanceBefore"
+              theme="normal"
+              :min="0"
+              :decimal-places="2"
+              style="width: 100%"
+              @blur="updateQuantity(row)"
+          />
+        </template>
+        <template #amount="{ row, rowIndex }">
+          <t-input-number
+              :id="'r' + rowIndex + '4'"
+              v-model="row.amount"
+              theme="normal"
+              :min="0"
+              :decimal-places="2"
+              style="width: 100%"
+              @blur="updatePrice(row)"
+          />
+        </template>
+        <template #balanceAfter="{ row }">
+          <t-input-number
+              v-model="row.balanceAfter"
+              theme="normal"
+              :min="0"
+              :decimal-places="2"
+              style="width: 100%"
+              @blur="updateSubtotal(row)"
+          />
+        </template>
+      </t-table>
     </div>
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading">取消</t-button>
@@ -89,6 +77,10 @@ import {mapMutations, mapState} from "vuex";
 import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import Customer from "@js/api/basic/Customer";
 
+let rowSeq = 0;
+function newRow(extra = {}) {
+  return { _rowKey: `r-${++rowSeq}`, customerId: null, ...extra };
+}
 
 export default {
   name: "CustomerInitialForm",
@@ -101,6 +93,35 @@ export default {
     ...mapState(['accountBook']),
     isDeleting() {
       return this.dataList.length > 1;
+    },
+    columns() {
+      const cols = [
+        {
+          colKey: 'seq',
+          title: '序号',
+          width: 60,
+          align: 'center',
+          fixed: 'left',
+          cell: (h, {rowIndex}) => rowIndex + 1
+        },
+      ];
+      if (this.type === 'add') {
+        cols.push({
+          colKey: 'ops',
+          title: '操作',
+          width: 70,
+          align: 'center',
+          fixed: 'left'
+        });
+      }
+      cols.push(
+        {colKey: 'customerCode', title: '客户编码', width: 200},
+        {colKey: 'customerName', title: '客户名称', minWidth: 200},
+        {colKey: 'balanceBefore', title: '期初应收款'},
+        {colKey: 'amount', title: '期初预收款'},
+        {colKey: 'balanceAfter', title: '期初余额'},
+      );
+      return cols;
     }
   },
   data() {
@@ -119,16 +140,13 @@ export default {
 
     updateQuantity(item) {
       this.compute(item);
-      this.$refs.xTable.updateFooter();
     },
 
     updatePrice(item) {
       this.compute(item);
-      this.$refs.xTable.updateFooter();
     },
     updateSubtotal(item){
       this.compute(item);
-      this.$refs.xTable.updateFooter();
     },
     compute(item){
       item.balanceAfter = (item.balanceBefore - item.amount).toFixed(2);
@@ -139,35 +157,35 @@ export default {
       if(this.type === 'edit'){
         return
       }
-      let g = {
+      const selected = this.customerList.find(c => c.id === item) || item;
+      let g = newRow({
         balanceBefore: 0,
         amount: 0,
         balanceAfter: 0,
-        customerId: item.id,
-        customerCode: item.code,
-        customerName: item.name,
+        customerId: selected.id,
+        customerCode: selected.code,
+        customerName: selected.name,
         customerFlowType: this.params.customerFlowType
-      };
+      });
       this.dataList[index] = g;
       if (!this.dataList[index + 1]) {
-        this.dataList.push({customerId: null});
+        this.dataList.push(newRow());
       }
-      //强制更新视图
-      this.$refs.xTable.loadData(this.dataList).then(() => {
-        this.$nextTick(() => {
-          let str = index + '' + 3
-          let element = document.querySelector('#r' + str + ' input');
-          setTimeout(() => {
+      this.$nextTick(() => {
+        let str = index + '' + 3
+        let element = document.querySelector('#r' + str + ' input');
+        setTimeout(() => {
+          if (element) {
             element.focus()
             element.select()
-          }, 100);
-        })
+          }
+        }, 100);
       });
       this.$forceUpdate();
     },//添加行或减少行
     adjustRows(type, index) {
       if (type === 'insert') {
-        this.dataList.splice(index + 1, 0, {isNew: true});
+        this.dataList.splice(index + 1, 0, newRow({isNew: true}));
       } else {
         this.dataList.splice(index, 1);
       }
@@ -241,12 +259,12 @@ export default {
     },
     editForm(){
       CustomerInitial.load(this.customerInitialId).then(({data}) => {
-        this.dataList[0] = data;
+        this.dataList[0] = newRow(data);
       }).finally(() => this.loading = false);
     },
     initForm(){
       for (let index = 0; index < 5; index++) {
-        this.dataList.push({customerId: null});
+        this.dataList.push(newRow());
       }
     },
   },

@@ -10,9 +10,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.Date;
 
-/**
- *@author shuaiqi
- */@JsonInclude()
+@JsonInclude()
 @Data
 public class VerificationVO {
 
@@ -46,9 +44,9 @@ public class VerificationVO {
     //创建人
     private Integer createdBy;
     //最后修改时间
-    private LocalDateTime updateAt;
+    private LocalDateTime updatedAt;
     //最后修改人
-    private Integer updateBy;
+    private Integer updatedBy;
     private Integer approvedBy;
     private LocalDateTime approvedAt;
     //备注

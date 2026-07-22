@@ -1,6 +1,5 @@
-/**
- * @功能描述: 库存余额表
- */
+
+/** 库存余额表 */
 import Ajax from "@common/Request";
 
 export default {

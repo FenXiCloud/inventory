@@ -12,7 +12,7 @@ import com.flyemu.share.entity.setting.MerchantUser;
 import com.flyemu.share.entity.setting.QMerchant;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.entity.setting.QRole;
-import com.flyemu.share.repository.MerchantUserRepository;
+import com.flyemu.share.repository.setting.MerchantUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,18 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 
-/**
- * @功能描述: 用户管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class MerchantUserService extends AbsService {
+public class MerchantUserService extends BaseService {
 
     private final MerchantUserRepository merchantUserRepository;
 
@@ -80,7 +73,6 @@ public class MerchantUserService extends AbsService {
         return new PageResults<>(fetchPage, page);
     }
 
-
     @Transactional
     public MerchantUser save(MerchantUser merchantUser) {
         if (merchantUser.getId() != null) {
@@ -106,7 +98,6 @@ public class MerchantUserService extends AbsService {
 
         return merchantUserRepository.save(merchantUser);
     }
-
 
     @Transactional
     public void delete(Long userId, Long merchantId) {

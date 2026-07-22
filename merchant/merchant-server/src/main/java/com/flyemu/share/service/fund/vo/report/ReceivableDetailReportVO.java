@@ -6,10 +6,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * 应收账款明细表
- *@author shuaiqi
- */
+/** 应收账款明细表 */
 @JsonInclude
 @Data
 public class ReceivableDetailReportVO {

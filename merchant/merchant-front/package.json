@@ -22,8 +22,6 @@
     "vue": "^3.2.31",
     "vue-router": "^4.0.13",
     "vuex": "^4.0.2",
-    "vxe-table": "4.5.10",
-    "xe-utils": "^3.5.13",
     "xlsx": "^0.17.5",
     "xlsx-style": "0.8.13"
   },
@@ -33,7 +31,6 @@
     "@vue/cli-plugin-vuex": "~5.0.1",
     "@vue/cli-service": "~5.0.1",
     "@vue/compiler-sfc": "^3.2.31",
-    "babel-plugin-import": "1.13.3",
     "less": "^4.2.0",
     "less-loader": "^10.2.0",
     "sass": "^1.66.1",

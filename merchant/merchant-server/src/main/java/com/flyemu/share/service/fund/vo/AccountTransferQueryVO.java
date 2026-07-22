@@ -7,9 +7,6 @@ import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
-/**
- *@author shuaiqi
- */
 @JsonInclude
 @EqualsAndHashCode(callSuper = true)
 @Data

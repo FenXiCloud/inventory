@@ -7,9 +7,6 @@ import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
-/**
- * @author shuaiqi
- */
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class OrderReceiptQueryVO extends OrderReceipt {

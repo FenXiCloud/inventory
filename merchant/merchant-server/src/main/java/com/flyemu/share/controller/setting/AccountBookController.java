@@ -1,8 +1,9 @@
 package com.flyemu.share.controller.setting;
 
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
-import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.common.Constants;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
@@ -15,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-
 @RestController
 @Slf4j
 @RequestMapping("/accountBook")
@@ -24,25 +24,24 @@ public class AccountBookController {
 
     private final AccountBookService accountBookService;
 
-
     @GetMapping
-    public JsonResult list(Page page, AccountBookService.Query query, @SaMerchantId Long merchantId) {
-        query.setMerchantId(merchantId);
+    public JsonResult list(Page page, AccountBookService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bindMerchant(accountDto, query::setMerchantId);
         return JsonResult.successful(accountBookService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid AccountBookDto accountBookDto, @SaMerchantId Long merchantId) {
+    public JsonResult save(@RequestBody @Valid AccountBookDto accountBookDto, @SaAccountVal AccountDto accountDto) {
         accountBookDto.setCurrent(false);
-        accountBookDto.setMerchantId(merchantId);
+        TenantScope.bindMerchant(accountDto, accountBookDto::setMerchantId);
         accountBookDto.setEnabled(true);
         accountBookService.save(accountBookDto);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid AccountBookDto accountBookDto, @SaMerchantId Long merchantId) {
-        accountBookDto.setMerchantId(merchantId);
+    public JsonResult update(@RequestBody @Valid AccountBookDto accountBookDto, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bindMerchant(accountDto, accountBookDto::setMerchantId);
         accountBookService.save(accountBookDto);
         return JsonResult.successful();
     }
@@ -51,9 +50,8 @@ public class AccountBookController {
      * 修改默认账套
      */
     @PutMapping("/change/current/{accountBookId}")
-    public JsonResult changeCurrentAccountBook(@SaMerchantId Long merchantId, @PathVariable Long accountBookId) {
-        AccountBook accountBook = accountBookService.changeCurrentAccountBook(merchantId, accountBookId);
-        AccountDto accountDto = (AccountDto) StpUtil.getTokenSession().get(Constants.SESSION_ACCOUNT);
+    public JsonResult changeCurrentAccountBook(@PathVariable Long accountBookId, @SaAccountVal AccountDto accountDto) {
+        AccountBook accountBook = accountBookService.changeCurrentAccountBook(accountDto.getMerchantId(), accountBookId);
         accountDto.setAccountBook(accountBook);
         SaSession session = StpUtil.getTokenSession();
         session.set(Constants.SESSION_ACCOUNT, accountDto);
@@ -61,13 +59,13 @@ public class AccountBookController {
     }
 
     @DeleteMapping("/{accountBookId}")
-    public JsonResult delete(@PathVariable Long accountBookId, @SaMerchantId Long merchantId) {
-        accountBookService.delete(merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long accountBookId, @SaAccountVal AccountDto accountDto) {
+        accountBookService.delete(accountDto.getMerchantId(), accountBookId);
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId) {
-        return JsonResult.successful(accountBookService.select(merchantId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(accountBookService.select(accountDto.getMerchantId()));
     }
 }

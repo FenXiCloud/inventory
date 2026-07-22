@@ -53,40 +53,18 @@
     </div>
 
     <div class="simple-page__table">
-      <vxe-table
-          row-id="productId"
-          ref="table"
-          height="auto"
+      <t-table
+          row-key="productId"
+          size="medium"
+          bordered
+          hover
+          height="100%"
+          table-layout="fixed"
           :data="dataList"
-          highlight-hover-row
-          show-overflow
-          show-footer
-          :footer-method="footerMethod"
-          :row-config="{height: 48}"
-          :column-config="{resizable: true}"
+          :columns="columns"
           :loading="loading"
-      >
-        <vxe-column title="产品编码" field="productCode" min-width="120"/>
-        <vxe-column title="产品名称" field="productName" min-width="140"/>
-        <vxe-column title="产品类别" field="productCategoryName" min-width="120"/>
-        <vxe-column title="规格型号" field="productSpecification" width="120"/>
-        <vxe-column title="单位" field="productUnitName" width="80" align="center"/>
-        <vxe-colgroup align="center" title="全部仓库">
-          <vxe-column title="单位数量" field="all_quantity" align="right" width="110"/>
-          <vxe-column title="单位成本" field="all_averageCost" align="right" width="110"/>
-          <vxe-column title="成本小计" field="all_totalCost" align="right" width="110"/>
-        </vxe-colgroup>
-        <vxe-colgroup
-            v-for="item in displayWarehouses"
-            :key="item.id"
-            align="center"
-            :title="(item.code || '') + '-' + item.name"
-        >
-          <vxe-column title="单位数量" :field="warehouseField(item, 'quantity')" align="right" width="110"/>
-          <vxe-column title="单位成本" :field="warehouseField(item, 'averageCost')" align="right" width="110"/>
-          <vxe-column title="成本小计" :field="warehouseField(item, 'totalCost')" align="right" width="110"/>
-        </vxe-colgroup>
-      </vxe-table>
+          :foot-data="footData"
+      />
     </div>
 
     <div class="simple-page__pager">
@@ -145,11 +123,65 @@ export default {
       const ids = new Set(this.params.warehouseIds);
       return this.warehouseList.filter((item) => ids.has(item.id));
     },
+    columns() {
+      const cols = [
+        { colKey: 'productCode', title: '产品编码', minWidth: 120, ellipsis: true },
+        { colKey: 'productName', title: '产品名称', minWidth: 140, ellipsis: true },
+        { colKey: 'productCategoryName', title: '产品类别', minWidth: 120, ellipsis: true },
+        { colKey: 'productSpecification', title: '规格型号', width: 120, ellipsis: true },
+        { colKey: 'productUnitName', title: '单位', width: 80, align: 'center' },
+        {
+          colKey: 'allWarehouse',
+          title: '全部仓库',
+          align: 'center',
+          children: [
+            { colKey: 'all_quantity', title: '单位数量', width: 110, align: 'right' },
+            { colKey: 'all_averageCost', title: '单位成本', width: 110, align: 'right' },
+            { colKey: 'all_totalCost', title: '成本小计', width: 110, align: 'right' },
+          ],
+        },
+      ];
+      (this.displayWarehouses || []).forEach((item) => {
+        cols.push({
+          colKey: `wh_${item.id}`,
+          title: `${item.code || ''}-${item.name}`,
+          align: 'center',
+          children: [
+            { colKey: this.warehouseField(item, 'quantity'), title: '单位数量', width: 110, align: 'right' },
+            { colKey: this.warehouseField(item, 'averageCost'), title: '单位成本', width: 110, align: 'right' },
+            { colKey: this.warehouseField(item, 'totalCost'), title: '成本小计', width: 110, align: 'right' },
+          ],
+        });
+      });
+      return cols;
+    },
     queryParams() {
       return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize
       });
+    },
+    footData() {
+      const foot = { productCode: '合计' };
+      const data = this.dataList || [];
+      const sumField = (property) => {
+        if (property.endsWith('_quantity') || property === 'all_quantity') {
+          return data.reduce((acc, row) => acc + Number(row[property] || 0), 0);
+        }
+        if (property.endsWith('_totalCost') || property === 'all_totalCost') {
+          return data.reduce((acc, row) => acc + Number(row[property] || 0), 0).toFixed(2);
+        }
+        return '';
+      };
+      foot.all_quantity = sumField('all_quantity');
+      foot.all_totalCost = sumField('all_totalCost');
+      (this.displayWarehouses || []).forEach((warehouse) => {
+        const qtyKey = this.warehouseField(warehouse, 'quantity');
+        const costKey = this.warehouseField(warehouse, 'totalCost');
+        foot[qtyKey] = sumField(qtyKey);
+        foot[costKey] = sumField(costKey);
+      });
+      return [foot];
     }
   },
   methods: {
@@ -191,32 +223,6 @@ export default {
       });
       this.amountTotal = amountTotal.toFixed(2);
       return rows;
-    },
-    footerMethod({ columns, data }) {
-      const sums = [];
-      columns.forEach((column, index) => {
-        if (index === 0) {
-          sums.push('合计');
-          return;
-        }
-        const property = column.property;
-        if (!property) {
-          sums.push('');
-          return;
-        }
-        if (property.endsWith('_quantity') || property === 'all_quantity') {
-          const total = data.reduce((acc, row) => acc + Number(row[property] || 0), 0);
-          sums.push(total);
-          return;
-        }
-        if (property.endsWith('_totalCost') || property === 'all_totalCost') {
-          const total = data.reduce((acc, row) => acc + Number(row[property] || 0), 0);
-          sums.push(total.toFixed(2));
-          return;
-        }
-        sums.push('');
-      });
-      return [sums];
     },
     onPageChange(pageInfo) {
       this.pagination.page = pageInfo.current;
@@ -327,22 +333,6 @@ export default {
 </script>
 
 <style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
 
 .simple-page__hint {
   flex-shrink: 0;
@@ -355,26 +345,4 @@ export default {
   line-height: 1.6;
 }
 
-.simple-page__table {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.simple-page__pager {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--td-component-border, #dcdcdc);
-  background: #fff;
-}
-
-.simple-page__total {
-  font-size: 14px;
-  color: #333639;
-  flex-shrink: 0;
-}
 </style>

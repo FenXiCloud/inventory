@@ -2,7 +2,7 @@ package com.flyemu.share.controller.setting;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.flyemu.share.annotation.SaAccountVal;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.entity.setting.FinanceAccountLink;
@@ -14,13 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDate;
 
-/**
- * @功能描述: 关联云财务
- * @创建时间: 2025年03月11日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/financeAccountLink")
 @RequiredArgsConstructor
@@ -31,42 +24,38 @@ public class FinanceAccountLinkController {
 
     @GetMapping
     public JsonResult list(FinanceAccountLinkService.Query query, @SaAccountVal AccountDto accountDto) {
-        query.setMerchantId(accountDto.getMerchantId());
-        query.setAccountBookId(accountDto.getAccountBookId());
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(financeAccountLinkService.query(query));
     }
 
     @PostMapping
     public JsonResult save(@RequestBody @Valid FinanceAccountLink financeAccountLink, @SaAccountVal AccountDto accountDto) {
-        financeAccountLink.setMerchantId(accountDto.getMerchantId());
-        financeAccountLink.setAccountBookId(accountDto.getAccountBookId());
+        TenantScope.bind(financeAccountLink, accountDto);
         financeAccountLinkService.save(financeAccountLink, accountDto);
         return JsonResult.successful();
     }
 
     @PutMapping
     public JsonResult update(@RequestBody @Valid FinanceAccountLink financeAccountLink, @SaAccountVal AccountDto accountDto) {
-        financeAccountLink.setMerchantId(accountDto.getMerchantId());
-        financeAccountLink.setAccountBookId(accountDto.getAccountBookId());
+        TenantScope.bind(financeAccountLink, accountDto);
         financeAccountLinkService.save(financeAccountLink, accountDto);
         return JsonResult.successful();
     }
 
     @PostMapping("/accountSets")
-    public JsonResult loadAccountSetsList(@RequestBody FinanceAccountLink financeAccountLink, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(financeAccountLinkService.loadAccountSetsList(financeAccountLink, merchantId));
+    public JsonResult loadAccountSetsList(@RequestBody FinanceAccountLink financeAccountLink, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(financeAccountLinkService.loadAccountSetsList(financeAccountLink, accountDto.getMerchantId()));
     }
 
     @GetMapping("/byAccountBook/{accountBookId}")
-    public JsonResult loadByAccountBookId(@PathVariable("accountBookId") Long accountBookId, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(financeAccountLinkService.loadByAccountBookId(accountBookId));
+    public JsonResult loadByAccountBookId(@PathVariable("accountBookId") Long accountBookId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(financeAccountLinkService.loadByAccountBookId(accountDto.getAccountBookId()));
     }
 
     @GetMapping("/load/{id}")
-    public JsonResult load(@PathVariable("id") Long id, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(financeAccountLinkService.load(id, merchantId));
+    public JsonResult load(@PathVariable("id") Long id, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(financeAccountLinkService.load(id, accountDto.getMerchantId()));
     }
-
 
     @GetMapping("/voucherWord")
     public JsonResult loadVoucherWord(@SaAccountVal AccountDto accountDto) {

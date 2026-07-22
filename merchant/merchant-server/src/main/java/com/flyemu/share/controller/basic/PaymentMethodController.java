@@ -1,7 +1,8 @@
 package com.flyemu.share.controller.basic;
 
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.basic.PaymentMethod;
 import com.flyemu.share.service.basic.PaymentMethodService;
@@ -9,13 +10,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * @功能描述: 结算方式
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/paymentMethod")
 @RequiredArgsConstructor
@@ -24,38 +18,35 @@ public class PaymentMethodController {
     private final PaymentMethodService paymentMethodService;
 
     @GetMapping
-    public JsonResult list(PaymentMethodService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(PaymentMethodService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(paymentMethodService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PaymentMethod paymentMethod, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        paymentMethod.setMerchantId(merchantId);
-        paymentMethod.setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid PaymentMethod paymentMethod, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(paymentMethod, accountDto);
         paymentMethod.setEnabled(true);
         paymentMethodService.save(paymentMethod);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PaymentMethod paymentMethod, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        paymentMethod.setMerchantId(merchantId);
-        paymentMethod.setAccountBookId(accountBookId);
+    public JsonResult update(@RequestBody @Valid PaymentMethod paymentMethod, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(paymentMethod, accountDto);
         paymentMethodService.save(paymentMethod);
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{paymentMethodId}")
-    public JsonResult delete(@PathVariable Long paymentMethodId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        paymentMethodService.delete(paymentMethodId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long paymentMethodId, @SaAccountVal AccountDto accountDto) {
+        paymentMethodService.delete(paymentMethodId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(paymentMethodService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(paymentMethodService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
 }

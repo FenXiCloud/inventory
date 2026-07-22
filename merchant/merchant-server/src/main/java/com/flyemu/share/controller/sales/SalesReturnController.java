@@ -1,9 +1,8 @@
 package com.flyemu.share.controller.sales;
 
-import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.dto.AccountDto;
@@ -17,13 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * @功能描述: 销售退货单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/salesReturn")
 @RequiredArgsConstructor
@@ -32,55 +24,48 @@ public class SalesReturnController {
     private final SalesReturnService salesReturnService;
 
     @GetMapping
-    public JsonResult list(Page page, SalesReturnService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(Page page, SalesReturnService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(salesReturnService.query(page, query));
     }
 
     @GetMapping("/total")
-    public JsonResult queryTotal(SalesReturnService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult queryTotal(SalesReturnService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(salesReturnService.queryTotal(query));
     }
 
     @PostMapping
-    public JsonResult save(
-            @RequestBody @Valid SalesReturnForm salesReturnForm,
-            @SaMerchantId Long merchantId,
-            @SaAccountBookId Long accountBookId,
-            @SaAdminId Long adminId
-    ) {
-        salesReturnForm.getSalesReturn().setMerchantId(merchantId);
-        salesReturnForm.getSalesReturn().setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid SalesReturnForm salesReturnForm,
+            @SaAdminId Long adminId, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(salesReturnForm.getSalesReturn(), accountDto);
         salesReturnForm.getSalesReturn().setCreatedBy(adminId);
         salesReturnForm.getSalesReturn().setCreatedAt(LocalDateTime.now());
         salesReturnForm.getSalesReturn().setOrderStatus(OrderStatus.已保存);
-        salesReturnService.save(salesReturnForm, merchantId);
+        salesReturnService.save(salesReturnForm, accountDto.getMerchantId());
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid SalesReturnForm salesReturnForm, @SaMerchantId Long merchantId) {
-        salesReturnService.save(salesReturnForm, merchantId);
+    public JsonResult update(@RequestBody @Valid SalesReturnForm salesReturnForm, @SaAccountVal AccountDto accountDto) {
+        salesReturnService.save(salesReturnForm, accountDto.getMerchantId());
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{salesReturnId}")
-    public JsonResult delete(@PathVariable Long salesReturnId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        salesReturnService.delete(salesReturnId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long salesReturnId, @SaAccountVal AccountDto accountDto) {
+        salesReturnService.delete(salesReturnId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(salesReturnService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(salesReturnService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     @GetMapping("/load/{orderId}")
-    public JsonResult load(@PathVariable Long orderId, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(salesReturnService.load(merchantId, orderId));
+    public JsonResult load(@PathVariable Long orderId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(salesReturnService.load(accountDto.getMerchantId(), orderId));
     }
 
     @PostMapping("/approved/{state}")

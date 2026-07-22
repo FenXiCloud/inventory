@@ -23,7 +23,6 @@ import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.util.Set;
 
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -34,7 +33,6 @@ public class FinOps {
 
 //    @Resource
 //    private FinanceAccountLinkService financeAccountLinkService;
-
 
     /**
      * 加载帐套信息
@@ -119,7 +117,6 @@ public class FinOps {
         return res.getInteger("data");
     }
 
-
     /**
      * 新建凭证
      *
@@ -135,7 +132,6 @@ public class FinOps {
         return execute(post, 0, accountSetsId, financeAccountLink).getJSONObject("data");
     }
 
-
     /**
      * 更新凭证
      *
@@ -150,7 +146,6 @@ public class FinOps {
         post.body(objectMapper.writeValueAsString(dto), "application/json");
         return execute(post, 0, accountSetsId, financeAccountLink).getJSONObject("data");
     }
-
 
     private JSONObject executeJson(int retry, String url, Long accountSetsId, FinanceAccountLink financeAccountLink) {
         HttpRequest request = HttpUtil.createGet(url);
@@ -187,6 +182,5 @@ public class FinOps {
         }
         throw new ServiceException("财务系统提示：" + JSON.parseObject(response.body()).getString("msg"));
     }
-
 
 }

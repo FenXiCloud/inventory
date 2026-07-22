@@ -4,9 +4,6 @@ import com.flyemu.share.entity.fund.OrderReceiptCollection;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-/**
- * @author shuaiqi
- */
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class OrderReceiptCollectionVO extends OrderReceiptCollection {

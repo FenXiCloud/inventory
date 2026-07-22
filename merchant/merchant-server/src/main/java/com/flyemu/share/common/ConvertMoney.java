@@ -2,17 +2,7 @@ package com.flyemu.share.common;
 
 import java.text.DecimalFormat;
 
-/**
- * <p>****************************************************************************</p>
- * <p><b>Copyright © 2010-2019纷析云（杭州）科技有限公司All Rights Reserved<b></p>
- * <ul style="margin:15px;">
- * <li>Description : cn.gson.financial.common</li>
- * <li>Version     : 1.0</li>
- * <li>Creation    : 2019年09月12日</li>
- * <li>@author     : ____′↘夏悸</li>
- * </ul>
- * <p>****************************************************************************</p>
- */
+/** 金额大写转换 */
 public class ConvertMoney {
     // 大写数字
     private final static String[] STR_NUMBER = {"零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"};
@@ -21,13 +11,8 @@ public class ConvertMoney {
     // 小数单位
     private final static String[] STR_UNIT2 = {"厘", "分", "角"};
 
-    /**
-     * 获取整数部分
-     * ¬
-     *
-     * @param num 金额
-     * @return 金额整数部分
-     */
+    /** 获取整数部分 */
+
     public static String getInteger(String num) {
         // 判断是否包含小数点
         if (num.contains(".")) {
@@ -151,7 +136,6 @@ public class ConvertMoney {
             String num = strNum.substring(0, strNum.indexOf("."));
             // 整数部分大于12不能转换
             if (num.length() > 12) {
-                System.out.println("数字太大，不能完成转换！");
                 return "";
             }
         }
@@ -160,7 +144,6 @@ public class ConvertMoney {
             point = "元";
         } else {
             if (strNum.length() > 12) {
-                System.out.println("数字太大，不能完成转换！");
                 return "";
             }
             point = "元整";

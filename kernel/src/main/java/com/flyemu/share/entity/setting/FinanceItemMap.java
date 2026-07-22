@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.setting;
 
+import com.flyemu.share.common.TenantAware;
 import com.alibaba.fastjson2.JSONArray;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -18,7 +19,7 @@ import java.time.LocalDateTime;
 @DynamicUpdate
 @DynamicInsert
 @Comment("财务软件辅助映射")
-public class FinanceItemMap {
+public class FinanceItemMap implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -5,9 +5,6 @@ import lombok.Data;
 
 import java.util.List;
 
-/**
- *@author shuaiqi
- */
 @Data
 public class OtherExpenseDetails {
     private OtherExpenseDetailsVO order;

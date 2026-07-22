@@ -1,5 +1,6 @@
 package com.flyemu.share.service.purchase;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
@@ -10,7 +11,7 @@ import com.flyemu.share.dto.purchase.PurchaseReportSummaryDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.purchase.*;
 import com.flyemu.share.enums.OrderStatus;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Expression;
@@ -24,18 +25,11 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * @功能描述: 采购订单报表
- * @创建时间: 2025年02月23日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class PurchaseReportService extends AbsService {
+public class PurchaseReportService extends BaseService {
 
     private final static QPurchaseReturn qPurchaseReturn = QPurchaseReturn.purchaseReturn;
     private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
@@ -145,7 +139,7 @@ public class PurchaseReportService extends AbsService {
 
     public PageResults<PurchaseReportItemDto> queryReturn(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseReturnItem)
-                .select(qPurchaseReturnItem.secondaryPrice, qPurchaseReturnItem.subtotal, qWarehouse.name, qPurchaseReturnItem.secondaryQuantity,qSupplierCategory.name,qSupplier.code,
+                .select(qPurchaseReturnItem.secondaryPrice, qPurchaseReturnItem.subtotal, qWarehouse.name, qPurchaseReturnItem.secondaryQuantity, qSupplierCategory.name, qSupplier.code,
                         qPurchaseReturn.orderNo, qPurchaseReturn.returnDate, qSupplier.name, qProduct.name, qProduct.code, qUnit.name, qProductCategory.name)
                 .leftJoin(qPurchaseReturn).on(qPurchaseReturn.id.eq(qPurchaseReturnItem.purchaseReturnId))
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseReturn.supplierId))
@@ -184,7 +178,7 @@ public class PurchaseReportService extends AbsService {
 
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInboundItem)
                 .select(qPurchaseInboundItem.secondaryPrice, qPurchaseInboundItem.subtotal, qWarehouse.name, qPurchaseInboundItem.secondaryQuantity, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qSupplier.name,
-                        qProduct.name, qProduct.code, qUnit.name, qProductCategory.name,qSupplierCategory.name,qSupplier.code)
+                        qProduct.name, qProduct.code, qUnit.name, qProductCategory.name, qSupplierCategory.name, qSupplier.code)
                 .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
                 .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseInboundItem.warehouseId))
@@ -270,11 +264,9 @@ public class PurchaseReportService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-
     public PageResults<PurchaseReportSummaryDto> queryReturnStat(Page page, Query query, Set<String> groupValues) {
         List<Path> groupByFields = new ArrayList<>();
         groupByFields.add(qPurchaseReturnItem.productId);
-
 
         if (groupValues.contains("supplier")) {
             groupByFields.add(qPurchaseReturn.supplierId);
@@ -313,7 +305,7 @@ public class PurchaseReportService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
         public final BooleanBuilder inboundBuilder = new BooleanBuilder();
 

@@ -19,7 +19,6 @@ public class SaTokenHandlerMethodArgumentResolver implements SaHandlerMethodArgu
         return ((parameter.getParameterType().isAssignableFrom(MerchantUser.class)) && parameter.hasParameterAnnotation(SaUserVal.class));
     }
 
-
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
         StpUtil.checkLogin();

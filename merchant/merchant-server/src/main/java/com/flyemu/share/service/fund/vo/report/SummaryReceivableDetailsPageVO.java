@@ -5,9 +5,6 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- *@author shuaiqi
- */
 @Data
 public class SummaryReceivableDetailsPageVO {
     private List<SummaryReceivableDetailsVO> receivableDetailsList;

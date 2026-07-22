@@ -16,17 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
 
-/**
- * <p>****************************************************************************</p>
- * <p><b>Copyright © 2010-2019纷析云（杭州）科技有限公司All Rights Reserved<b></p>
- * <ul style="margin:15px;">
- * <li>Description : cn.gson.accountantplatform.service.aliyuncs</li>
- * <li>Version     : 1.0</li>
- * <li>Creation    : 2019年01月14日</li>
- * <li>@author     : ____′↘夏悸</li>
- * </ul>
- * <p>****************************************************************************</p>
- */
+/** 阿里云短信发送实现 */
 @Service
 @Slf4j
 public class SmsServiceImpl implements SmsService {

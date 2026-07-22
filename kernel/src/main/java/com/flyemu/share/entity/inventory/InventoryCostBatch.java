@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.inventory;
 
+import com.flyemu.share.common.TenantAware;
 import com.flyemu.share.enums.OperationType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -22,7 +23,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table
 @DynamicUpdate
-public class InventoryCostBatch implements Serializable {
+public class InventoryCostBatch implements Serializable, TenantAware{
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

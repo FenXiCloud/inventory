@@ -6,9 +6,6 @@ import lombok.Data;
 
 import java.util.List;
 
-/**
- *@author shuaiqi
- */
 @Data
 public class AccountTransferForm {
     private AccountTransfer order;

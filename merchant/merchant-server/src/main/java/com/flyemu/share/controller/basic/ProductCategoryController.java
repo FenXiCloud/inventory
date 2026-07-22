@@ -1,7 +1,8 @@
 package com.flyemu.share.controller.basic;
 
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.basic.ProductCategory;
 import com.flyemu.share.service.basic.ProductCategoryService;
@@ -10,13 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * @功能描述: 商品分类
- * @创建时间: 2024年05月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @Slf4j
 @RequestMapping("/productCategory")
@@ -26,37 +20,34 @@ public class ProductCategoryController {
     private final ProductCategoryService productCategoryService;
 
     @GetMapping
-    public JsonResult list(ProductCategoryService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(ProductCategoryService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(productCategoryService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid ProductCategory productCategory, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        productCategory.setMerchantId(merchantId);
-        productCategory.setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid ProductCategory productCategory, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(productCategory, accountDto);
         productCategoryService.save(productCategory);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid ProductCategory productCategory, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        productCategory.setMerchantId(merchantId);
-        productCategory.setAccountBookId(accountBookId);
+    public JsonResult update(@RequestBody @Valid ProductCategory productCategory, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(productCategory, accountDto);
         productCategoryService.save(productCategory);
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{productCategoryId}")
-    public JsonResult delete(@PathVariable Long productCategoryId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        productCategoryService.delete(merchantId, productCategoryId, accountBookId);
+    public JsonResult delete(@PathVariable Long productCategoryId, @SaAccountVal AccountDto accountDto) {
+        productCategoryService.delete(accountDto.getMerchantId(), productCategoryId, accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(productCategoryService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(productCategoryService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
 }

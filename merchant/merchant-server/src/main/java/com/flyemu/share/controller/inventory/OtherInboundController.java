@@ -1,9 +1,8 @@
 package com.flyemu.share.controller.inventory;
 
-import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.dto.AccountDto;
@@ -17,13 +16,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * @功能描述: 其他入库单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/otherInbound")
 @RequiredArgsConstructor
@@ -32,44 +24,39 @@ public class OtherInboundController {
     private final OtherInboundService otherInboundService;
 
     @GetMapping
-    public JsonResult list(Page page, OtherInboundService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(Page page, OtherInboundService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(otherInboundService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid OtherInboundForm otherInboundForm, @SaMerchantId Long merchantId,
-                           @SaAccountBookId Long accountBookId, @SaAdminId Long adminId) {
+    public JsonResult save(@RequestBody @Valid OtherInboundForm otherInboundForm, @SaAdminId Long adminId, @SaAccountVal AccountDto accountDto) {
         OtherInbound otherInbound = otherInboundForm.getOtherInbound();
-        otherInbound.setMerchantId(merchantId);
-        otherInbound.setAccountBookId(accountBookId);
+        TenantScope.bind(otherInbound, accountDto);
         otherInbound.setOrderStatus(OrderStatus.已保存);
         otherInbound.setCreatedBy(adminId);
-        OtherInbound inbound = otherInboundService.save(otherInboundForm, merchantId);
-        return JsonResult.successful(inbound);
+        return JsonResult.successful(otherInboundService.save(otherInboundForm, accountDto.getMerchantId()));
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid OtherInboundForm otherInboundForm, @SaMerchantId Long merchantId) {
-        OtherInbound inbound = otherInboundService.save(otherInboundForm, merchantId);
-        return JsonResult.successful(inbound);
+    public JsonResult update(@RequestBody @Valid OtherInboundForm otherInboundForm, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(otherInboundService.save(otherInboundForm, accountDto.getMerchantId()));
     }
 
     @DeleteMapping("/{otherInboundId}")
-    public JsonResult delete(@PathVariable Long otherInboundId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        otherInboundService.delete(otherInboundId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long otherInboundId, @SaAccountVal AccountDto accountDto) {
+        otherInboundService.delete(otherInboundId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(otherInboundService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(otherInboundService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     @GetMapping("/load/{id}")
-    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(otherInboundService.load(merchantId, id));
+    public JsonResult load(@PathVariable Long id, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(otherInboundService.load(accountDto.getMerchantId(), id));
     }
 
     @PostMapping("/approved/{state}")

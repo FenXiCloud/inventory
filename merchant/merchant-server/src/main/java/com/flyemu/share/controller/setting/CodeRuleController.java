@@ -1,7 +1,8 @@
 package com.flyemu.share.controller.setting;
 
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.service.setting.CodeRuleService;
@@ -9,13 +10,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * @功能描述: 编码规则
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/codeRule")
 @RequiredArgsConstructor
@@ -24,37 +18,34 @@ public class CodeRuleController {
     private final CodeRuleService codeRuleService;
 
     @GetMapping
-    public JsonResult list(CodeRuleService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(CodeRuleService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(codeRuleService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid CodeRule codeRule, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        codeRule.setMerchantId(merchantId);
-        codeRule.setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid CodeRule codeRule, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(codeRule, accountDto);
         codeRuleService.save(codeRule);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid CodeRule codeRule, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        codeRule.setMerchantId(merchantId);
-        codeRule.setAccountBookId(accountBookId);
+    public JsonResult update(@RequestBody @Valid CodeRule codeRule, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(codeRule, accountDto);
         codeRuleService.save(codeRule);
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{codeRuleId}")
-    public JsonResult delete(@PathVariable Long codeRuleId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        codeRuleService.delete(codeRuleId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long codeRuleId, @SaAccountVal AccountDto accountDto) {
+        codeRuleService.delete(codeRuleId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(codeRuleService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(codeRuleService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
 }

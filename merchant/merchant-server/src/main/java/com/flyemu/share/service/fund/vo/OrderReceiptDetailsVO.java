@@ -9,9 +9,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * @author shuaiqi
- */@JsonInclude()
+@JsonInclude()
 @Data
 @NoArgsConstructor
 public class OrderReceiptDetailsVO {
@@ -23,7 +21,6 @@ public class OrderReceiptDetailsVO {
 
     private Long id;
 
-
     private Long customerId;
 
     private String customerName;
@@ -32,20 +29,15 @@ public class OrderReceiptDetailsVO {
 
     private LocalDate orderDate;
 
-
     private String orderNo;
 
     private String documentSource;
 
-
     private BigDecimal discountAmount;
-
 
     private BigDecimal collectionAmount;
 
-
     private BigDecimal totalAmountsOwed;
-
 
     private BigDecimal verificationAmount;
 
@@ -59,26 +51,21 @@ public class OrderReceiptDetailsVO {
 
     private Integer writeOffStatus;
 
-
     private OrderStatus orderStatus;
-
 
     private Long orderStaffId;
 
     private String orderStatusName;
 
-
     private Long createdBy;
 
-    private Long updateBy;
+    private Long updatedBy;
 
     private LocalDateTime createdAt;
 
-    private LocalDateTime updateAt;
-
+    private LocalDateTime updatedAt;
 
     private Long approvedBy;
-
 
     private LocalDateTime approvedAt;
 

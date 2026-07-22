@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.fund;
 
+import com.flyemu.share.common.TenantAware;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.flyemu.share.enums.OrderStatus;
 import jakarta.persistence.*;
@@ -13,13 +14,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * @功能描述: 其他收入单
- * @创建时间: 2024年04月28日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @JsonInclude()
 @Getter
 @Setter
@@ -27,7 +21,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table(name = "other_income")
 @DynamicUpdate
-public class OtherReceipt {
+public class OtherReceipt implements TenantAware {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -75,9 +69,11 @@ public class OtherReceipt {
     @Column(nullable = false)
     private Long accountBookId;
     @Comment("最后修改人")
-    private Long updateBy;
+    @Column(name = "update_by")
+    private Long updatedBy;
     @Comment("最后修改时间")
-    private LocalDateTime updateAt;
+    @Column(name = "update_at")
+    private LocalDateTime updatedAt;
     @Column(nullable = false)
     private Long merchantId;
 }

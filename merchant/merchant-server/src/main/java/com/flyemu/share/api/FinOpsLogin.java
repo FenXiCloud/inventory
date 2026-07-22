@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.Map;
 
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -30,7 +29,6 @@ public final class FinOpsLogin {
         map.put("mobile", financeAccountLink.getFinanceAccount());
         return toLogin(post, map);
     }
-
 
     private String toLogin(HttpRequest post, Map<String, Object> map) {
         post.form(map);

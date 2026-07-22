@@ -5,8 +5,8 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.flyemu.share.entity.setting.Menu;
 import com.flyemu.share.entity.setting.QMenu;
 import com.flyemu.share.entity.setting.QMerchantMenu;
-import com.flyemu.share.repository.MenuRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.MenuRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,18 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * @功能描述: 菜单管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class MenuService extends AbsService {
+public class MenuService extends BaseService {
 
     private final QMenu qMenu = QMenu.menu;
 

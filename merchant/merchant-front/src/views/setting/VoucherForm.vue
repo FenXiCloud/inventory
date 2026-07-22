@@ -190,7 +190,6 @@ export default {
         this.form.voucherDate = manba(this.accountBook.currentAccountDate).endOf('month').format('YYYY-MM-DD');
       }
 
-
       this.loadWords();
     },
   },

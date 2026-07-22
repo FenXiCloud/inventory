@@ -1,10 +1,16 @@
 package com.flyemu.share.service.fund;
 
+import com.flyemu.share.repository.fund.OrderReceiptCollectionRepository;
+import com.flyemu.share.repository.fund.OrderReceiptItemRepository;
+import com.flyemu.share.repository.fund.OrderReceiptRepository;
+import com.flyemu.share.repository.sales.SalesOutboundRepository;
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.*;
@@ -17,9 +23,8 @@ import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.*;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.AccountService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
@@ -44,7 +49,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,19 +58,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-/**
- * @author shuaiqi
- * @功能描述: 收款单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
-public class OrderReceiptService extends AbsService {
+public class OrderReceiptService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QOrderReceipt qOrderReceipt = QOrderReceipt.orderReceipt;
@@ -89,6 +85,7 @@ public class OrderReceiptService extends AbsService {
 
     private final static QOrderReceiptItem qOrderReceiptItem = QOrderReceiptItem.orderReceiptItem;
     private final static QOrderReceiptCollection qOrderReceiptCollection = QOrderReceiptCollection.orderReceiptCollection;
+    private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
 
     public SummaryReceivableDetailsPageVO summaryReceivableDetails(Page page, SummaryReceivableDetailsQuery query) {
         Integer type = query.getType();
@@ -615,7 +612,7 @@ public class OrderReceiptService extends AbsService {
         updateYourBalance(orderReceipt);
         if (orderReceipt.getId() == null) {
             theOrderNumberIsAssigned(orderReceipt);
-            orderReceipt.setUpdateAt(LocalDateTime.now());
+            orderReceipt.setUpdatedAt(LocalDateTime.now());
             if (orderReceipt.getOrderStatus() == null) {
                 orderReceipt.setOrderStatus(OrderStatus.已保存);
             }
@@ -766,7 +763,7 @@ public class OrderReceiptService extends AbsService {
     }
 
     private void theOrderNumberIsAssigned(OrderReceipt orderReceipt) {
-        if (StringUtils.isEmpty(orderReceipt.getOrderNo())) {
+        if (StrUtil.isEmpty(orderReceipt.getOrderNo())) {
             CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(CodeRule.DocumentType.收款单, orderReceipt.getMerchantId(), orderReceipt.getAccountBookId());
 
             if (codeRule != null) {
@@ -817,7 +814,7 @@ public class OrderReceiptService extends AbsService {
 
     @Transactional
     public void delete(String ids, Long merchantId, Long accountBookId) {
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要删除的数据");
         }
         List<Long> idList = Arrays.stream(ids.split(","))
@@ -871,12 +868,12 @@ public class OrderReceiptService extends AbsService {
                         qOrderReceipt.verificationAmount, qOrderReceipt.advanceCollectionsAmount, qOrderReceipt.shouldVerificationAmount,
                         qOrderReceipt.hasVerificationAmount, qOrderReceipt.notVerificationAmount, qOrderReceipt.writeOffStatus,
                         qOrderReceipt.orderStatus, qOrderReceipt.orderStaffId, qOrderReceipt.orderStaffName, qOrderReceipt.createdBy,
-                        qOrderReceipt.updateBy, qOrderReceipt.createdAt, qOrderReceipt.updateAt, qOrderReceipt.approvedBy,
+                        qOrderReceipt.updatedBy, qOrderReceipt.createdAt, qOrderReceipt.updatedAt, qOrderReceipt.approvedBy,
                         qOrderReceipt.approvedAt, qOrderReceipt.accountBookId, qOrderReceipt.merchantId, qMerchantUser.name.as("createName"),
                         qUpdatedByUser.name.as("updateName"), approvedNameUser.name.as("approvedName")))
                 .from(qOrderReceipt).leftJoin(qCustomer).on(qCustomer.id.eq(qOrderReceipt.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qOrderReceipt.createdBy)).leftJoin(qUpdatedByUser)
-                .on(qMerchantUser.id.eq(qOrderReceipt.updateBy)).leftJoin(approvedNameUser).on(approvedNameUser.id.eq(qOrderReceipt.approvedBy)).where(qOrderReceipt.merchantId.eq(merchantId).and(qOrderReceipt.id.eq(id))).fetchOne();
+                .on(qMerchantUser.id.eq(qOrderReceipt.updatedBy)).leftJoin(approvedNameUser).on(approvedNameUser.id.eq(qOrderReceipt.approvedBy)).where(qOrderReceipt.merchantId.eq(merchantId).and(qOrderReceipt.id.eq(id))).fetchOne();
         if (orderReceipt == null) {
             throw new ServiceException("单据不存在");
         }
@@ -913,7 +910,7 @@ public class OrderReceiptService extends AbsService {
         if (orderReceipt.getApprovedBy() == null) {
             throw new ServiceException("请选择审核人");
         }
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要操作的数据");
         }
 
@@ -1067,14 +1064,10 @@ public class OrderReceiptService extends AbsService {
         return customerFlow;
     }
 
-    private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
-
     public Object writeOffCandidates(Page page, OrderReceiptService.SalesQuery query) {
         if (query.getCustomerId() == null) {
             throw new ServiceException("客户ID不能为空");
         }
-
-        QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
 
         NumberExpression<BigDecimal> receiptVerifySum = qOrderReceiptItem.currentVerifyAmount.sum()
                 .coalesce(BigDecimal.ZERO);
@@ -1133,16 +1126,14 @@ public class OrderReceiptService extends AbsService {
 
     }
 
-    public static class SalesQuery {
+    public static class SalesQuery implements TenantAware {
         @Getter
         Long customerId;
 
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qSalesOutbound.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qSalesOutbound.merchantId, merchantId);
         }
 
         public void setOrderNo(String orderNo) {
@@ -1152,9 +1143,7 @@ public class OrderReceiptService extends AbsService {
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qSalesOutbound.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qSalesOutbound.accountBookId, accountBookId);
         }
 
         public void setCustomerId(Long customerId) {
@@ -1171,7 +1160,7 @@ public class OrderReceiptService extends AbsService {
                 .where(query.builder).fetchFirst();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
 
         public final BooleanBuilder builder = new BooleanBuilder();
 
@@ -1182,15 +1171,11 @@ public class OrderReceiptService extends AbsService {
         }
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qOrderReceipt.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qOrderReceipt.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qOrderReceipt.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qOrderReceipt.accountBookId, accountBookId);
         }
 
         public void setOrderStatus(OrderStatus orderStatus) {
@@ -1206,13 +1191,13 @@ public class OrderReceiptService extends AbsService {
         }
 
         public void setStartTime(String startTime) {
-            if (StringUtils.isNotEmpty(startTime)) {
+            if (StrUtil.isNotEmpty(startTime)) {
                 builder.and(qOrderReceipt.createdAt.goe(LocalDateTime.parse(startTime + "T00:00:00")));
             }
         }
 
         public void setEndTime(String endTime) {
-            if (StringUtils.isNotEmpty(endTime)) {
+            if (StrUtil.isNotEmpty(endTime)) {
                 builder.and(qOrderReceipt.createdAt.loe(LocalDateTime.parse(endTime + "T23:59:59")));
             }
         }
@@ -1231,14 +1216,12 @@ public class OrderReceiptService extends AbsService {
 
     }
 
-    public static class ReceivableDetailReportQuery {
+    public static class ReceivableDetailReportQuery implements TenantAware {
 
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qOrderReceipt.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qOrderReceipt.merchantId, merchantId);
         }
 
         public void setCustomerId(Long customerId) {
@@ -1254,9 +1237,7 @@ public class OrderReceiptService extends AbsService {
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qOrderReceipt.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qOrderReceipt.accountBookId, accountBookId);
         }
 
         public void setOrderStatus(OrderStatus orderStatus) {

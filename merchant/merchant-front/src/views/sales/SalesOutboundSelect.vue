@@ -35,29 +35,20 @@
       <t-button theme="primary" variant="outline" style="border-radius: 4px" @click="doSearch">搜索</t-button>
     </div>
     <div class="order-select__table">
-      <vxe-table
-          row-id="id"
+      <t-table
+          row-key="id"
           ref="table"
-          height="auto"
-          border
-          show-overflow
+          size="medium"
+          bordered
+          hover
+          height="100%"
+          table-layout="fixed"
           :data="dataList"
-          highlight-hover-row
-          show-footer
-          :footer-method="footerMethod"
-          :row-config="{height: 48}"
-          :column-config="{resizable: true}"
-          :sort-config="{remote:true}"
+          :columns="columns"
           :loading="loading"
-      >
-        <vxe-column type="checkbox" width="40" align="center"/>
-        <vxe-column title="单据日期" field="outboundDate" align="center" width="130"/>
-        <vxe-column title="单据编号" field="orderNo" width="200"/>
-        <vxe-column title="客户" field="customerName" min-width="120"/>
-        <vxe-column title="销售金额" field="totalAmount" width="120"/>
-        <vxe-column title="折扣金额" field="discountAmount" width="120"/>
-        <vxe-column title="折后金额" field="finalAmount" width="120"/>
-      </vxe-table>
+          :selected-row-keys="selectedRowKeys"
+          @select-change="onSelectChange"
+      />
     </div>
     <div class="order-select__pager">
       <span class="order-select__total">合计金额：{{ amountTotal }}元</span>
@@ -99,6 +90,17 @@ export default {
       dataList: [],
       loading: false,
       amountTotal: 0,
+      selectedRowKeys: [],
+      selectedRows: [],
+      columns: [
+        { colKey: 'row-select', type: 'multiple', width: 46 },
+        { colKey: 'outboundDate', title: '单据日期', width: 130, align: 'center' },
+        { colKey: 'orderNo', title: '单据编号', width: 200 },
+        { colKey: 'customerName', title: '客户', minWidth: 120 },
+        { colKey: 'totalAmount', title: '销售金额', width: 120 },
+        { colKey: 'discountAmount', title: '折扣金额', width: 120 },
+        { colKey: 'finalAmount', title: '折后金额', width: 120 },
+      ],
       pagination: {
         page: 1,
         pageSize: 20,
@@ -112,32 +114,34 @@ export default {
         customerId: null
       },
       customerList: [],
-      dateRange: {
-        start: manba(startTime).format("YYYY-MM-dd"),
-        end: manba(endTime).format("YYYY-MM-dd")
-      },
+      dateRange: [startTime, endTime],
     }
   },
   computed: {
     queryParams() {
+      const [start, end] = this.dateRange || [];
       return Object.assign({}, this.params, {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
-        start: this.dateRange.start,
-        end: this.dateRange.end,
+        start,
+        end,
         //查询未退货订单
         queryUnReturnOrder: 1
       })
     },
   },
   methods: {
+    onSelectChange(keys, { selectedRowData }) {
+      this.selectedRowKeys = keys;
+      this.selectedRows = selectedRowData || [];
+    },
     onPageChange(pageInfo) {
       this.pagination.page = pageInfo.current;
       this.pagination.pageSize = pageInfo.pageSize;
       this.loadList();
     },
     batchSelect() {
-      const selectedRows = this.$refs.table.getCheckboxRecords();
+      const selectedRows = this.selectedRows;
       if (selectedRows.length === 0) {
         MessagePlugin.error("请选择至少一条订单");
         return;
@@ -156,32 +160,14 @@ export default {
         itemList: allItemList
       });
     },
-    footerMethod({columns, data}) {
+    updateAmountTotal() {
       let totalAmount = 0;
-      let discountAmount = 0;
-      let finalAmount = 0;
-      columns.forEach((column) => {
-        if (column.property && ['totalAmount', 'discountAmount', 'finalAmount'].includes(column.property)) {
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (column.property === 'totalAmount') {
-              if (rd) {
-                totalAmount += Number(rd || 0);
-              }
-            } else if (column.property === 'discountAmount') {
-              if (rd) {
-                discountAmount += Number(rd || 0);
-              }
-            } else if (column.property === 'finalAmount') {
-              if (rd) {
-                finalAmount += Number(rd || 0);
-              }
-            }
-          });
+      (this.dataList || []).forEach((row) => {
+        if (row.totalAmount) {
+          totalAmount += Number(row.totalAmount || 0);
         }
-      })
+      });
       this.amountTotal = totalAmount.toFixed(2);
-      return [["", "", "", "", totalAmount.toFixed(2), discountAmount.toFixed(2), finalAmount.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -189,9 +175,12 @@ export default {
     },
     loadList() {
       this.loading = true;
+      this.selectedRowKeys = [];
+      this.selectedRows = [];
       SalesOutbound.list(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
+        this.updateAmountTotal();
       }).finally(() => this.loading = false);
 
       Customer.select().then(({data}) => {

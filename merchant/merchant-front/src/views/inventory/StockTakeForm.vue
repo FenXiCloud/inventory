@@ -1,8 +1,8 @@
 <template>
   <div class="page-column">
     <div class="page-column-full-body">
-      <vxe-toolbar class-name="!size--mini">
-        <template #buttons>
+      <div class="form-toolbar">
+        <div class="form-toolbar__left">
           <label class="mr-20px ml-16px" style="font-size: 16px !important">盘点日期：</label>
           <label style="font-size: 15px !important">{{ form.checkDate }}</label>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">仓库：</label>
@@ -15,8 +15,8 @@
           <t-select class="w-178px mr-20px" filterable :options="productList"
                     :keys="{ value: 'id', label: 'customName' }"
                     v-model="form.productId" placeholder="请选择产品" :disabled="isLocked || !!form.id" clearable/>
-        </template>
-        <template #tools>
+        </div>
+        <div class="form-toolbar__right">
           <Stamp v-if="isAudited"/>
           <t-input v-if="!form.id" v-model.trim="form.filter"
                    clearable class="w-360px ml-8px"
@@ -25,56 +25,57 @@
               <t-icon name="search" style="cursor:pointer" @click="doSearch"/>
             </template>
           </t-input>
+        </div>
+      </div>
+      <t-table
+          ref="xTable"
+          row-key="_rowKey"
+          size="small"
+          bordered
+          stripe
+          hover
+          table-layout="fixed"
+          :columns="columns"
+          :data="stockTakeData"
+          :foot-data="footData"
+          :loading="loading"
+      >
+        <template #productUrl="{ row }">
+          <img v-if="row.productUrl" :src="row.productUrl" alt="" class="product-img"/>
         </template>
-      </vxe-toolbar>
-      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border show-overflow keep-source
-                 :edit-config="isLocked ? undefined : editConfig" :row-config="{ height: 40, isCurrent: true, isHover: true }"
-                 :tooltip-config="tooltipConfig" show-footer :footer-method="footerMethod" stripe
-                 :data="stockTakeData"
-                 @current-change="currentChangeEvent" @cell-click="tableCellClick">
-        <vxe-column title="序号" type="seq" width="70" align="center" fixed="left"/>
-        <vxe-column field="warehouseName" title="仓库" width="150"></vxe-column>
-        <vxe-column field="productUrl" title="产品图片" width="150" :cell-render="imgUrlCellRender"></vxe-column>
-        <vxe-column field="productCode" title="产品编码" width="160"></vxe-column>
-        <vxe-column field="productName" title="产品名称" min-width="250">
-        </vxe-column>
-        <vxe-column title="规格型号" field="productSpecification" align="center" width="120"></vxe-column>
-        <vxe-column title="产品类别" field="productCategoryName" align="center" width="110"></vxe-column>
-        <vxe-column title="单位" field="productUnitName" width="100"/>
-        <vxe-column title="系统库存" field="systemQuantity" width="100"/>
-        <vxe-column title="盘点库存" field="actualQuantity" width="100">
-          <template #default="scope">
-            <vxe-input v-if="!isLocked" @input="quantityInput(scope)"
-                       v-model.number="scope.row.actualQuantity" type="int" min="0" :controls="false">
-            </vxe-input>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.actualQuantity }}</div>
-              </div>
+        <template #actualQuantity="{ row, rowIndex }">
+          <t-input-number
+              v-if="!isLocked"
+              v-model="row.actualQuantity"
+              theme="normal"
+              :min="0"
+              :decimal-places="0"
+              style="width: 100%"
+              @change="quantityInput({ rowIndex })"
+          />
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.actualQuantity }}</div>
             </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="盘点亏盈" field="deficient" width="100">
-          <template #default="scope">
-            <div class="flex">
-              <div class="flex1 ml-8px">
-                <div style="color: green" v-if="scope.row.deficient > 0">{{ scope.row.deficient }}</div>
-                <div style="color: red" v-else>{{ scope.row.deficient }}</div>
-              </div>
+          </div>
+        </template>
+        <template #deficient="{ row }">
+          <div class="flex">
+            <div class="flex1 ml-8px">
+              <div style="color: green" v-if="row.deficient > 0">{{ row.deficient }}</div>
+              <div style="color: red" v-else>{{ row.deficient }}</div>
             </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="备注" field="differenceReason" width="100">
-          <template #default="scope">
-            <vxe-input v-if="!isLocked" v-model="scope.row.differenceReason"></vxe-input>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.differenceReason }}</div>
-              </div>
+          </div>
+        </template>
+        <template #differenceReason="{ row }">
+          <t-input v-if="!isLocked" v-model="row.differenceReason"/>
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.differenceReason }}</div>
             </div>
-          </template>
-        </vxe-column>
-      </vxe-table>
+          </div>
+        </template>
+      </t-table>
       <div class="mt-10px"></div>
       <div class="filler-panel">
         <div class="filler-item">
@@ -125,6 +126,11 @@ import {mapMutations, mapState} from "vuex";
 import StockTake from "@js/api/inventory/StockTake";
 import Stamp from "../common/Stamp.vue";
 
+let rowSeq = 0;
+function newRow(extra = {}) {
+  return { _rowKey: `r-${++rowSeq}`, ...extra };
+}
+
 export default {
   name: "StockTakeForm",
   components: {Stamp},
@@ -145,6 +151,37 @@ export default {
     isLocked() {
       return this.isAudited || this.looked;
     },
+    columns() {
+      return [
+        {
+          colKey: 'seq',
+          title: '序号',
+          width: 70,
+          align: 'center',
+          fixed: 'left',
+          cell: (h, { rowIndex }) => rowIndex + 1,
+          foot: () => '合计'
+        },
+        { colKey: 'warehouseName', title: '仓库', width: 150 },
+        { colKey: 'productUrl', title: '产品图片', width: 150 },
+        { colKey: 'productCode', title: '产品编码', width: 160 },
+        { colKey: 'productName', title: '产品名称', minWidth: 250 },
+        { colKey: 'productSpecification', title: '规格型号', align: 'center', width: 120 },
+        { colKey: 'productCategoryName', title: '产品类别', align: 'center', width: 110 },
+        { colKey: 'productUnitName', title: '单位', width: 100 },
+        { colKey: 'systemQuantity', title: '系统库存', width: 100 },
+        { colKey: 'actualQuantity', title: '盘点库存', width: 100 },
+        { colKey: 'deficient', title: '盘点亏盈', width: 100 },
+        { colKey: 'differenceReason', title: '备注', width: 100 },
+      ];
+    },
+    footData() {
+      let totalQuantity = 0;
+      (this.stockTakeData || []).forEach((row) => {
+        totalQuantity += Number(row.actualQuantity || 0);
+      });
+      return [{ seq: '合计', actualQuantity: totalQuantity }];
+    }
   },
   data() {
     return {
@@ -175,22 +212,6 @@ export default {
       originalStockTakeData: [],
       selectRowIndex: null,
       increase: true,
-      validRules: {
-        productName: [
-          {required: true, message: '请选择产品名称'},
-        ],
-        warehouseName: [
-          {required: true, message: '请选择仓库'},
-        ],
-        actualQuantity: [
-          {required: true, message: '请填写盘点库存'},
-        ]
-      },
-      tooltipConfig: {
-        showAll: false,
-        enterable: false,
-      },
-      editConfig: {trigger: 'click', mode: 'row'},
       outbounds: [],
       inbounds: []
     };
@@ -218,21 +239,6 @@ export default {
     },
 
     ...mapMutations(['closeSelfTab', 'pushTab']),
-    footerMethod({columns, data}) {
-      let totalQuantity = 0;
-      (columns || []).forEach(column => {
-        if (column.property && ['actualQuantity'].includes(column.property)) {
-          (data || []).forEach((row) => {
-            if (column.property === 'actualQuantity') {
-              totalQuantity += Number(row?.[column.property] || 0);
-            }
-          });
-        }
-      });
-      return [
-        ["", "", "", "", "", "", "", "", "", totalQuantity],
-      ];
-    },
     isEmpty(value) {
       return (value !== 0 && !value) || value === '';
     },
@@ -343,7 +349,7 @@ export default {
     },
     adjustRows(type, index) {
       if (type === "insert") {
-        this.stockTakeData.splice(index + 1, 0, {isNew: true});
+        this.stockTakeData.splice(index + 1, 0, newRow({isNew: true}));
       } else {
         this.stockTakeData.splice(index, 1);
       }
@@ -355,16 +361,11 @@ export default {
         productId: this.form.productId,
         filter: this.form.filter
       }).then((res) => {
-        this.stockTakeData = res?.data || [];
+        this.stockTakeData = (res?.data || []).map((row) => newRow(row));
       });
     },
     rowIsSelect() {
       return !this.isLocked;
-    },
-    currentChangeEvent({rowIndex}) {
-      this.selectRowIndex = rowIndex;
-    },
-    tableCellClick({rowIndex}) {
     },
     quantityInput({rowIndex}) {
       const row = this.stockTakeData?.[rowIndex];
@@ -404,7 +405,7 @@ export default {
               let totalQuantity = 0;
               data.forEach(item => {
                 totalQuantity += Number(item.actualQuantity) || 0;
-                this.stockTakeData.push({
+                this.stockTakeData.push(newRow({
                   productUrl: '',
                   productCode: item.productCode,
                   productName: item.productName,
@@ -419,7 +420,7 @@ export default {
                   warehouseId: item.warehouseId,
                   deficient: item.deficient,
                   differenceReason: item.differenceReason
-                });
+                }));
               });
               this.originalStockTakeData = JSON.parse(JSON.stringify(this.stockTakeData));
               this.form.totalQuantity = totalQuantity;
@@ -556,3 +557,11 @@ export default {
   },
 };
 </script>
+<style lang="less" scoped>
+
+.product-img {
+  max-width: 48px;
+  max-height: 48px;
+  object-fit: contain;
+}
+</style>

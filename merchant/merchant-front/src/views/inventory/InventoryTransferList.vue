@@ -102,7 +102,6 @@
     </div>
 
     <div class="simple-page__pager">
-      <span class="simple-page__total"></span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -127,14 +126,6 @@ import Warehouse from "@js/api/basic/Warehouse";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
-
-/**
- * @功能描述: 调拨单列表
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 export default {
   name: "InventoryTransferList",
   data() {
@@ -301,44 +292,3 @@ export default {
 }
 </script>
 
-<style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
-
-.simple-page__table {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.simple-page__pager {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--td-component-border, #dcdcdc);
-  background: #fff;
-}
-
-.simple-page__total {
-  font-size: 14px;
-  color: #333639;
-  flex-shrink: 0;
-}
-</style>

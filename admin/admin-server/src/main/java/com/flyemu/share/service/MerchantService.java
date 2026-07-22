@@ -9,10 +9,10 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.setting.*;
-import com.flyemu.share.repository.AccountBookRepository;
-import com.flyemu.share.repository.AdminRepository;
-import com.flyemu.share.repository.MerchantRepository;
-import com.flyemu.share.repository.RoleRepository;
+import com.flyemu.share.repository.setting.AccountBookRepository;
+import com.flyemu.share.repository.setting.AdminRepository;
+import com.flyemu.share.repository.setting.MerchantRepository;
+import com.flyemu.share.repository.setting.RoleRepository;
 import com.querydsl.core.BooleanBuilder;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -25,19 +25,11 @@ import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
-
-/**
- * @功能描述: 商户管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class MerchantService extends AbsService {
+public class MerchantService extends BaseService {
 
     private static final QMerchant qMerchant = QMerchant.merchant;
 
@@ -48,7 +40,6 @@ public class MerchantService extends AbsService {
     private final RoleRepository roleRepository;
 
     private final AccountBookRepository accountBookRepository;
-
 
     @PostConstruct
     public void initDefaultUser() {
@@ -85,7 +76,6 @@ public class MerchantService extends AbsService {
         return new PageResults<>(fetchPage, page);
     }
 
-
     @Transactional
     public Merchant save(Merchant merchant) {
         if (merchant.getId() != null) {
@@ -118,7 +108,6 @@ public class MerchantService extends AbsService {
         }
         return merchantRepository.save(merchant);
     }
-
 
     @Transactional
     public void delete(Long merchantId) {

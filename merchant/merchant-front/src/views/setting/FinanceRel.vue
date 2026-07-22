@@ -87,8 +87,8 @@ import FinanceRelForm from "./FinanceRelForm.vue";
 import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
 import {mapMutations} from "vuex";
 import VoucherTemplate from "@views/setting/VoucherTemplate.vue";
-import {ObjectUtil} from "../../js/common/utils";
-import FinanceItemMap from "./FinanceItemMap.vue";
+import {ObjectUtil} from '@common/utils';
+import ItemMapping from "./ItemMapping.vue";
 import Voucher from "./Voucher.vue";
 
 export default {
@@ -131,7 +131,7 @@ export default {
         header: "辅助项映射",
         closeOnOverlayClick: false,
         width: '1200px',
-        body: h(FinanceItemMap, {
+        body: h(ItemMapping, {
           onClose: () => {
             closeDialog(dialogId);
           },
@@ -190,17 +190,6 @@ export default {
 </script>
 
 <style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
 
 .simple-page__body {
   width: 980px;
@@ -212,12 +201,6 @@ export default {
   flex-direction: column;
   overflow: hidden;
   padding: 8px 0;
-}
-
-.simple-page__table {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
 }
 
 .guide {

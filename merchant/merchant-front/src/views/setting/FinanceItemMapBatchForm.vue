@@ -1,52 +1,52 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <vxe-table size="mini" ref="xTable" border="border" show-overflow keep-source
-                 :row-config="{ height: 40, isCurrent: true, isHover: true }"
-                 show-footer stripe
-                 :data="templateData">
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
-          <template #default="{ row, rowIndex }">
-            <div>
-              <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
-              <div v-if="templateData.length !== 1" class="fa fa-minus text-hover-danger"
-                   @click="adjustRows('delete', rowIndex)"></div>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="财务软件辅助项" field="warehouseName">
-          <template #default="scope">
-            <div class="input-group goodsSelect">
-              <t-select
-                  :clearable="false"
-                  ref="ms"
-                  v-model="scope.row.financeId"
-                  :options="financeItemMappings"
-                  filterable
-                  placeholder="请选择财务软件辅助项"
-                  :keys="{ value: 'id', label: 'titleName' }"
-                  @change="changeMappings(scope, 'financeId')"
-              />
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="进销存辅助项" field="warehouseName">
-          <template #default="scope">
-            <div class="input-group goodsSelect">
-              <t-select
-                  :clearable="false"
-                  ref="ms"
-                  v-model="scope.row.inventoryId"
-                  :options="itemMappings"
-                  filterable
-                  placeholder="请选择进销存辅助项"
-                  :keys="{ value: 'id', label: 'titleName' }"
-                  @change="changeMappings(scope, 'inventoryId')"
-              />
-            </div>
-          </template>
-        </vxe-column>
-      </vxe-table>
+      <t-table
+          row-key="_rowKey"
+          size="small"
+          bordered
+          stripe
+          hover
+          table-layout="fixed"
+          :data="templateData"
+          :columns="columns"
+          max-height="420"
+      >
+        <template #ops="{ rowIndex }">
+          <t-space size="small">
+            <t-link theme="primary" @click="adjustRows('insert', rowIndex)">增加</t-link>
+            <t-link
+                v-if="templateData.length > 1"
+                theme="danger"
+                @click="adjustRows('delete', rowIndex)"
+            >删除</t-link>
+          </t-space>
+        </template>
+        <template #financeId="{ row, rowIndex }">
+          <t-select
+              v-model="row.financeId"
+              :options="financeItemMappings"
+              :keys="{ value: 'id', label: 'titleName' }"
+              filterable
+              :clearable="false"
+              placeholder="请选择财务软件辅助项"
+              style="width: 100%"
+              @change="() => changeMappings(rowIndex, 'financeId')"
+          />
+        </template>
+        <template #inventoryId="{ row, rowIndex }">
+          <t-select
+              v-model="row.inventoryId"
+              :options="itemMappings"
+              :keys="{ value: 'id', label: 'titleName' }"
+              filterable
+              :clearable="false"
+              placeholder="请选择进销存辅助项"
+              style="width: 100%"
+              @change="() => changeMappings(rowIndex, 'inventoryId')"
+          />
+        </template>
+      </t-table>
     </div>
     <div class="modal-column-between">
       <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
@@ -56,26 +56,30 @@
 </template>
 
 <script>
-import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
-import FinanceItemMap from "@js/api/setting/FinanceItemMap";
-import Customer from "@js/api/basic/Customer";
-import Product from "@js/api/basic/Product";
-import Supplier from "@js/api/basic/Supplier";
-import {MessagePlugin} from "tdesign-vue-next";
-import {ObjectUtil} from "@js/common/utils";
+import FinanceAccountLink from '@js/api/setting/FinanceAccountLink';
+import FinanceItemMap from '@js/api/setting/FinanceItemMap';
+import Customer from '@js/api/basic/Customer';
+import Product from '@js/api/basic/Product';
+import Supplier from '@js/api/basic/Supplier';
+import { MessagePlugin } from 'tdesign-vue-next';
+import { ObjectUtil } from '@common/utils';
+
+let rowSeq = 0;
+
+function newRow(extra = {}) {
+  return { _rowKey: `r-${++rowSeq}`, inventoryId: null, financeId: null, ...extra };
+}
 
 export default {
-  name: "FinanceItemMapBatchForm",
+  name: 'FinanceItemMapBatchForm',
   props: {
     id: [Number, String],
-    categoryId: [Number, String],
+    categoryId: [Number, String]
   },
+  emits: ['close', 'success'],
   data() {
     return {
       loading: false,
-      canSave: false,
-      voucherWords: [],
-      subjects: [],
       model: {
         id: null,
         categoryId: null,
@@ -84,116 +88,114 @@ export default {
         inventoryName: null,
         financeId: null,
         financeCode: null,
-        financeName: null,
-      },
-      validationRules: {
-        inventoryId: [{ required: true, message: '请选择进销存辅助项' }],
-        financeId: [{ required: true, message: '请选择财务软件辅助项' }]
+        financeName: null
       },
       itemMappings: [],
       financeItemMappings: [],
-      templateData: []
-    }
+      templateData: [],
+      columns: [
+        { colKey: 'ops', title: '操作', width: 110, align: 'center' },
+        { colKey: 'financeId', title: '财务软件辅助项', minWidth: 200 },
+        { colKey: 'inventoryId', title: '进销存辅助项', minWidth: 200 }
+      ]
+    };
   },
-  watch: {},
   methods: {
     confirm() {
-      if (this.templateData.length === 0) {
-        MessagePlugin.info("请添加数据~");
+      if (!this.templateData.length) {
+        MessagePlugin.info('请添加数据~');
         return;
       }
-      const filter = this.templateData.filter((item) => {
-        return !ObjectUtil.isEmpty(item.financeId) || !ObjectUtil.isEmpty(item.inventoryId);
-      });
-      let flag = false;
+      const filter = this.templateData.filter(
+        (item) => !ObjectUtil.isEmpty(item.financeId) || !ObjectUtil.isEmpty(item.inventoryId)
+      );
+      let incomplete = false;
       filter.forEach((item) => {
-        flag = ObjectUtil.isEmpty(item.financeId) || ObjectUtil.isEmpty(item.inventoryId);
+        if (ObjectUtil.isEmpty(item.financeId) || ObjectUtil.isEmpty(item.inventoryId)) {
+          incomplete = true;
+        }
         item.categoryType = this.model.categoryType;
         item.categoryId = this.model.categoryId;
         item.categoryName = this.model.categoryName;
       });
-      if (flag) {
-        MessagePlugin.success("请选择辅助项～");
+      if (incomplete) {
+        MessagePlugin.warning('请选择辅助项～');
         return;
       }
       this.loading = true;
-      FinanceItemMap.batch(filter).then(() => {
-        MessagePlugin.success("保存成功~");
-        this.$emit('success');
-      }).finally(() => this.loading = false);
+      FinanceItemMap.batch(filter)
+        .then(() => {
+          MessagePlugin.success('保存成功~');
+          this.$emit('success');
+        })
+        .finally(() => (this.loading = false));
     },
     init() {
       const categoryId = this.categoryId;
-      FinanceAccountLink.accountingCategory({ids: this.categoryId}).then(({data}) => {
-        this.model.categoryType = data.data[0].categoryType;
-        this.model.categoryId = data.data[0].id;
-        this.model.categoryName = data.data[0].name;
-        this.financeItemMappings = data.data[0].details || [];
-        this.financeItemMappings.forEach(item => {
-          item.titleName = `${item.code} - ${item.name}`;
-        });
+      FinanceAccountLink.accountingCategory({ ids: this.categoryId }).then(({ data }) => {
+        const category = data.data[0];
+        this.model.categoryType = category.categoryType;
+        this.model.categoryId = category.id;
+        this.model.categoryName = category.name;
+        this.financeItemMappings = (category.details || []).map((item) => ({
+          ...item,
+          titleName: `${item.code} - ${item.name}`
+        }));
       });
       switch (Number(categoryId)) {
         case 0:
-          Customer.list().then(({data}) => {
-            this.itemMappings = data.results || [];
-            this.itemMappings.forEach(item => {
-              item.titleName = `${item.name}`;
-            });
+          Customer.list().then(({ data }) => {
+            this.itemMappings = (data.results || []).map((item) => ({
+              ...item,
+              titleName: `${item.name}`
+            }));
           });
           break;
         case 1:
-          Supplier.list().then(({data}) => {
-            this.itemMappings = data.results;
-            this.itemMappings.forEach(item => {
-              item.titleName = `${item.code} - ${item.name}`;
-            });
+          Supplier.list().then(({ data }) => {
+            this.itemMappings = (data.results || []).map((item) => ({
+              ...item,
+              titleName: `${item.code} - ${item.name}`
+            }));
           });
           break;
         case 6:
-          Product.list().then(({data}) => {
-            this.itemMappings = data.results;
-            this.itemMappings.forEach(item => {
-              item.titleName = `${item.code} - ${item.name}`;
-            });
+          Product.list().then(({ data }) => {
+            this.itemMappings = (data.results || []).map((item) => ({
+              ...item,
+              titleName: `${item.code} - ${item.name}`
+            }));
           });
           break;
       }
     },
-    changeMappings({rowIndex}, type) {
-      switch (type) {
-        case 'financeId': {
-          const filter = this.financeItemMappings.filter(item => {
-            return item.id === this.templateData[rowIndex].financeId;
-          });
-          this.templateData[rowIndex].financeName = filter[0].name;
-          this.templateData[rowIndex].financeCode = filter[0].code;
-          break;
-        }
-        case 'inventoryId': {
-          const filter = this.itemMappings.filter(item => {
-            return item.id === this.templateData[rowIndex].inventoryId;
-          });
-          this.templateData[rowIndex].inventoryName = filter[0].name;
-          this.templateData[rowIndex].inventoryCode = filter[0].code;
-          break;
-        }
+    changeMappings(rowIndex, type) {
+      const row = this.templateData[rowIndex];
+      if (!row) return;
+      if (type === 'financeId') {
+        const item = this.financeItemMappings.find((x) => x.id === row.financeId);
+        if (!item) return;
+        row.financeName = item.name;
+        row.financeCode = item.code;
+      } else if (type === 'inventoryId') {
+        const item = this.itemMappings.find((x) => x.id === row.inventoryId);
+        if (!item) return;
+        row.inventoryName = item.name;
+        row.inventoryCode = item.code;
       }
     },
     load() {
-      const id = this.id;
-      FinanceItemMap.load(id).then(({data}) => {
+      FinanceItemMap.load(this.id).then(({ data }) => {
         this.model = data;
       });
     },
-    //添加行或减少行
     adjustRows(type, index) {
-      if (type === "insert") {
-        this.templateData.splice(index + 1, 0, {isNew: true});
+      if (type === 'insert') {
+        this.templateData.splice(index + 1, 0, newRow());
       } else {
         this.templateData.splice(index, 1);
       }
-    },
+    }
   },
   created() {
     this.init();
@@ -201,13 +203,9 @@ export default {
       this.load();
     } else {
       for (let i = 0; i < 5; i++) {
-        this.templateData.push({inventoryId: null, financeId: null});
+        this.templateData.push(newRow());
       }
     }
   }
-}
+};
 </script>
-
-<style scoped lang="less">
-
-</style>

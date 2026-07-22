@@ -13,17 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * <p>****************************************************************************</p>
- * <p><b>Copyright © 2010-2021纷析云（杭州）科技有限公司All Rights Reserved<b></p>
- * <ul style="margin:15px;">
- * <li>Description : cn.gson.hr.kernel.common</li>
- * <li>Version     : 1.0</li>
- * <li>Creation    : 2021年08月15日</li>
- * <li>@author     : ____′↘夏悸</li>
- * </ul>
- * <p>****************************************************************************</p>
- */
+/** Excel 导入导出列别名工具 */
 @Slf4j
 public final class ImportVoUtil {
 

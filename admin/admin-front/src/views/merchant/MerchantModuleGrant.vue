@@ -1,115 +1,121 @@
 <template>
   <div class="grant-panel">
     <div class="grant-panel__tip">勾选后自动保存模块授权</div>
-    <div class="grant-panel__table">
-      <vxe-table row-id="id"
-                 height="auto"
-                 @checkbox-change="checkBoxChange"
-                 @checkbox-all="checkBoxChange"
-                 :checkbox-config="{labelField: 'name',checkMethod:checkMethod, checkRowKeys: grantMenu}"
-                 :tree-config="{transform:true,expandAll:true,rowField: 'id', parentField: 'parentId'}"
-                 ref="table"
-                 :data="dataList"
-                 highlight-hover-row
-                 :row-config="{useKey:true}"
-                 :stripe="false"
-                 :loading="loading">
-        <vxe-column title="菜单模块" width="100" align="center" field="menuModule" :formatter="({ cellValue })=>{return {MERCHANT:'集团视角',CUSTOM:'客户视角',SUPPLIER:'货商视角'}[cellValue]}"/>
-        <vxe-column title="菜单分组" width="100" align="center" field="menuGroup" :formatter="({ cellValue })=>{return {MERCHANT:'集团菜单',STORE:'门店菜单'}[cellValue]}"/>
-        <vxe-column type="checkbox" title="名称" field="name" tree-node/>
-      </vxe-table>
+    <div class="grant-panel__tree">
+      <t-loading :loading="loading" show-overlay>
+        <t-tree
+            :data="treeData"
+            :keys="{ value: 'id', label: 'label', children: 'children' }"
+            checkable
+            value-mode="all"
+            expand-all
+            hover
+            line
+            transition
+            :expand-on-click-node="false"
+            :value="checkedKeys"
+            :disable-check="disableCheck"
+            @change="onCheckChange"
+        />
+      </t-loading>
     </div>
   </div>
 </template>
 
 <script>
-/**
- * <p>****************************************************************************</p>
- * <p><b>Copyright © 2010-2022 soho team All Rights Reserved<b></p>
- * <ul style="margin:15px;">
- * <li>Description : </li>
- * <li>Version     : 1.0</li>
- * <li>Creation    : 2022年03月11日</li>
- * <li>@author     : ____′↘夏悸</li>
- * </ul>
- * <p>****************************************************************************</p>
- */
-import Menu from "@js/api/Menu";
-import {MessagePlugin} from "tdesign-vue-next";
+import Menu from '@js/api/Menu';
+import { MessagePlugin } from 'tdesign-vue-next';
+import { toArrayTree } from '@common/utils';
+
+const MODULE_LABEL = { MERCHANT: '集团视角', CUSTOM: '客户视角', SUPPLIER: '货商视角' };
+const GROUP_LABEL = { MERCHANT: '集团菜单', STORE: '门店菜单' };
+
+function mapMenus(list) {
+  return (list || []).map((item) => {
+    const mod = MODULE_LABEL[item.menuModule] || item.menuModule || '';
+    const group = GROUP_LABEL[item.menuGroup] || item.menuGroup || '';
+    const prefix = [mod, group].filter(Boolean).join(' / ');
+    return {
+      ...item,
+      label: prefix ? `${prefix} / ${item.name}` : item.name
+    };
+  });
+}
+
+function collectLeafIds(nodes, out = []) {
+  (nodes || []).forEach((n) => {
+    if (n.children && n.children.length) collectLeafIds(n.children, out);
+    else out.push(n.id);
+  });
+  return out;
+}
 
 export default {
-  name: "MerchantModuleGrant",
+  name: 'MerchantModuleGrant',
   props: {
-    merchant: Object,
+    merchant: Object
   },
   data() {
     return {
-      showForm: false,
-      grantMerchantForm: false,
       loading: false,
-      grantMenu: [],
-      checkBoxList: [],
+      treeData: [],
+      checkedKeys: [],
+      forcedKeys: [],
+      saving: false,
       params: {
-        enabled: true,
-      },
-      checkedRows: [],
-      dataList: [],
-    }
-  },
-  watch: {
-    'params.merchantId'() {
-      this.loadList();
-    }
+        enabled: true
+      }
+    };
   },
   methods: {
-    checkBoxChange({records}) {
-      this.checkRequire();
-      this.loading = true;
-      let indeterminateRecords = this.$refs.table.getCheckboxIndeterminateRecords().map(val => val.id);
-      let menus = this.$refs.table.getCheckboxRecords().map(val => val.id).concat(indeterminateRecords);
-      let merchantMenu = {menus: menus, merchants: [this.merchant.id]};
-
-      Menu.grantMerchant(merchantMenu).then(() => {
-        MessagePlugin.success("授权成功~");
-      }).finally(() => this.loading = false);
+    disableCheck(node) {
+      const data = node?.data || node;
+      return !data.requireAuth;
     },
-    checkRequire() {
-      this.grantMenu.forEach(id => {
-        let rowById = this.$refs.table.getRowById(id);
-        if (!rowById.children || !rowById.children.length) {
-          this.$refs.table.setCheckboxRow(rowById, true);
-        }
-      })
+    onCheckChange(value) {
+      const next = Array.from(new Set([...(value || []), ...this.forcedKeys]));
+      this.checkedKeys = next;
+      this.saveMenus(next);
+    },
+    saveMenus(menus) {
+      if (this.saving) return;
+      this.saving = true;
+      this.loading = true;
+      Menu.grantMerchant({ menus, merchants: [this.merchant.id] })
+        .then(() => {
+          MessagePlugin.success('授权成功~');
+        })
+        .finally(() => {
+          this.loading = false;
+          this.saving = false;
+        });
     },
     loadList() {
       this.loading = true;
-      Promise.all([
-        Menu.list(this.params),
-        Menu.queryGrantMenu(this.merchant.id)
-      ]).then((results) => {
-        this.dataList = results[0].data
-        this.grantMenu = this.dataList.filter(val => !val.requireAuth).map(val => val.id);
+      Promise.all([Menu.list(this.params), Menu.queryGrantMenu(this.merchant.id)])
+        .then(([menuRes, grantRes]) => {
+          const flatList = menuRes.data || [];
+          this.treeData = toArrayTree(mapMenus(flatList), {
+            key: 'id',
+            parentKey: 'parentId',
+            children: 'children'
+          });
+          this.forcedKeys = flatList.filter((val) => !val.requireAuth).map((val) => val.id);
 
-        this.$nextTick(() => {
-          if (results[1].data) {
-            results[1].data.forEach(id => {
-              let rowById = this.$refs.table.getRowById(id);
-              if (!rowById.children || !rowById.children.length) {
-                this.$refs.table.setCheckboxRow(rowById, true);
-              }
-            })
-          }
+          const granted = grantRes.data || [];
+          const leafSet = new Set(collectLeafIds(this.treeData));
+          const leafGranted = granted.filter((id) => leafSet.has(id));
+          this.checkedKeys = Array.from(new Set([...this.forcedKeys, ...leafGranted]));
         })
-      }).finally(() => this.loading = false);
-    },
-    checkMethod({row}) {
-      return row.requireAuth;
+        .finally(() => {
+          this.loading = false;
+        });
     }
   },
   created() {
     this.loadList();
   }
-}
+};
 </script>
 
 <style scoped>
@@ -131,10 +137,10 @@ export default {
   background: #fafbfc;
 }
 
-.grant-panel__table {
+.grant-panel__tree {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
+  padding: 12px 16px;
 }
 </style>
-

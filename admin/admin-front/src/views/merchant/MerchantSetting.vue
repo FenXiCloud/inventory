@@ -10,13 +10,6 @@
 </template>
 
 <script>
-/**
- * @功能描述: 商户配置
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 import MerchantModuleGrant from "@/views/merchant/MerchantModuleGrant";
 import AdminList from "@/views/merchant/admin/AdminList";
 import RoleList from "@/views/merchant/role/RoleList";
@@ -100,12 +93,6 @@ export default {
 
 .merchant-setting__page :deep(.simple-page__table) {
   min-height: 280px;
-}
-
-.merchant-setting__page :deep(.vxe-table),
-.merchant-setting__page :deep(.vxe-table--render-wrapper),
-.merchant-setting__page :deep(.vxe-table--main-wrapper) {
-  width: 100% !important;
 }
 
 .tabs-custom {

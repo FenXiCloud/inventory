@@ -281,23 +281,6 @@ p {
   }
 }
 
-/* 表格相关 */
-.vxe-table--render-default {
-  color: #333639;
-}
-
-.vxe-table--render-default.size--mini {
-  font-size: 13px;
-}
-
-.vxe-table--render-default.size--mini .vxe-body--column:not(.col--ellipsis) {
-  padding: 5px 0 !important;
-}
-
-.vxe-header--row {
-  height: 48px;
-}
-
 /* 页面加载 */
 blockquote {
   padding: 5px 0px 6px 10px;
@@ -473,4 +456,61 @@ pre {
   align-items: center;
   gap: 4px;
   vertical-align: middle;
+}
+
+/* 列表页通用布局 */
+.simple-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.simple-page__toolbar {
+  flex-shrink: 0;
+  padding: 8px 0;
+}
+
+.simple-page__table {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.simple-page__pager {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--td-component-border, #dcdcdc);
+  background: #fff;
+}
+
+.simple-page__total {
+  font-size: 14px;
+  color: #333639;
+  flex-shrink: 0;
+}
+
+/* 单据页工具栏 */
+.form-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  min-height: 40px;
+}
+
+.form-toolbar__left,
+.form-toolbar__right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
 }

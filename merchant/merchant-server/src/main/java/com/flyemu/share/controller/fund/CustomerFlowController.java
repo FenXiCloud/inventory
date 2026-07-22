@@ -1,7 +1,8 @@
 package com.flyemu.share.controller.fund;
 
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.CustomerFlow;
@@ -15,13 +16,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-/**
- * @功能描述: 应收账款明细
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/customerFlow")
 @RequiredArgsConstructor
@@ -30,18 +24,14 @@ public class CustomerFlowController {
     private final CustomerFlowService customerFlowService;
 
     @GetMapping("/statement")
-    public JsonResult statement(
-            Page page,
+    public JsonResult statement(Page page,
             @RequestParam Long customerId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startTime,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endTime,
-            @SaMerchantId Long merchantId,
-            @SaAccountBookId Long accountBookId) {
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endTime, @SaAccountVal AccountDto accountDto) {
         LocalDateTime startDateTime = startTime.atStartOfDay();
         LocalDateTime endDateTime = endTime.atTime(LocalTime.MAX);
         CustomerFlowService.CustomerBillQueryDTO queryDTO = new CustomerFlowService.CustomerBillQueryDTO();
-        queryDTO.setMerchantId(merchantId);
-        queryDTO.setAccountBookId(accountBookId);
+        TenantScope.bind(queryDTO, accountDto);
         queryDTO.setCustomerId(customerId);
         queryDTO.setStartTime(startDateTime);
         queryDTO.setEndTime(endDateTime);
@@ -50,37 +40,34 @@ public class CustomerFlowController {
     }
 
     @GetMapping
-    public JsonResult list(CustomerFlowService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(CustomerFlowService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(customerFlowService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid CustomerFlow customerFlow, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        customerFlow.setMerchantId(merchantId);
-        customerFlow.setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid CustomerFlow customerFlow, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(customerFlow, accountDto);
         customerFlowService.save(customerFlow);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid CustomerFlow customerFlow, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        customerFlow.setMerchantId(merchantId);
-        customerFlow.setAccountBookId(accountBookId);
+    public JsonResult update(@RequestBody @Valid CustomerFlow customerFlow, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(customerFlow, accountDto);
         customerFlowService.save(customerFlow);
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{customerFlowId}")
-    public JsonResult delete(@PathVariable Long customerFlowId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        customerFlowService.delete(customerFlowId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long customerFlowId, @SaAccountVal AccountDto accountDto) {
+        customerFlowService.delete(customerFlowId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(customerFlowService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(customerFlowService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
 }

@@ -8,9 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
-/**
- *@author shuaiqi
- */
 @Data
 @Builder
 @NoArgsConstructor

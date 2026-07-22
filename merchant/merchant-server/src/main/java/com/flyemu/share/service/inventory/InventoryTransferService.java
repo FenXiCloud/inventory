@@ -1,10 +1,12 @@
 package com.flyemu.share.service.inventory;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.generator.SnowflakeGenerator;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.InventoryTransferDto;
@@ -18,9 +20,9 @@ import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.InventoryTransferForm;
-import com.flyemu.share.repository.InventoryTransferRepository;
+import com.flyemu.share.repository.inventory.InventoryTransferRepository;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.CaseBuilder;
@@ -40,18 +42,11 @@ import java.util.*;
 
 import static com.flyemu.share.entity.inventory.QInventoryTransfer.inventoryTransfer;
 
-/**
- * @功能描述: 调拨单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class InventoryTransferService extends AbsService {
+public class InventoryTransferService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QInventoryTransfer qInventoryTransfer = inventoryTransfer;
@@ -442,7 +437,7 @@ public class InventoryTransferService extends AbsService {
     }
 
     @Data
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         private Date start;
@@ -460,15 +455,11 @@ public class InventoryTransferService extends AbsService {
         private String toWarehouseIds;
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qInventoryTransfer.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qInventoryTransfer.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qInventoryTransfer.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qInventoryTransfer.accountBookId, accountBookId);
         }
 
         public BooleanBuilder builders() {

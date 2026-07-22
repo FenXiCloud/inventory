@@ -41,5 +41,4 @@ public class Dept  implements Serializable {
 
     private String ancestors;
 
-
 }

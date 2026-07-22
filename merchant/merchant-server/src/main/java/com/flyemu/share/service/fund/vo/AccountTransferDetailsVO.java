@@ -10,9 +10,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- *@author shuaiqi
- */
 @JsonInclude()
 @Data
 public class AccountTransferDetailsVO {
@@ -20,8 +17,8 @@ public class AccountTransferDetailsVO {
     private String updateName;
     private String approvedName;
     private Long id;
-    private Long updateBy;
-    private LocalDateTime updateAt;
+    private Long updatedBy;
+    private LocalDateTime updatedAt;
     private LocalDate orderDate;
     private String remarks;
     private String orderNo;

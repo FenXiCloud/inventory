@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.fund;
 
+import com.flyemu.share.common.TenantAware;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,19 +10,13 @@ import org.hibernate.annotations.DynamicUpdate;
 import java.util.Date;
 import java.io.Serializable;
 
-/**
- * (OrderStaff)实体类
- *
- * @author shuaiqi
- * @since 2025-05-20 11:44:12
- */
 @Getter
 @Setter
 @Entity
 @NoArgsConstructor
 @Table
 @DynamicUpdate
-public class OrderStaff implements Serializable {
+public class OrderStaff implements Serializable, TenantAware {
     private static final long serialVersionUID = 563210830516515859L;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

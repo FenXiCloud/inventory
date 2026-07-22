@@ -1,5 +1,6 @@
 package com.flyemu.share.form;
 
+import com.flyemu.share.common.TenantAware;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.sales.SalesOrder;
 import com.flyemu.share.entity.sales.SalesOrderItem;
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-public class InventoryInitialForm {
+public class InventoryInitialForm implements TenantAware {
 
     private List<InventoryItem> inventoryItemList;
 

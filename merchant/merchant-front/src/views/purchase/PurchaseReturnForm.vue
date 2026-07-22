@@ -1,8 +1,8 @@
 <template>
   <div class="page-column">
     <div class="page-column-full-body">
-      <vxe-toolbar class-name="!size--mini">
-        <template #buttons>
+      <div class="form-toolbar">
+        <div class="form-toolbar__left">
           <label class="mr-20px" style="font-size: 16px !important;">供货商：</label>
           <t-select
               class="w-300px"
@@ -13,8 +13,8 @@
               @change="changeSupplier($event)"
               v-model="supplierId"
               placeholder="请选择供货商"
-                :keys="{ value: 'id', label: 'name' }"
-              />
+              :keys="{ value: 'id', label: 'name' }"
+          />
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">退货日期：</label>
           <t-date-picker
               v-model="form.returnDate"
@@ -30,204 +30,180 @@
           >
             选择源单
           </t-button>
-        </template>
-        <template #tools>
-          <Stamp v-if="isAudited"/>
-        </template>
-      </vxe-toolbar>
-      <vxe-table
-          size="mini"
+        </div>
+        <Stamp v-if="isAudited"/>
+      </div>
+      <t-table
           ref="xTable"
-          border
-          show-overflow
-          :row-config="{height: 40}"
-          show-footer
-          :footer-method="footerMethod"
+          row-key="_rowKey"
+          size="small"
+          bordered
           stripe
+          hover
+          table-layout="fixed"
+          :columns="columns"
           :data="productData"
+          :foot-data="footData"
+          :loading="loading"
       >
-        <vxe-column title="序号" type="seq" width="60" align="center" fixed="left"/>
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
-          <template #default="{row,rowIndex}">
-            <template v-if="!isAudited">
-              <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete',rowIndex)"></div>
-            </template>
+        <template #ops="{ rowIndex }">
+          <template v-if="!isAudited">
+            <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete', rowIndex)"></div>
           </template>
-        </vxe-column>
-        <vxe-column field="imgPath" title="产品图片" width="100">
-          <template #default="{row}">
-            <img
-                :src="productImage(row)"
-                alt=""
-                class="product-img cursor-pointer"
-                @click="previewImage(productImage(row))"
-            >
-          </template>
-        </vxe-column>
-        <vxe-column title="产品信息" min-width="300">
-          <template #default="{row}">
-            <div>{{ row.productCode }}--{{ row.productName }}</div>
-          </template>
-        </vxe-column>
-        <vxe-column title="产品类别" field="categoryName" align="center" width="80"/>
-        <vxe-column title="规格型号" field="spec" align="center" width="80"/>
-        <vxe-column title="采购单位" field="secondaryUnitName" align="center" width="80">
-          <template #default="{row}">
-            <template v-if="!row.isNew && !isAudited">
-              <t-select
-                  v-if="row.auxiliaryUnitPrices"
-                  :clearable="false"
-                  @change="changeProductUnit($event,row)"
-                  v-model="row.secondaryUnitId"
-                  :options="row.auxiliaryUnitPrices"
-                  filterable
-                  placeholder="输入采购单位"
+        </template>
+        <template #imgPath="{ row }">
+          <img
+              :src="productImage(row)"
+              alt=""
+              class="product-img cursor-pointer"
+              @click="previewImage(productImage(row))"
+          >
+        </template>
+        <template #productInfo="{ row }">
+          <div>{{ row.productCode }}--{{ row.productName }}</div>
+        </template>
+        <template #secondaryUnitName="{ row }">
+          <template v-if="!row.isNew && !isAudited">
+            <t-select
+                v-if="row.auxiliaryUnitPrices"
+                :clearable="false"
+                @change="changeProductUnit($event, row)"
+                v-model="row.secondaryUnitId"
+                :options="row.auxiliaryUnitPrices"
+                filterable
+                placeholder="输入采购单位"
                 :keys="{ value: 'unitId', label: 'unitName' }"
-              />
-              <span v-else>{{ row.secondaryUnitName }}</span>
-            </template>
-            <span v-else-if="!row.isNew">{{ row.secondaryUnitName }}</span>
+            />
+            <span v-else>{{ row.secondaryUnitName }}</span>
           </template>
-        </vxe-column>
-        <vxe-column title="仓库" field="warehouse" align="center" width="120">
-          <template #default="{row}">
-            <template v-if="!row.isNew && !isAudited">
-              <t-select
-                  :clearable="false"
-                  v-model="row.warehouseId"
-                  :options="warehouseList"
-                  filterable
-                  @change="handleWarehouseChange(row, $event)"
+          <span v-else-if="!row.isNew">{{ row.secondaryUnitName }}</span>
+        </template>
+        <template #warehouse="{ row }">
+          <template v-if="!row.isNew && !isAudited">
+            <t-select
+                :clearable="false"
+                v-model="row.warehouseId"
+                :options="warehouseList"
+                filterable
+                @change="handleWarehouseChange(row, $event)"
                 :keys="{ value: 'id', label: 'name' }"
+            />
+          </template>
+          <span v-else-if="!row.isNew">{{ warehouseName(row.warehouseId) }}</span>
+        </template>
+        <template #secondaryQuantity="{ row, rowIndex }">
+          <template v-if="!row.isNew && !isAudited">
+            <t-tooltip theme="light">
+              <template #content>
+                <div>当前库存: {{ row.currentStockQuantity || 0 }}</div>
+                <div>总库存: {{ row.totalStockQuantity || 0 }}</div>
+              </template>
+              <t-input-number
+                  :id="'r'+rowIndex+''+3"
+                  v-model="row.secondaryQuantity"
+                  theme="normal"
+                  :min="0"
+                  :max="row.returnQuantity"
+                  :decimal-places="2"
+                  style="width: 100%"
+                  @blur="updateQuantity(row)"
+                  @focus="showStockQuantity(row)"
               />
-            </template>
-            <span v-else-if="!row.isNew">{{ warehouseName(row.warehouseId) }}</span>
+            </t-tooltip>
           </template>
-        </vxe-column>
-        <vxe-column title="退货数量" field="secondaryQuantity" width="90">
-          <template #default="{row,rowIndex}">
-            <template v-if="!row.isNew && !isAudited">
-              <vxe-tooltip theme="light">
-                <template #content>
-                  <div>当前库存: {{ row.currentStockQuantity || 0 }}</div>
-                  <div>总库存: {{ row.totalStockQuantity || 0 }}</div>
-                </template>
-                <vxe-input
-                    :id="'r'+rowIndex+''+3"
-                    @blur="updateQuantity(row)"
-                    @focus="showStockQuantity(row)"
-                    v-model.number="row.secondaryQuantity"
-                    type="float"
-                    min="0"
-                    :max="row.returnQuantity"
-                    :controls="false"
-                />
-              </vxe-tooltip>
-            </template>
-            <span v-else-if="!row.isNew">{{ row.secondaryQuantity }}</span>
+          <span v-else-if="!row.isNew">{{ row.secondaryQuantity }}</span>
+        </template>
+        <template #secondaryPrice="{ row, rowIndex }">
+          <template v-if="!row.isNew && !isAudited">
+            <t-tooltip theme="light">
+              <template #content>
+                <div class="recent-sales-table">
+                  <table>
+                    <thead>
+                    <tr>
+                      <th>最近采购时间</th>
+                      <th>最近采购价</th>
+                      <th>供货商</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="(item, index) in recentSales || []" :key="index">
+                      <td>{{ item.orderDate || '-' }}</td>
+                      <td>{{ item.unitPrice || '-' }}</td>
+                      <td>{{ item.supplierName || '-' }}</td>
+                    </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
+              <t-input-number
+                  :id="'r'+rowIndex+''+4"
+                  v-model="row.secondaryPrice"
+                  theme="normal"
+                  :min="0"
+                  :decimal-places="2"
+                  style="width: 100%"
+                  @keyup="handleEnter($event, rowIndex, 4)"
+                  @blur="updatePrice(row)"
+                  @focus="showPrice(row.productId)"
+              />
+            </t-tooltip>
           </template>
-        </vxe-column>
-        <vxe-column title="基本单位" field="baseUnitName" align="center" width="80"/>
-        <vxe-column title="基本数量" field="quantity" width="90"/>
-        <vxe-column title="购货单价" field="secondaryPrice" width="100">
-          <template #default="{row,rowIndex}">
-            <template v-if="!row.isNew && !isAudited">
-              <vxe-tooltip theme="light">
-                <template #content>
-                  <div class="recent-sales-table">
-                    <table>
-                      <thead>
-                      <tr>
-                        <th>最近采购时间</th>
-                        <th>最近采购价</th>
-                        <th>供货商</th>
-                      </tr>
-                      </thead>
-                      <tbody>
-                      <tr v-for="(item, index) in recentSales || []" :key="index">
-                        <td>{{ item.orderDate || '-' }}</td>
-                        <td>{{ item.unitPrice || '-' }}</td>
-                        <td>{{ item.supplierName || '-' }}</td>
-                      </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </template>
-                <vxe-input
-                    :id="'r'+rowIndex+''+4"
-                    @keyup="handleEnter($event,rowIndex,4)"
-                    @blur="updatePrice(row)"
-                    @focus="showPrice(row.productId)"
-                    v-model.number="row.secondaryPrice"
-                    type="float"
-                    min="0"
-                    :controls="false"
-                />
-              </vxe-tooltip>
-            </template>
-            <span v-else-if="!row.isNew">{{ row.secondaryPrice }}</span>
-          </template>
-        </vxe-column>
-        <vxe-column title="折扣率(%)" field="discountRate" width="100">
-          <template #default="{row,rowIndex}">
-            <vxe-input
-                v-if="!row.isNew && !isAudited"
-                :id="'r'+rowIndex+''+5"
-                @keyup="handleEnter($event,rowIndex,5)"
-                @blur="updateDiscount(row)"
-                v-model.number="row.discountRate"
-                type="float"
-                min="0"
-                :controls="false"
-            />
-            <span v-else-if="!row.isNew">{{ row.discountRate }}</span>
-          </template>
-        </vxe-column>
-        <vxe-column title="折扣额" field="discountAmount" width="100">
-          <template #default="{row,rowIndex}">
-            <vxe-input
-                v-if="!row.isNew && !isAudited"
-                :id="'r'+rowIndex+''+6"
-                @keyup="handleEnter($event,rowIndex,6)"
-                @blur="updateDiscountAmount(row)"
-                v-model.number="row.discountAmount"
-                type="float"
-                min="0"
-                :controls="false"
-            />
-            <span v-else-if="!row.isNew">{{ row.discountAmount }}</span>
-          </template>
-        </vxe-column>
-        <vxe-column title="退货金额" field="subtotal" width="100">
-          <template #default="{row,rowIndex}">
-            <vxe-input
-                v-if="!row.isNew && !isAudited"
-                :id="'r'+rowIndex+''+7"
-                @keyup="handleEnter($event,rowIndex,7)"
-                @blur="updateSubtotal(row)"
-                v-model.number="row.subtotal"
-                type="float"
-                min="0"
-                :controls="false"
-            />
-            <span v-else-if="!row.isNew">{{ row.subtotal }}</span>
-          </template>
-        </vxe-column>
-        <vxe-column title="备注" field="returnReason" width="160">
-          <template #default="{row,rowIndex}">
-            <vxe-input
-                v-if="!row.isNew && !isAudited"
-                :id="'r'+rowIndex+''+8"
-                @keyup="handleEnter($event,rowIndex,8)"
-                v-model="row.returnReason"
-                placeholder="输入备注"
-                :controls="false"
-            />
-            <span v-else-if="!row.isNew">{{ row.returnReason }}</span>
-          </template>
-        </vxe-column>
-        <vxe-column title="关联采购入库号" field="purchaseInboundOrderNo" align="center" width="180"/>
-      </vxe-table>
+          <span v-else-if="!row.isNew">{{ row.secondaryPrice }}</span>
+        </template>
+        <template #discountRate="{ row, rowIndex }">
+          <t-input-number
+              v-if="!row.isNew && !isAudited"
+              :id="'r'+rowIndex+''+5"
+              v-model="row.discountRate"
+              theme="normal"
+              :min="0"
+              :decimal-places="2"
+              style="width: 100%"
+              @keyup="handleEnter($event, rowIndex, 5)"
+              @blur="updateDiscount(row)"
+          />
+          <span v-else-if="!row.isNew">{{ row.discountRate }}</span>
+        </template>
+        <template #discountAmount="{ row, rowIndex }">
+          <t-input-number
+              v-if="!row.isNew && !isAudited"
+              :id="'r'+rowIndex+''+6"
+              v-model="row.discountAmount"
+              theme="normal"
+              :min="0"
+              :decimal-places="2"
+              style="width: 100%"
+              @keyup="handleEnter($event, rowIndex, 6)"
+              @blur="updateDiscountAmount(row)"
+          />
+          <span v-else-if="!row.isNew">{{ row.discountAmount }}</span>
+        </template>
+        <template #subtotal="{ row, rowIndex }">
+          <t-input-number
+              v-if="!row.isNew && !isAudited"
+              :id="'r'+rowIndex+''+7"
+              v-model="row.subtotal"
+              theme="normal"
+              :min="0"
+              :decimal-places="2"
+              style="width: 100%"
+              @keyup="handleEnter($event, rowIndex, 7)"
+              @blur="updateSubtotal(row)"
+          />
+          <span v-else-if="!row.isNew">{{ row.subtotal }}</span>
+        </template>
+        <template #returnReason="{ row, rowIndex }">
+          <t-input
+              v-if="!row.isNew && !isAudited"
+              :id="'r'+rowIndex+''+8"
+              v-model="row.returnReason"
+              placeholder="输入备注"
+              @keyup="handleEnter($event, rowIndex, 8)"
+          />
+          <span v-else-if="!row.isNew">{{ row.returnReason }}</span>
+        </template>
+      </t-table>
       <div class="mt-10px"></div>
       <div class="filler-panel">
         <div class="filler-item">
@@ -283,6 +259,11 @@ import PriceRecord from "@js/api/basic/PriceRecord";
 import Inventory from "@js/api/inventory/Inventory";
 import Stamp from "@views/common/Stamp.vue";
 
+let rowSeq = 0;
+function newRow(extra = {}) {
+  return { _rowKey: `r-${++rowSeq}`, productId: null, ...extra };
+}
+
 export default {
   name: "PurchaseReturnForm",
   components: {Stamp},
@@ -297,6 +278,60 @@ export default {
     },
     isDeleting() {
       return this.productData.length > 0;
+    },
+    columns() {
+      return [
+        {
+          colKey: 'seq',
+          title: '序号',
+          width: 60,
+          align: 'center',
+          fixed: 'left',
+          cell: (h, { rowIndex }) => rowIndex + 1
+        },
+        {
+          colKey: 'ops',
+          title: '操作',
+          width: 70,
+          align: 'center',
+          fixed: 'left',
+          foot: () => '合计'
+        },
+        { colKey: 'imgPath', title: '产品图片', width: 100 },
+        { colKey: 'productInfo', title: '产品信息', minWidth: 300 },
+        { colKey: 'categoryName', title: '产品类别', align: 'center', width: 80 },
+        { colKey: 'spec', title: '规格型号', align: 'center', width: 80 },
+        { colKey: 'secondaryUnitName', title: '采购单位', align: 'center', width: 80 },
+        { colKey: 'warehouse', title: '仓库', align: 'center', width: 120 },
+        { colKey: 'secondaryQuantity', title: '退货数量', width: 90 },
+        { colKey: 'baseUnitName', title: '基本单位', align: 'center', width: 80 },
+        { colKey: 'quantity', title: '基本数量', width: 90 },
+        { colKey: 'secondaryPrice', title: '购货单价', width: 100 },
+        { colKey: 'discountRate', title: '折扣率(%)', width: 100 },
+        { colKey: 'discountAmount', title: '折扣额', width: 100 },
+        { colKey: 'subtotal', title: '退货金额', width: 100 },
+        { colKey: 'returnReason', title: '备注', width: 160 },
+        { colKey: 'purchaseInboundOrderNo', title: '关联采购入库号', align: 'center', width: 180 },
+      ];
+    },
+    footData() {
+      let quantity = 0;
+      let discountAmount = 0;
+      let subtotal = 0;
+      (this.productData || []).forEach((row) => {
+        if (row.quantity > 0) {
+          quantity += Number(row.quantity || 0);
+        }
+        discountAmount += Number(row.discountAmount || 0);
+        subtotal += Number(row.subtotal || 0);
+      });
+      this.allRefundAmount = subtotal;
+      return [{
+        ops: '合计',
+        quantity: quantity.toFixed(0),
+        discountAmount: discountAmount.toFixed(2),
+        subtotal: subtotal.toFixed(2)
+      }];
     }
   },
   data() {
@@ -401,15 +436,16 @@ export default {
     loadToInbound(params) {
       this.inboundIds = params.orderIds;
       PurchaseInbound.toReturn(this.form.supplierId, params.orderIds).then(({data}) => {
-        const rows = this.applyDefaultWarehouse(data || []);
+        const rows = this.applyDefaultWarehouse(data || []).map((row) => newRow({ ...row, isNew: false }));
         this.productData = rows;
-        this.$nextTick(() => this.$refs.xTable?.loadData(this.productData));
       });
     },
     handleEnter(e, index, num) {
-      e.$event.stopPropagation();
-      if (e.$event.keyCode === 13) {
-        e.$input.blur();
+      const event = e?.$event || e;
+      if (!event) return;
+      event.stopPropagation?.();
+      const keyCode = event.keyCode || event.which;
+      if (keyCode === 13) {
         if (num === 8) {
           if (index < this.productData.length - 1) {
             let str = 'r' + (index + 1) + '' + 3;
@@ -422,33 +458,6 @@ export default {
           document.getElementById(str)?.querySelector('input')?.select();
         }
       }
-    },
-    footerMethod({columns, data}) {
-      let quantity = 0;
-      let sums = [];
-      data.forEach((row) => {
-        if (row.quantity > 0) {
-          quantity += Number(row.quantity || 0);
-        }
-      });
-      columns.forEach((column, columnIndex) => {
-        if (columnIndex === 0) {
-          sums.push('合计');
-        } else if (column.property && ['subtotal', 'discountAmount'].includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            let rd = row[column.property];
-            if (rd) total += Number(rd || 0);
-          });
-          sums.push(total.toFixed(2));
-          if (column.property === 'subtotal') {
-            this.allRefundAmount = total;
-          }
-        }
-      });
-      return [['', '', '', '', '', '', '', '', '', '', quantity.toFixed(0), '', ''].concat(
-          sums.filter((_, i) => i > 0)
-      )];
     },
     handleWarehouseChange(row) {
       this.showStockQuantity(row);
@@ -486,7 +495,9 @@ export default {
         LoadingPlugin(false);
         return;
       }
-      let productData = this.productData.filter(c => !c.isNew && c.quantity > 0);
+      let productData = this.productData
+        .filter(c => !c.isNew && c.quantity > 0)
+        .map(({ _rowKey, ...rest }) => rest);
       if (productData.length <= 0) {
         MessagePlugin.error("请选择产品~");
         LoadingPlugin(false);
@@ -531,7 +542,7 @@ export default {
     },
     adjustRows(type, index) {
       if (type === 'insert') {
-        this.productData.splice(index + 1, 0, {isNew: true});
+        this.productData.splice(index + 1, 0, newRow({ isNew: true }));
       } else {
         this.productData.splice(index, 1);
       }
@@ -592,30 +603,25 @@ export default {
       item.subtotal = ((item.secondaryQuantity * item.secondaryPrice * (100 - item.discountRate)) / 100).toFixed(2);
       item.discountAmount = (((item.secondaryQuantity * item.secondaryPrice) * item.discountRate) / 100).toFixed(2);
       item.quantity = (item.secondaryQuantity * (item.conversionRate || 1)).toFixed(2);
-      this.$refs.xTable.updateFooter();
     },
     updatePrice(item) {
       item.secondaryPrice = item.secondaryPrice || 0.00;
       item.discountAmount = (item.secondaryPrice * item.secondaryQuantity * item.discountRate / 100).toFixed(2);
       item.subtotal = (item.secondaryPrice * item.secondaryQuantity - item.discountAmount).toFixed(2);
-      this.$refs.xTable.updateFooter();
     },
     updateDiscount(item) {
       item.discountRate = item.discountRate || 0.00;
       item.subtotal = ((item.secondaryQuantity || 0) * item.secondaryPrice * (100 - item.discountRate || 0) / 100).toFixed(2);
       item.discountAmount = ((item.secondaryQuantity || 0) * item.secondaryPrice - item.subtotal).toFixed(2);
-      this.$refs.xTable.updateFooter();
     },
     updateDiscountAmount(item) {
       item.discountAmount = item.discountAmount || 0.00;
       item.discountRate = (((item.discountAmount / (item.secondaryPrice * item.secondaryQuantity)) * 100) || 0).toFixed(2);
       item.subtotal = (item.secondaryPrice * item.secondaryQuantity - item.discountAmount).toFixed(2);
-      this.$refs.xTable.updateFooter();
     },
     updateSubtotal(item) {
       item.subtotal = item.subtotal || 0;
       item.secondaryPrice = ((item.subtotal) / ((100 - item.discountRate)) * 100 / item.secondaryQuantity).toFixed(2);
-      this.$refs.xTable.updateFooter();
     },
     approved() {
       DialogPlugin.confirm({
@@ -666,7 +672,7 @@ export default {
               this.form.orderStatus = null;
             }
           }
-          this.productData = purchaseReturnItemList || [];
+          this.productData = (purchaseReturnItemList || []).map((row) => newRow({ ...row, isNew: false }));
         });
       }
     }).finally(() => LoadingPlugin(false));
@@ -674,6 +680,7 @@ export default {
 }
 </script>
 <style scoped>
+
 .product-img {
   width: 40px;
   height: 40px;

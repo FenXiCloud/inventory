@@ -1,18 +1,20 @@
 package com.flyemu.share.service.fund;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.lang.Assert;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.fund.OrderStaff;
 import com.flyemu.share.entity.fund.QOrderStaff;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.OrderStaffRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.fund.OrderStaffRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import cn.hutool.core.util.StrUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +28,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
-public class OrderStaffService extends AbsService {
+public class OrderStaffService extends BaseService {
 
     private static final QOrderStaff qOrderStaff = QOrderStaff.orderStaff;
 
@@ -85,30 +87,26 @@ public class OrderStaffService extends AbsService {
     }
 
     private void validate(OrderStaff orderStaff) {
-        if (StringUtils.isEmpty(orderStaff.getCode())) {
+        if (StrUtil.isEmpty(orderStaff.getCode())) {
             throw new ServiceException("请输入编号");
         }
-        if (StringUtils.isEmpty(orderStaff.getName())) {
+        if (StrUtil.isEmpty(orderStaff.getName())) {
             throw new ServiceException("请输入名称");
         }
-        if (StringUtils.isEmpty(orderStaff.getPhone())) {
+        if (StrUtil.isEmpty(orderStaff.getPhone())) {
             throw new ServiceException("请输入手机号");
         }
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qOrderStaff.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qOrderStaff.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qOrderStaff.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qOrderStaff.accountBookId, accountBookId);
         }
     }
 }

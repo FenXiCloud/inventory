@@ -1,8 +1,9 @@
 package com.flyemu.share.controller.setting;
 
-import com.flyemu.share.annotation.SaAccountBookId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.setting.PrintTemplate;
 import com.flyemu.share.entity.setting.SystemLog;
@@ -12,13 +13,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * @功能描述: 打印模板
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/printTemplate")
 @RequiredArgsConstructor
@@ -28,65 +22,56 @@ public class PrintTemplateController {
     private final SystemLogService systemLogService;
 
     @GetMapping
-    public JsonResult list(PrintTemplateService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(PrintTemplateService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(printTemplateService.query(query));
     }
 
     @PostMapping
     public JsonResult save(@RequestBody @Valid PrintTemplate printTemplate,
-                           @SaMerchantId Long merchantId,
-                           @SaAccountBookId Long accountBookId,
-                           @SaAdminId Long adminId) {
-        printTemplate.setMerchantId(merchantId);
-        printTemplate.setAccountBookId(accountBookId);
+                           @SaAdminId Long adminId, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(printTemplate, accountDto);
         PrintTemplate saved = printTemplateService.save(printTemplate);
         systemLogService.record("打印模板", SystemLog.OperationType.新增,
                 "新增打印模板「" + saved.getName() + "」",
                 null, saved.getDocumentType() == null ? null : saved.getDocumentType().name(),
-                saved.getId(), adminId, merchantId, accountBookId);
+                saved.getId(), adminId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @PutMapping
     public JsonResult update(@RequestBody @Valid PrintTemplate printTemplate,
-                             @SaMerchantId Long merchantId,
-                             @SaAccountBookId Long accountBookId,
-                             @SaAdminId Long adminId) {
+                             @SaAdminId Long adminId, @SaAccountVal AccountDto accountDto) {
         PrintTemplate saved = printTemplateService.save(printTemplate);
         systemLogService.record("打印模板", SystemLog.OperationType.修改,
                 "修改打印模板「" + saved.getName() + "」",
                 null, saved.getDocumentType() == null ? null : saved.getDocumentType().name(),
-                saved.getId(), adminId, merchantId, accountBookId);
+                saved.getId(), adminId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{printTemplateId}")
     public JsonResult delete(@PathVariable Long printTemplateId,
-                             @SaMerchantId Long merchantId,
-                             @SaAccountBookId Long accountBookId,
-                             @SaAdminId Long adminId) {
-        printTemplateService.delete(printTemplateId, merchantId, accountBookId);
+                             @SaAdminId Long adminId, @SaAccountVal AccountDto accountDto) {
+        printTemplateService.delete(printTemplateId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         systemLogService.record("打印模板", SystemLog.OperationType.删除,
                 "删除打印模板#" + printTemplateId,
-                null, null, printTemplateId, adminId, merchantId, accountBookId);
+                null, null, printTemplateId, adminId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
-
     @GetMapping("/load/{printTemplateId}")
-    public JsonResult load(@PathVariable Long printTemplateId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(printTemplateService.load(printTemplateId, merchantId, accountBookId));
+    public JsonResult load(@PathVariable Long printTemplateId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(printTemplateService.load(printTemplateId, accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     @GetMapping("/byType")
-    public JsonResult byType(String documentType, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(printTemplateService.byType(documentType, merchantId, accountBookId));
+    public JsonResult byType(String documentType, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(printTemplateService.byType(documentType, accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(printTemplateService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(printTemplateService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 }

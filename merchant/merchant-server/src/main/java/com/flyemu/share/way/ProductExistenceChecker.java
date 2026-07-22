@@ -17,13 +17,12 @@ import com.flyemu.share.entity.sales.QSalesOutbound;
 import com.flyemu.share.entity.sales.QSalesOutboundItem;
 import com.flyemu.share.entity.sales.QSalesReturn;
 import com.flyemu.share.entity.sales.QSalesReturnItem;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ProductExistenceChecker extends AbsService {
-
+public class ProductExistenceChecker extends BaseService {
 
     // QueryDSL 实体引用
     private static final QStockTake qStockTake = QStockTake.stockTake;
@@ -90,7 +89,6 @@ public class ProductExistenceChecker extends AbsService {
         return result != null && result > 0;
     }
 
-
     public boolean existsInPurchaseOrder(Long productId, Integer type) {
         if (productId == null || productId <= 0) return false;
 
@@ -107,12 +105,10 @@ public class ProductExistenceChecker extends AbsService {
             query.where(qPurchaseOrderItem.baseUnitId.eq(productId));
         }
 
-
         Long result = query.select(qPurchaseOrder.id).fetchFirst();
 
         return result != null && result > 0;
     }
-
 
     public boolean existsInPurchaseInbound(Long productId, Integer type) {
         if (productId == null || productId <= 0) return false;
@@ -135,7 +131,6 @@ public class ProductExistenceChecker extends AbsService {
         return result != null && result > 0;
     }
 
-
     public boolean existsInPurchaseReturn(Long productId, Integer type) {
         if (productId == null || productId <= 0) return false;
 
@@ -156,7 +151,6 @@ public class ProductExistenceChecker extends AbsService {
 
         return result != null && result > 0;
     }
-
 
     public boolean existsInSalesOrder(Long productId, Integer type) {
         if (productId == null || productId <= 0) return false;
@@ -179,7 +173,6 @@ public class ProductExistenceChecker extends AbsService {
         return result != null && result > 0;
     }
 
-
     public boolean existsInSalesOutbound(Long productId, Integer type) {
         if (productId == null || productId <= 0) return false;
 
@@ -200,7 +193,6 @@ public class ProductExistenceChecker extends AbsService {
 
         return result != null && result > 0;
     }
-
 
     public boolean existsInSalesReturn(Long productId, Integer type) {
         if (productId == null || productId <= 0) return false;
@@ -223,7 +215,6 @@ public class ProductExistenceChecker extends AbsService {
         return result != null && result > 0;
     }
 
-
     public boolean existsInInventoryTransfer(Long productId, Integer type) {
         if (productId == null || productId <= 0) return false;
 
@@ -240,7 +231,6 @@ public class ProductExistenceChecker extends AbsService {
         Long result = query.select(qInventoryTransfer.id).fetchFirst();
         return result != null && result > 0;
     }
-
 
     public boolean existsInCostAdjustment(Long productId, Integer type) {
         if (productId == null || productId <= 0) return false;
@@ -260,7 +250,6 @@ public class ProductExistenceChecker extends AbsService {
 
         return result != null && result > 0;
     }
-
 
     public boolean existsInOtherInbound(Long productId, Integer type) {
         if (productId == null || productId <= 0) return false;

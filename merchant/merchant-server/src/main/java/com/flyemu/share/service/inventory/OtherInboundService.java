@@ -1,10 +1,12 @@
 package com.flyemu.share.service.inventory;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.generator.SnowflakeGenerator;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.OtherInboundDto;
@@ -17,9 +19,9 @@ import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.OtherInboundForm;
-import com.flyemu.share.repository.OtherInboundRepository;
+import com.flyemu.share.repository.inventory.OtherInboundRepository;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.Expressions;
@@ -37,18 +39,11 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * @功能描述: 其他入库单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class OtherInboundService extends AbsService {
+public class OtherInboundService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QOtherInbound qOtherInbound = QOtherInbound.otherInbound;
@@ -386,7 +381,7 @@ public class OtherInboundService extends AbsService {
     }
 
     @Data
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         private Date start;
@@ -408,15 +403,11 @@ public class OtherInboundService extends AbsService {
         private String supplierIds;
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qOtherInbound.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qOtherInbound.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qOtherInbound.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qOtherInbound.accountBookId, accountBookId);
         }
 
         private static Date addTimeOfFinalMoment(Date date) {

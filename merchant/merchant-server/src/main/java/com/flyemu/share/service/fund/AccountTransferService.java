@@ -1,10 +1,12 @@
 package com.flyemu.share.service.fund;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.Account;
@@ -14,11 +16,11 @@ import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.AccountRepository;
-import com.flyemu.share.repository.AccountTransferItemRepository;
-import com.flyemu.share.repository.AccountTransferRepository;
+import com.flyemu.share.repository.basic.AccountRepository;
+import com.flyemu.share.repository.fund.AccountTransferItemRepository;
+import com.flyemu.share.repository.fund.AccountTransferRepository;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.AccountService;
 import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
 import com.flyemu.share.form.AccountTransferForm;
@@ -35,7 +37,6 @@ import com.querydsl.jpa.impl.JPAUpdateClause;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,18 +44,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * @功能描述: 资金转账
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class AccountTransferService extends AbsService {
+public class AccountTransferService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QAccountTransfer qAccountTransfer = QAccountTransfer.accountTransfer;
@@ -210,7 +204,7 @@ public class AccountTransferService extends AbsService {
     }
 
     private void assignOrderNumber(AccountTransfer transfer) {
-        if (StringUtils.isNotBlank(transfer.getOrderNo())) {
+        if (StrUtil.isNotBlank(transfer.getOrderNo())) {
             return;
         }
 
@@ -252,7 +246,7 @@ public class AccountTransferService extends AbsService {
 
     @Transactional
     public void delete(String ids, Long merchantId, Long accountBookId) {
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要删除的数据");
         }
         List<Long> idList = Arrays.stream(ids.split(","))
@@ -306,8 +300,8 @@ public class AccountTransferService extends AbsService {
                                 qAccountTransfer.approvedAt,
                                 qAccountTransfer.createdBy,
                                 qAccountTransfer.createdAt,
-                                qAccountTransfer.updateBy,
-                                qAccountTransfer.updateAt,
+                                qAccountTransfer.updatedBy,
+                                qAccountTransfer.updatedAt,
                                 qAccountTransfer.accountBookId,
                                 qAccountTransfer.merchantId,
                                 qAccountTransfer.remarks,
@@ -317,7 +311,7 @@ public class AccountTransferService extends AbsService {
                         ))
                 .from(qAccountTransfer)
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qAccountTransfer.createdBy))
-                .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qAccountTransfer.updateBy))
+                .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qAccountTransfer.updatedBy))
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qAccountTransfer.approvedBy))
                 .where(qAccountTransfer.merchantId.eq(merchantId).and(qAccountTransfer.id.eq(id)))
                 .fetchOne();
@@ -361,7 +355,7 @@ public class AccountTransferService extends AbsService {
         if (dto.getApprovedBy() == null && targetStatus == OrderStatus.已审核) {
             throw new ServiceException("请选择审核人");
         }
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要操作的数据");
         }
 
@@ -549,20 +543,15 @@ public class AccountTransferService extends AbsService {
                 .where(query.builder).fetchFirst();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qAccountTransfer.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qAccountTransfer.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qAccountTransfer.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qAccountTransfer.accountBookId, accountBookId);
         }
-//        }
     }
 }

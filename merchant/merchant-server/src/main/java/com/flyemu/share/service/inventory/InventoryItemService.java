@@ -1,5 +1,6 @@
 package com.flyemu.share.service.inventory;
 
+import com.flyemu.share.common.TenantAware;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
@@ -19,10 +20,10 @@ import com.flyemu.share.entity.setting.FinanceVoucher;
 import com.flyemu.share.entity.setting.QFinanceVoucher;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.form.InventoryInitialForm;
-import com.flyemu.share.repository.InventoryItemRepository;
-import com.flyemu.share.repository.ProductRepository;
-import com.flyemu.share.repository.WarehouseRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.inventory.InventoryItemRepository;
+import com.flyemu.share.repository.basic.ProductRepository;
+import com.flyemu.share.repository.basic.WarehouseRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -47,18 +48,11 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
-/**
- * @功能描述: 库存明细交易流水
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class InventoryItemService extends AbsService {
+public class InventoryItemService extends BaseService {
 
     private final static QInventoryItem qInventoryItem = QInventoryItem.inventoryItem;
 
@@ -632,7 +626,7 @@ public class InventoryItemService extends AbsService {
     }
 
     @Data
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         private Date start;

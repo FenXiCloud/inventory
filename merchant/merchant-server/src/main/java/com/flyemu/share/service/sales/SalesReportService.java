@@ -1,15 +1,24 @@
 package com.flyemu.share.service.sales;
 
+import com.flyemu.share.repository.basic.CustomerRepository;
+import com.flyemu.share.repository.basic.ProductCategoryRepository;
+import com.flyemu.share.repository.basic.ProductRepository;
+import com.flyemu.share.repository.basic.UnitRepository;
+import com.flyemu.share.repository.basic.WarehouseRepository;
+import com.flyemu.share.repository.sales.SalesOutboundItemRepository;
+import com.flyemu.share.repository.sales.SalesOutboundRepository;
+import com.flyemu.share.repository.sales.SalesReturnItemRepository;
+import com.flyemu.share.repository.sales.SalesReturnRepository;
+import com.flyemu.share.common.TenantAware;
 import com.flyemu.share.constant.SalesReportConstant;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.dto.SalesReportItemDTO;
+import com.flyemu.share.dto.sales.SalesReportItemDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesReportForm;
-import com.flyemu.share.repository.*;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 
 import jakarta.persistence.criteria.Predicate;
@@ -18,7 +27,7 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import cn.hutool.core.util.StrUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -31,16 +40,12 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
-
-/**
- * @功能描述: 销售报表
- * @作者: wl
- */
+/** 销售报表 */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class SalesReportService extends AbsService {
+public class SalesReportService extends BaseService {
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
     private final static QProduct qProduct = QProduct.product;
@@ -56,16 +61,14 @@ public class SalesReportService extends AbsService {
     private final WarehouseRepository warehouseRepository;
     private final CustomerRepository customerRepository;
 
-
-    public PageResults<SalesReportItemDTO> item(Page page, SalesReportForm form) {
-
+    public PageResults<SalesReportItemDto> item(Page page, SalesReportForm form) {
 
         Long accountBookId = form.getAccountBookId();
         Long merchantId = form.getMerchantId();
 
-        PageResults<SalesReportItemDTO> results = new PageResults<>(new ArrayList<>(),page,0);
+        PageResults<SalesReportItemDto> results = new PageResults<>(new ArrayList<>(), page, 0);
         String salesType = form.getSalesType();
-        if (StringUtils.isBlank(salesType)) {
+        if (StrUtil.isBlank(salesType)) {
             return results;
         }
         //销售出库单查询条件
@@ -85,7 +88,7 @@ public class SalesReportService extends AbsService {
             if (form.getEndDate() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("outboundDate"), form.getEndDate()));
             }
-            if(StringUtils.isNotBlank(form.getFilter())){
+            if(StrUtil.isNotBlank(form.getFilter())){
                 predicates.add(cb.like(root.get("orderNo"), "%" + form.getFilter() + "%"));
             }
             // 添加客户分类查询条件
@@ -103,7 +106,7 @@ public class SalesReportService extends AbsService {
         //销售出库单列表
         List<SalesOutbound> salesOutboundList = salesOutboundRepository.findAll(salesOutboundSpecification);
         if (CollectionUtils.isEmpty(salesOutboundList)
-                && !StringUtils.equals(salesType, SalesReportConstant.SALES_TYPE_RETURN)) {
+                && !StrUtil.equals(salesType, SalesReportConstant.SALES_TYPE_RETURN)) {
             return results;
         }
         List<Product> productList = loadProducts(merchantId, accountBookId);
@@ -111,7 +114,6 @@ public class SalesReportService extends AbsService {
         List<Unit> unitList = unitRepository.findAll();
         List<Warehouse> warehouseList = warehouseRepository.findAll();
         List<Customer> customerList = customerRepository.findAll();
-
 
         //销售出库单idList
         List<Long> salesOutboundIdList = salesOutboundList.stream().map(SalesOutbound::getId).toList();
@@ -147,29 +149,29 @@ public class SalesReportService extends AbsService {
             //销售出库单商品详情list
             outboundItemList = salesOutboundItemRepository.findAll(salesOutboundItemSpecification);
         }
-        if (StringUtils.equals(salesType, SalesReportConstant.SALES_TYPE_OUT)){
-            List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList,productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
-            return getSalesReportItemDTOPageResults(page, outItemDTOList);
+        if (StrUtil.equals(salesType, SalesReportConstant.SALES_TYPE_OUT)){
+            List<SalesReportItemDto> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
+            return getSalesReportItemDtoPageResults(page, outItemDTOList);
         }
 
         List<SalesReturn> salesReturnList = findSalesReturns(form, accountBookId, merchantId);
         List<SalesReturnItem> returnItemList = findSalesReturnItems(form, salesReturnList, accountBookId, merchantId);
 
-        if (StringUtils.equals(salesType, SalesReportConstant.SALES_TYPE_RETURN)) {
-            List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList,productCategoryList, productList, unitList, warehouseList, salesReturnList, customerList);
-            return getSalesReportItemDTOPageResults(page, returnItemDTOList);
+        if (StrUtil.equals(salesType, SalesReportConstant.SALES_TYPE_RETURN)) {
+            List<SalesReportItemDto> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productCategoryList, productList, unitList, warehouseList, salesReturnList, customerList);
+            return getSalesReportItemDtoPageResults(page, returnItemDTOList);
         }
 
-        List<SalesReportItemDTO> resultList = new ArrayList<>();
-        if (StringUtils.equals(salesType, SalesReportConstant.SALES_TYPE_ALL)){
-            List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList,productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
-            List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList,productCategoryList, productList, unitList, warehouseList, salesReturnList, customerList);
+        List<SalesReportItemDto> resultList = new ArrayList<>();
+        if (StrUtil.equals(salesType, SalesReportConstant.SALES_TYPE_ALL)){
+            List<SalesReportItemDto> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
+            List<SalesReportItemDto> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productCategoryList, productList, unitList, warehouseList, salesReturnList, customerList);
             resultList.addAll(outItemDTOList);
             resultList.addAll(returnItemDTOList);
             //降序排序
-            resultList.sort(Comparator.comparing(SalesReportItemDTO::getOrderDate, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+            resultList.sort(Comparator.comparing(SalesReportItemDto::getOrderDate, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
         }
-        return getSalesReportItemDTOPageResults(page, resultList);
+        return getSalesReportItemDtoPageResults(page, resultList);
     }
 
     private List<SalesReturn> findSalesReturns(SalesReportForm form, Long accountBookId, Long merchantId) {
@@ -188,7 +190,7 @@ public class SalesReportService extends AbsService {
             if (form.getEndDate() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("returnDate"), form.getEndDate()));
             }
-            if (StringUtils.isNotBlank(form.getFilter())) {
+            if (StrUtil.isNotBlank(form.getFilter())) {
                 predicates.add(cb.like(root.get("orderNo"), "%" + form.getFilter() + "%"));
             }
             List<Long> customerCategoryIds = form.getCustomerCategoryIds();
@@ -232,9 +234,9 @@ public class SalesReportService extends AbsService {
         return salesReturnItemRepository.findAll(returnOrderItemQuery);
     }
 
-    private List<SalesReportItemDTO> getSalesReportOutItemDTOS(List<SalesOutboundItem> outboundItemList,List<ProductCategory> productCategoryList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesOutbound> salesOutboundList, List<Customer> customerList) {
-        List<SalesReportItemDTO> outItemDTOList = outboundItemList.stream().map(item -> {
-            SalesReportItemDTO salesReportItemDTO = new SalesReportItemDTO();
+    private List<SalesReportItemDto> getSalesReportOutItemDTOS(List<SalesOutboundItem> outboundItemList, List<ProductCategory> productCategoryList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesOutbound> salesOutboundList, List<Customer> customerList) {
+        return outboundItemList.stream().map(item -> {
+            SalesReportItemDto salesReportItemDTO = new SalesReportItemDto();
             BeanUtils.copyProperties(item, salesReportItemDTO);
             Long productId = item.getProductId();
             Optional<Product> productOptional = productList.stream().filter(product -> product.getId().equals(productId)).findFirst();
@@ -275,12 +277,11 @@ public class SalesReportService extends AbsService {
             salesReportItemDTO.setSalesType("out");
             return salesReportItemDTO;
         }).toList();
-        return outItemDTOList;
     }
 
-    private List<SalesReportItemDTO> getSalesReportReturnItemDTOS(List<SalesReturnItem> returnItemList, List<ProductCategory> productCategoryList,List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesReturn> salesReturnList, List<Customer> customerList) {
-        List<SalesReportItemDTO> returnItemDTOList = returnItemList.stream().map(item -> {
-            SalesReportItemDTO salesReportItemDTO = new SalesReportItemDTO();
+    private List<SalesReportItemDto> getSalesReportReturnItemDTOS(List<SalesReturnItem> returnItemList, List<ProductCategory> productCategoryList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesReturn> salesReturnList, List<Customer> customerList) {
+        return returnItemList.stream().map(item -> {
+            SalesReportItemDto salesReportItemDTO = new SalesReportItemDto();
             BeanUtils.copyProperties(item, salesReportItemDTO);
             Long productId = item.getProductId();
             Optional<Product> productOptional = productList.stream().filter(product -> product.getId().equals(productId)).findFirst();
@@ -335,10 +336,9 @@ public class SalesReportService extends AbsService {
             salesReportItemDTO.setSalesType("return");
             return salesReportItemDTO;
         }).toList();
-        return returnItemDTOList;
     }
 
-    private PageResults<SalesReportItemDTO> getSalesReportItemDTOPageResults(Page page, List<SalesReportItemDTO> resultList) {
+    private PageResults<SalesReportItemDto> getSalesReportItemDtoPageResults(Page page, List<SalesReportItemDto> resultList) {
         //返回分页数据
         int totalSize = resultList.size();
         int fromIndex = page.getOffset();
@@ -346,15 +346,15 @@ public class SalesReportService extends AbsService {
             return new PageResults<>(new ArrayList<>(), page, totalSize);
         }
         int toIndex = Math.min(fromIndex + page.getOffsetEnd(), totalSize);
-        List<SalesReportItemDTO> pagedDTOList = resultList.subList(fromIndex, toIndex);
+        List<SalesReportItemDto> pagedDTOList = resultList.subList(fromIndex, toIndex);
         return new PageResults<>(pagedDTOList, page, totalSize);
     }
 
-    public PageResults<SalesReportItemDTO> summary(Page page, SalesReportForm form) {
+    public PageResults<SalesReportItemDto> summary(Page page, SalesReportForm form) {
 
         Long accountBookId = form.getAccountBookId();
         Long merchantId = form.getMerchantId();
-        PageResults<SalesReportItemDTO> results = new PageResults<>(new ArrayList<>(),page,0);
+        PageResults<SalesReportItemDto> results = new PageResults<>(new ArrayList<>(), page, 0);
         String salesGroup = form.getSalesGroup();
         if (!isKnownSalesGroup(salesGroup)) {
             return results;
@@ -375,7 +375,7 @@ public class SalesReportService extends AbsService {
             if (form.getEndDate() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("outboundDate"), form.getEndDate()));
             }
-            if(StringUtils.isNotBlank(form.getFilter())){
+            if(StrUtil.isNotBlank(form.getFilter())){
                 predicates.add(cb.like(root.get("orderNo"), "%" + form.getFilter() + "%"));
             }
             // 添加客户分类查询条件
@@ -399,7 +399,7 @@ public class SalesReportService extends AbsService {
         List<Customer> customerList = customerRepository.findAll();
 
         //返回数据
-        List<SalesReportItemDTO> resultList = new ArrayList<>();
+        List<SalesReportItemDto> resultList = new ArrayList<>();
         if (!CollectionUtils.isEmpty(salesOutboundList)) {
             //销售出库单idList
             List<Long> salesOutboundIdList = salesOutboundList.stream().map(SalesOutbound::getId).toList();
@@ -431,30 +431,30 @@ public class SalesReportService extends AbsService {
             //销售出库单商品列表
             List<SalesOutboundItem> outboundItemList = salesOutboundItemRepository.findAll(salesOutboundItemSpecification);
             //封装销售出库单商品列表
-            List<SalesReportItemDTO> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList,productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
+            List<SalesReportItemDto> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
             resultList.addAll(outItemDTOList);
         }
 
         List<SalesReturn> salesReturnList = findSalesReturns(form, accountBookId, merchantId);
         List<SalesReturnItem> returnItemList = findSalesReturnItems(form, salesReturnList, accountBookId, merchantId);
         if (!CollectionUtils.isEmpty(returnItemList)) {
-            List<SalesReportItemDTO> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productCategoryList,productList, unitList, warehouseList, salesReturnList, customerList);
+            List<SalesReportItemDto> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productCategoryList, productList, unitList, warehouseList, salesReturnList, customerList);
             resultList.addAll(returnItemDTOList);
         }
         if (CollectionUtils.isEmpty(resultList)) {
             return results;
         }
         //返回dtos
-        List<SalesReportItemDTO> dtos = new ArrayList<>();
-        if (StringUtils.equals(SalesReportConstant.SALES_GROUP_PRODUCT, salesGroup)) {
-            Map<Long, SalesReportItemDTO> productSummary = resultList.stream()
+        List<SalesReportItemDto> dtos = new ArrayList<>();
+        if (StrUtil.equals(SalesReportConstant.SALES_GROUP_PRODUCT, salesGroup)) {
+            Map<Long, SalesReportItemDto> productSummary = resultList.stream()
                 .filter(item -> item.getProductId() != null)
                 .collect(Collectors.groupingBy(
-                    SalesReportItemDTO::getProductId,
+                    SalesReportItemDto::getProductId,
                     Collectors.collectingAndThen(Collectors.toList(),
                         items -> {
-                            SalesReportItemDTO dto = new SalesReportItemDTO();
-                            SalesReportItemDTO firstItem = items.get(0);
+                            SalesReportItemDto dto = new SalesReportItemDto();
+                            SalesReportItemDto firstItem = items.get(0);
                             dto.setProductId(firstItem.getProductId());
                             dto.setProductName(firstItem.getProductName());
                             dto.setProductCode(firstItem.getProductCode());
@@ -467,15 +467,15 @@ public class SalesReportService extends AbsService {
                     )
                 ));
             dtos.addAll(productSummary.values());
-        } else if (StringUtils.equals(SalesReportConstant.SALES_GROUP_CUSTOMER, salesGroup)) {
-            Map<Long, SalesReportItemDTO> customerSummary = resultList.stream()
+        } else if (StrUtil.equals(SalesReportConstant.SALES_GROUP_CUSTOMER, salesGroup)) {
+            Map<Long, SalesReportItemDto> customerSummary = resultList.stream()
                     .filter(item -> item.getCustomerId() != null)
                     .collect(Collectors.groupingBy(
-                            SalesReportItemDTO::getCustomerId,
+                            SalesReportItemDto::getCustomerId,
                             Collectors.collectingAndThen(Collectors.toList(),
                                     items -> {
-                                        SalesReportItemDTO dto = new SalesReportItemDTO();
-                                        SalesReportItemDTO firstItem = items.get(0);
+                                        SalesReportItemDto dto = new SalesReportItemDto();
+                                        SalesReportItemDto firstItem = items.get(0);
                                         dto.setCustomerId(firstItem.getCustomerId());
                                         dto.setCustomerName(firstItem.getCustomerName());
                                         dto.setCustomerCode(firstItem.getCustomerCode());
@@ -486,14 +486,14 @@ public class SalesReportService extends AbsService {
                             )
                     ));
             dtos.addAll(customerSummary.values());
-        } else if (StringUtils.equals(SalesReportConstant.SALES_GROUP_PRODUCT_WAREHOUSE, salesGroup)) {
-            Map<String, SalesReportItemDTO> productWarehouseSummary = resultList.stream()
+        } else if (StrUtil.equals(SalesReportConstant.SALES_GROUP_PRODUCT_WAREHOUSE, salesGroup)) {
+            Map<String, SalesReportItemDto> productWarehouseSummary = resultList.stream()
                 .filter(item -> item.getProductId() != null && item.getWarehouseId() != null)
                 .collect(Collectors.groupingBy(item -> item.getProductId() + "-" + item.getWarehouseId(),
                 Collectors.collectingAndThen(Collectors.toList(),
                     items -> {
-                        SalesReportItemDTO dto = new SalesReportItemDTO();
-                        SalesReportItemDTO firstItem = items.get(0);
+                        SalesReportItemDto dto = new SalesReportItemDto();
+                        SalesReportItemDto firstItem = items.get(0);
                         dto.setProductId(firstItem.getProductId());
                         dto.setProductName(firstItem.getProductName());
                         dto.setProductCode(firstItem.getProductCode());
@@ -509,14 +509,14 @@ public class SalesReportService extends AbsService {
                 )
             ));
             dtos.addAll(productWarehouseSummary.values());
-        } else if (StringUtils.equals(SalesReportConstant.SALES_GROUP_CUSTOMER_PRODUCT, salesGroup)) {
-            Map<String, SalesReportItemDTO> productCustomerSummary = resultList.stream()
+        } else if (StrUtil.equals(SalesReportConstant.SALES_GROUP_CUSTOMER_PRODUCT, salesGroup)) {
+            Map<String, SalesReportItemDto> productCustomerSummary = resultList.stream()
                     .filter(item -> item.getProductId() != null && item.getCustomerId() != null)
                     .collect(Collectors.groupingBy(item -> item.getProductId() + "-" + item.getCustomerId(),
                     Collectors.collectingAndThen(Collectors.toList(),
                             items -> {
-                                SalesReportItemDTO dto = new SalesReportItemDTO();
-                                SalesReportItemDTO firstItem = items.get(0);
+                                SalesReportItemDto dto = new SalesReportItemDto();
+                                SalesReportItemDto firstItem = items.get(0);
                                 dto.setProductId(firstItem.getProductId());
                                 dto.setProductName(firstItem.getProductName());
                                 dto.setProductCode(firstItem.getProductCode());
@@ -534,15 +534,15 @@ public class SalesReportService extends AbsService {
                     )
             ));
             dtos.addAll(productCustomerSummary.values());
-        } else if (StringUtils.equals(SalesReportConstant.SALES_GROUP_CUSTOMER_PRODUCT_WAREHOUSE, salesGroup)) {
-            Map<String, SalesReportItemDTO> productCustomerWarehouseSummary = resultList.stream()
+        } else if (StrUtil.equals(SalesReportConstant.SALES_GROUP_CUSTOMER_PRODUCT_WAREHOUSE, salesGroup)) {
+            Map<String, SalesReportItemDto> productCustomerWarehouseSummary = resultList.stream()
                     .filter(item -> item.getProductId() != null && item.getCustomerId() != null && item.getWarehouseId() != null)
                     .collect(Collectors.groupingBy(
                     item -> item.getProductId() + "-" + item.getCustomerId() + "-" + item.getWarehouseId(),
                     Collectors.collectingAndThen(Collectors.toList(),
                             items -> {
-                                SalesReportItemDTO dto = new SalesReportItemDTO();
-                                SalesReportItemDTO firstItem = items.get(0);
+                                SalesReportItemDto dto = new SalesReportItemDto();
+                                SalesReportItemDto firstItem = items.get(0);
                                 dto.setProductId(firstItem.getProductId());
                                 dto.setProductName(firstItem.getProductName());
                                 dto.setProductCode(firstItem.getProductCode());
@@ -566,21 +566,21 @@ public class SalesReportService extends AbsService {
         //移除数量为0的数据
         dtos.removeIf(item -> item.getQuantity() == null || item.getQuantity() == 0);
         //返回分页数据
-        return getSalesReportItemDTOPageResults(page, dtos);
+        return getSalesReportItemDtoPageResults(page, dtos);
     }
 
     /**
      * 销售利润表（按产品汇总，成本优先取出库审核落库成本，缺省回退预计进货价）
      */
-    public PageResults<SalesReportItemDTO> profit(Page page, SalesReportForm form) {
+    public PageResults<SalesReportItemDto> profit(Page page, SalesReportForm form) {
         form.setSalesGroup(SalesReportConstant.SALES_GROUP_PRODUCT);
-        PageResults<SalesReportItemDTO> summaryResult = summary(page, form);
+        PageResults<SalesReportItemDto> summaryResult = summary(page, form);
         Map<Long, Product> productMap = loadProducts(form.getMerchantId(), form.getAccountBookId()).stream()
                 .filter(p -> p.getId() != null)
                 .collect(Collectors.toMap(Product::getId, p -> p, (a, b) -> a));
-        Collection<SalesReportItemDTO> profitRows = summaryResult.getResults();
+        Collection<SalesReportItemDto> profitRows = summaryResult.getResults();
         if (profitRows != null) {
-            for (SalesReportItemDTO dto : profitRows) {
+            for (SalesReportItemDto dto : profitRows) {
                 fillProfitFields(dto, dto.getProductId() == null ? null : productMap.get(dto.getProductId()));
             }
         }
@@ -590,10 +590,10 @@ public class SalesReportService extends AbsService {
     /**
      * 销售排行表（按产品或客户）
      */
-    public PageResults<SalesReportItemDTO> ranking(Page page, SalesReportForm form) {
-        String rankingType = StringUtils.defaultIfBlank(form.getRankingType(), SalesReportConstant.SALES_GROUP_PRODUCT);
-        if (StringUtils.equals(rankingType, SalesReportConstant.SALES_GROUP_CUSTOMER)
-                || StringUtils.equalsIgnoreCase(rankingType, "CUSTOMER")) {
+    public PageResults<SalesReportItemDto> ranking(Page page, SalesReportForm form) {
+        String rankingType = StrUtil.blankToDefault(form.getRankingType(), SalesReportConstant.SALES_GROUP_PRODUCT);
+        if (StrUtil.equals(rankingType, SalesReportConstant.SALES_GROUP_CUSTOMER)
+                || StrUtil.equalsIgnoreCase(rankingType, "CUSTOMER")) {
             form.setSalesGroup(SalesReportConstant.SALES_GROUP_CUSTOMER);
         } else {
             form.setSalesGroup(SalesReportConstant.SALES_GROUP_PRODUCT);
@@ -602,20 +602,20 @@ public class SalesReportService extends AbsService {
         Page fullPage = new Page();
         fullPage.setPage(1);
         fullPage.setPageSize(100000);
-        PageResults<SalesReportItemDTO> summaryResult = summary(fullPage, form);
-        List<SalesReportItemDTO> list = new ArrayList<>(
+        PageResults<SalesReportItemDto> summaryResult = summary(fullPage, form);
+        List<SalesReportItemDto> list = new ArrayList<>(
                 summaryResult.getResults() == null ? Collections.emptyList() : summaryResult.getResults());
         list.sort(Comparator.comparing(
-                (SalesReportItemDTO item) -> item.getSubtotal() == null ? BigDecimal.ZERO : item.getSubtotal()
+                (SalesReportItemDto item) -> item.getSubtotal() == null ? BigDecimal.ZERO : item.getSubtotal()
         ).reversed());
         int rank = 1;
-        for (SalesReportItemDTO dto : list) {
+        for (SalesReportItemDto dto : list) {
             dto.setRankNo(rank++);
         }
-        return getSalesReportItemDTOPageResults(page, list);
+        return getSalesReportItemDtoPageResults(page, list);
     }
 
-    private void fillProfitFields(SalesReportItemDTO dto, Product product) {
+    private void fillProfitFields(SalesReportItemDto dto, Product product) {
         BigDecimal qty = BigDecimal.valueOf(dto.getQuantity() == null ? 0D : dto.getQuantity());
         BigDecimal salesAmount = dto.getSubtotal() == null ? BigDecimal.ZERO : dto.getSubtotal();
         BigDecimal costAmount = dto.getCostAmount();
@@ -660,14 +660,14 @@ public class SalesReportService extends AbsService {
     }
 
     private boolean isKnownSalesGroup(String salesGroup) {
-        return StringUtils.equals(salesGroup, SalesReportConstant.SALES_GROUP_PRODUCT)
-                || StringUtils.equals(salesGroup, SalesReportConstant.SALES_GROUP_CUSTOMER)
-                || StringUtils.equals(salesGroup, SalesReportConstant.SALES_GROUP_PRODUCT_WAREHOUSE)
-                || StringUtils.equals(salesGroup, SalesReportConstant.SALES_GROUP_CUSTOMER_PRODUCT)
-                || StringUtils.equals(salesGroup, SalesReportConstant.SALES_GROUP_CUSTOMER_PRODUCT_WAREHOUSE);
+        return StrUtil.equals(salesGroup, SalesReportConstant.SALES_GROUP_PRODUCT)
+                || StrUtil.equals(salesGroup, SalesReportConstant.SALES_GROUP_CUSTOMER)
+                || StrUtil.equals(salesGroup, SalesReportConstant.SALES_GROUP_PRODUCT_WAREHOUSE)
+                || StrUtil.equals(salesGroup, SalesReportConstant.SALES_GROUP_CUSTOMER_PRODUCT)
+                || StrUtil.equals(salesGroup, SalesReportConstant.SALES_GROUP_CUSTOMER_PRODUCT_WAREHOUSE);
     }
 
-    private void aggregateQtyAndAmount(SalesReportItemDTO dto, List<SalesReportItemDTO> items) {
+    private void aggregateQtyAndAmount(SalesReportItemDto dto, List<SalesReportItemDto> items) {
         dto.setQuantity(items.stream()
                 .mapToDouble(item -> item.getQuantity() != null ? item.getQuantity() : 0.0)
                 .sum());
@@ -686,16 +686,14 @@ public class SalesReportService extends AbsService {
         }
     }
 
-
     @Data
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
         StringBuilder whereClause = new StringBuilder();
         @Getter
         Map<String, Object> params = new HashMap<>();
 
         private String salesType;
-
 
         public void setMerchantId(Long merchantId) {
             if (merchantId != null) {
@@ -713,8 +711,9 @@ public class SalesReportService extends AbsService {
 
             }
         }
+
         public void setFilter(String filter) {
-            if (StringUtils.isNotBlank(filter)) {
+            if (StrUtil.isNotBlank(filter)) {
                 builder.and(qSalesOutbound.orderNo.like("%" + filter + "%"));
                 //whereClause.append(" AND so.order_no LIKE '%").append(":filter").append("%'");
                 whereClause.append(" AND so.order_no LIKE :filter");
@@ -724,7 +723,7 @@ public class SalesReportService extends AbsService {
         }
 
         public void setState(String state) {
-            if (StringUtils.isNotBlank(state)) {
+            if (StrUtil.isNotBlank(state)) {
                 builder.and(qSalesOutbound.orderStatus.eq(OrderStatus.valueOf(state)));
                 whereClause.append(" AND so.order_status = :state");
                 params.put("state", state);
@@ -732,17 +731,15 @@ public class SalesReportService extends AbsService {
             }
         }
 
-
-
         public void setStart(String start) {
-            if (StringUtils.isNotBlank(start)) {
+            if (StrUtil.isNotBlank(start)) {
                 whereClause.append(" AND so.outbound_date >= :start");
                 params.put("start", start);
             }
         }
 
         public void setEnd(String end) {
-            if (StringUtils.isNotBlank(end)) {
+            if (StrUtil.isNotBlank(end)) {
                 whereClause.append(" AND so.outbound_date <= :end");
                 params.put("end", end);
             }

@@ -30,7 +30,6 @@ public class PurchaseReportSummaryDto {
      */
     private String spec;
 
-
     /**
      * 商品类别
      */
@@ -56,12 +55,10 @@ public class PurchaseReportSummaryDto {
      */
     private String orderType;
 
-
     /**
      * 供应商类别
      */
     private String supplierCategoryName;
-
 
     /**
      * 基本单位名称

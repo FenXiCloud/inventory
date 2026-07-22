@@ -67,7 +67,6 @@ public class PurchaseReportItemDto {
      */
     private LocalDate orderDate;
 
-
     /**
      * 采购单位名称
      */

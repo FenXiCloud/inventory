@@ -134,22 +134,6 @@ export default {
 </script>
 
 <style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
 
 .simple-page__hint {
   flex-shrink: 0;
@@ -158,19 +142,4 @@ export default {
   line-height: 1.5;
 }
 
-.simple-page__table {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.simple-page__pager {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--td-component-border, #dcdcdc);
-}
 </style>

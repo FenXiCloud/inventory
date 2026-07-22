@@ -1,6 +1,5 @@
-﻿/**
- * @功能描述: 库存明细/进销存报表
- */
+﻿
+/** 库存明细/进销存报表 */
 import Ajax from "@common/Request";
 
 export default {

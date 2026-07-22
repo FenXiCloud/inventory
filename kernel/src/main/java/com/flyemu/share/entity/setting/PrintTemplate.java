@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.setting;
 
+import com.flyemu.share.common.TenantAware;
 import com.alibaba.fastjson.JSONArray;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -15,13 +16,6 @@ import org.hibernate.type.SqlTypes;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/**
- * @功能描述: 打印模板
- * @创建时间: 2024年04月28日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Getter
 @Setter
 @Entity
@@ -29,7 +23,7 @@ import java.time.LocalDateTime;
 @Table
 @DynamicUpdate
 @DynamicInsert
-public class PrintTemplate implements Serializable {
+public class PrintTemplate implements Serializable, TenantAware{
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -61,8 +55,6 @@ public class PrintTemplate implements Serializable {
     @Comment("模板内容JSON")
     @JdbcTypeCode(SqlTypes.JSON)
     private JSONArray content;
-
-
 
     public enum DocumentType {
         采购订单, 采购入库单, 采购退货单, 销售订单, 销售出库单, 销售退货单, 调拨单, 盘点单, 其他入库单, 其他出库单, 成本调整单, 收款单, 付款单, 核销单, 其他收款单, 其他付款单, 转帐单

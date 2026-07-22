@@ -11,13 +11,6 @@ import jakarta.validation.Valid;
 
 import java.util.List;
 
-/**
- * @功能描述: 角色管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/role")
 @RequiredArgsConstructor
@@ -32,7 +25,7 @@ public class RoleController {
     }
 
     @GetMapping("/simple")
-    public JsonResult simpleList(Long merchantId, Integer type) {
+    public JsonResult simpleList(@RequestParam Long merchantId, @RequestParam(required = false) Integer type) {
         return JsonResult.successful(roleService.simpleList(merchantId, type));
     }
 
@@ -56,7 +49,7 @@ public class RoleController {
     }
 
     @DeleteMapping("/{roleId}")
-    public JsonResult delete(@PathVariable Long roleId, Long merchantId) {
+    public JsonResult delete(@PathVariable Long roleId, @RequestParam Long merchantId) {
         roleService.delete(roleId, merchantId);
         return JsonResult.successful();
     }

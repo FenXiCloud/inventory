@@ -8,13 +8,6 @@ import org.hibernate.annotations.Comment;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * @功能描述: 采购退货单明细Dto
- * @创建时间: 2025/2/17
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Data
 @EqualsAndHashCode(callSuper = false)
 public class PurchaseReturnItemDto {
@@ -29,7 +22,6 @@ public class PurchaseReturnItemDto {
      * 采购入库单orderNo
      */
     private String purchaseInboundOrderNo;
-
 
     /**
      * 采购明细单id
@@ -158,6 +150,5 @@ public class PurchaseReturnItemDto {
      * 可退数量
      */
     private Double returnQuantity;
-
 
 }

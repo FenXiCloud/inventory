@@ -1,8 +1,8 @@
 <template>
   <div class="page-column">
     <div class="page-column-full-body">
-      <vxe-toolbar class-name="!size--mini">
-        <template #buttons>
+      <div class="form-toolbar">
+        <div class="form-toolbar__left">
           <label class="mr-20px" style="font-size: 16px !important">业务类型：</label>
           <t-select
             :clearable="false"
@@ -71,158 +71,120 @@
             :clearable="false"
             :disabled="isAudited"
           />
-        </template>
-        <template #tools>
+        </div>
+        <div class="form-toolbar__right">
           <Stamp v-if="isAudited" />
-        </template>
-      </vxe-toolbar>
+        </div>
+      </div>
 
-      <vxe-toolbar>
-        <template v-if="!isAudited" #tools>
-          <t-button v-show="form.type == '1'" @click="sourceForm('预收')">选择预收单据</t-button>
-          <t-button v-show="form.type == '2'" @click="sourceForm('预付')">选择预付单据</t-button>
-        </template>
-      </vxe-toolbar>
+      <div v-if="!isAudited" class="form-toolbar form-toolbar--end">
+        <t-button v-show="form.type == '1'" @click="sourceForm('预收')">选择预收单据</t-button>
+        <t-button v-show="form.type == '2'" @click="sourceForm('预付')">选择预付单据</t-button>
+      </div>
 
-      <vxe-table
-        ref="tableRef"
-        size="mini"
-        border
+      <t-table
+        row-key="_rowKey"
+        size="small"
+        bordered
         stripe
-        show-overflow
-        :row-config="{ height: 40 }"
-        :edit-config="isAudited ? undefined : editConfig"
+        hover
+        table-layout="fixed"
         :data="tableData"
-        :show-footer="showFooter"
-        :footer-method="footerMethod"
+        :columns="prepayColumns"
+        :foot-data="footData"
+        :loading="loading"
       >
-        <vxe-column type="seq" title="序号" width="60" align="center" fixed="left" />
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
-          <template #default="{ rowIndex }">
-            <template v-if="!isAudited">
-              <div
-                class="fa fa-plus text-hover mr-5px"
-                @click="adjustRows('insert', rowIndex, tableData)"
-              ></div>
-              <div
-                class="fa fa-minus text-hover"
-                v-if="canDelete(tableData)"
-                @click="adjustRows('delete', rowIndex, tableData)"
-              ></div>
-            </template>
+        <template #ops="{ rowIndex }">
+          <template v-if="!isAudited">
+            <div
+              class="fa fa-plus text-hover mr-5px"
+              @click="adjustRows('insert', rowIndex, tableData)"
+            ></div>
+            <div
+              class="fa fa-minus text-hover"
+              v-if="canDelete(tableData)"
+              @click="adjustRows('delete', rowIndex, tableData)"
+            ></div>
           </template>
-        </vxe-column>
-        <vxe-column field="businessNo" title="源单编号" min-width="140" />
-        <vxe-column field="businessType" title="业务类别" width="110" align="center">
-          <template #default="{ row }">
-            <span v-if="row.businessType">{{
-              form.type == 1 ? '收款' : '付款'
-            }}</span>
-          </template>
-        </vxe-column>
-        <vxe-column field="businessDate" title="单据日期" width="120" align="center" />
-        <vxe-column field="documentAmount" title="单据金额" width="110" align="right" />
-        <vxe-column field="verifiedAmount" title="已核销金额" width="110" align="right" />
-        <vxe-column field="unverifiedAmount" title="未核销金额" width="110" align="right" />
-        <vxe-column field="businessRemarks" title="源单备注" min-width="120" />
-        <vxe-column
-          width="160"
-          field="currentVerifyAmount"
-          title="本次核销金额"
-          :edit-render="{}"
-        >
-          <template #header>
-            <span style="color: red">*</span>本次核销金额
-          </template>
-          <template #default="{ row }">
-            <span>{{ row.currentVerifyAmount }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-input
-              v-model="row.currentVerifyAmount"
-              type="number"
-              :max="row.documentAmount"
-              min="0"
-            />
-          </template>
-        </vxe-column>
-        <vxe-column field="remarks" title="备注" min-width="120" :edit-render="{ name: 'input' }" />
-      </vxe-table>
-
-      <vxe-toolbar>
-        <template v-if="!isAudited" #tools>
-          <t-button v-show="form.type == '1'" @click="sourceForm('应收')">选择应收单据</t-button>
-          <t-button v-show="form.type == '2'" @click="sourceForm('应付')">选择应付单据</t-button>
-          <t-button @click="autoReconciliation">自动核销</t-button>
         </template>
-      </vxe-toolbar>
+        <template #businessType="{ row }">
+          <span v-if="row.businessType">{{
+            form.type == 1 ? '收款' : '付款'
+          }}</span>
+        </template>
+        <template #currentVerifyAmount="{ row }">
+          <t-input-number
+            v-if="!isAudited"
+            v-model="row.currentVerifyAmount"
+            theme="normal"
+            :min="0"
+            :max="row.documentAmount"
+            :decimal-places="2"
+            style="width: 100%"
+          />
+          <span v-else>{{ row.currentVerifyAmount }}</span>
+        </template>
+        <template #remarks="{ row }">
+          <t-input v-if="!isAudited" v-model="row.remarks" />
+          <span v-else>{{ row.remarks }}</span>
+        </template>
+      </t-table>
 
-      <vxe-table
-        ref="tableRef2"
-        size="mini"
-        border
+      <div v-if="!isAudited" class="form-toolbar form-toolbar--end">
+        <t-button v-show="form.type == '1'" @click="sourceForm('应收')">选择应收单据</t-button>
+        <t-button v-show="form.type == '2'" @click="sourceForm('应付')">选择应付单据</t-button>
+        <t-button @click="autoReconciliation">自动核销</t-button>
+      </div>
+
+      <t-table
+        row-key="_rowKey"
+        size="small"
+        bordered
         stripe
-        show-overflow
-        :row-config="{ height: 40 }"
-        :edit-config="isAudited ? undefined : editConfig"
+        hover
+        table-layout="fixed"
         :data="tableData2"
-        :show-footer="showFooter"
-        :footer-method="footerMethod2"
+        :columns="receivableColumns"
+        :foot-data="footData2"
+        :loading="loading"
       >
-        <vxe-column type="seq" title="序号" width="60" align="center" fixed="left" />
-        <vxe-column title="操作" field="seq" width="70" align="center">
-          <template #default="{ rowIndex }">
-            <template v-if="!isAudited">
-              <div
-                class="fa fa-plus text-hover mr-5px"
-                @click="adjustRows('insert', rowIndex, tableData2)"
-              ></div>
-              <div
-                class="fa fa-minus text-hover"
-                v-if="canDelete(tableData2)"
-                @click="adjustRows('delete', rowIndex, tableData2)"
-              ></div>
-            </template>
+        <template #ops="{ rowIndex }">
+          <template v-if="!isAudited">
+            <div
+              class="fa fa-plus text-hover mr-5px"
+              @click="adjustRows('insert', rowIndex, tableData2)"
+            ></div>
+            <div
+              class="fa fa-minus text-hover"
+              v-if="canDelete(tableData2)"
+              @click="adjustRows('delete', rowIndex, tableData2)"
+            ></div>
           </template>
-        </vxe-column>
-        <vxe-column field="businessNo" title="源单编号" min-width="140" />
-        <vxe-column field="businessType" title="业务类别" width="110" align="center">
-          <template #default="{ row }">
-            <span v-if="row.businessType">
-              <span v-if="row.businessType == '2'">期初余额</span>
-              <span v-else-if="form.type == '1'">普通销售</span>
-              <span v-else>普通采购</span>
-            </span>
-          </template>
-        </vxe-column>
-        <vxe-column field="businessDate" title="单据日期" width="120" align="center" />
-        <vxe-column field="documentAmount" title="单据金额" width="110" align="right" />
-        <vxe-column field="verifiedAmount" title="已核销金额" width="110" align="right" />
-        <vxe-column field="unverifiedAmount" title="未核销金额" width="110" align="right" />
-        <vxe-column field="businessRemarks" title="源单备注" min-width="120" />
-        <vxe-column
-          field="currentVerifyAmount"
-          title="本次核销金额"
-          width="160"
-          :edit-render="{}"
-        >
-          <template #header>
-            <span style="color: red">*</span>本次核销金额
-          </template>
-          <template #default="{ row }">
-            <span>{{ row.currentVerifyAmount }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-input
-              v-model="row.currentVerifyAmount"
-              type="number"
-              :max="row.documentAmount"
-              min="0"
-            />
-          </template>
-        </vxe-column>
-        <vxe-column field="remarks" title="备注" min-width="120" :edit-render="{ name: 'input' }" />
-      </vxe-table>
+        </template>
+        <template #businessType="{ row }">
+          <span v-if="row.businessType">
+            <span v-if="row.businessType == '2'">期初余额</span>
+            <span v-else-if="form.type == '1'">普通销售</span>
+            <span v-else>普通采购</span>
+          </span>
+        </template>
+        <template #currentVerifyAmount="{ row }">
+          <t-input-number
+            v-if="!isAudited"
+            v-model="row.currentVerifyAmount"
+            theme="normal"
+            :min="0"
+            :max="row.documentAmount"
+            :decimal-places="2"
+            style="width: 100%"
+          />
+          <span v-else>{{ row.currentVerifyAmount }}</span>
+        </template>
+        <template #remarks="{ row }">
+          <t-input v-if="!isAudited" v-model="row.remarks" />
+          <span v-else>{{ row.remarks }}</span>
+        </template>
+      </t-table>
 
       <div class="mt-10px"></div>
       <div class="filler-panel">
@@ -279,6 +241,12 @@ import { mapState, mapMutations } from 'vuex';
 import Stamp from '../common/Stamp.vue';
 const Big = require('big.js');
 import manba from 'manba';
+
+let rowSeq = 0;
+function newRow(extra = {}) {
+  return { _rowKey: `r-${++rowSeq}`, ...extra };
+}
+
 export default {
   name: 'VerificationForm',
   components: { Stamp },
@@ -288,13 +256,6 @@ export default {
     index: Number
   },
   data() {
-    const tableData = [{}];
-    const tableData2 = [{}];
-    const editConfig = {
-      trigger: 'click',
-      mode: 'cell'
-    };
-
     return {
       logContent: null,
       val1: [],
@@ -313,14 +274,12 @@ export default {
         orderStaffName: null,
         orderDate: manba().format('YYYY-MM-DD')
       },
-      tableData,
-      tableData2,
+      tableData: [newRow()],
+      tableData2: [newRow()],
       customerDataList: [],
       supplierDataList: [],
       customOrSupplierBalance: 0,
       orderStaffList: [],
-      totalTb1: 0,
-      totalTb2: 0,
       loading: false,
       pagination: {
         page: 1,
@@ -332,15 +291,25 @@ export default {
         state: null,
         sortCol: null,
         sort: null
-      },
-      showFooter: true,
-      editConfig
+      }
     };
   },
   computed: {
     ...mapState(['user']),
     isAudited() {
       return this.form.orderStatus === '已审核';
+    },
+    totalTb1() {
+      return (this.tableData || []).reduce((sum, row) => {
+        const value = parseFloat(row.currentVerifyAmount);
+        return sum + (isNaN(value) ? 0 : value);
+      }, 0);
+    },
+    totalTb2() {
+      return (this.tableData2 || []).reduce((sum, row) => {
+        const value = parseFloat(row.currentVerifyAmount);
+        return sum + (isNaN(value) ? 0 : value);
+      }, 0);
     },
     calcCollectionAmount() {
       return (
@@ -354,6 +323,82 @@ export default {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize
       });
+    },
+    footData() {
+      const sum = (key) => {
+        const total = (this.tableData || []).reduce((acc, row) => {
+          const value = parseFloat(row[key]);
+          return acc + (isNaN(value) ? 0 : value);
+        }, 0);
+        return total.toFixed(2);
+      };
+      return [{
+        seq: '合计',
+        documentAmount: sum('documentAmount'),
+        verifiedAmount: sum('verifiedAmount'),
+        unverifiedAmount: sum('unverifiedAmount'),
+        currentVerifyAmount: sum('currentVerifyAmount')
+      }];
+    },
+    footData2() {
+      const sum = (key) => {
+        const total = (this.tableData2 || []).reduce((acc, row) => {
+          const value = parseFloat(row[key]);
+          return acc + (isNaN(value) ? 0 : value);
+        }, 0);
+        return total.toFixed(2);
+      };
+      return [{
+        seq: '合计',
+        documentAmount: sum('documentAmount'),
+        verifiedAmount: sum('verifiedAmount'),
+        unverifiedAmount: sum('unverifiedAmount'),
+        currentVerifyAmount: sum('currentVerifyAmount')
+      }];
+    },
+    prepayColumns() {
+      return [
+        {
+          colKey: 'seq',
+          title: '序号',
+          width: 60,
+          align: 'center',
+          fixed: 'left',
+          cell: (h, { rowIndex }) => rowIndex + 1
+        },
+        { colKey: 'ops', title: '操作', width: 70, align: 'center', fixed: 'left' },
+        { colKey: 'businessNo', title: '源单编号', minWidth: 140 },
+        { colKey: 'businessType', title: '业务类别', width: 110, align: 'center' },
+        { colKey: 'businessDate', title: '单据日期', width: 120, align: 'center' },
+        { colKey: 'documentAmount', title: '单据金额', width: 110, align: 'right' },
+        { colKey: 'verifiedAmount', title: '已核销金额', width: 110, align: 'right' },
+        { colKey: 'unverifiedAmount', title: '未核销金额', width: 110, align: 'right' },
+        { colKey: 'businessRemarks', title: '源单备注', minWidth: 120 },
+        { colKey: 'currentVerifyAmount', title: '*本次核销金额', width: 160, align: 'right' },
+        { colKey: 'remarks', title: '备注', minWidth: 120 }
+      ];
+    },
+    receivableColumns() {
+      return [
+        {
+          colKey: 'seq',
+          title: '序号',
+          width: 60,
+          align: 'center',
+          fixed: 'left',
+          cell: (h, { rowIndex }) => rowIndex + 1
+        },
+        { colKey: 'ops', title: '操作', width: 70, align: 'center' },
+        { colKey: 'businessNo', title: '源单编号', minWidth: 140 },
+        { colKey: 'businessType', title: '业务类别', width: 110, align: 'center' },
+        { colKey: 'businessDate', title: '单据日期', width: 120, align: 'center' },
+        { colKey: 'documentAmount', title: '单据金额', width: 110, align: 'right' },
+        { colKey: 'verifiedAmount', title: '已核销金额', width: 110, align: 'right' },
+        { colKey: 'unverifiedAmount', title: '未核销金额', width: 110, align: 'right' },
+        { colKey: 'businessRemarks', title: '源单备注', minWidth: 120 },
+        { colKey: 'currentVerifyAmount', title: '*本次核销金额', width: 160, align: 'right' },
+        { colKey: 'remarks', title: '备注', minWidth: 120 }
+      ];
     }
   },
   methods: {
@@ -371,15 +416,15 @@ export default {
         type: '1',
         orderDate: manba().format('YYYY-MM-DD')
       };
-      this.tableData = [{}];
-      this.tableData2 = [{}];
+      this.tableData = [newRow()];
+      this.tableData2 = [newRow()];
     },
     getLog() {
       let createName = this.user.admin.name;
       let {
         updateName,
         createdAt,
-        updateAt,
+        updatedAt,
         approvedName,
         approvedAt
       } = this.form;
@@ -387,7 +432,7 @@ export default {
         `制单人: ${createName}`,
         createdAt ? `制单时间: ${createdAt}` : null,
         updateName ? `最后修改人: ${updateName}` : null,
-        updateAt ? `最后修改时间: ${updateAt}` : null,
+        updatedAt ? `最后修改时间: ${updatedAt}` : null,
         approvedName ? `审核人: ${approvedName}` : null,
         approvedAt ? `审核时间: ${approvedAt}` : null
       ].filter((entry) => entry);
@@ -399,8 +444,8 @@ export default {
       Verification.load(this.orderId )
         .then(({ data: { order, collectionList, itemList } }) => {
           this.form = order;
-          this.tableData = collectionList || [];
-          this.tableData2 = itemList || [];
+          this.tableData = (collectionList || []).map((item) => newRow(item));
+          this.tableData2 = (itemList || []).map((item) => newRow(item));
           this.getLog();
         })
         .finally(() => (this.loading = false));
@@ -416,7 +461,7 @@ export default {
       let order = {
         ...this.form,
         createdBy: this.user.admin.id,
-        updateBy: this.user.admin.id,
+        updatedBy: this.user.admin.id,
         orderStatus: '已保存'
       };
       if (!this.form.orderDate || this.form.orderDate == '') {
@@ -429,7 +474,7 @@ export default {
       }
       const filterEmptyObjects = (arr) =>
         arr
-          .map(({ _X_ROW_KEY, ...rest }) => rest)
+          .map(({ _rowKey, ...rest }) => rest)
           .filter((row) => Object.keys(row).length);
 
       let params = {
@@ -490,54 +535,12 @@ export default {
 
       return fixedSum1 === fixedSum2 && fixedSum1 != 0;
     },
-    footerMethodFormat({ columns, data }, list, totalName) {
-      const footerRow = new Array(columns.length).fill('');
-      footerRow[0] = '合计';
-      columns.forEach((column, index) => {
-        if (list.includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            const value = parseFloat(row[column.property]);
-            if (!isNaN(value)) {
-              total += value;
-            }
-          });
-          footerRow[index] = total.toFixed(2);
-          this[totalName] = total;
-        }
-      });
-      return [footerRow];
-    },
-    footerMethod({ columns, data }) {
-      return this.footerMethodFormat(
-        { columns, data },
-        [
-          'documentAmount',
-          'verifiedAmount',
-          'unverifiedAmount',
-          'currentVerifyAmount'
-        ],
-        'totalTb1'
-      );
-    },
-    footerMethod2({ columns, data }) {
-      return this.footerMethodFormat(
-        { columns, data },
-        [
-          'documentAmount',
-          'verifiedAmount',
-          'unverifiedAmount',
-          'currentVerifyAmount'
-        ],
-        'totalTb2'
-      );
-    },
     canDelete(tableData) {
       return tableData.length > 1;
     },
     adjustRows(type, index, tableData) {
       if (type === 'insert') {
-        tableData.splice(index + 1, 0, { isNew: true });
+        tableData.splice(index + 1, 0, newRow({ isNew: true }));
       } else if (type === 'delete' && this.canDelete(tableData)) {
         tableData.splice(index, 1);
       }
@@ -595,8 +598,8 @@ export default {
       this.form = {
         ...this.form
       };
-      this.tableData = [{}];
-      this.tableData2 = [{}];
+      this.tableData = [newRow()];
+      this.tableData2 = [newRow()];
     },
     selectOrderStaff(value) {
       const e = this.orderStaffList.find((item) => item.name === value);
@@ -666,8 +669,7 @@ export default {
               this.tableData = Array.from(merged.values())
                 .filter((item) => item.businessNo)
                 .map((item) => {
-                  delete item._X_ROW_KEY;
-                  return item;
+                  return newRow(item);
                 })
                 .sort((a, b) => a.unverifiedAmount - b.unverifiedAmount);
             } else {
@@ -682,8 +684,7 @@ export default {
               this.tableData2 = Array.from(merged.values())
                 .filter((item) => item.businessNo)
                 .map((item) => {
-                  delete item._X_ROW_KEY;
-                  return item;
+                  return newRow(item);
                 })
                 .sort((a, b) => b.unverifiedAmount - a.unverifiedAmount);
             }
@@ -749,9 +750,6 @@ export default {
 
       this.tableData = tempTable1;
       this.tableData2 = tempTable2;
-
-      this.$refs.tableRef.reloadData(this.tableData);
-      this.$refs.tableRef2.reloadData(this.tableData2);
     },
     initTableData() {
       this.tableData.forEach((item) => {
@@ -792,9 +790,10 @@ export default {
 };
 </script>
 <style lang="less" scoped>
-:deep(.vxe-select > .vxe-input) {
-  width: 100%;
-  height: 100%;
+
+.form-toolbar--end {
+  justify-content: flex-end;
+  margin: 8px 0;
 }
 
 .verification-extra-actions {

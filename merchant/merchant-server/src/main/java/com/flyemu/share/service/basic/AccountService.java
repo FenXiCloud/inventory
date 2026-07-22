@@ -1,14 +1,16 @@
 package com.flyemu.share.service.basic;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.entity.basic.Account;
 import com.flyemu.share.entity.basic.QAccount;
 import com.flyemu.share.entity.fund.AccountFlow;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.AccountFlowRepository;
-import com.flyemu.share.repository.AccountRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.fund.AccountFlowRepository;
+import com.flyemu.share.repository.basic.AccountRepository;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
@@ -20,18 +22,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * @功能描述: 账户管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class AccountService extends AbsService {
+public class AccountService extends BaseService {
 
     private final static QAccount qAccount = QAccount.account;
 
@@ -122,19 +117,15 @@ public class AccountService extends AbsService {
         return bqf.selectFrom(qAccount).where(qAccount.merchantId.eq(merchantId).and(qAccount.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qAccount.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qAccount.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qAccount.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qAccount.accountBookId, accountBookId);
         }
     }
 }

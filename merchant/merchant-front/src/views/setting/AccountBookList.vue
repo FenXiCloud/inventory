@@ -78,32 +78,21 @@ import {h} from "vue";
 
 export default {
   name: "AccountBookList",
-  props: {
-    merchant: Object,
-  },
   components: {AccountBookForm},
   data() {
     return {
-      opened: true,
       loading: false,
       params: {
         areaId: null,
         name: null,
         merchantId: null,
       },
-      checkedRows: [],
       dataList: [],
-      areaList: [],
-      merchantList: [],
       pagination: {
         page: 1,
         pageSize: 20,
         total: 0
       },
-      param: [
-        {title: '启用', key: 'enabled'},
-        {title: '禁用', key: 'disabled'},
-      ],
       columns: [
         {colKey: 'name', title: '名称', minWidth: 150, ellipsis: true},
         {colKey: 'startDate', title: '启用日期', width: 120},
@@ -208,37 +197,3 @@ export default {
 }
 </script>
 
-<style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
-
-.simple-page__table {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.simple-page__pager {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--td-component-border, #dcdcdc);
-}
-</style>

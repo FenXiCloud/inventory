@@ -1,10 +1,16 @@
 package com.flyemu.share.service.fund;
 
+import com.flyemu.share.repository.fund.OrderPaymentCollectionRepository;
+import com.flyemu.share.repository.fund.OrderPaymentItemRepository;
+import com.flyemu.share.repository.fund.OrderPaymentRepository;
+import com.flyemu.share.repository.purchase.PurchaseInboundRepository;
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.*;
@@ -17,9 +23,8 @@ import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.*;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.AccountService;
 import com.flyemu.share.service.basic.SupplierService;
 import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
@@ -43,7 +48,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,19 +57,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * @author q
- * @功能描述: 付款单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
-public class OrderPaymentService extends AbsService {
+public class OrderPaymentService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QOrderPayment qOrderPayment = QOrderPayment.orderPayment;
@@ -529,7 +525,7 @@ public class OrderPaymentService extends AbsService {
 
         if (orderPayment.getId() == null) {
             assignOrderNumber(orderPayment);
-            orderPayment.setUpdateAt(LocalDateTime.now());
+            orderPayment.setUpdatedAt(LocalDateTime.now());
             if (orderPayment.getOrderStatus() == null) {
                 orderPayment.setOrderStatus(OrderStatus.已保存);
             }
@@ -571,7 +567,7 @@ public class OrderPaymentService extends AbsService {
     }
 
     private void assignOrderNumber(OrderPayment orderPayment) {
-        if (StringUtils.isEmpty(orderPayment.getOrderNo())) {
+        if (StrUtil.isEmpty(orderPayment.getOrderNo())) {
             CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(CodeRule.DocumentType.付款单, orderPayment.getMerchantId(), orderPayment.getAccountBookId());
 
             if (codeRule != null) {
@@ -623,7 +619,7 @@ public class OrderPaymentService extends AbsService {
 
     @Transactional
     public void delete(String ids, Long merchantId, Long accountBookId) {
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要删除的数据");
         }
 
@@ -767,7 +763,7 @@ public class OrderPaymentService extends AbsService {
         QMerchantUser qUpdatedByUser = new QMerchantUser("updatedByUser");
         QMerchantUser qApprovedByUser = new QMerchantUser("approvedByUser");
 
-        OrderPaymentDetailsVO orderPayment = jqf.select(Projections.bean(OrderPaymentDetailsVO.class, qOrderPayment.id, qOrderPayment.supplierId, qOrderPayment.supplierName, qOrderPayment.orderType, qOrderPayment.orderDate, qOrderPayment.orderNo, qOrderPayment.documentSource, qOrderPayment.discountAmount, qOrderPayment.collectionAmount, qOrderPayment.totalAmountsOwed, qOrderPayment.verificationAmount, qOrderPayment.advanceCollectionsAmount, qOrderPayment.shouldVerificationAmount, qOrderPayment.hasVerificationAmount, qOrderPayment.notVerificationAmount, qOrderPayment.writeOffStatus, qOrderPayment.orderStatus, qOrderPayment.orderStaffId, qOrderPayment.orderStaffName, qOrderPayment.createdBy, qOrderPayment.updateBy, qOrderPayment.createdAt, qOrderPayment.updateAt, qOrderPayment.approvedBy, qOrderPayment.approvedAt, qOrderPayment.accountBookId, qOrderPayment.merchantId, qCreatedByUser.name.as("createName"), qUpdatedByUser.name.as("updateName"), qApprovedByUser.name.as("approvedName"))).from(qOrderPayment).leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qOrderPayment.createdBy)).leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qOrderPayment.updateBy)).leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qOrderPayment.approvedBy)).where(qOrderPayment.merchantId.eq(merchantId).and(qOrderPayment.id.eq(id))).fetchOne();
+        OrderPaymentDetailsVO orderPayment = jqf.select(Projections.bean(OrderPaymentDetailsVO.class, qOrderPayment.id, qOrderPayment.supplierId, qOrderPayment.supplierName, qOrderPayment.orderType, qOrderPayment.orderDate, qOrderPayment.orderNo, qOrderPayment.documentSource, qOrderPayment.discountAmount, qOrderPayment.collectionAmount, qOrderPayment.totalAmountsOwed, qOrderPayment.verificationAmount, qOrderPayment.advanceCollectionsAmount, qOrderPayment.shouldVerificationAmount, qOrderPayment.hasVerificationAmount, qOrderPayment.notVerificationAmount, qOrderPayment.writeOffStatus, qOrderPayment.orderStatus, qOrderPayment.orderStaffId, qOrderPayment.orderStaffName, qOrderPayment.createdBy, qOrderPayment.updatedBy, qOrderPayment.createdAt, qOrderPayment.updatedAt, qOrderPayment.approvedBy, qOrderPayment.approvedAt, qOrderPayment.accountBookId, qOrderPayment.merchantId, qCreatedByUser.name.as("createName"), qUpdatedByUser.name.as("updateName"), qApprovedByUser.name.as("approvedName"))).from(qOrderPayment).leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qOrderPayment.createdBy)).leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qOrderPayment.updatedBy)).leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qOrderPayment.approvedBy)).where(qOrderPayment.merchantId.eq(merchantId).and(qOrderPayment.id.eq(id))).fetchOne();
 
         if (orderPayment == null) {
             throw new ServiceException("付款单不存在");
@@ -806,7 +802,7 @@ public class OrderPaymentService extends AbsService {
         if (orderPayment.getApprovedBy() == null) {
             throw new ServiceException("请选择审核人");
         }
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要操作的数据");
         }
         List<Long> idList = Arrays.stream(ids.split(",")).map(String::trim).filter(s -> !s.isEmpty()).map(Long::valueOf).toList();
@@ -975,7 +971,7 @@ public class OrderPaymentService extends AbsService {
                 .where(query.builder).fetchFirst();
     }
 
-    public class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setOrderType(Integer orderType) {
@@ -985,9 +981,7 @@ public class OrderPaymentService extends AbsService {
         }
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qOrderPayment.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qOrderPayment.merchantId, merchantId);
         }
 
         public void setSupplierId(Long supplierId) {
@@ -997,9 +991,7 @@ public class OrderPaymentService extends AbsService {
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qOrderPayment.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qOrderPayment.accountBookId, accountBookId);
         }
 
         public void setOrderStatus(OrderStatus orderStatus) {
@@ -1009,19 +1001,19 @@ public class OrderPaymentService extends AbsService {
         }
 
         public void setStartTime(String startTime) {
-            if (StringUtils.isNotEmpty(startTime)) {
+            if (StrUtil.isNotEmpty(startTime)) {
                 builder.and(qOrderPayment.createdAt.goe(LocalDateTime.parse(startTime + "T00:00:00")));
             }
         }
 
         public void setEndTime(String endTime) {
-            if (StringUtils.isNotEmpty(endTime)) {
+            if (StrUtil.isNotEmpty(endTime)) {
                 builder.and(qOrderPayment.createdAt.loe(LocalDateTime.parse(endTime + "T23:59:59")));
             }
         }
 
         public void setKeyword(String keyword) {
-            if (StringUtils.isNotBlank(keyword)) {
+            if (StrUtil.isNotBlank(keyword)) {
                 builder.and(qOrderPayment.orderNo.like("%" + keyword + "%").or(qSupplier.name.like("%" + keyword + "%")));
             }
         }
@@ -1034,19 +1026,15 @@ public class OrderPaymentService extends AbsService {
 
     }
 
-    public class PayableDetailReportQuery {
+    public static class PayableDetailReportQuery implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qOrderPayment.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qOrderPayment.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qOrderPayment.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qOrderPayment.accountBookId, accountBookId);
         }
 
         public void setOrderType(Integer orderType) {
@@ -1062,19 +1050,19 @@ public class OrderPaymentService extends AbsService {
         }
 
         public void setStartTime(String startTime) {
-            if (StringUtils.isNotEmpty(startTime)) {
+            if (StrUtil.isNotEmpty(startTime)) {
                 builder.and(qOrderPayment.createdAt.goe(LocalDateTime.parse(startTime + "T00:00:00")));
             }
         }
 
         public void setEndTime(String endTime) {
-            if (StringUtils.isNotEmpty(endTime)) {
+            if (StrUtil.isNotEmpty(endTime)) {
                 builder.and(qOrderPayment.createdAt.loe(LocalDateTime.parse(endTime + "T23:59:59")));
             }
         }
 
         public void setKeyword(String keyword) {
-            if (StringUtils.isNotBlank(keyword)) {
+            if (StrUtil.isNotBlank(keyword)) {
                 builder.and(qOrderPayment.orderNo.like("%" + keyword + "%").or(qOrderPayment.supplierName.like("%" + keyword + "%")));
             }
         }
@@ -1087,7 +1075,7 @@ public class OrderPaymentService extends AbsService {
     }
 
     @Data
-    public class SummaryPayableDetailsQuery {
+    public static class SummaryPayableDetailsQuery implements TenantAware {
         private Long merchantId;
         private Long accountBookId;
         private Long supplierId;
@@ -1098,16 +1086,14 @@ public class OrderPaymentService extends AbsService {
         private Integer type; //1=按供应商，2=按供应商类型，3=按业务员
     }
 
-    public static class SupplierQuery {
+    public static class SupplierQuery implements TenantAware {
         @Getter
         Long supplierId;
 
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qPurchaseOrderInbound.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qPurchaseOrderInbound.merchantId, merchantId);
         }
 
         public void setOrderNo(String orderNo) {
@@ -1117,9 +1103,7 @@ public class OrderPaymentService extends AbsService {
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qPurchaseOrderInbound.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qPurchaseOrderInbound.accountBookId, accountBookId);
         }
 
         public void setSupplierId(Long supplierId) {

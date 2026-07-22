@@ -138,10 +138,7 @@ const startTime = manba().startOf(manba.MONTH).format('YYYY-MM-DD');
 const endTime = manba().endOf(manba.DAY).format('YYYY-MM-DD');
 
 const money = (v) => Number(v || 0).toFixed(2);
-
-/**
- * @功能描述: 往来单位欠款表
- */
+/** 往来单位欠款表 */
 export default {
   name: 'CounterpartDebt',
   data() {
@@ -394,48 +391,10 @@ export default {
 </script>
 
 <style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
 
 .simple-page__tabs {
   flex-shrink: 0;
   padding-top: 4px;
 }
 
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
-
-.simple-page__table {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.simple-page__pager {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--td-component-border, #dcdcdc);
-  background: #fff;
-}
-
-.simple-page__total {
-  font-size: 14px;
-  color: #333639;
-  flex-shrink: 0;
-}
 </style>

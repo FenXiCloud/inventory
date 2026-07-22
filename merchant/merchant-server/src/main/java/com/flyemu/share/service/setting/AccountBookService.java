@@ -5,12 +5,13 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AccountBookDto;
 import com.flyemu.share.entity.setting.*;
-import com.flyemu.share.repository.AccountBookRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.AccountBookRepository;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.PriceResolveService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ import java.util.List;
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class AccountBookService extends AbsService {
+public class AccountBookService extends BaseService {
 
     private static final QAccountBook qAccountBook = QAccountBook.accountBook;
 
@@ -43,7 +44,6 @@ public class AccountBookService extends AbsService {
         fetchPage.forEach(accountBook -> dtos.add(BeanUtil.toBean(accountBook, AccountBookDto.class)));
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
-
 
     /**
      * loadAccountBooks 加载账套列表
@@ -76,7 +76,6 @@ public class AccountBookService extends AbsService {
 
         return bqf.selectFrom(qAccountBook).where(qAccountBook.merchantId.eq(merchantId).and(qAccountBook.id.eq(orgId))).fetchFirst();
     }
-
 
     /**
      * 保存/更新
@@ -134,7 +133,6 @@ public class AccountBookService extends AbsService {
         return bqf.selectFrom(qAccountBook).where(qAccountBook.merchantId.eq(merchantId)).fetch();
     }
 
-
     /**
      * 查询条件
      */
@@ -148,9 +146,7 @@ public class AccountBookService extends AbsService {
         }
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qAccountBook.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qAccountBook.merchantId, merchantId);
         }
     }
 }

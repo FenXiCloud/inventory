@@ -54,11 +54,10 @@
 </template>
 
 <script>
-
 import {MessagePlugin} from "tdesign-vue-next";
 import FinanceAccountLink from "@js/api/setting/FinanceAccountLink";
 import {mapState} from "vuex";
-import {ObjectUtil} from "../../js/common/utils";
+import {ObjectUtil} from '@common/utils';
 
 export default {
   name: "FinanceRelForm",

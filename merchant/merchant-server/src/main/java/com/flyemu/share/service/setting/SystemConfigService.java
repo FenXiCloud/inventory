@@ -1,11 +1,13 @@
 package com.flyemu.share.service.setting;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.entity.setting.QSystemConfig;
 import com.flyemu.share.entity.setting.SystemConfig;
-import com.flyemu.share.repository.SystemConfigRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.SystemConfigRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,18 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * @功能描述: 系统参数
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class SystemConfigService extends AbsService {
+public class SystemConfigService extends BaseService {
 
     private final static QSystemConfig qSystemConfig = QSystemConfig.systemConfig;
 
@@ -60,19 +55,15 @@ public class SystemConfigService extends AbsService {
         return bqf.selectFrom(qSystemConfig).where(qSystemConfig.merchantId.eq(merchantId).and(qSystemConfig.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qSystemConfig.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qSystemConfig.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qSystemConfig.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qSystemConfig.accountBookId, accountBookId);
         }
     }
 }

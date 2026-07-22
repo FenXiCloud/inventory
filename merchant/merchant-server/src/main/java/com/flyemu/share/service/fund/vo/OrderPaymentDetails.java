@@ -7,9 +7,7 @@ import lombok.Data;
 
 import java.util.List;
 
-/**
- *@author shuaiqi
- */@JsonInclude()
+@JsonInclude()
 @Data
 public class OrderPaymentDetails {
     private OrderPaymentDetailsVO orderPayment;

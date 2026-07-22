@@ -1,5 +1,6 @@
 package com.flyemu.share.service.basic;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.date.DateUtil;
@@ -7,6 +8,7 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.CustomerDto;
@@ -15,8 +17,8 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.CustomerFlow;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.CustomerRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.CustomerRepository;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.fund.CustomerFlowService;
 import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
@@ -34,18 +36,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * @功能描述: 客户管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class CustomerService extends AbsService {
+public class CustomerService extends BaseService {
 
     private static final QCustomer qCustomer = QCustomer.customer;
 
@@ -56,6 +51,7 @@ public class CustomerService extends AbsService {
     private final CustomerRepository customerRepository;
     private final CodeRuleService codeRuleService;
     private final CustomerFlowService customerFlowService;
+    private final ProductExistenceChecker existenceChecker;
 
     public PageResults<CustomerDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qCustomer).select(qCustomer, qCustomerCategory.name, qCustomerLevel.name).leftJoin(qCustomerCategory).on(qCustomerCategory.id.eq(qCustomer.customerCategoryId)).leftJoin(qCustomerLevel).on(qCustomerLevel.id.eq(qCustomer.customerLevelId)).where(query.builder).orderBy(qCustomer.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -135,8 +131,6 @@ public class CustomerService extends AbsService {
 
     }
 
-    private final ProductExistenceChecker existenceChecker;
-
     @Transactional
     public void delete(Long customersId, Long merchantId, Long accountBookId) {
 
@@ -206,7 +200,6 @@ public class CustomerService extends AbsService {
                 .toList();
 
         Assert.isTrue(duplicatedInDb.isEmpty(), "以下客户编码已在系统中存在，请修改后重新导入：" + String.join("、", duplicatedInDb));
-
 
         for (CustomerImportVo row : rows) {
             if (row.getCode() != null && StringUtils.isNotBlank(row.getName())
@@ -302,7 +295,7 @@ public class CustomerService extends AbsService {
     /**
      * 查询条件
      */
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setName(String name) {
@@ -312,15 +305,11 @@ public class CustomerService extends AbsService {
         }
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qCustomer.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qCustomer.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qCustomer.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qCustomer.accountBookId, accountBookId);
         }
 
         public void setCustomerCategoryId(Long customerCategoryId) {

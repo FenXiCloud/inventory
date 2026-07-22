@@ -2,23 +2,18 @@ package com.flyemu.share.service.setting;
 
 import com.flyemu.share.entity.setting.Dept;
 import com.flyemu.share.entity.setting.QDept;
-import com.flyemu.share.repository.DeptRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.DeptRepository;
+import com.flyemu.share.service.BaseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * @author: wangwenjia
- * @since: 2025/5/20 17:44
- * @description:
- */
 @Service
 @Slf4j
 @Transactional(readOnly = false)
 @RequiredArgsConstructor
-public class DeptService extends AbsService{
+public class DeptService extends BaseService{
 
     private final static QDept qDept = QDept.dept;
     private final DeptRepository deptRepository;

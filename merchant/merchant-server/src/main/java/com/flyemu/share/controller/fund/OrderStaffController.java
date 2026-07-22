@@ -1,7 +1,8 @@
 package com.flyemu.share.controller.fund;
 
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.fund.OrderStaff;
@@ -21,43 +22,39 @@ public class OrderStaffController {
     private final OrderStaffService orderStaffService;
 
     @GetMapping
-    public JsonResult list(Page page, OrderStaffService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(Page page, OrderStaffService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(orderStaffService.query(page, query));
     }
 
     @GetMapping("/select")
-    public JsonResult select(OrderStaffService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult select(OrderStaffService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(orderStaffService.select(query));
     }
 
     @GetMapping("/load/{id}")
-    public JsonResult load(@PathVariable Integer id, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(orderStaffService.load(id, merchantId, accountBookId));
+    public JsonResult load(@PathVariable Integer id, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(orderStaffService.load(id, accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid OrderStaff orderStaff, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        orderStaff.setMerchantId(merchantId);
-        orderStaff.setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid OrderStaff orderStaff, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(orderStaff, accountDto);
         orderStaffService.save(orderStaff);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid OrderStaff orderStaff, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        orderStaff.setMerchantId(merchantId);
-        orderStaff.setAccountBookId(accountBookId);
+    public JsonResult update(@RequestBody @Valid OrderStaff orderStaff, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(orderStaff, accountDto);
         orderStaffService.save(orderStaff);
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{id}")
-    public JsonResult delete(@PathVariable Integer id, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        orderStaffService.delete(id, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Integer id, @SaAccountVal AccountDto accountDto) {
+        orderStaffService.delete(id, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 }

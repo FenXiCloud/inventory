@@ -6,9 +6,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-/**
- * @author shuaiqi
- */
 @Data
 @NoArgsConstructor
 public class OrderPaymentForm {

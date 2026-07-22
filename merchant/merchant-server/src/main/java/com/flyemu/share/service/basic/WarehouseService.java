@@ -1,15 +1,17 @@
 package com.flyemu.share.service.basic;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.entity.basic.QWarehouse;
 import com.flyemu.share.entity.basic.Warehouse;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.WarehouseRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.WarehouseRepository;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.setting.CodeRuleService;
 import com.flyemu.share.way.CodeGenerator;
 import com.flyemu.share.way.ProductExistenceChecker;
@@ -28,11 +30,12 @@ import java.util.List;
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class WarehouseService extends AbsService {
+public class WarehouseService extends BaseService {
 
     private static final QWarehouse qWarehouse = QWarehouse.warehouse;
     private final WarehouseRepository warehouseRepository;
     private final CodeRuleService codeRuleService;
+    private final ProductExistenceChecker existenceChecker;
 
     public List<Warehouse> query(Query query) {
         return bqf.selectFrom(qWarehouse).where(query.builder).where(query.builders()).orderBy(qWarehouse.id.desc()).fetch();
@@ -129,8 +132,6 @@ public class WarehouseService extends AbsService {
         return warehouseRepository.save(warehouse);
     }
 
-    private final ProductExistenceChecker existenceChecker;
-
     @Transactional
     public void delete(Long warehousesId, Long merchantId, Long accountBookId) {
         if (existenceChecker.existsInPurchaseOrder(warehousesId, 4)) {
@@ -206,21 +207,17 @@ public class WarehouseService extends AbsService {
     }
 
     @Data
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         private Long id;
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qWarehouse.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qWarehouse.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qWarehouse.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qWarehouse.accountBookId, accountBookId);
         }
 
         public void setName(String name) {

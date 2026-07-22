@@ -1,14 +1,16 @@
 package com.flyemu.share.service.basic;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
-import com.flyemu.share.dto.price.PricingPolicyDTO;
+import com.flyemu.share.common.TenantFilters;
+import com.flyemu.share.dto.price.PricingPolicyDto;
 import com.flyemu.share.entity.basic.PricingPolicy;
 import com.flyemu.share.entity.basic.QPricingPolicy;
 import com.flyemu.share.enums.PolicyType;
 import com.flyemu.share.form.price.PricingPolicyForm;
-import com.flyemu.share.repository.PricingPolicyRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.PricingPolicyRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,18 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * @功能描述: 价格取数规则
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class PricingPolicyService extends AbsService {
+public class PricingPolicyService extends BaseService {
 
     private final static QPricingPolicy qPricingPolicy = QPricingPolicy.pricingPolicy;
 
@@ -70,12 +65,12 @@ public class PricingPolicyService extends AbsService {
 
     @Transactional
     public void sort(PricingPolicyForm pricingPolicyForm, Long merchantId, Long accountBookId) {
-        List<PricingPolicyDTO> dataList = pricingPolicyForm.getDataList();
+        List<PricingPolicyDto> dataList = pricingPolicyForm.getDataList();
         if (dataList == null || dataList.isEmpty()) {
             return;
         }
         for (int i = 0; i < dataList.size(); i++) {
-            PricingPolicyDTO pricingPolicyDTO = dataList.get(i);
+            PricingPolicyDto pricingPolicyDTO = dataList.get(i);
             PricingPolicy pricingPolicy = bqf.selectFrom(qPricingPolicy)
                     .where(qPricingPolicy.id.eq(pricingPolicyDTO.getId())
                             .and(qPricingPolicy.merchantId.eq(merchantId))
@@ -90,7 +85,7 @@ public class PricingPolicyService extends AbsService {
         }
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
         private Long merchantId;
         private Long accountBookId;
@@ -105,16 +100,12 @@ public class PricingPolicyService extends AbsService {
 
         public void setMerchantId(Long merchantId) {
             this.merchantId = merchantId;
-            if (merchantId != null) {
-                builder.and(qPricingPolicy.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qPricingPolicy.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
             this.accountBookId = accountBookId;
-            if (accountBookId != null) {
-                builder.and(qPricingPolicy.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qPricingPolicy.accountBookId, accountBookId);
         }
     }
 }

@@ -1,9 +1,11 @@
 package com.flyemu.share.service.inventory;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.InventoryReportDto;
@@ -12,8 +14,8 @@ import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
 import com.flyemu.share.enums.OperationType;
-import com.flyemu.share.repository.InventoryRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.inventory.InventoryRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import jakarta.persistence.EntityManager;
@@ -33,18 +35,11 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * @功能描述: 库存余额表
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class InventoryService extends AbsService {
+public class InventoryService extends BaseService {
 
     private final static QInventory qInventory = QInventory.inventory;
 
@@ -424,7 +419,7 @@ public class InventoryService extends AbsService {
     }
 
     @Data
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         private Date start;
@@ -446,15 +441,11 @@ public class InventoryService extends AbsService {
         private String warehouseIds;
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qInventory.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qInventory.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qInventory.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qInventory.accountBookId, accountBookId);
         }
 
         private static Date addTimeOfFinalMoment(Date date) {

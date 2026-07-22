@@ -4,7 +4,7 @@
       <div class="simple-page__side">
         <t-table
             row-key="id"
-            size="medium"
+            size="small"
             bordered
             hover
             height="100%"
@@ -262,17 +262,6 @@ export default {
 </script>
 
 <style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
 
 .simple-page__split {
   flex: 1;
@@ -283,11 +272,19 @@ export default {
 }
 
 .simple-page__side {
-  width: 200px;
+  width: 260px;
   flex-shrink: 0;
   min-height: 0;
   overflow: hidden;
   padding: 8px 0;
+}
+
+.simple-page__side :deep(.t-table__header th),
+.simple-page__side :deep(.t-table__body td) {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  line-height: 22px;
+  height: auto;
 }
 
 .simple-page__main {
@@ -299,11 +296,6 @@ export default {
   overflow: hidden;
 }
 
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
-
 .simple-page__hint {
   flex-shrink: 0;
   font-size: 13px;
@@ -311,15 +303,4 @@ export default {
   padding-bottom: 8px;
 }
 
-.simple-page__table {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.simple-page__pager {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
 </style>

@@ -7,9 +7,8 @@ import cn.hutool.poi.excel.ExcelUtil;
 import cn.hutool.poi.excel.ExcelWriter;
 import cn.hutool.poi.excel.style.StyleUtil;
 import com.alibaba.fastjson.JSONObject;
-import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaAccountVal;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.common.ImportVoUtil;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
@@ -38,13 +37,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * @功能描述: 客户管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/customer")
 @RequiredArgsConstructor
@@ -54,16 +46,14 @@ public class CustomerController {
     private final CustomerService customerService;
 
     @GetMapping
-    public JsonResult list(Page page, CustomerService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(Page page, CustomerService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(customerService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid Customer customer, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, @SaAccountVal AccountDto accountDto) {
-        customer.setMerchantId(merchantId);
-        customer.setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid Customer customer, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(customer, accountDto);
         customerService.save(customer, accountDto.getMerchant().getCode());
         return JsonResult.successful();
     }
@@ -75,19 +65,19 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{customerId}")
-    public JsonResult delete(@PathVariable Long customerId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        customerService.delete(customerId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long customerId, @SaAccountVal AccountDto accountDto) {
+        customerService.delete(customerId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(customerService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(customerService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     // 导入
     @PostMapping("/importData")
-    public JsonResult importData(@RequestParam("file") MultipartFile multipartFile, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+    public JsonResult importData(@RequestParam("file") MultipartFile multipartFile, @SaAccountVal AccountDto accountDto) {
         try {
             System.setProperty("javax.xml.parsers.SAXParserFactory", "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl");
 
@@ -101,7 +91,7 @@ public class CustomerController {
             if (rows.size() > 1000) {
                 throw new ServiceException("导入数据不能大于1000行");
             }
-            customerService.importData(rows, merchantId, accountBookId);
+            customerService.importData(rows, accountDto.getMerchantId(), accountDto.getAccountBookId());
             return JsonResult.successful();
         } catch (IllegalArgumentException ae) {
             log.error(ae.getMessage());
@@ -114,8 +104,8 @@ public class CustomerController {
 
     // 导出
     @GetMapping("/exportToExcel")
-    public ResponseEntity<byte[]> exportToExcel(@SaMerchantId Long merchantId) {
-        return toExcel(customerService.exportList(merchantId, null, null));
+    public ResponseEntity<byte[]> exportToExcel(@SaAccountVal AccountDto accountDto) {
+        return toExcel(customerService.exportList(accountDto.getMerchantId(), null, null));
     }
 
     private ResponseEntity<byte[]> toExcel(List<JSONObject> exportList) {

@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.fund;
 
+import com.flyemu.share.common.TenantAware;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -10,20 +11,14 @@ import org.hibernate.annotations.DynamicUpdate;
 import java.math.BigDecimal;
 import java.util.Date;
 
-/**
- * @功能描述: 核销单收款账户明细
- * @创建时间: 2024年04月28日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */@JsonInclude()
+@JsonInclude()
 @Getter
 @Setter
 @Entity
 @NoArgsConstructor
 @Table
 @DynamicUpdate
-public class VerificationCollection {
+public class VerificationCollection implements TenantAware {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -1,7 +1,8 @@
 package com.flyemu.share.controller.fund;
 
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.service.fund.AccountFlowService;
@@ -24,44 +25,38 @@ public class AccountFlowController {
     private final OrderReceiptService orderReceiptService;
 
     @GetMapping
-    public JsonResult list(Page page, AccountFlowService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(Page page, AccountFlowService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(accountFlowService.query(page, query));
     }
 
     @GetMapping("/payableDetail")
-    public JsonResult payableDetail(Page page, OrderPaymentService.PayableDetailReportQuery query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult payableDetail(Page page, OrderPaymentService.PayableDetailReportQuery query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(orderPaymentService.payableDetail(page, query));
     }
 
     @GetMapping("/receivableDetail")
-    public JsonResult receivableDetail(Page page, OrderReceiptService.ReceivableDetailReportQuery query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult receivableDetail(Page page, OrderReceiptService.ReceivableDetailReportQuery query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(orderReceiptService.receivableDetail(page, query));
     }
 
     @GetMapping("/summaryPayable")
-    public JsonResult summaryPayable(Page page, OrderPaymentService.SummaryPayableDetailsQuery query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult summaryPayable(Page page, OrderPaymentService.SummaryPayableDetailsQuery query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(orderPaymentService.summaryPayableDetails(page, query));
     }
 
     @GetMapping("/summaryReceivable")
-    public JsonResult summaryReceivable(Page page, SummaryReceivableDetailsQuery query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult summaryReceivable(Page page, SummaryReceivableDetailsQuery query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(orderReceiptService.summaryReceivableDetails(page, query));
     }
 
     @GetMapping("/otherFund")
-    public JsonResult otherFund(Page page, @ModelAttribute AccountFlowService.OtherFundQuery query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult otherFund(Page page, @ModelAttribute AccountFlowService.OtherFundQuery query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(accountFlowService.queryOtherFundDetails(page, query));
     }
 

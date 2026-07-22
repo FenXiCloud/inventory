@@ -1,5 +1,6 @@
 package com.flyemu.share.service.purchase;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
@@ -8,6 +9,7 @@ import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.PurchaseReturnDto;
@@ -24,11 +26,11 @@ import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.PurchaseReturnForm;
-import com.flyemu.share.repository.PurchaseInboundReturnConnectionRepository;
-import com.flyemu.share.repository.PurchaseReturnItemRepository;
-import com.flyemu.share.repository.PurchaseReturnRepository;
+import com.flyemu.share.repository.purchase.PurchaseInboundReturnConnectionRepository;
+import com.flyemu.share.repository.purchase.PurchaseReturnItemRepository;
+import com.flyemu.share.repository.purchase.PurchaseReturnRepository;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.basic.SupplierService;
 import com.flyemu.share.service.inventory.CostingService;
@@ -49,18 +51,11 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * @功能描述: 采购退货单
- * @创建时间: 2025年02月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class PurchaseReturnService extends AbsService {
+public class PurchaseReturnService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
@@ -111,7 +106,6 @@ public class PurchaseReturnService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-
     public BigDecimal queryTotal(Query query) {
         return bqf.selectFrom(qPurchaseReturn)
                 .select(qPurchaseReturn.refundAmount.sum())
@@ -147,7 +141,6 @@ public class PurchaseReturnService extends AbsService {
                     .where(qPurchaseReturnItem.purchaseReturnId.eq(order.getId()))
                     .fetch();
 
-
             tuples.forEach(tuple -> {
                 double v = NumberUtil.add(tuple.get(qPurchaseReturnItem.secondaryQuantity), tuple.get(qPurchaseInboundItem.returnQuantity));
                 upInboundIds.add(tuple.get(qPurchaseReturnItem.purchaseInboundId));
@@ -166,7 +159,6 @@ public class PurchaseReturnService extends AbsService {
                     .where(qPurchaseReturnItem.purchaseReturnId.eq(order.getId()))
                     .execute();
 
-
             Map<Long, PurchaseInboundItem> inboundItemMap = new HashMap<>();
 
             //查询所有的入库单明细
@@ -175,7 +167,6 @@ public class PurchaseReturnService extends AbsService {
                     .forEach(item -> {
                         inboundItemMap.put(item.getId(), item);
                     });
-
 
             Set<Long> ids = new HashSet<>();
             for (PurchaseReturnItem d : purchaseReturnForm.getPurchaseReturnItemList()) {
@@ -207,7 +198,6 @@ public class PurchaseReturnService extends AbsService {
             }
             original.setSecondarySum(secondarySum[0]);
             purchaseReturnItemRepository.saveAll(purchaseReturnForm.getPurchaseReturnItemList());
-
 
             //保存入库单和退货单关系
             List<PurchaseInboundReturnConnection> connections = new ArrayList<>();
@@ -256,7 +246,6 @@ public class PurchaseReturnService extends AbsService {
                     .forEach(item -> {
                         inboundItemMap.put(item.getId(), item);
                     });
-
 
             for (PurchaseReturnItem d : purchaseReturnForm.getPurchaseReturnItemList()) {
                 PurchaseInboundItem purchaseInboundItem = inboundItemMap.get(d.getPurchaseInboundItemId());
@@ -334,7 +323,6 @@ public class PurchaseReturnService extends AbsService {
                 .where(qPurchaseReturnItem.purchaseReturnId.eq(PurchaseReturnId))
                 .fetch();
 
-
         tuples.forEach(tuple -> {
             double v = NumberUtil.add(tuple.get(qPurchaseReturnItem.secondaryQuantity), tuple.get(qPurchaseInboundItem.returnQuantity));
             upInboundIds.add(tuple.get(qPurchaseReturnItem.purchaseInboundId));
@@ -362,7 +350,6 @@ public class PurchaseReturnService extends AbsService {
                             .set(qPurchaseInbound.returnSum, tuple.get(qPurchaseInboundItem.returnQuantity.sum()))
                             .where(qPurchaseInbound.id.eq(tuple.get(qPurchaseInboundItem.purchaseInboundId))).execute();
                 });
-
 
         jqf.delete(qPurchaseReturn)
                 .where(qPurchaseReturn.id.eq(PurchaseReturnId).and(qPurchaseReturn.merchantId.eq(merchantId)).and(qPurchaseReturn.accountBookId.eq(accountBookId)))
@@ -586,7 +573,6 @@ public class PurchaseReturnService extends AbsService {
         return inventoryItem;
     }
 
-
     public Dict load(Long merchantId, Long orderId) {
         Tuple fetchFirst = jqf.selectFrom(qPurchaseReturn)
                 .select(qPurchaseReturn, qSupplier.name)
@@ -625,7 +611,7 @@ public class PurchaseReturnService extends AbsService {
         return Dict.create().set("purchaseReturn", orderDto).set("purchaseReturnItemList", collect);
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setStart(LocalDate start) {
@@ -641,9 +627,7 @@ public class PurchaseReturnService extends AbsService {
         }
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qPurchaseReturn.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qPurchaseReturn.merchantId, merchantId);
         }
 
         public void setFilter(String filter) {
@@ -659,9 +643,7 @@ public class PurchaseReturnService extends AbsService {
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qPurchaseReturn.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qPurchaseReturn.accountBookId, accountBookId);
         }
     }
 }

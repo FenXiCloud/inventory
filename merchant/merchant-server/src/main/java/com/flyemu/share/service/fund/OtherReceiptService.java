@@ -1,7 +1,9 @@
 package com.flyemu.share.service.fund;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.Customer;
@@ -11,10 +13,10 @@ import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.OtherReceiptItemRepository;
-import com.flyemu.share.repository.OtherReceiptRepository;
+import com.flyemu.share.repository.fund.OtherReceiptItemRepository;
+import com.flyemu.share.repository.fund.OtherReceiptRepository;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.AccountService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
@@ -30,7 +32,6 @@ import com.querydsl.jpa.impl.JPAQuery;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,18 +39,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * @功能描述: 其他收入单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
-public class OtherReceiptService extends AbsService {
+public class OtherReceiptService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QOtherReceipt qOtherReceipt = QOtherReceipt.otherReceipt;
@@ -83,7 +77,7 @@ public class OtherReceiptService extends AbsService {
                         qOtherReceipt.approvedBy,
                         qOtherReceipt.createdBy,
                         qOtherReceipt.createdAt,
-                        qOtherReceipt.updateAt,
+                        qOtherReceipt.updatedAt,
                         qOtherReceipt.accountBookId,
                         qOtherReceipt.merchantId,
                         qOtherReceipt.remarks,
@@ -139,7 +133,7 @@ public class OtherReceiptService extends AbsService {
             }
             assignOrderNumber(otherReceipt);
         } else {
-            otherReceipt.setUpdateAt(LocalDateTime.now());
+            otherReceipt.setUpdatedAt(LocalDateTime.now());
             OtherReceipt original = otherReceiptRepository.findById(otherReceipt.getId())
                     .orElseThrow(() -> new ServiceException("其他收入单不存在"));
             if (!OrderStatus.已保存.equals(original.getOrderStatus())) {
@@ -166,7 +160,7 @@ public class OtherReceiptService extends AbsService {
     }
 
     private void assignOrderNumber(OtherReceipt receipt) {
-        if (StringUtils.isNotBlank(receipt.getOrderNo())) {
+        if (StrUtil.isNotBlank(receipt.getOrderNo())) {
             return;
         }
 
@@ -220,7 +214,7 @@ public class OtherReceiptService extends AbsService {
      */
     @Transactional
     public void delete(String ids, Long merchantId, Long accountBookId) {
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要删除的数据");
         }
 
@@ -293,8 +287,8 @@ public class OtherReceiptService extends AbsService {
                         qOtherReceipt.approvedBy,
                         qOtherReceipt.createdBy,
                         qOtherReceipt.createdAt,
-                        qOtherReceipt.updateBy,
-                        qOtherReceipt.updateAt,
+                        qOtherReceipt.updatedBy,
+                        qOtherReceipt.updatedAt,
                         qOtherReceipt.accountBookId,
                         qOtherReceipt.merchantId,
                         qCreatedByUser.name.as("createName"),
@@ -303,7 +297,7 @@ public class OtherReceiptService extends AbsService {
                 ))
                 .from(qOtherReceipt)
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qOtherReceipt.createdBy))
-                .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qOtherReceipt.updateBy))
+                .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qOtherReceipt.updatedBy))
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qOtherReceipt.approvedBy))
                 .where(qOtherReceipt.merchantId.eq(merchantId).and(qOtherReceipt.id.eq(id)))
                 .fetchOne();
@@ -346,7 +340,7 @@ public class OtherReceiptService extends AbsService {
         if (dto.getApprovedBy() == null) {
             throw new ServiceException("请选择审核人");
         }
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要操作的数据");
         }
 
@@ -474,19 +468,15 @@ public class OtherReceiptService extends AbsService {
                 .where(query.builder).fetchFirst();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qOtherReceipt.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qOtherReceipt.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qOtherReceipt.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qOtherReceipt.accountBookId, accountBookId);
         }
 
     }

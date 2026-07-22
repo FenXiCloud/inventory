@@ -1,16 +1,12 @@
 package com.flyemu.share.service.fund.vo.report;
 
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * *@author shuaiqi
- * 应付账款明细报表
- */
+/** 应付账款明细报表 */
 @JsonInclude()
 @Data
 public class PayableDetailReportVO {

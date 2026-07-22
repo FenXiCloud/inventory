@@ -1,6 +1,7 @@
 package com.flyemu.share.controller.setting;
 
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.setting.Menu;
 import com.flyemu.share.service.setting.MenuService;
@@ -9,13 +10,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * @功能描述: 菜单管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/menu")
 @RequiredArgsConstructor
@@ -24,12 +18,12 @@ public class MenuController {
     private final MenuService menuService;
 
     @GetMapping
-    public JsonResult list(@SaMerchantId Long merchantId) {
-        return JsonResult.successful(menuService.query(merchantId));
+    public JsonResult list(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(menuService.query(accountDto.getMerchantId()));
     }
 
     @GetMapping("/merchant")
-    public JsonResult merchantMenu(Menu.MenuGroup menuGroup, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(menuService.merchantMenu(merchantId, menuGroup));
+    public JsonResult merchantMenu(Menu.MenuGroup menuGroup, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(menuService.merchantMenu(accountDto.getMerchantId(), menuGroup));
     }
 }

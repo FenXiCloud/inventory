@@ -1,12 +1,18 @@
 package com.flyemu.share.service.sales;
 
+import com.flyemu.share.repository.basic.PriceRecordRepository;
+import com.flyemu.share.repository.sales.SalesOrderItemRepository;
+import com.flyemu.share.repository.sales.SalesOrderRepository;
+import com.flyemu.share.repository.sales.SalesOutboundRepository;
+import com.flyemu.share.common.TenantAware;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.dto.SalesOrderDTO;
-import com.flyemu.share.dto.SalesOrderItemDTO;
+import com.flyemu.share.dto.sales.SalesOrderDto;
+import com.flyemu.share.dto.sales.SalesOrderItemDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.QInventory;
@@ -17,16 +23,15 @@ import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.SalesOrderForm;
-import com.flyemu.share.repository.*;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import cn.hutool.core.util.StrUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -41,18 +46,11 @@ import java.util.stream.Collectors;
 
 import static com.flyemu.share.entity.sales.QSalesOutboundItem.salesOutboundItem;
 
-/**
- * @功能描述: 销售订单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class SalesOrderService extends AbsService {
+public class SalesOrderService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
@@ -76,8 +74,7 @@ public class SalesOrderService extends AbsService {
     private final PriceRecordService priceRecordService;
     private final PriceRecordRepository priceRecordRepository;
 
-
-    public PageResults<SalesOrderDTO> query(Page page, SalesOrderService.Query query) {
+    public PageResults<SalesOrderDto> query(Page page, SalesOrderService.Query query) {
         long totalSize = bqf.selectFrom(qSalesOrder)
                 .where(query.builder)
                 .fetchCount();
@@ -92,9 +89,9 @@ public class SalesOrderService extends AbsService {
                 .limit(page.getOffsetEnd())
                 .fetch();
 
-        List<SalesOrderDTO> dtos = new ArrayList<>();
+        List<SalesOrderDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            SalesOrderDTO salesOrderDTO = BeanUtil.toBean(tuple.get(qSalesOrder), SalesOrderDTO.class);
+            SalesOrderDto salesOrderDTO = BeanUtil.toBean(tuple.get(qSalesOrder), SalesOrderDto.class);
             salesOrderDTO.setCustomerName(tuple.get(qCustomer.name));
             salesOrderDTO.setCreatedName(tuple.get(qMerchantUser.name));
             //查询子表
@@ -102,10 +99,10 @@ public class SalesOrderService extends AbsService {
                     .select(qSalesOrderItem)
                     .where(qSalesOrderItem.salesOrderId.eq(salesOrderDTO.getId()))
                     .fetch();
-            List<SalesOrderItemDTO> itemDTOs = new ArrayList<>();
+            List<SalesOrderItemDto> itemDTOs = new ArrayList<>();
             AtomicReference<Double> totalQuantity = new AtomicReference<>((double) 0L);
             salesOrderItemList.forEach(item -> {
-                SalesOrderItemDTO itemDTO = BeanUtil.toBean(item, SalesOrderItemDTO.class);
+                SalesOrderItemDto itemDTO = BeanUtil.toBean(item, SalesOrderItemDto.class);
                 itemDTOs.add(itemDTO);
                 Double quantity = itemDTO.getQuantity();
                 totalQuantity.updateAndGet(v -> v + quantity);
@@ -139,7 +136,7 @@ public class SalesOrderService extends AbsService {
         return new PageResults<>(dtos, page, totalSize);
     }
 
-    private void subQueryOutOrder(SalesOrderDTO salesOrderDTO) {
+    private void subQueryOutOrder(SalesOrderDto salesOrderDTO) {
         //通过销售订单id 关联查询出销售出库单的所有商品
         List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
                 .where(qSalesOutboundItem.salesOrderId.eq(salesOrderDTO.getId()))
@@ -275,14 +272,14 @@ public class SalesOrderService extends AbsService {
         return bqf.selectFrom(qSalesOrder).where(qSalesOrder.merchantId.eq(merchantId).and(qSalesOrder.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public SalesOrderDTO load(Long merchantId, Long orderId) {
+    public SalesOrderDto load(Long merchantId, Long orderId) {
         SalesOrder salesOrder = bqf.selectFrom(qSalesOrder)
                 .where(qSalesOrder.merchantId.eq(merchantId).and(qSalesOrder.id.eq(orderId)))
                 .fetchFirst();
         if (salesOrder == null) {
             throw new ServiceException("单据不存在");
         }
-        SalesOrderDTO dto = BeanUtil.toBean(salesOrder, SalesOrderDTO.class);
+        SalesOrderDto dto = BeanUtil.toBean(salesOrder, SalesOrderDto.class);
         List<Tuple> fetch = jqf.selectFrom(qSalesOrderItem)
                 .select(qSalesOrderItem, qProduct.code, qProduct.name, qUnit.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qSalesOrderItem.productId))
@@ -290,9 +287,9 @@ public class SalesOrderService extends AbsService {
                 .where(qSalesOrderItem.salesOrderId.eq(orderId)
                         .and(qSalesOrderItem.merchantId.eq(merchantId)))
                 .orderBy(qSalesOrderItem.id.asc()).fetch();
-        List<SalesOrderItemDTO> salesOrderItemDTOS = new ArrayList<>();
+        List<SalesOrderItemDto> salesOrderItemDTOS = new ArrayList<>();
         fetch.forEach(tuple -> {
-            SalesOrderItemDTO salesOrderItemDTO = BeanUtil.toBean(tuple.get(qSalesOrderItem), SalesOrderItemDTO.class);
+            SalesOrderItemDto salesOrderItemDTO = BeanUtil.toBean(tuple.get(qSalesOrderItem), SalesOrderItemDto.class);
             salesOrderItemDTO.setProductName(tuple.get(qProduct.name));
             salesOrderItemDTO.setProductCode(tuple.get(qProduct.code));
             salesOrderItemDTO.setUnitName(tuple.get(qUnit.name));
@@ -365,7 +362,6 @@ public class SalesOrderService extends AbsService {
         salesOrderRepository.saveAll(salesOrders);
     }
 
-
     public BigDecimal queryTotal(Query query) {
         return bqf.selectFrom(qSalesOrder)
                 .select(qSalesOrder.finalAmount.sum())
@@ -374,23 +370,19 @@ public class SalesOrderService extends AbsService {
                 .where(query.builder).fetchFirst();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qSalesOrder.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qSalesOrder.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qSalesOrder.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qSalesOrder.accountBookId, accountBookId);
         }
 
         public void setFilter(String filter) {
-            if (StringUtils.isNotBlank(filter)) {
+            if (StrUtil.isNotBlank(filter)) {
                 builder.and(qSalesOrder.orderNo.like("%" + filter + "%"));
             }
         }

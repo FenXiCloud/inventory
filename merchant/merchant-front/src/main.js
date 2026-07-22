@@ -2,7 +2,6 @@ import {createApp} from 'vue'
 import App from './App.vue'
 import router from './js/router'
 import store from './js/store'
-import {useTable} from '@common/xe-table'
 import TDesign from 'tdesign-vue-next'
 
 import './style/index.css'
@@ -14,7 +13,7 @@ import {setupDialog} from '@common/dialog'
 import widthDirective from '@/js/directives/width'
 
 let app = createApp(App);
-app.use(store).use(useTable).use(TDesign).directive("auth", directive).directive('width', widthDirective);
+app.use(store).use(TDesign).directive("auth", directive).directive('width', widthDirective);
 setupDialog(app);
 
 store.dispatch('init').then(() => {

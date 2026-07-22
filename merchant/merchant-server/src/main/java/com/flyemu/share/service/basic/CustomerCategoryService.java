@@ -1,14 +1,16 @@
 package com.flyemu.share.service.basic;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.Assert;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.entity.basic.CustomerCategory;
 import com.flyemu.share.entity.basic.QCustomer;
 import com.flyemu.share.entity.basic.QCustomerCategory;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.CustomerCategoryRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.CustomerCategoryRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,20 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * @功能描述: 客户分类管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class CustomerCategoryService extends AbsService {
+public class CustomerCategoryService extends BaseService {
 
     private final static QCustomerCategory qCustomerCategory = QCustomerCategory.customerCategory;
+    private final QCustomer qCustomer = QCustomer.customer;
 
     private final CustomerCategoryRepository customerCategoryRepository;
 
@@ -66,8 +62,6 @@ public class CustomerCategoryService extends AbsService {
         return customerCategoryRepository.save(customerCategory);
     }
 
-    private final QCustomer qCustomer = QCustomer.customer;
-
     /**
      * 删除
      *
@@ -93,19 +87,15 @@ public class CustomerCategoryService extends AbsService {
         return bqf.selectFrom(qCustomerCategory).where(qCustomerCategory.merchantId.eq(merchantId).and(qCustomerCategory.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qCustomerCategory.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qCustomerCategory.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qCustomerCategory.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qCustomerCategory.accountBookId, accountBookId);
         }
     }
 }

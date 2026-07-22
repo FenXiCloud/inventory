@@ -10,10 +10,10 @@ import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.Merchant;
 import com.flyemu.share.entity.setting.QMerchant;
 import com.flyemu.share.entity.setting.Role;
-import com.flyemu.share.repository.AdminRepository;
-import com.flyemu.share.repository.MerchantRepository;
-import com.flyemu.share.repository.RoleRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.AdminRepository;
+import com.flyemu.share.repository.setting.MerchantRepository;
+import com.flyemu.share.repository.setting.RoleRepository;
+import com.flyemu.share.service.BaseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,18 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-/**
- * @功能描述: 商户管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class MerchantService extends AbsService {
+public class MerchantService extends BaseService {
 
     private final QMerchant qMerchant = QMerchant.merchant;
 
@@ -48,7 +41,7 @@ public class MerchantService extends AbsService {
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
         return new PageResults<>(fetchPage, page);
     }
-    
+
     @Transactional
     public Merchant save(Merchant merchant) {
         if (merchant.getId() != null) {
@@ -57,9 +50,7 @@ public class MerchantService extends AbsService {
             BeanUtil.copyProperties(merchant, original, CopyOptions.create().ignoreNullValue());
             return merchantRepository.save(original);
         }
-        Merchant m = merchantRepository.save(merchant);
-
-        return m;
+        return merchantRepository.save(merchant);
     }
 
     @Transactional

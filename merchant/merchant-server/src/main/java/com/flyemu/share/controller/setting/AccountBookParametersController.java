@@ -1,7 +1,7 @@
 package com.flyemu.share.controller.setting;
 
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.setting.AccountBookParameters;
 import com.flyemu.share.service.setting.AccountBookParametersService;
@@ -20,18 +20,18 @@ public class AccountBookParametersController {
     private final AccountBookParametersService accountBookParametersService;
 
     @GetMapping("/load/{accountBookId}")
-    public JsonResult load(@SaMerchantId Long merchantId, @PathVariable Integer accountBookId) {
-        return JsonResult.successful(accountBookParametersService.load(merchantId, accountBookId));
+    public JsonResult load(@PathVariable Integer accountBookId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(accountBookParametersService.load(accountDto.getMerchantId(), accountBookId));
     }
 
     @GetMapping
-    public JsonResult getCurrent(@SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(accountBookParametersService.list(Math.toIntExact(accountBookId)));
+    public JsonResult getCurrent(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(accountBookParametersService.list(Math.toIntExact(accountDto.getAccountBookId())));
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid AccountBookParameters accountBookParameters, @SaAccountBookId Long accountBookId) {
-        accountBookParameters.setAccountBookId(Math.toIntExact(accountBookId));
+    public JsonResult update(@RequestBody @Valid AccountBookParameters accountBookParameters, @SaAccountVal AccountDto accountDto) {
+        accountBookParameters.setAccountBookId(Math.toIntExact(accountDto.getAccountBookId()));
         accountBookParametersService.update(accountBookParameters);
         return JsonResult.successful();
     }

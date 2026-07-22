@@ -40,7 +40,7 @@ import Customer from "@js/api/basic/Customer";
 import Product from "@js/api/basic/Product";
 import Supplier from "@js/api/basic/Supplier";
 import {MessagePlugin} from "tdesign-vue-next";
-import {ObjectUtil} from "../../js/common/utils";
+import {ObjectUtil} from '@common/utils';
 
 export default {
   name: "FinanceItemMapForm",
@@ -156,6 +156,3 @@ export default {
 }
 </script>
 
-<style scoped lang="less">
-
-</style>

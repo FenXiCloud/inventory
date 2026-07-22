@@ -7,7 +7,6 @@ import java.util.Random;
  */
 public class CodeGenerator {
 
-
     private static final int RANDOM_LENGTH = 8;
     private static final Random random = new Random();
 
@@ -23,6 +22,5 @@ public class CodeGenerator {
         }
         return sb.toString();
     }
-
 
 }

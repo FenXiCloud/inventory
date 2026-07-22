@@ -1,9 +1,11 @@
 package com.flyemu.share.service.setting;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.dto.FinanceVoucherCandidateVO;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
@@ -20,8 +22,8 @@ import com.flyemu.share.entity.setting.*;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.FinanceVoucherForm;
-import com.flyemu.share.repository.FinanceVoucherRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.FinanceVoucherRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.core.BooleanBuilder;
@@ -43,19 +45,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-
-/**
- * @功能描述: 云财务凭证
- * @创建时间: 2025年03月11日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class FinanceVoucherService extends AbsService {
+public class FinanceVoucherService extends BaseService {
 
     private final static QFinanceVoucher qFinanceVoucher = QFinanceVoucher.financeVoucher;
 
@@ -67,12 +61,28 @@ public class FinanceVoucherService extends AbsService {
 
     private final FinanceItemMapService financeItemMapService;
 
-    public final QProduct qProduct = QProduct.product;
-
-    public final QCustomer qCustomer = QCustomer.customer;
-
-    public final QSupplier qSupplier = QSupplier.supplier;
-
+    private final static QProduct qProduct = QProduct.product;
+    private final static QCustomer qCustomer = QCustomer.customer;
+    private final static QSupplier qSupplier = QSupplier.supplier;
+    private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
+    private final static QPurchaseOrder qPurchaseOrder = QPurchaseOrder.purchaseOrder;
+    private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
+    private final static QPurchaseReturn qPurchaseReturn = QPurchaseReturn.purchaseReturn;
+    private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
+    private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
+    private final static QSalesReturn qSalesReturn = QSalesReturn.salesReturn;
+    private final static QInventoryTransfer qInventoryTransfer = QInventoryTransfer.inventoryTransfer;
+    private final static QStockTake qStockTake = QStockTake.stockTake;
+    private final static QOtherInbound qOtherInbound = QOtherInbound.otherInbound;
+    private final static QOtherOutbound qOtherOutbound = QOtherOutbound.otherOutbound;
+    private final static QCostAdjustment qCostAdjustment = QCostAdjustment.costAdjustment;
+    private final static QOrderReceipt qOrderReceipt = QOrderReceipt.orderReceipt;
+    private final static QOrderPayment qOrderPayment = QOrderPayment.orderPayment;
+    private final static QVerification qVerification = QVerification.verification;
+    private final static QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
+    private final static QOtherReceipt qOtherReceipt = QOtherReceipt.otherReceipt;
+    private final static QOtherExpense qOtherExpense = QOtherExpense.otherExpense;
+    private final static QAccountTransfer qAccountTransfer = QAccountTransfer.accountTransfer;
 
     public List<FinanceVoucher> query(FinanceVoucherService.Query query) {
         return bqf.selectFrom(qFinanceVoucher)
@@ -244,27 +254,6 @@ public class FinanceVoucherService extends AbsService {
         }
         return financeAccountLinkService.loadVoucher(voucherId, accountDto);
     }
-
-
-    private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
-    private final static QPurchaseOrder qPurchaseOrder = QPurchaseOrder.purchaseOrder;
-    private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
-    private final static QPurchaseReturn qPurchaseReturn = QPurchaseReturn.purchaseReturn;
-    private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
-    private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
-    private final static QSalesReturn qSalesReturn = QSalesReturn.salesReturn;
-    private final static QInventoryTransfer qInventoryTransfer = QInventoryTransfer.inventoryTransfer;
-    private final static QStockTake qStockTake = QStockTake.stockTake;
-    private final static QOtherInbound qOtherInbound = QOtherInbound.otherInbound;
-    private final static QOtherOutbound qOtherOutbound = QOtherOutbound.otherOutbound;
-    private final static QCostAdjustment qCostAdjustment = QCostAdjustment.costAdjustment;
-    private final static QOrderReceipt qOrderReceipt = QOrderReceipt.orderReceipt;
-    private final static QOrderPayment qOrderPayment = QOrderPayment.orderPayment;
-    private final static QVerification qVerification = QVerification.verification;
-    private final static QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
-    private final static QOtherReceipt qOtherReceipt = QOtherReceipt.otherReceipt;
-    private final static QOtherExpense qOtherExpense = QOtherExpense.otherExpense;
-    private final static QAccountTransfer qAccountTransfer = QAccountTransfer.accountTransfer;
 
     public PageResults<FinanceVoucherCandidateVO> candidates(Page page, CandidateQuery query) {
         String documentType = query.getDocumentType();
@@ -873,9 +862,8 @@ public class FinanceVoucherService extends AbsService {
         }
     }
 
-
     @Data
-    public static class CandidateQuery {
+    public static class CandidateQuery implements TenantAware {
         private Long merchantId;
         private Long accountBookId;
         private String documentType;
@@ -885,22 +873,18 @@ public class FinanceVoucherService extends AbsService {
     }
 
     @Data
-    public static class Query {
+    public static class Query implements TenantAware {
 
         private String type;
 
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qFinanceVoucher.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qFinanceVoucher.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qFinanceVoucher.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qFinanceVoucher.accountBookId, accountBookId);
         }
 
         public BooleanBuilder builders() {

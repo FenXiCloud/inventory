@@ -1,15 +1,17 @@
 package com.flyemu.share.service.setting;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.entity.setting.QSystemLog;
 import com.flyemu.share.entity.setting.SystemLog;
-import com.flyemu.share.repository.SystemLogRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.SystemLogRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
@@ -21,14 +23,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @功能描述: 操作日志
- */
+/** 操作日志 */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class SystemLogService extends AbsService {
+public class SystemLogService extends BaseService {
 
     private final static QSystemLog qSystemLog = QSystemLog.systemLog;
     private final static QAdmin qAdmin = QAdmin.admin;
@@ -114,19 +114,15 @@ public class SystemLogService extends AbsService {
                 .execute();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qSystemLog.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qSystemLog.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qSystemLog.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qSystemLog.accountBookId, accountBookId);
         }
 
         public void setOperationType(String operationType) {

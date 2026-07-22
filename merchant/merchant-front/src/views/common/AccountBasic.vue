@@ -55,7 +55,7 @@
 
 <script>
 import {mapState} from "vuex"
-import {clone} from "xe-utils"
+import {clone} from '@common/utils'
 import {MessagePlugin} from "tdesign-vue-next";
 import Admin from "@js/api/setting/Admin";
 
@@ -118,17 +118,6 @@ export default {
 </script>
 
 <style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 12px 20px 20px;
-  box-sizing: border-box;
-  overflow: auto;
-}
 
 .settings-card__form {
   max-width: 480px;

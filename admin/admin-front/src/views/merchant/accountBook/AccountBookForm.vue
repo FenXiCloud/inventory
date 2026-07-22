@@ -13,7 +13,6 @@
 </template>
 
 <script>
-
 import AccountBook from "@js/api/AccountBook";
 import {MessagePlugin} from "tdesign-vue-next";
 import {CopyObj} from "@common/utils";

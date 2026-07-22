@@ -1,5 +1,6 @@
 package com.flyemu.share.service.purchase;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
@@ -8,6 +9,7 @@ import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.PurchaseInboundDto;
@@ -30,10 +32,10 @@ import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.PurchaseInboundForm;
-import com.flyemu.share.repository.PurchaseInboundItemRepository;
-import com.flyemu.share.repository.PurchaseInboundRepository;
+import com.flyemu.share.repository.purchase.PurchaseInboundItemRepository;
+import com.flyemu.share.repository.purchase.PurchaseInboundRepository;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.basic.SupplierService;
 import com.flyemu.share.service.inventory.CostingService;
@@ -54,18 +56,11 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * @功能描述: 采购入库表
- * @创建时间: 2025年02月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class PurchaseInboundService extends AbsService {
+public class PurchaseInboundService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QPurchaseOrder qPurchaseOrder = QPurchaseOrder.purchaseOrder;
@@ -251,7 +246,6 @@ public class PurchaseInboundService extends AbsService {
         return bqf.selectFrom(qPurchaseInbound).where(qPurchaseInbound.merchantId.eq(merchantId).and(qPurchaseInbound.accountBookId.eq(accountBookId))).fetch();
     }
 
-
     public PageResults<PurchaseInboundDto> listToReturn(Page page, PurchaseInboundService.Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInbound)
                 .select(qPurchaseInbound, qSupplier.name, qMerchantUser.name)
@@ -271,11 +265,10 @@ public class PurchaseInboundService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-
     public List<PurchaseInboundItemDto> loadToReturn(List<Long> orderIds, Long merchantId, Long supplierId) {
         QUnit qUnit1 = new QUnit("id");
 
-        List<PurchaseInboundItemDto> collect = bqf.selectFrom(qPurchaseInboundItem)
+        return bqf.selectFrom(qPurchaseInboundItem)
                 .select(qPurchaseInboundItem, qProduct.code, qProduct.name, qWarehouse.name, qPurchaseInbound.orderNo,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name, qProductCategory.name, qProduct.specification)
                 .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId).and(qPurchaseInbound.merchantId.eq(merchantId)))
@@ -303,7 +296,6 @@ public class PurchaseInboundService extends AbsService {
                     dto.setSecondaryUnitName(tuple.get(qUnit1.name));
                     list.add(dto);
                 }, List::addAll);
-        return collect;
     }
 
     @Transactional
@@ -572,9 +564,8 @@ public class PurchaseInboundService extends AbsService {
         return Dict.create().set("purchaseInbound", orderDto).set("purchaseInboundItemList", collect);
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
-
 
         public void setState(OrderStatus state) {
             if (state != null) {
@@ -600,11 +591,8 @@ public class PurchaseInboundService extends AbsService {
             }
         }
 
-
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qPurchaseInbound.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qPurchaseInbound.merchantId, merchantId);
         }
 
         public void setSupplierId(Long supplierId) {
@@ -614,9 +602,7 @@ public class PurchaseInboundService extends AbsService {
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qPurchaseInbound.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qPurchaseInbound.accountBookId, accountBookId);
         }
     }
 }

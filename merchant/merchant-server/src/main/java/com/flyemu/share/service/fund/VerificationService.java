@@ -1,9 +1,18 @@
 package com.flyemu.share.service.fund;
 
+import com.flyemu.share.repository.basic.CustomerRepository;
+import com.flyemu.share.repository.basic.SupplierRepository;
+import com.flyemu.share.repository.fund.OrderPaymentRepository;
+import com.flyemu.share.repository.fund.OrderReceiptRepository;
+import com.flyemu.share.repository.fund.VerificationCollectionRepository;
+import com.flyemu.share.repository.fund.VerificationItemRepository;
+import com.flyemu.share.repository.fund.VerificationRepository;
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.Customer;
@@ -13,9 +22,8 @@ import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.*;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.fund.dto.OrderPaymentUpdateDTO;
 import com.flyemu.share.form.VerificationForm;
 import com.flyemu.share.service.fund.vo.VerificationDetails;
@@ -28,7 +36,6 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQuery;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,18 +43,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * @功能描述: 核销单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
-public class VerificationService extends AbsService {
+public class VerificationService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QVerification qVerification = QVerification.verification;
@@ -116,7 +116,7 @@ public class VerificationService extends AbsService {
             verification.setCreatedAt(LocalDateTime.now());
             assignOrderNumber(verification);
         } else {
-            verification.setUpdateAt(LocalDateTime.now());
+            verification.setUpdatedAt(LocalDateTime.now());
             Verification byId = verificationRepository.getById(verification.getId());
             if (!OrderStatus.已保存.equals(byId.getOrderStatus())) {
                 throw new ServiceException("该单据不是【已保存】状态，无法修改");
@@ -279,7 +279,7 @@ public class VerificationService extends AbsService {
     }
 
     private void assignOrderNumber(Verification verification) {
-        if (StringUtils.isNotBlank(verification.getOrderNo())) {
+        if (StrUtil.isNotBlank(verification.getOrderNo())) {
             return;
         }
 
@@ -396,7 +396,7 @@ public class VerificationService extends AbsService {
         String ids = dto.getId();
         OrderStatus targetStatus = dto.getOrderStatus();
 
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要操作的数据");
         }
         if (targetStatus == null) {
@@ -549,7 +549,7 @@ public class VerificationService extends AbsService {
 
     @Transactional
     public void delete(String ids, Long merchantId, Long accountBookId) {
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要删除的数据");
         }
 
@@ -621,7 +621,7 @@ public class VerificationService extends AbsService {
                                 qVerification.personnelId,
                                 qVerification.personnelName,
                                 qVerification.createdBy,
-                                qVerification.updateBy,
+                                qVerification.updatedBy,
                                 qVerification.remarks,
                                 qVerification.orderDate,
                                 qVerification.orderStaffId,
@@ -635,7 +635,7 @@ public class VerificationService extends AbsService {
                 )
                 .from(qVerification)
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qVerification.createdBy.longValue()))
-                .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qVerification.updateBy.longValue()))
+                .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qVerification.updatedBy.longValue()))
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qVerification.approvedBy.longValue()))
                 .where(qVerification.merchantId.eq(merchantId).and(qVerification.id.eq(id)))
                 .fetchOne();
@@ -673,23 +673,21 @@ public class VerificationService extends AbsService {
                 .where(query.builder).fetchFirst();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qVerification.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qVerification.merchantId, merchantId);
         }
 
         public void setStartTime(String startTime) {
-            if (StringUtils.isNotEmpty(startTime)) {
+            if (StrUtil.isNotEmpty(startTime)) {
                 builder.and(qVerification.createdAt.goe(LocalDateTime.parse(startTime + "T00:00:00")));
             }
         }
 
         public void setEndTime(String endTime) {
-            if (StringUtils.isNotEmpty(endTime)) {
+            if (StrUtil.isNotEmpty(endTime)) {
                 builder.and(qVerification.createdAt.loe(LocalDateTime.parse(endTime + "T23:59:59")));
             }
         }
@@ -707,15 +705,13 @@ public class VerificationService extends AbsService {
         }
 
         public void setOrderNo(String orderNo) {
-            if (StringUtils.isNotEmpty(orderNo)) {
+            if (StrUtil.isNotEmpty(orderNo)) {
                 builder.and(qVerification.orderNo.like("%" + orderNo + "%"));
             }
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qVerification.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qVerification.accountBookId, accountBookId);
         }
 
     }

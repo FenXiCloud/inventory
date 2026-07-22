@@ -10,9 +10,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- *@author shuaiqi
- */
 @JsonInclude()
 @Data
 public class OtherExpenseDetailsVO {

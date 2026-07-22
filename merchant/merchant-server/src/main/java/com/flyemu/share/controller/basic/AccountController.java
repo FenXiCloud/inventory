@@ -1,21 +1,15 @@
 package com.flyemu.share.controller.basic;
 
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
+import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.entity.basic.Account;
 import com.flyemu.share.service.basic.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * @功能描述: 账户管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/account")
 @RequiredArgsConstructor
@@ -24,37 +18,34 @@ public class AccountController {
     private final AccountService accountService;
 
     @GetMapping
-    public JsonResult list(AccountService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(AccountService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(accountService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid Account account, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        account.setMerchantId(merchantId);
-        account.setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid Account account, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(account, accountDto);
         accountService.save(account);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid Account account, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        account.setMerchantId(merchantId);
-        account.setAccountBookId(accountBookId);
+    public JsonResult update(@RequestBody @Valid Account account, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(account, accountDto);
         accountService.save(account);
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{accountId}")
-    public JsonResult delete(@PathVariable Long accountId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        accountService.delete(accountId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long accountId, @SaAccountVal AccountDto accountDto) {
+        accountService.delete(accountId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(accountService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(accountService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
 }

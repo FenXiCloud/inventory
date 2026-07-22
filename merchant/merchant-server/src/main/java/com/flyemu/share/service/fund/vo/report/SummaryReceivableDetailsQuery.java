@@ -1,14 +1,12 @@
 package com.flyemu.share.service.fund.vo.report;
 
+import com.flyemu.share.common.TenantAware;
 import lombok.Data;
 
 import java.time.LocalDate;
 
-/**
- *@author shuaiqi
- */
 @Data
-public class SummaryReceivableDetailsQuery {
+public class SummaryReceivableDetailsQuery implements TenantAware {
     private Long merchantId;
     private Long accountBookId;
     private Long customerId;

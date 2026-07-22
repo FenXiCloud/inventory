@@ -1,9 +1,11 @@
 package com.flyemu.share.service.fund;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.basic.Supplier;
@@ -12,11 +14,11 @@ import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.OtherExpenseItemRepository;
-import com.flyemu.share.repository.OtherExpenseRepository;
-import com.flyemu.share.repository.SupplierRepository;
+import com.flyemu.share.repository.fund.OtherExpenseItemRepository;
+import com.flyemu.share.repository.fund.OtherExpenseRepository;
+import com.flyemu.share.repository.basic.SupplierRepository;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.AccountService;
 import com.flyemu.share.service.basic.SupplierService;
 import com.flyemu.share.service.fund.dto.AccountBalanceChangeContext;
@@ -30,7 +32,6 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQuery;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,18 +39,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * @功能描述: 其他支出单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class OtherExpenseService extends AbsService {
+public class OtherExpenseService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QOtherExpense qOtherExpense = QOtherExpense.otherExpense;
@@ -85,7 +79,7 @@ public class OtherExpenseService extends AbsService {
                         qOtherExpense.approvedBy,
                         qOtherExpense.createdBy,
                         qOtherExpense.createdAt,
-                        qOtherExpense.updateAt,
+                        qOtherExpense.updatedAt,
                         qOtherExpense.accountBookId,
                         qOtherExpense.merchantId,
                         qCreatedByUser.name.as("createName"),
@@ -118,7 +112,7 @@ public class OtherExpenseService extends AbsService {
             }
             assignOrderNumber(otherExpense);
         } else {
-            otherExpense.setUpdateAt(LocalDateTime.now());
+            otherExpense.setUpdatedAt(LocalDateTime.now());
             OtherExpense original = otherExpenseRepository.findById(otherExpense.getId())
                     .orElseThrow(() -> new ServiceException("其他支出单不存在"));
             if (!OrderStatus.已保存.equals(original.getOrderStatus())) {
@@ -148,7 +142,7 @@ public class OtherExpenseService extends AbsService {
     }
 
     private void assignOrderNumber(OtherExpense expense) {
-        if (StringUtils.isNotBlank(expense.getOrderNo())) {
+        if (StrUtil.isNotBlank(expense.getOrderNo())) {
             return;
         }
 
@@ -198,7 +192,7 @@ public class OtherExpenseService extends AbsService {
 
     @Transactional
     public void delete(String ids, Long merchantId, Long accountBookId) {
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要删除的数据");
         }
 
@@ -271,8 +265,8 @@ public class OtherExpenseService extends AbsService {
                         qOtherExpense.approvedBy,
                         qOtherExpense.createdBy,
                         qOtherExpense.createdAt,
-                        qOtherExpense.updateBy,
-                        qOtherExpense.updateAt,
+                        qOtherExpense.updatedBy,
+                        qOtherExpense.updatedAt,
                         qOtherExpense.accountBookId,
                         qOtherExpense.merchantId,
                         qCreatedByUser.name.as("createName"),
@@ -281,7 +275,7 @@ public class OtherExpenseService extends AbsService {
                 ))
                 .from(qOtherExpense)
                 .leftJoin(qCreatedByUser).on(qCreatedByUser.id.eq(qOtherExpense.createdBy))
-                .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qOtherExpense.updateBy))
+                .leftJoin(qUpdatedByUser).on(qUpdatedByUser.id.eq(qOtherExpense.updatedBy))
                 .leftJoin(qApprovedByUser).on(qApprovedByUser.id.eq(qOtherExpense.approvedBy))
                 .where(qOtherExpense.merchantId.eq(merchantId).and(qOtherExpense.id.eq(id)))
                 .fetchOne();
@@ -322,7 +316,7 @@ public class OtherExpenseService extends AbsService {
         if (dto.getApprovedBy() == null) {
             throw new ServiceException("请选择审核人");
         }
-        if (StringUtils.isBlank(ids)) {
+        if (StrUtil.isBlank(ids)) {
             throw new ServiceException("请选择要操作的数据");
         }
 
@@ -444,19 +438,15 @@ public class OtherExpenseService extends AbsService {
                 .where(query.builder).fetchFirst();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qOtherExpense.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qOtherExpense.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qOtherExpense.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qOtherExpense.accountBookId, accountBookId);
         }
     }
 }

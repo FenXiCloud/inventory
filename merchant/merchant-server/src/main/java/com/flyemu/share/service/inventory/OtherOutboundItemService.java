@@ -7,8 +7,8 @@ import com.flyemu.share.entity.inventory.OtherOutbound;
 import com.flyemu.share.entity.inventory.OtherOutboundItem;
 import com.flyemu.share.entity.inventory.QOtherOutbound;
 import com.flyemu.share.entity.inventory.QOtherOutboundItem;
-import com.flyemu.share.repository.OtherOutboundItemRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.inventory.OtherOutboundItemRepository;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.CustomerLevelPriceService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.basic.ProductService;
@@ -21,18 +21,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
-/**
- * @功能描述: 其他出库单明细
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class OtherOutboundItemService extends AbsService {
+public class OtherOutboundItemService extends BaseService {
 
     private final static QOtherOutboundItem qOtherOutboundItem = QOtherOutboundItem.otherOutboundItem;
 

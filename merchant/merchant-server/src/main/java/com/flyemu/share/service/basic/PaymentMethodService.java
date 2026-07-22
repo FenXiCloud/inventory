@@ -1,14 +1,16 @@
 package com.flyemu.share.service.basic;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.entity.basic.PaymentMethod;
 import com.flyemu.share.entity.basic.QPaymentMethod;
 import com.flyemu.share.entity.fund.QOrderPaymentCollection;
 import com.flyemu.share.entity.fund.QOrderReceiptCollection;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.PaymentMethodRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.PaymentMethodRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,18 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * @功能描述: 结算方式
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class PaymentMethodService extends AbsService {
+public class PaymentMethodService extends BaseService {
 
     private final static QPaymentMethod qPaymentMethod = QPaymentMethod.paymentMethod;
 
@@ -103,7 +98,7 @@ public class PaymentMethodService extends AbsService {
         return bqf.selectFrom(qPaymentMethod).where(qPaymentMethod.merchantId.eq(merchantId).and(qPaymentMethod.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setName(String name) {
@@ -119,15 +114,11 @@ public class PaymentMethodService extends AbsService {
         }
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qPaymentMethod.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qPaymentMethod.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qPaymentMethod.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qPaymentMethod.accountBookId, accountBookId);
         }
     }
 }

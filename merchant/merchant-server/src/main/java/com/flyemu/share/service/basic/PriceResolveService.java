@@ -5,8 +5,8 @@ import com.flyemu.share.enums.PolicySource;
 import com.flyemu.share.enums.PolicyType;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
-import com.flyemu.share.repository.PricingPolicyRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.PricingPolicyRepository;
+import com.flyemu.share.service.BaseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,7 +26,7 @@ import java.util.List;
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class PriceResolveService extends AbsService {
+public class PriceResolveService extends BaseService {
 
     private final static QPricingPolicy qPricingPolicy = QPricingPolicy.pricingPolicy;
     private final static QPriceRecord qPriceRecord = QPriceRecord.priceRecord;

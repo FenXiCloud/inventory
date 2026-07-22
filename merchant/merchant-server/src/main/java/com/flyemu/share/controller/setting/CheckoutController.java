@@ -3,6 +3,7 @@ package com.flyemu.share.controller.setting;
 import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
 import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.common.Constants;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
@@ -44,8 +45,7 @@ public class CheckoutController {
      */
     @PostMapping
     public JsonResult save(@RequestBody @Valid Checkout checkout, @SaAccountVal AccountDto accountDto) {
-        checkout.setMerchantId(accountDto.getMerchantId());
-        checkout.setAccountBookId(accountDto.getAccountBookId());
+        TenantScope.bind(checkout, accountDto);
         checkout.setCheckId(accountDto.getAdminId());
         LocalDate checkDate = checkoutService.save(checkout).getCheckDate();
         SaSession session = StpUtil.getTokenSession();

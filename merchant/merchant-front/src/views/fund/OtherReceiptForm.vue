@@ -1,8 +1,8 @@
 <template>
   <div class="page-column">
     <div class="page-column-full-body">
-      <vxe-toolbar class-name="!size--mini">
-        <template #buttons>
+      <div class="form-toolbar">
+        <div class="form-toolbar__left">
           <label class="mr-20px" style="font-size: 16px !important">
             <span style="color: red">*</span>客户：
           </label>
@@ -47,83 +47,77 @@
             clearable
             :disabled="isAudited"
           />
-        </template>
-        <template #tools>
-          <Stamp v-if="isAudited" />
-        </template>
-      </vxe-toolbar>
+        </div>
+        <Stamp v-if="isAudited" />
+      </div>
 
-      <vxe-table
+      <t-table
         ref="collectionTable"
-        size="mini"
-        border
+        row-key="_rowKey"
+        size="small"
+        bordered
         stripe
-        show-overflow
-        :row-config="{ height: 40 }"
-        :edit-config="isAudited ? undefined : editConfig"
+        hover
+        table-layout="fixed"
+        :columns="columns"
         :data="tableData"
-        :show-footer="showFooter"
-        :footer-method="footerMethod"
+        :foot-data="footData"
+        :loading="loading"
       >
-        <vxe-column type="seq" title="序号" width="60" align="center" fixed="left" />
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
-          <template #default="{ rowIndex }">
-            <template v-if="!isAudited">
-              <div
-                class="fa fa-plus text-hover mr-5px"
-                @click="adjustRows('insert', rowIndex, tableData)"
-              ></div>
-              <div
-                class="fa fa-minus text-hover"
-                v-if="canDelete(tableData)"
-                @click="adjustRows('delete', rowIndex, tableData)"
-              ></div>
-            </template>
+        <template #title-accountTypeName>
+          <span style="color: red">*</span>收入类别
+        </template>
+        <template #title-amount>
+          <span style="color: red">*</span>金额
+        </template>
+        <template #ops="{ rowIndex }">
+          <template v-if="!isAudited">
+            <div
+              class="fa fa-plus text-hover mr-5px"
+              @click="adjustRows('insert', rowIndex, tableData)"
+            ></div>
+            <div
+              class="fa fa-minus text-hover"
+              v-if="canDelete(tableData)"
+              @click="adjustRows('delete', rowIndex, tableData)"
+            ></div>
           </template>
-        </vxe-column>
-        <vxe-column field="accountTypeName" title="收入类别" min-width="140" :edit-render="{}">
-          <template #header>
-            <span style="color: red">*</span>收入类别
-          </template>
-          <template #default="{ row }">
-            <span>{{ row.accountTypeName }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-select
-              v-model="row.accountTypeName"
-              placeholder="请选择"
-              :multiple="false"
-              transfer
-              @change="changeAccount(row.accountTypeName, row)"
-            >
-              <vxe-option
-                v-for="item in accountTypeList"
-                :key="item.id"
-                :value="item.name"
-                :label="item.name"
-              />
-            </vxe-select>
-          </template>
-        </vxe-column>
-        <vxe-column field="amount" title="金额" width="140" :edit-render="{}">
-          <template #header>
-            <span style="color: red">*</span>金额
-          </template>
-          <template #default="{ row }">
-            <span>{{ row.amount }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-input
-              v-model="row.amount"
-              type="number"
-              placeholder="请输入数值"
-              min="0"
-              @change="updateFootEvent"
-            />
-          </template>
-        </vxe-column>
-        <vxe-column field="remarks" title="备注" min-width="120" :edit-render="{ name: 'input' }" />
-      </vxe-table>
+        </template>
+        <template #accountTypeName="{ row }">
+          <t-select
+            v-if="!isAudited"
+            v-model="row.accountTypeName"
+            placeholder="请选择"
+            :options="accountTypeList"
+            :keys="{ value: 'name', label: 'name' }"
+            filterable
+            clearable
+            @change="changeAccount(row.accountTypeName, row)"
+          />
+          <span v-else>{{ row.accountTypeName }}</span>
+        </template>
+        <template #amount="{ row }">
+          <t-input-number
+            v-if="!isAudited"
+            v-model="row.amount"
+            theme="normal"
+            :min="0"
+            :decimal-places="2"
+            placeholder="请输入数值"
+            style="width: 100%"
+            @change="updateFootEvent"
+          />
+          <span v-else>{{ row.amount }}</span>
+        </template>
+        <template #remarks="{ row }">
+          <t-input
+            v-if="!isAudited"
+            v-model="row.remarks"
+            placeholder="请输入"
+          />
+          <span v-else>{{ row.remarks }}</span>
+        </template>
+      </t-table>
 
       <div class="mt-10px"></div>
       <div class="filler-panel">
@@ -207,6 +201,12 @@ import AccountType from '@js/api/basic/AccountType';
 import OrderStaffForm from './OrderStaffForm';
 import { mapState, mapMutations } from 'vuex';
 import Stamp from '../common/Stamp.vue';
+
+let rowSeq = 0;
+function newRow(extra = {}) {
+  return { _rowKey: `r-${++rowSeq}`, ...extra };
+}
+
 export default {
   name: 'OtherReceiptForm',
   components: { Stamp },
@@ -216,14 +216,6 @@ export default {
     index: Number
   },
   data() {
-    const tableData = [{}];
-    const tableData2 = [{}];
-    const editConfig = {
-      trigger: 'click',
-      mode: 'cell'
-    };
-    const accountOptions = [];
-
     return {
       logContent: null,
       val1: [],
@@ -233,8 +225,8 @@ export default {
         orderStaffName: null,
         orderDate: manba().format('YYYY-MM-DD')
       },
-      tableData,
-      tableData2,
+      tableData: [newRow()],
+      tableData2: [newRow()],
       customerDataList: [],
       orderStaffList: [],
       paymentMethodList: [],
@@ -258,10 +250,7 @@ export default {
         sort: null
       },
 
-      showFooter: true,
-
-      editConfig,
-      accountOptions
+      accountOptions: []
     };
   },
   computed: {
@@ -274,6 +263,39 @@ export default {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize
       });
+    },
+    columns() {
+      return [
+        {
+          colKey: 'seq',
+          title: '序号',
+          width: 60,
+          align: 'center',
+          fixed: 'left',
+          cell: (h, { rowIndex }) => rowIndex + 1,
+          foot: () => '合计'
+        },
+        {
+          colKey: 'ops',
+          title: '操作',
+          width: 70,
+          align: 'center',
+          fixed: 'left'
+        },
+        { colKey: 'accountTypeName', title: '收入类别', minWidth: 140 },
+        { colKey: 'amount', title: '金额', width: 140 },
+        { colKey: 'remarks', title: '备注', minWidth: 120 }
+      ];
+    },
+    footData() {
+      let total = 0;
+      (this.tableData || []).forEach((row) => {
+        const value = parseFloat(row.amount);
+        if (!isNaN(value)) {
+          total += value;
+        }
+      });
+      return [{ seq: '合计', amount: total.toFixed(2) }];
     }
   },
   methods: {
@@ -287,7 +309,14 @@ export default {
       });
     },
     updateFootEvent() {
-      this.$refs.collectionTable && this.$refs.collectionTable.updateFooter();
+      let total = 0;
+      (this.tableData || []).forEach((row) => {
+        const value = parseFloat(row.amount);
+        if (!isNaN(value)) {
+          total += value;
+        }
+      });
+      this.totalTb1 = total;
       this.form.collectionAmount = this.calcCollectionAmount();
       this.form.arrearsAmount = this.calcArrearsAmount();
     },
@@ -301,7 +330,7 @@ export default {
         createName = this.user.admin.name,
         updateName,
         createdAt,
-        updateAt,
+        updatedAt,
         approvedName,
         approvedAt
       } = this.form;
@@ -309,7 +338,7 @@ export default {
         `制单人: ${createName}`,
         createdAt ? `制单时间: ${createdAt}` : null,
         updateName ? `最后修改人: ${updateName}` : null,
-        updateAt ? `最后修改时间: ${updateAt}` : null,
+        updatedAt ? `最后修改时间: ${updatedAt}` : null,
         approvedName ? `审核人: ${approvedName}` : null,
         approvedAt ? `审核时间: ${approvedAt}` : null
       ].filter((entry) => entry);
@@ -349,8 +378,9 @@ export default {
     },
     clearData() {
       this.form = {};
-      this.tableData = [{}];
-      this.tableData2 = [{}];
+      this.tableData = [newRow()];
+      this.tableData2 = [newRow()];
+      this.totalTb1 = 0;
     },
 
     updatePage(type = 'add', orderId = null) {
@@ -367,7 +397,8 @@ export default {
       OtherReceipt.load(this.orderId )
         .then(({ data: { order, itemList } }) => {
           this.form = order;
-          this.tableData = itemList || [];
+          this.tableData = (itemList || []).map((row) => newRow(row));
+          this.updateFootEvent();
           this.getLog();
         })
         .finally(() => (this.loading = false));
@@ -386,10 +417,11 @@ export default {
       });
     },
     saveForm(type = 'add', orderStatus = '已保存') {
+      this.updateFootEvent();
       let orderReceipt = {
         // documentSource: 1,
         createdBy: this.user.admin.id,
-        updateBy: this.user.admin.id,
+        updatedBy: this.user.admin.id,
         orderStatus: orderStatus, //||已审核
 
         ...this.form
@@ -401,7 +433,7 @@ export default {
       }
       const filterEmptyObjects = (arr) =>
         arr
-          .map(({ _X_ROW_KEY, ...rest }) => rest)
+          .map(({ _rowKey, ...rest }) => rest)
           .filter((row) => Object.keys(row).length);
 
       let params = {
@@ -422,43 +454,16 @@ export default {
       this.save(type, params);
     },
 
-    footerMethodFormat({ columns, data }, list, totalName) {
-      const footerRow = new Array(columns.length).fill('');
-      footerRow[0] = '合计';
-
-      columns.forEach((column, index) => {
-        if (list.includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            const value = parseFloat(row[column.property]);
-            if (!isNaN(value)) {
-              total += value;
-            }
-          });
-          footerRow[index] = total.toFixed(2);
-          this[totalName] = total;
-        }
-      });
-
-      this.form.collectionAmount = this.calcCollectionAmount();
-      this.form.arrearsAmount = this.calcArrearsAmount();
-
-      return [footerRow];
-    },
-
-    footerMethod({ columns, data }) {
-      return this.footerMethodFormat({ columns, data }, ['amount'], 'totalTb1');
-    },
-
     canDelete(tableData) {
       return tableData.length > 1;
     },
     adjustRows(type, index, tableData) {
       if (type === 'insert') {
-        tableData.splice(index + 1, 0, {});
+        tableData.splice(index + 1, 0, newRow());
       } else if (type === 'delete' && this.canDelete(tableData)) {
         tableData.splice(index, 1);
       }
+      this.updateFootEvent();
     },
 
     save(type, params) {
@@ -580,10 +585,6 @@ export default {
 };
 </script>
 <style lang="less" scoped>
-:deep(.vxe-select > .vxe-input) {
-  width: 100%;
-  height: 100%;
-}
 
 .receipt-extra-actions {
   display: flex;

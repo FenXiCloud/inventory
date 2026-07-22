@@ -1,9 +1,10 @@
 package com.flyemu.share.controller.basic;
 
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.hutool.core.lang.Assert;
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.basic.Product;
@@ -13,13 +14,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * @功能描述: 商品列表
- * @创建时间: 2024年05月05日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/product")
 @RequiredArgsConstructor
@@ -29,50 +23,48 @@ public class ProductController {
     private final ProductService productService;
 
     @GetMapping
-    public JsonResult list(Page page, ProductService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(Page page, ProductService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(productService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid ProductForm productForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+    public JsonResult save(@RequestBody @Valid ProductForm productForm, @SaAccountVal AccountDto accountDto) {
         Assert.isNull(productForm.getProduct().getId(), "新增商品Id必须为空~");
-        productService.save(productForm, merchantId, accountBookId);
+        productService.save(productForm, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid ProductForm productForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
+    public JsonResult update(@RequestBody @Valid ProductForm productForm, @SaAccountVal AccountDto accountDto) {
         Product product = productForm.getProduct();
         Assert.notNull(product.getId(), "更新商品Id不允许为空~");
         if (productForm.getCustomerLevelPriceList() == null && product.getEnabled() != null) {
-            productService.updateById(product, merchantId, accountBookId);
+            productService.updateById(product, accountDto.getMerchantId(), accountDto.getAccountBookId());
         } else {
-            productService.save(productForm, merchantId, accountBookId);
+            productService.save(productForm, accountDto.getMerchantId(), accountDto.getAccountBookId());
         }
         return JsonResult.successful();
     }
 
     @GetMapping("/load/{productId}")
-    public JsonResult load(@PathVariable Long productId, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(productService.loadById(productId, merchantId));
+    public JsonResult load(@PathVariable Long productId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(productService.loadById(productId, accountDto.getMerchantId()));
     }
 
     @DeleteMapping("/{productId}")
-    public JsonResult delete(@PathVariable Long productId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        productService.delete(productId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long productId, @SaAccountVal AccountDto accountDto) {
+        productService.delete(productId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId,
-                             Long productCategoryId, Long warehouseId, Long customerId) {
-        return JsonResult.successful(productService.select(merchantId, accountBookId, productCategoryId, warehouseId, customerId));
+    public JsonResult select(Long productCategoryId, Long warehouseId, Long customerId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(productService.select(accountDto.getMerchantId(), accountDto.getAccountBookId(), productCategoryId, warehouseId, customerId));
     }
 
     @GetMapping("/customerLevel/price/{productId}")
-    public JsonResult customerLevelPrice(@PathVariable Long productId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(productService.customerLevelPrice(productId, merchantId, accountBookId));
+    public JsonResult customerLevelPrice(@PathVariable Long productId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(productService.customerLevelPrice(productId, accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 }

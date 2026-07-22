@@ -1,17 +1,19 @@
 package com.flyemu.share.service.basic;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.entity.basic.ProductCategory;
 import com.flyemu.share.entity.basic.QProduct;
 import com.flyemu.share.entity.basic.QProductCategory;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.CategoryTreeRepository;
-import com.flyemu.share.repository.ProductCategoryRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.CategoryTreeRepository;
+import com.flyemu.share.repository.basic.ProductCategoryRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,18 +25,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * @功能描述: 商品分类
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class ProductCategoryService extends AbsService {
+public class ProductCategoryService extends BaseService {
 
     private static final QProductCategory qProductCategory = QProductCategory.productCategory;
 
@@ -196,7 +191,7 @@ public class ProductCategoryService extends AbsService {
                 .execute();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setName(String name) {
@@ -206,15 +201,11 @@ public class ProductCategoryService extends AbsService {
         }
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qProductCategory.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qProductCategory.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qProductCategory.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qProductCategory.accountBookId, accountBookId);
         }
     }
 }

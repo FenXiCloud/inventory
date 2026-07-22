@@ -23,30 +23,30 @@
       <div>
         <t-form ref="priceForm" class="mr-10px" :data="model" label-width="90px" layout="inline">
           <t-form-item label="预计采购价">
-            <vxe-input placeholder="请输入预计采购价" v-model.number="model.purchasePrice" type="float" min="0"/>
+            <t-input-number placeholder="请输入预计采购价" v-model="model.purchasePrice" theme="normal" :min="0" :decimal-places="2"/>
           </t-form-item>
           <t-form-item label="最高采购价">
-            <vxe-input placeholder="请输入最高采购价" v-model="model.maxPurchasePrice" type="float" min="0"/>
+            <t-input-number placeholder="请输入最高采购价" v-model="model.maxPurchasePrice" theme="normal" :min="0" :decimal-places="2"/>
           </t-form-item>
           <t-form-item label="最近采购价">
-            <vxe-input placeholder="请输入最近采购价" v-model="model.recentlyPurchasePrice" disabled type="float" min="0"/>
+            <t-input-number placeholder="请输入最近采购价" v-model="model.recentlyPurchasePrice" theme="normal" :min="0" :decimal-places="2" disabled/>
           </t-form-item>
 
           <t-form-item label="零售客户价">
-            <vxe-input placeholder="请输入零售客户价" v-model="model.retailCustomerPrice" type="float" min="0"/>
+            <t-input-number placeholder="请输入零售客户价" v-model="model.retailCustomerPrice" theme="normal" :min="0" :decimal-places="2"/>
           </t-form-item>
           <t-form-item label="批发客户价">
-            <vxe-input placeholder="请输入批发客户价" v-model="model.wholesaleCustomerPrice" type="float" min="0"/>
+            <t-input-number placeholder="请输入批发客户价" v-model="model.wholesaleCustomerPrice" theme="normal" :min="0" :decimal-places="2"/>
           </t-form-item>
           <t-form-item label="VIP客户价">
-            <vxe-input placeholder="请输入VIP客户价" v-model="model.vipCustomerPrice" type="float" min="0"/>
+            <t-input-number placeholder="请输入VIP客户价" v-model="model.vipCustomerPrice" theme="normal" :min="0" :decimal-places="2"/>
           </t-form-item>
 
           <t-form-item label="最低销售价">
-            <vxe-input placeholder="请输入最低销售价" v-model="model.minSalesPrice" type="float" min="0"/>
+            <t-input-number placeholder="请输入最低销售价" v-model="model.minSalesPrice" theme="normal" :min="0" :decimal-places="2"/>
           </t-form-item>
           <t-form-item label="最近销售价">
-            <vxe-input placeholder="请输入最近销售价" v-model="model.recentlySalesPrice" disabled type="float" min="0"/>
+            <t-input-number placeholder="请输入最近销售价" v-model="model.recentlySalesPrice" theme="normal" :min="0" :decimal-places="2" disabled/>
           </t-form-item>
         </t-form>
       </div>
@@ -64,13 +64,6 @@
 </template>
 
 <script>
-/**
- * @功能描述: 产品FORM
- * @创建时间: 2024年05月06日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 import {MessagePlugin} from "tdesign-vue-next";
 import PriceRecord from "@js/api/basic/PriceRecord";
 

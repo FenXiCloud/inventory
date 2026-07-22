@@ -9,8 +9,8 @@ import com.flyemu.share.entity.setting.MerchantMenu;
 import com.flyemu.share.entity.setting.QMenu;
 import com.flyemu.share.entity.setting.QMerchantMenu;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.MenuRepository;
-import com.flyemu.share.repository.MerchantMenuRepository;
+import com.flyemu.share.repository.setting.MenuRepository;
+import com.flyemu.share.repository.setting.MerchantMenuRepository;
 import com.querydsl.core.BooleanBuilder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -21,18 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @功能描述: 菜单管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class MenuService extends AbsService {
+public class MenuService extends BaseService {
 
     private final static QMenu qMenu = QMenu.menu;
 
@@ -41,7 +34,6 @@ public class MenuService extends AbsService {
     private final MerchantMenuRepository merchantMenuRepository;
 
     private final QMerchantMenu qMerchantMenu = QMerchantMenu.merchantMenu;
-
 
     public List<Menu> query(Query query) {
         return bqf.selectFrom(qMenu)
@@ -102,7 +94,6 @@ public class MenuService extends AbsService {
         return bqf.selectFrom(qMerchantMenu).select(qMerchantMenu.menuId).innerJoin(qMenu).on(qMerchantMenu.menuId.eq(qMenu.id))
                 .where(qMerchantMenu.merchantId.eq(merchantId).and(qMenu.enabled.isTrue())).fetch();
     }
-
 
     public List<Menu> queryMerchantMenu(Long merchantId) {
         return bqf.selectFrom(qMerchantMenu)

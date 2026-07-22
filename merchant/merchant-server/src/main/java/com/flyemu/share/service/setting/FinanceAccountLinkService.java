@@ -1,10 +1,12 @@
 package com.flyemu.share.service.setting;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.api.FinOpsCloudApi;
 import com.flyemu.share.api.FinOpsRequest;
 import com.flyemu.share.dto.AccountDto;
@@ -12,8 +14,8 @@ import com.flyemu.share.dto.VoucherDto;
 import com.flyemu.share.entity.setting.FinanceAccountLink;
 import com.flyemu.share.entity.setting.QFinanceAccountLink;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.FinanceAccountLinkRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.FinanceAccountLinkRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,19 +30,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-
-/**
- * @功能描述: 关联云财务
- * @创建时间: 2025年03月11日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class FinanceAccountLinkService extends AbsService {
+public class FinanceAccountLinkService extends BaseService {
 
     private final static QFinanceAccountLink qFinanceAccountLink = QFinanceAccountLink.financeAccountLink;
 
@@ -54,7 +48,6 @@ public class FinanceAccountLinkService extends AbsService {
                 .orderBy(qFinanceAccountLink.id.desc())
                 .fetch();
     }
-
 
     @Transactional
     public FinanceAccountLink save(FinanceAccountLink financeAccountLink, AccountDto accountDto) {
@@ -216,19 +209,15 @@ public class FinanceAccountLinkService extends AbsService {
         return finOpsCloudApi.loadVoucher(finOpsRequest, null, voucherId);
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qFinanceAccountLink.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qFinanceAccountLink.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qFinanceAccountLink.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qFinanceAccountLink.accountBookId, accountBookId);
         }
 
     }

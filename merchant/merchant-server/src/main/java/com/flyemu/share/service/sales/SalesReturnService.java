@@ -1,12 +1,19 @@
 package com.flyemu.share.service.sales;
 
+import com.flyemu.share.repository.sales.SalesOrderItemRepository;
+import com.flyemu.share.repository.sales.SalesOutboundItemRepository;
+import com.flyemu.share.repository.sales.SalesOutboundRepository;
+import com.flyemu.share.repository.sales.SalesReturnItemRepository;
+import com.flyemu.share.repository.sales.SalesReturnRepository;
+import com.flyemu.share.common.TenantAware;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
-import com.flyemu.share.dto.SalesReturnDTO;
-import com.flyemu.share.dto.SalesReturnItemDTO;
+import com.flyemu.share.dto.sales.SalesReturnDto;
+import com.flyemu.share.dto.sales.SalesReturnItemDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.CustomerFlow;
 import com.flyemu.share.entity.inventory.Inventory;
@@ -19,9 +26,8 @@ import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.SalesReturnForm;
-import com.flyemu.share.repository.*;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.inventory.CostingService;
@@ -31,7 +37,7 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import cn.hutool.core.util.StrUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -46,19 +52,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-
-/**
- * @功能描述: 销售出库单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class SalesReturnService extends AbsService {
+public class SalesReturnService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QSalesReturn qSalesReturn = QSalesReturn.salesReturn;
@@ -70,7 +68,6 @@ public class SalesReturnService extends AbsService {
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProduct qProduct = QProduct.product;
     private final static QUnit qUnit = QUnit.unit;
-
 
     private final SalesReturnRepository salesReturnRepository;
     private final SalesReturnItemRepository salesReturnItemRepository;
@@ -87,7 +84,7 @@ public class SalesReturnService extends AbsService {
     private final CostingService costingService;
     private final CustomerService customerService;
 
-    public PageResults<SalesReturnDTO> query(Page page, SalesReturnService.Query query) {
+    public PageResults<SalesReturnDto> query(Page page, SalesReturnService.Query query) {
         long totalSize = bqf.selectFrom(qSalesReturn)
                 .where(query.builder)
                 .fetchCount();
@@ -102,9 +99,9 @@ public class SalesReturnService extends AbsService {
                 .limit(page.getOffsetEnd())
                 .fetch();
 
-        List<SalesReturnDTO> dtos = new ArrayList<>();
+        List<SalesReturnDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
-            SalesReturnDTO salesReturnDTO = BeanUtil.toBean(tuple.get(qSalesReturn), SalesReturnDTO.class);
+            SalesReturnDto salesReturnDTO = BeanUtil.toBean(tuple.get(qSalesReturn), SalesReturnDto.class);
             salesReturnDTO.setCustomerName(tuple.get(qCustomer.name));
             salesReturnDTO.setCreatedName(tuple.get(qMerchantUser.name));
             //查询子表
@@ -112,10 +109,10 @@ public class SalesReturnService extends AbsService {
                     .select(qsalesReturnItem)
                     .where(qsalesReturnItem.salesReturnId.eq(salesReturnDTO.getId()))
                     .fetch();
-            List<SalesReturnItemDTO> itemDTOs = new ArrayList<>();
+            List<SalesReturnItemDto> itemDTOs = new ArrayList<>();
             AtomicReference<Double> totalQuantity = new AtomicReference<>((double) 0L);
             salesReturnItemList.forEach(item -> {
-                SalesReturnItemDTO itemDTO = BeanUtil.toBean(item, SalesReturnItemDTO.class);
+                SalesReturnItemDto itemDTO = BeanUtil.toBean(item, SalesReturnItemDto.class);
                 itemDTOs.add(itemDTO);
                 Double quantity = itemDTO.getQuantity();
                 totalQuantity.updateAndGet(v -> v + quantity);
@@ -280,14 +277,14 @@ public class SalesReturnService extends AbsService {
         return bqf.selectFrom(qSalesReturn).where(qSalesReturn.merchantId.eq(merchantId).and(qSalesReturn.accountBookId.eq(accountBookId))).fetch();
     }
 
-    public SalesReturnDTO load(Long merchantId, Long orderId) {
+    public SalesReturnDto load(Long merchantId, Long orderId) {
         SalesReturn salesReturn = bqf.selectFrom(qSalesReturn)
                 .where(qSalesReturn.merchantId.eq(merchantId).and(qSalesReturn.id.eq(orderId)))
                 .fetchFirst();
         if (salesReturn == null) {
             throw new ServiceException("单据不存在");
         }
-        SalesReturnDTO dto = BeanUtil.toBean(salesReturn, SalesReturnDTO.class);
+        SalesReturnDto dto = BeanUtil.toBean(salesReturn, SalesReturnDto.class);
         List<Tuple> fetch = jqf.selectFrom(qsalesReturnItem)
                 .select(qsalesReturnItem, qProduct.code, qProduct.name, qUnit.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qsalesReturnItem.productId))
@@ -295,9 +292,9 @@ public class SalesReturnService extends AbsService {
                 .where(qsalesReturnItem.salesReturnId.eq(orderId)
                         .and(qsalesReturnItem.merchantId.eq(merchantId)))
                 .orderBy(qsalesReturnItem.id.asc()).fetch();
-        List<SalesReturnItemDTO> salesReturnItemDTOList = new ArrayList<>();
+        List<SalesReturnItemDto> salesReturnItemDTOList = new ArrayList<>();
         fetch.forEach(tuple -> {
-            SalesReturnItemDTO salesReturnItemDTO = BeanUtil.toBean(tuple.get(qsalesReturnItem), SalesReturnItemDTO.class);
+            SalesReturnItemDto salesReturnItemDTO = BeanUtil.toBean(tuple.get(qsalesReturnItem), SalesReturnItemDto.class);
             salesReturnItemDTO.setProductName(tuple.get(qProduct.name));
             salesReturnItemDTO.setProductCode(tuple.get(qProduct.code));
             salesReturnItemDTO.setUnitName(tuple.get(qUnit.name));
@@ -353,8 +350,9 @@ public class SalesReturnService extends AbsService {
         }
 
         flow.setBalanceReceivables(customer.getBalance());
-        customerService.updateTheBalance(customer,flow);
+        customerService.updateTheBalance(customer, flow);
     }
+
     private CustomerFlow getCustomerFlow(SalesReturn salesReturn, OrderStatus targetStatus) {
         CustomerFlow flow = new CustomerFlow();
         flow.setCustomerId(salesReturn.getCustomerId());
@@ -460,16 +458,16 @@ public class SalesReturnService extends AbsService {
                                       List<InventoryItem> inventoryItems, SalesReturn salesReturn) {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
-        returnItems.forEach(otherOutboundItem -> {
-            Double quantity = otherOutboundItem.getQuantity();
-            BigDecimal subtotal = otherOutboundItem.getCostAmount();
+        returnItems.forEach(returnItem -> {
+            Double quantity = returnItem.getQuantity();
+            BigDecimal subtotal = returnItem.getCostAmount();
             if (subtotal == null) {
-                subtotal = otherOutboundItem.getSubtotal() == null ? BigDecimal.ZERO : otherOutboundItem.getSubtotal();
+                subtotal = returnItem.getSubtotal() == null ? BigDecimal.ZERO : returnItem.getSubtotal();
             }
             BigDecimal finalSubtotal = subtotal;
             inventories.stream()
-                    .filter(item -> item.getProductId().equals(otherOutboundItem.getProductId())
-                            && item.getWarehouseId().equals(otherOutboundItem.getWarehouseId()))
+                    .filter(item -> item.getProductId().equals(returnItem.getProductId())
+                            && item.getWarehouseId().equals(returnItem.getWarehouseId()))
                     .findFirst()
                     .ifPresentOrElse(
                             item -> {
@@ -483,46 +481,44 @@ public class SalesReturnService extends AbsService {
                                 item.setTotalCost(added);
                             }, () -> {
                                 Inventory inventory = new Inventory();
-                                inventory.setProductId(otherOutboundItem.getProductId());
-                                inventory.setWarehouseId(otherOutboundItem.getWarehouseId());
-                                double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
+                                inventory.setProductId(returnItem.getProductId());
+                                inventory.setWarehouseId(returnItem.getWarehouseId());
+                                double parsed = Double.parseDouble(returnItem.getQuantity().toString());
                                 inventory.setCurrentQuantity((int) parsed);
                                 inventory.setTotalCost(finalSubtotal);
-                                inventory.setMerchantId(otherOutboundItem.getMerchantId());
-                                inventory.setBaseUnitId(otherOutboundItem.getBaseUnitId());
-                                inventory.setAccountBookId(otherOutboundItem.getAccountBookId());
+                                inventory.setMerchantId(returnItem.getMerchantId());
+                                inventory.setBaseUnitId(returnItem.getBaseUnitId());
+                                inventory.setAccountBookId(returnItem.getAccountBookId());
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
-            InventoryItem inventoryItem = getInventoryItem(otherOutboundItem, salesReturn, finalSubtotal);
+            InventoryItem inventoryItem = getInventoryItem(returnItem, salesReturn, finalSubtotal);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
     }
 
-    private InventoryItem getInventoryItem(SalesReturnItem otherOutboundItem, SalesReturn salesReturn,
+    private InventoryItem getInventoryItem(SalesReturnItem returnItem, SalesReturn salesReturn,
                                            BigDecimal costAmount) {
         InventoryItem inventoryItem = new InventoryItem();
-        inventoryItem.setProductId(otherOutboundItem.getProductId());
-        inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
-        double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
+        inventoryItem.setProductId(returnItem.getProductId());
+        inventoryItem.setWarehouseId(returnItem.getWarehouseId());
+        double parsed = Double.parseDouble(returnItem.getQuantity().toString());
         inventoryItem.setQuantity((int) parsed);
-        inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
+        inventoryItem.setBaseUnitId(returnItem.getBaseUnitId());
         inventoryItem.setOperationType(OperationType.销售退货);
-        inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
-        inventoryItem.setOrderId(otherOutboundItem.getSalesReturnId());
-        inventoryItem.setMerchantId(otherOutboundItem.getMerchantId());
+        inventoryItem.setOrderId(returnItem.getSalesReturnId());
+        inventoryItem.setMerchantId(returnItem.getMerchantId());
         inventoryItem.setBatchNumber(salesReturn.getOrderNo());
-        inventoryItem.setAccountBookId(otherOutboundItem.getAccountBookId());
+        inventoryItem.setAccountBookId(returnItem.getAccountBookId());
         inventoryItem.setCustomerId(salesReturn.getCustomerId());
         inventoryItem.setInventoryDate(Date.from(salesReturn.getReturnDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
         inventoryItem.setCreatedAt(LocalDateTime.now());
-        inventoryItem.setCreatedBy(otherOutboundItem.getCreatedBy());
-        inventoryItem.setUnitPrice(otherOutboundItem.getCostPrice());
+        inventoryItem.setCreatedBy(returnItem.getCreatedBy());
+        inventoryItem.setUnitPrice(returnItem.getCostPrice());
         inventoryItem.setSubtotal(costAmount);
         return inventoryItem;
     }
-
 
     public BigDecimal queryTotal(Query query) {
         return bqf.selectFrom(qSalesReturn)
@@ -530,23 +526,19 @@ public class SalesReturnService extends AbsService {
                 .where(query.builder).fetchFirst();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qSalesReturn.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qSalesReturn.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qSalesReturn.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qSalesReturn.accountBookId, accountBookId);
         }
 
         public void setFilter(String filter) {
-            if (StringUtils.isNotBlank(filter)) {
+            if (StrUtil.isNotBlank(filter)) {
                 builder.and(qSalesReturn.orderNo.like("%" + filter + "%"));
             }
         }

@@ -1,10 +1,12 @@
 package com.flyemu.share.service.setting;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Dict;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.setting.Checkout;
@@ -12,8 +14,8 @@ import com.flyemu.share.entity.setting.QAccountBook;
 import com.flyemu.share.entity.setting.QAdmin;
 import com.flyemu.share.entity.setting.QCheckout;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.CheckoutRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.CheckoutRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +32,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class CheckoutService extends AbsService {
+public class CheckoutService extends BaseService {
 
     private final static QCheckout qCheckout = QCheckout.checkout;
 
@@ -61,7 +63,6 @@ public class CheckoutService extends AbsService {
         return new PageResults<>(dicts, page, fetchPage.getTotalSize());
     }
 
-
     /**
      * 保存/更新
      *
@@ -90,7 +91,6 @@ public class CheckoutService extends AbsService {
         }
         return checkoutRepository.save(checkout);
     }
-
 
     /**
      * 反结账
@@ -121,7 +121,6 @@ public class CheckoutService extends AbsService {
         }
     }
 
-
     public void assertEditable(Long merchantId, Long accountBookId, LocalDate orderDate) {
         if (orderDate == null) return;
         LocalDate checkoutDate = jqf.select(qAccountBook.checkoutDate).from(qAccountBook)
@@ -131,19 +130,15 @@ public class CheckoutService extends AbsService {
         }
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qCheckout.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qCheckout.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qCheckout.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qCheckout.accountBookId, accountBookId);
         }
 
     }

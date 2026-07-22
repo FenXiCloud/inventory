@@ -3,32 +3,16 @@ package com.flyemu.share.dto.price;
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
-import jakarta.persistence.*;
 import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.hibernate.annotations.Comment;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
-/**
- * @功能描述: 产品价格记录DTO
- * @创建时间: 2024年12月31日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Data
-public class PriceRecordDTO {
-
+public class PriceRecordDto {
 
     private Long id;
 
@@ -36,7 +20,6 @@ public class PriceRecordDTO {
     private Long orderId;
 
     @Comment("单据日期")
-    @CreationTimestamp
     private Date orderDate;
 
     @Comment("产品ID")
@@ -71,21 +54,16 @@ public class PriceRecordDTO {
     private BigDecimal unitPrice;
 
     @Comment("辅助单位价格")
-    @JdbcTypeCode(SqlTypes.JSON)
     private List<AuxiliaryUnitPrice> auxiliaryUnitPrices;
 
     @Comment("价格类别")
-    @Enumerated(EnumType.STRING)
     private PriceType priceType;
 
     @Comment("价格来源")
-    @Enumerated(EnumType.STRING)
     private PriceSource priceSource;
 
-    @Column(nullable = false)
     private Long accountBookId;
 
-    @Column(nullable = false)
     private Long merchantId;
 
     /**

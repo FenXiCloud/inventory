@@ -9,9 +9,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- *@author shuaiqi
- */
 @JsonInclude()
 @Data
 public class OtherReceiptDetailsVO {
@@ -20,7 +17,7 @@ public class OtherReceiptDetailsVO {
     private String createName;
     private String updateName;
     private String approvedName;
-    private Long updateBy;
+    private Long updatedBy;
     private Long id;
     private String settlementAccount;
     private Long settlementAccountId;
@@ -36,7 +33,7 @@ public class OtherReceiptDetailsVO {
     private String remarks;
     private Long createdBy;
     private LocalDateTime createdAt;
-    private LocalDateTime updateAt;
+    private LocalDateTime updatedAt;
     private Long approvedBy;
     private LocalDateTime approvedAt;
     private Long accountBookId;

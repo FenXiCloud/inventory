@@ -40,7 +40,6 @@
 import {MessagePlugin} from "tdesign-vue-next";
 import Customer from "@js/api/basic/Customer";
 
-
 export default {
   name: "CustomerImportForm",
   emits: ['close', 'success'],

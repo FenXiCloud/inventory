@@ -58,11 +58,6 @@
 </template>
 
 <script>
-/**
- * @功能描述: 账套参数设置
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- */
 import AccountBook from '@js/api/setting/AccountBook';
 import { MessagePlugin } from 'tdesign-vue-next';
 

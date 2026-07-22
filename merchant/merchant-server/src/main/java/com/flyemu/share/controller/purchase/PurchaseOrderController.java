@@ -1,9 +1,8 @@
 package com.flyemu.share.controller.purchase;
 
-import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.dto.AccountDto;
@@ -16,13 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * @功能描述: 采购订单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/purchaseOrder")
 @RequiredArgsConstructor
@@ -31,63 +23,58 @@ public class PurchaseOrderController {
     private final PurchaseOrderService purchaseOrderService;
 
     @GetMapping
-    public JsonResult list(Page page, PurchaseOrderService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(Page page, PurchaseOrderService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(purchaseOrderService.query(page, query));
     }
 
     @GetMapping("/toInBound")
-    public JsonResult listToInBound(Page page, PurchaseOrderService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult listToInBound(Page page, PurchaseOrderService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(purchaseOrderService.queryToInBound(page, query));
     }
 
     /**
      * 条件内总金额
      *
-     * @param merchantId
      * @param query
      * @return
      */
     @GetMapping("/total")
-    public JsonResult queryTotal(PurchaseOrderService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult queryTotal(PurchaseOrderService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(purchaseOrderService.queryTotal(query));
     }
 
     @PostMapping("/toInbound/{supplierId}")
-    public JsonResult toInbound(@RequestBody List<Long> orderIds, @PathVariable Long supplierId, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(purchaseOrderService.loadToInbound(orderIds, merchantId, supplierId));
+    public JsonResult toInbound(@RequestBody List<Long> orderIds, @PathVariable Long supplierId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(purchaseOrderService.loadToInbound(orderIds, accountDto.getMerchantId(), supplierId));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId, @SaAdminId Long adminId) {
+    public JsonResult save(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaAdminId Long adminId, @SaAccountVal AccountDto accountDto) {
         purchaseOrderForm.getPurchaseOrder().setCreatedBy(adminId);
-        purchaseOrderForm.getPurchaseOrder().setMerchantId(merchantId);
-        purchaseOrderForm.getPurchaseOrder().setAccountBookId(accountBookId);
+        TenantScope.bind(purchaseOrderForm.getPurchaseOrder(), accountDto);
         purchaseOrderForm.getPurchaseOrder().setOrderStatus(OrderStatus.已保存);
-        purchaseOrderService.save(purchaseOrderForm, merchantId);
+        purchaseOrderService.save(purchaseOrderForm, accountDto.getMerchantId());
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaMerchantId Long merchantId) {
-        purchaseOrderService.save(purchaseOrderForm, merchantId);
+    public JsonResult update(@RequestBody @Valid PurchaseOrderForm purchaseOrderForm, @SaAccountVal AccountDto accountDto) {
+        purchaseOrderService.save(purchaseOrderForm, accountDto.getMerchantId());
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{purchaseOrderId}")
-    public JsonResult delete(@PathVariable Long purchaseOrderId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        purchaseOrderService.delete(purchaseOrderId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long purchaseOrderId, @SaAccountVal AccountDto accountDto) {
+        purchaseOrderService.delete(purchaseOrderId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(purchaseOrderService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(purchaseOrderService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     /**
@@ -107,13 +94,12 @@ public class PurchaseOrderController {
     /**
      * 采购单详情
      *
-     * @param merchantId
      * @param orderId
      * @return
      */
     @GetMapping("/load/{orderId}")
-    public JsonResult load(@PathVariable Long orderId, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(purchaseOrderService.load(merchantId, orderId));
+    public JsonResult load(@PathVariable Long orderId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(purchaseOrderService.load(accountDto.getMerchantId(), orderId));
     }
 
 }

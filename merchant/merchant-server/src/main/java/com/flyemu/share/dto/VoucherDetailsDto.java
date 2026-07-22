@@ -48,7 +48,6 @@ public class VoucherDetailsDto implements Serializable {
         return this.subjectCode + " " + StrUtil.replace(subjectName, "-", "_");
     }
 
-
     /**
      * 获取摘要
      *

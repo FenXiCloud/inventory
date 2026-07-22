@@ -7,9 +7,6 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/**
- *@author shuaiqi
- */
 @Data
 public class OrderPaymentUpdateDTO {
 
@@ -19,15 +16,13 @@ public class OrderPaymentUpdateDTO {
 
     private Long createdBy;
 
-    private Long updateBy;
+    private Long updatedBy;
 
     private LocalDateTime createdAt;
 
-    private LocalDateTime updateAt;
-
+    private LocalDateTime updatedAt;
 
     private Long approvedBy;
-
 
     private LocalDateTime approvedAt;
 

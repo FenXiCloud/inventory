@@ -9,9 +9,7 @@ import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
-/**
- *@author shuaiqi
- */@JsonInclude()
+@JsonInclude()
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class VerificationQueryVO extends Verification {

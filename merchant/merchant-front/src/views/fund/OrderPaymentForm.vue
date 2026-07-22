@@ -1,8 +1,8 @@
 <template>
   <div class="page-column">
     <div class="page-column-full-body">
-      <vxe-toolbar class-name="!size--mini">
-        <template #buttons>
+      <div class="form-toolbar">
+        <div class="form-toolbar__left">
           <label class="mr-20px" style="font-size: 16px !important">
             <span style="color: red">*</span>供应商：
           </label>
@@ -42,166 +42,137 @@
             :clearable="false"
             :disabled="isAudited"
           />
-        </template>
-        <template #tools>
+        </div>
+        <div class="form-toolbar__right">
           <Stamp v-if="isAudited" />
-        </template>
-      </vxe-toolbar>
+        </div>
+      </div>
 
-      <vxe-table
-        ref="collectionTable"
-        size="mini"
-        border
+      <t-table
+        row-key="_rowKey"
+        size="small"
+        bordered
         stripe
-        show-overflow
-        :row-config="{ height: 40 }"
-        :edit-config="isAudited ? undefined : editConfig"
+        hover
+        table-layout="fixed"
         :data="tableData"
-        :show-footer="showFooter"
-        :footer-method="footerMethod"
+        :columns="collectionColumns"
+        :foot-data="footData"
+        :loading="loading"
       >
-        <vxe-column type="seq" title="序号" width="60" align="center" fixed="left" />
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
-          <template #default="{ rowIndex }">
-            <template v-if="!isAudited">
-              <div
-                class="fa fa-plus text-hover mr-5px"
-                @click="adjustRows('insert', rowIndex, tableData)"
-              ></div>
-              <div
-                class="fa fa-minus text-hover"
-                v-if="canDelete(tableData)"
-                @click="adjustRows('delete', rowIndex, tableData)"
-              ></div>
-            </template>
+        <template #ops="{ rowIndex }">
+          <template v-if="!isAudited">
+            <div
+              class="fa fa-plus text-hover mr-5px"
+              @click="adjustRows('insert', rowIndex, tableData)"
+            ></div>
+            <div
+              class="fa fa-minus text-hover"
+              v-if="canDelete(tableData)"
+              @click="adjustRows('delete', rowIndex, tableData)"
+            ></div>
           </template>
-        </vxe-column>
-        <vxe-column field="settlementAccount" title="结算账户" min-width="140" :edit-render="{}">
-          <template #header>
-            <span style="color: red">*</span>结算账户
-          </template>
-          <template #default="{ row }">
-            <span>{{ row.settlementAccount }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-select
-              v-model="row.settlementAccount"
-              placeholder="请选择"
-              :multiple="false"
-              transfer
-              @change="changeAccount(row.settlementAccount, row)"
-            >
-              <vxe-option
-                v-for="item in settlementAccount"
-                :key="item.id"
-                :value="item.name"
-                :label="item.name"
-              />
-            </vxe-select>
-          </template>
-        </vxe-column>
-        <vxe-column field="amount" title="付款金额" width="140" :edit-render="{}">
-          <template #header>
-            <span style="color: red">*</span>付款金额
-          </template>
-          <template #default="{ row }">
-            <span>{{ row.amount }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-input
-              v-model="row.amount"
-              type="number"
-              placeholder="请输入数值"
-              min="0"
-              @change="updateFootEvent"
-            />
-          </template>
-        </vxe-column>
-        <vxe-column field="paymentMethodName" title="结算方式" min-width="120" :edit-render="{}">
-          <template #default="{ row }">
-            <span>{{ row.paymentMethodName }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-select
-              v-model="row.paymentMethodName"
-              placeholder="请选择"
-              :multiple="false"
-              transfer
-              @change="changePaymentMethod(row.paymentMethodName, row)"
-            >
-              <vxe-option
-                v-for="item in paymentMethodList"
-                :key="item.id"
-                :value="item.name"
-                :label="item.name"
-              />
-            </vxe-select>
-          </template>
-        </vxe-column>
-        <vxe-column field="remarks" title="备注" min-width="120" :edit-render="{ name: 'input' }" />
-        <vxe-column field="theOnlineTransactionNumber" title="在线交易单号" min-width="160" />
-      </vxe-table>
-
-      <vxe-toolbar>
-        <template v-if="!isAudited" #tools>
-          <t-button @click="sourceForm('OrderPayment')">选择源单</t-button>
-          <t-button @click="autoMatic()">自动核销</t-button>
         </template>
-      </vxe-toolbar>
+        <template #settlementAccount="{ row }">
+          <t-select
+            v-if="!isAudited"
+            v-model="row.settlementAccount"
+            :options="settlementAccount"
+            :keys="{ value: 'name', label: 'name' }"
+            placeholder="请选择"
+            filterable
+            clearable
+            style="width: 100%"
+            @change="(val) => changeAccount(val, row)"
+          />
+          <span v-else>{{ row.settlementAccount }}</span>
+        </template>
+        <template #amount="{ row }">
+          <t-input-number
+            v-if="!isAudited"
+            v-model="row.amount"
+            theme="normal"
+            :min="0"
+            :decimal-places="2"
+            placeholder="请输入数值"
+            style="width: 100%"
+            @change="updateFootEvent"
+          />
+          <span v-else>{{ row.amount }}</span>
+        </template>
+        <template #paymentMethodName="{ row }">
+          <t-select
+            v-if="!isAudited"
+            v-model="row.paymentMethodName"
+            :options="paymentMethodList"
+            :keys="{ value: 'name', label: 'name' }"
+            placeholder="请选择"
+            filterable
+            clearable
+            style="width: 100%"
+            @change="(val) => changePaymentMethod(val, row)"
+          />
+          <span v-else>{{ row.paymentMethodName }}</span>
+        </template>
+        <template #remarks="{ row }">
+          <t-input v-if="!isAudited" v-model="row.remarks" />
+          <span v-else>{{ row.remarks }}</span>
+        </template>
 
-      <vxe-table
-        ref="table"
-        size="mini"
-        border
+        <template #theOnlineTransactionNumber="{ row }">
+          <t-input
+            v-if="!isAudited"
+            v-model="row.theOnlineTransactionNumber"
+            placeholder="请输入"
+          />
+          <span v-else>{{ row.theOnlineTransactionNumber }}</span>
+        </template>
+      </t-table>
+
+      <div v-if="!isAudited" class="form-toolbar form-toolbar--end">
+        <t-button @click="sourceForm('OrderPayment')">选择源单</t-button>
+        <t-button @click="autoMatic()">自动核销</t-button>
+      </div>
+
+      <t-table
+        row-key="_rowKey"
+        size="small"
+        bordered
         stripe
-        show-overflow
-        :row-config="{ height: 40 }"
-        :edit-config="isAudited ? undefined : editConfig"
+        hover
+        table-layout="fixed"
         :data="tableData2"
-        :show-footer="showFooter"
-        :footer-method="footerMethod2"
+        :columns="itemColumns"
+        :foot-data="footData2"
+        :loading="loading"
       >
-        <vxe-column type="seq" title="序号" width="60" align="center" fixed="left" />
-        <vxe-column title="操作" field="seq" width="70" align="center">
-          <template #default="{ rowIndex }">
-            <template v-if="!isAudited">
-              <div
-                class="fa fa-plus text-hover mr-5px"
-                @click="adjustRows('insert', rowIndex, tableData2)"
-              ></div>
-              <div
-                class="fa fa-minus text-hover"
-                v-if="canDelete(tableData2)"
-                @click="adjustRows('delete', rowIndex, tableData2)"
-              ></div>
-            </template>
+        <template #ops="{ rowIndex }">
+          <template v-if="!isAudited">
+            <div
+              class="fa fa-plus text-hover mr-5px"
+              @click="adjustRows('insert', rowIndex, tableData2)"
+            ></div>
+            <div
+              class="fa fa-minus text-hover"
+              v-if="canDelete(tableData2)"
+              @click="adjustRows('delete', rowIndex, tableData2)"
+            ></div>
           </template>
-        </vxe-column>
-        <vxe-column field="businessNo" title="源单编号" min-width="140" />
-        <vxe-column field="businessType" title="业务类别" width="110" align="center" />
-        <vxe-column field="businessDate" title="单据日期" width="120" align="center" />
-        <vxe-column field="documentAmount" title="单据金额" width="110" align="right" />
-        <vxe-column field="verifiedAmount" title="已核销金额" width="110" align="right" />
-        <vxe-column field="unverifiedAmount" title="未核销金额" width="110" align="right" />
-        <vxe-column field="currentVerifyAmount" title="本次核销金额" width="130" :edit-render="{}">
-          <template #header>
-            <span style="color: red">*</span>本次核销金额
-          </template>
-          <template #default="{ row }">
-            <span>{{ row.currentVerifyAmount }}</span>
-          </template>
-          <template #edit="{ row }">
-            <vxe-input
-              v-model="row.currentVerifyAmount"
-              type="number"
-              :max="row.documentAmount"
-              min="0"
-              @change="changeDiscountRate"
-            />
-          </template>
-        </vxe-column>
-        <vxe-column field="remarks" title="单据备注" min-width="120" />
-      </vxe-table>
+        </template>
+        <template #currentVerifyAmount="{ row }">
+          <t-input-number
+            v-if="!isAudited"
+            v-model="row.currentVerifyAmount"
+            theme="normal"
+            :min="0"
+            :max="row.documentAmount"
+            :decimal-places="2"
+            style="width: 100%"
+            @change="changeDiscountRate"
+          />
+          <span v-else>{{ row.currentVerifyAmount }}</span>
+        </template>
+      </t-table>
 
       <div class="mt-10px"></div>
       <div class="filler-panel">
@@ -272,6 +243,12 @@ import OrderStaffForm from './OrderStaffForm';
 import SourceForm from './SourceForm.vue';
 import { mapState, mapMutations } from 'vuex';
 import Stamp from '../common/Stamp.vue';
+
+let rowSeq = 0;
+function newRow(extra = {}) {
+  return { _rowKey: `r-${++rowSeq}`, ...extra };
+}
+
 export default {
   name: 'OrderPaymentForm',
   components: { Stamp },
@@ -281,14 +258,6 @@ export default {
     index: Number
   },
   data() {
-    const tableData = [{}];
-    const tableData2 = [{}];
-    const editConfig = {
-      trigger: 'click',
-      mode: 'cell'
-    };
-    const accountOptions = [];
-
     return {
       logContent: null,
       val1: [],
@@ -297,14 +266,12 @@ export default {
         orderStaffName: null,
         orderDate: manba().format('YYYY-MM-DD')
       },
-      tableData,
-      tableData2,
+      tableData: [newRow()],
+      tableData2: [newRow()],
       SupplierDataList: [],
       orderStaffList: [],
       paymentMethodList: [],
       settlementAccount: [],
-      totalTb1: 0,
-      totalTb2: 0,
       loading: false,
       amountTotal: 0,
       pagination: {
@@ -318,9 +285,7 @@ export default {
         sortCol: null,
         sort: null
       },
-      showFooter: true,
-      editConfig,
-      accountOptions
+      accountOptions: []
     };
   },
   computed: {
@@ -333,6 +298,90 @@ export default {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize
       });
+    },
+    totalTb1() {
+      return (this.tableData || []).reduce((sum, row) => {
+        const value = parseFloat(row.amount);
+        return sum + (isNaN(value) ? 0 : value);
+      }, 0);
+    },
+    totalTb2() {
+      return (this.tableData2 || []).reduce((sum, row) => {
+        const value = parseFloat(row.currentVerifyAmount);
+        return sum + (isNaN(value) ? 0 : value);
+      }, 0);
+    },
+    footData() {
+      return [{
+        seq: '合计',
+        amount: this.totalTb1.toFixed(2)
+      }];
+    },
+    footData2() {
+      const sum = (key) => {
+        const total = (this.tableData2 || []).reduce((acc, row) => {
+          const value = parseFloat(row[key]);
+          return acc + (isNaN(value) ? 0 : value);
+        }, 0);
+        return total.toFixed(2);
+      };
+      return [{
+        seq: '合计',
+        documentAmount: sum('documentAmount'),
+        verifiedAmount: sum('verifiedAmount'),
+        unverifiedAmount: sum('unverifiedAmount'),
+        currentVerifyAmount: sum('currentVerifyAmount')
+      }];
+    },
+    collectionColumns() {
+      return [
+        {
+          colKey: 'seq',
+          title: '序号',
+          width: 60,
+          align: 'center',
+          fixed: 'left',
+          cell: (h, { rowIndex }) => rowIndex + 1
+        },
+        { colKey: 'ops', title: '操作', width: 70, align: 'center', fixed: 'left' },
+        { colKey: 'settlementAccount', title: '*结算账户', minWidth: 140 },
+        { colKey: 'amount', title: '*付款金额', width: 140, align: 'right' },
+        { colKey: 'paymentMethodName', title: '结算方式', minWidth: 120 },
+        { colKey: 'remarks', title: '备注', minWidth: 120 },
+        { colKey: 'theOnlineTransactionNumber', title: '在线交易单号', minWidth: 160 }
+      ];
+    },
+    itemColumns() {
+      return [
+        {
+          colKey: 'seq',
+          title: '序号',
+          width: 60,
+          align: 'center',
+          fixed: 'left',
+          cell: (h, { rowIndex }) => rowIndex + 1
+        },
+        { colKey: 'ops', title: '操作', width: 70, align: 'center' },
+        { colKey: 'businessNo', title: '源单编号', minWidth: 140 },
+        { colKey: 'businessType', title: '业务类别', width: 110, align: 'center' },
+        { colKey: 'businessDate', title: '单据日期', width: 120, align: 'center' },
+        { colKey: 'documentAmount', title: '单据金额', width: 110, align: 'right' },
+        { colKey: 'verifiedAmount', title: '已核销金额', width: 110, align: 'right' },
+        { colKey: 'unverifiedAmount', title: '未核销金额', width: 110, align: 'right' },
+        { colKey: 'currentVerifyAmount', title: '*本次核销金额', width: 130, align: 'right' },
+        { colKey: 'remarks', title: '单据备注', minWidth: 120 }
+      ];
+    }
+  },
+  watch: {
+    totalTb1() {
+      this.syncCollectionAmount();
+    },
+    totalTb2() {
+      this.syncCollectionAmount();
+    },
+    'form.discountRate'() {
+      this.syncCollectionAmount();
     }
   },
   methods: {
@@ -357,23 +406,25 @@ export default {
         title: '付款单'
       });
     },
-    updateFootEvent() {
-      this.$refs.collectionTable && this.$refs.collectionTable.updateFooter();
+    syncCollectionAmount() {
       this.form.collectionAmount = this.calcCollectionAmount();
+    },
+    updateFootEvent() {
+      this.syncCollectionAmount();
     },
     getLog() {
       let {
         createName = this.user.admin.name,
         updateName,
         createdAt,
-        updateAt,
+        updatedAt,
         approvedName
       } = this.form;
       const logEntries = [
         `制单人: ${createName}`,
         createdAt ? `制单时间: ${createdAt}` : null,
         updateName ? `最后修改人: ${updateName}` : null,
-        updateAt ? `最后修改时间: ${updateAt}` : null,
+        updatedAt ? `最后修改时间: ${updatedAt}` : null,
         approvedName ? `审核人: ${approvedName}` : null
       ].filter((entry) => entry);
 
@@ -404,8 +455,8 @@ export default {
     },
     clearData() {
       this.form = {};
-      this.tableData = [{}];
-      this.tableData2 = [{}];
+      this.tableData = [newRow()];
+      this.tableData2 = [newRow()];
     },
     updatePage(type = 'add', orderId = null) {
       this.closeSelfTab(this.index);
@@ -421,9 +472,10 @@ export default {
       OrderPayment.load(this.orderId )
         .then(({ data: { orderPayment, collectionList, itemList } }) => {
           this.form = orderPayment;
-          this.tableData = collectionList || [];
-          this.tableData2 = itemList || [];
+          this.tableData = (collectionList || []).map((item) => newRow(item));
+          this.tableData2 = (itemList || []).map((item) => newRow(item));
           this.getLog();
+          this.syncCollectionAmount();
         })
         .finally(() => (this.loading = false));
     },
@@ -439,7 +491,7 @@ export default {
       let orderPayment = {
         documentSource: 1,
         createdBy: this.user.admin.id,
-        updateBy: this.user.admin.id,
+        updatedBy: this.user.admin.id,
         orderStatus: orderStatus,
         ...this.form
       };
@@ -450,7 +502,7 @@ export default {
       }
       const filterEmptyObjects = (arr) =>
         arr
-          .map(({ _X_ROW_KEY, salesOrderId, salesOrderNo, ...rest }) => rest)
+          .map(({ _rowKey, salesOrderId, salesOrderNo, ...rest }) => rest)
           .filter((row) => Object.keys(row).length);
 
       let params = {
@@ -472,50 +524,15 @@ export default {
 
       this.save(type, params);
     },
-    footerMethodFormat({ columns, data }, list, totalName) {
-      const footerRow = new Array(columns.length).fill('');
-      footerRow[0] = '合计';
-      columns.forEach((column, index) => {
-        if (list.includes(column.property)) {
-          let total = 0;
-          data.forEach((row) => {
-            const value = parseFloat(row[column.property]);
-            if (!isNaN(value)) {
-              total += value;
-            }
-          });
-          footerRow[index] = total.toFixed(2);
-          this[totalName] = total;
-        }
-      });
-      this.form.collectionAmount = this.calcCollectionAmount();
-      return [footerRow];
-    },
     changeDiscountRate() {
-      this.$refs.table && this.$refs.table.updateFooter();
-      this.form.collectionAmount = this.calcCollectionAmount();
-    },
-    footerMethod({ columns, data }) {
-      return this.footerMethodFormat({ columns, data }, ['amount'], 'totalTb1');
-    },
-    footerMethod2({ columns, data }) {
-      return this.footerMethodFormat(
-        { columns, data },
-        [
-          'documentAmount',
-          'verifiedAmount',
-          'unverifiedAmount',
-          'currentVerifyAmount'
-        ],
-        'totalTb2'
-      );
+      this.syncCollectionAmount();
     },
     canDelete(tableData) {
       return tableData.length > 1;
     },
     adjustRows(type, index, tableData) {
       if (type === 'insert') {
-        tableData.splice(index + 1, 0, {});
+        tableData.splice(index + 1, 0, newRow());
       } else if (type === 'delete' && this.canDelete(tableData)) {
         tableData.splice(index, 1);
       }
@@ -642,7 +659,7 @@ export default {
         }
       });
       MessagePlugin.success('已核销');
-      this.$refs.table.updateFooter();
+      this.syncCollectionAmount();
     },
     sourceForm(URL) {
       if (!this.form.supplierId) {
@@ -677,14 +694,13 @@ export default {
             this.tableData2 = Array.from(merged.values())
               .filter((item) => rowKey(item))
               .map((item) => {
-                delete item._X_ROW_KEY;
-                return {
+                return newRow({
                   ...item,
                   businessNo: item.businessNo || item.salesOrderNo,
                   businessId: item.businessId || item.salesOrderId,
                   currentVerifyAmount:
                     item.currentVerifyAmount ?? item.unverifiedAmount
-                };
+                });
               });
             closeDialog(dialogId);
           }
@@ -707,9 +723,10 @@ export default {
 };
 </script>
 <style lang="less" scoped>
-:deep(.vxe-select > .vxe-input) {
-  width: 100%;
-  height: 100%;
+
+.form-toolbar--end {
+  justify-content: flex-end;
+  margin: 8px 0;
 }
 
 .payment-extra-actions {

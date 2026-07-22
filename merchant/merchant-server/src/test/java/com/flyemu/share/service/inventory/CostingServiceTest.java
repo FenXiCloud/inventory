@@ -5,8 +5,8 @@ import com.flyemu.share.entity.inventory.InventoryCostBatch;
 import com.flyemu.share.entity.inventory.InventoryCostConsume;
 import com.flyemu.share.enums.CostingMethod;
 import com.flyemu.share.enums.OperationType;
-import com.flyemu.share.repository.InventoryCostBatchRepository;
-import com.flyemu.share.repository.InventoryCostConsumeRepository;
+import com.flyemu.share.repository.inventory.InventoryCostBatchRepository;
+import com.flyemu.share.repository.inventory.InventoryCostConsumeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
 /**
  * Focused unit tests for {@link CostingService}.
  * <p>
- * Uses Mockito.spy to stub {@code resolveMethod} so AbsService.bqf is never required.
+ * Uses Mockito.spy to stub {@code resolveMethod} so BaseService.bqf is never required.
  */
 @ExtendWith(MockitoExtension.class)
 public class CostingServiceTest {

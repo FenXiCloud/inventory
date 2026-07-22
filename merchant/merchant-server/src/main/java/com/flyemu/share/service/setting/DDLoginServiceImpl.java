@@ -21,7 +21,7 @@ import com.dingtalk.api.response.OapiV2UserGetResponse;
 import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.Dept;
 import com.flyemu.share.entity.setting.Role;
-import com.flyemu.share.repository.AdminRepository;
+import com.flyemu.share.repository.setting.AdminRepository;
 import com.taobao.api.ApiException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
@@ -34,12 +34,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-
-/**
- * @author: wangwenjia
- * @since: 2025/5/20 15:11
- * @description:
- */
 @Service
 @Slf4j
 public class DDLoginServiceImpl implements DDLoginService{
@@ -141,7 +135,7 @@ public class DDLoginServiceImpl implements DDLoginService{
             //登录
             return admin.getMobile();
         } catch (Exception e) {
-            log.error("钉钉登录回调异常：" ,e);
+            log.error("钉钉登录回调异常：" , e);
             throw new RuntimeException(e);
         }
     }
@@ -180,7 +174,6 @@ public class DDLoginServiceImpl implements DDLoginService{
             this.insertUserByDingDing(rsp1, counter, userIds, roleId);
         } catch (ApiException e) {
             log.error("获取钉钉用户异常：", e);
-            e.printStackTrace();
         }
         String message = "共拉取到：" + counter.sumNum + "条；<br/>成功："
                 + counter.successNum + "条；<br/>更新：" + counter.failureNum + "条；";

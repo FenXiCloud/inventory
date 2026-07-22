@@ -1,4 +1,4 @@
-import {clone} from 'xe-utils';
+import {clone} from '@common/utils';
 
 const fullMenus = [
 	{

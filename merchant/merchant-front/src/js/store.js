@@ -1,5 +1,5 @@
 import {createStore} from 'vuex'
-import {toArrayTree} from 'xe-utils'
+import {toArrayTree} from '@common/utils'
 import {Init} from "@js/api/App";
 import manba from "manba";
 

@@ -1,16 +1,18 @@
 package com.flyemu.share.service.fund;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.OtherFundDetailsVO;
 import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.AccountFlowRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.fund.AccountFlowRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -18,7 +20,7 @@ import com.querydsl.jpa.impl.JPAQuery;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import cn.hutool.core.util.StrUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,18 +29,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @功能描述: 账户管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
-public class AccountFlowService extends AbsService {
+public class AccountFlowService extends BaseService {
 
     private final static QAccountFlow qAccountFlow = QAccountFlow.accountFlow;
 
@@ -76,29 +71,25 @@ public class AccountFlowService extends AbsService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qAccountFlow.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qAccountFlow.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qAccountFlow.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qAccountFlow.accountBookId, accountBookId);
         }
 
         public void setStartTime(String startTime) {
-            if (StringUtils.isNotEmpty(startTime)) {
+            if (StrUtil.isNotEmpty(startTime)) {
                 builder.and(qAccountFlow.createdAt.goe(LocalDateTime.parse(startTime + "T00:00:00")));
             }
         }
 
         public void setEndTime(String endTime) {
-            if (StringUtils.isNotEmpty(endTime)) {
+            if (StrUtil.isNotEmpty(endTime)) {
                 builder.and(qAccountFlow.createdAt.loe(LocalDateTime.parse(endTime + "T23:59:59")));
             }
         }
@@ -237,7 +228,7 @@ public class AccountFlowService extends AbsService {
     }
 
     @Data
-    public static class OtherFundQuery {
+    public static class OtherFundQuery implements TenantAware {
         private Long merchantId;
         private Long accountBookId;
         private String orderStaffName;

@@ -78,10 +78,7 @@ function buildDefaultContent() {
     ...ITEM_FIELDS.map(f => ({...f, enabled: true, section: 'item'})),
   ];
 }
-
-/**
- * @功能描述: 打印模板表单（字段勾选设计器）
- */
+/** 打印模板表单（字段勾选设计器） */
 export default {
   name: 'PrintTemplateForm',
   emits: { close: null, success: null },

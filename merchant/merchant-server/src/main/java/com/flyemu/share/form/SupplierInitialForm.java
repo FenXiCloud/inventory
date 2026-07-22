@@ -1,5 +1,6 @@
 package com.flyemu.share.form;
 
+import com.flyemu.share.common.TenantAware;
 import com.flyemu.share.entity.fund.CustomerFlow;
 import com.flyemu.share.entity.fund.SupplierFlow;
 import jakarta.persistence.Column;
@@ -9,7 +10,7 @@ import org.hibernate.annotations.Comment;
 import java.util.List;
 
 @Data
-public class SupplierInitialForm {
+public class SupplierInitialForm implements TenantAware {
 
     private List<SupplierFlow> supplierFlowList;
 

@@ -7,9 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-/**
- * @author shuaiqi
- */
 @Data
 @NoArgsConstructor
 public class OrderReceiptDetails {
@@ -17,6 +14,5 @@ public class OrderReceiptDetails {
     private OrderReceiptDetailsVO orderReceipt;
     private List<OrderReceiptCollection> collectionList;
     private List<OrderReceiptItem> itemList;
-
 
 }

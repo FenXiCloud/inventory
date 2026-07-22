@@ -1,9 +1,8 @@
 package com.flyemu.share.controller.sales;
 
-import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.dto.AccountDto;
@@ -17,13 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * @功能描述: 销售出库单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/salesOutbound")
 @RequiredArgsConstructor
@@ -32,55 +24,48 @@ public class SalesOutboundController {
     private final SalesOutboundService salesOutboundService;
 
     @GetMapping
-    public JsonResult list(Page page, SalesOutboundService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(Page page, SalesOutboundService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(salesOutboundService.query(page, query));
     }
 
     @GetMapping("/total")
-    public JsonResult queryTotal(SalesOutboundService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult queryTotal(SalesOutboundService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(salesOutboundService.queryTotal(query));
     }
 
     @PostMapping
-    public JsonResult save(
-            @RequestBody @Valid SalesOutboundForm salesOutboundForm,
-            @SaMerchantId Long merchantId,
-            @SaAccountBookId Long accountBookId,
-            @SaAdminId Long adminId
-    ) {
-        salesOutboundForm.getSalesOutbound().setMerchantId(merchantId);
-        salesOutboundForm.getSalesOutbound().setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid SalesOutboundForm salesOutboundForm,
+            @SaAdminId Long adminId, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(salesOutboundForm.getSalesOutbound(), accountDto);
         salesOutboundForm.getSalesOutbound().setCreatedBy(adminId);
         salesOutboundForm.getSalesOutbound().setCreatedAt(LocalDateTime.now());
         salesOutboundForm.getSalesOutbound().setOrderStatus(OrderStatus.已保存);
-        salesOutboundService.save(salesOutboundForm, merchantId);
+        salesOutboundService.save(salesOutboundForm, accountDto.getMerchantId());
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid SalesOutboundForm salesOutboundForm, @SaMerchantId Long merchantId) {
-        salesOutboundService.save(salesOutboundForm, merchantId);
+    public JsonResult update(@RequestBody @Valid SalesOutboundForm salesOutboundForm, @SaAccountVal AccountDto accountDto) {
+        salesOutboundService.save(salesOutboundForm, accountDto.getMerchantId());
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{salesOutboundId}")
-    public JsonResult delete(@PathVariable Long salesOutboundId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        salesOutboundService.delete(salesOutboundId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long salesOutboundId, @SaAccountVal AccountDto accountDto) {
+        salesOutboundService.delete(salesOutboundId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(salesOutboundService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(salesOutboundService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     @GetMapping("/load/{orderId}")
-    public JsonResult load(@PathVariable Long orderId, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(salesOutboundService.load(merchantId, orderId));
+    public JsonResult load(@PathVariable Long orderId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(salesOutboundService.load(accountDto.getMerchantId(), orderId));
     }
 
     @PostMapping("/approved/{state}")

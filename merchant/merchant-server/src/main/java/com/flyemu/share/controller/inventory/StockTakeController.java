@@ -1,9 +1,8 @@
 package com.flyemu.share.controller.inventory;
 
-import com.flyemu.share.annotation.SaAccountBookId;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.dto.AccountDto;
@@ -17,13 +16,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * @功能描述: 盘点单
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/stockTake")
 @RequiredArgsConstructor
@@ -32,44 +24,39 @@ public class StockTakeController {
     private final StockTakeService stockTakeService;
 
     @GetMapping
-    public JsonResult list(Page page, StockTakeService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(Page page, StockTakeService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(stockTakeService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid StockTakeForm stockTakeForm, @SaMerchantId Long merchantId,
-                           @SaAccountBookId Long accountBookId, @SaAdminId Long adminId) {
+    public JsonResult save(@RequestBody @Valid StockTakeForm stockTakeForm, @SaAdminId Long adminId, @SaAccountVal AccountDto accountDto) {
         StockTake stockTake = stockTakeForm.getStockTake();
-        stockTake.setMerchantId(merchantId);
-        stockTake.setAccountBookId(accountBookId);
+        TenantScope.bind(stockTake, accountDto);
         stockTake.setOrderStatus(OrderStatus.已保存);
         stockTake.setCreatedBy(adminId);
-        StockTake take = stockTakeService.save(stockTakeForm, merchantId);
-        return JsonResult.successful(take);
+        return JsonResult.successful(stockTakeService.save(stockTakeForm, accountDto.getMerchantId()));
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid StockTakeForm stockTakeForm, @SaMerchantId Long merchantId) {
-        StockTake take = stockTakeService.save(stockTakeForm, merchantId);
-        return JsonResult.successful(take);
+    public JsonResult update(@RequestBody @Valid StockTakeForm stockTakeForm, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(stockTakeService.save(stockTakeForm, accountDto.getMerchantId()));
     }
 
     @DeleteMapping("/{stockTakeId}")
-    public JsonResult delete(@PathVariable Long stockTakeId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        stockTakeService.delete(stockTakeId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long stockTakeId, @SaAccountVal AccountDto accountDto) {
+        stockTakeService.delete(stockTakeId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(stockTakeService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(stockTakeService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     @GetMapping("/load/{id}")
-    public JsonResult load(@PathVariable Long id, @SaMerchantId Long merchantId) {
-        return JsonResult.successful(stockTakeService.load(merchantId, id));
+    public JsonResult load(@PathVariable Long id, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(stockTakeService.load(accountDto.getMerchantId(), id));
     }
 
     @PostMapping("/approved/{state}")

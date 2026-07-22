@@ -3,8 +3,8 @@ package com.flyemu.share.service.inventory;
 import com.flyemu.share.entity.inventory.QStockTakeItem;
 import com.flyemu.share.entity.inventory.StockTake;
 import com.flyemu.share.entity.inventory.StockTakeItem;
-import com.flyemu.share.repository.StockTakeItemRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.inventory.StockTakeItemRepository;
+import com.flyemu.share.service.BaseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,18 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * @功能描述: 盘点单明细
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class StockTakeItemService extends AbsService {
+public class StockTakeItemService extends BaseService {
 
     private final static QStockTakeItem qStockTakeItem = QStockTakeItem.stockTakeItem;
 

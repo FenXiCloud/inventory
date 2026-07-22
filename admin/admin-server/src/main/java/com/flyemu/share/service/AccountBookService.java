@@ -4,12 +4,13 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.setting.AccountBook;
 import com.flyemu.share.entity.setting.QAccountBook;
 import com.flyemu.share.entity.setting.QMerchant;
-import com.flyemu.share.repository.AccountBookRepository;
+import com.flyemu.share.repository.setting.AccountBookRepository;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,7 @@ import java.util.List;
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class AccountBookService extends AbsService {
+public class AccountBookService extends BaseService {
 
     private static final QAccountBook qAccountBook = QAccountBook.accountBook;
 
@@ -72,9 +73,7 @@ public class AccountBookService extends AbsService {
         }
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qAccountBook.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qAccountBook.merchantId, merchantId);
         }
     }
 }

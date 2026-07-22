@@ -1,13 +1,15 @@
 package com.flyemu.share.service.setting;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.entity.setting.FinanceVoucherTemplate;
 import com.flyemu.share.entity.setting.QFinanceVoucherTemplate;
 import com.flyemu.share.exception.ServiceException;
-import com.flyemu.share.repository.FinanceVoucherTemplateRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.FinanceVoucherTemplateRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,24 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-
-/**
- * @功能描述: 云财务凭证模板
- * @创建时间: 2025年03月11日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class FinanceVoucherTemplateService extends AbsService {
+public class FinanceVoucherTemplateService extends BaseService {
 
     private final static QFinanceVoucherTemplate qFinanceVoucherTemplate = QFinanceVoucherTemplate.financeVoucherTemplate;
 
     private final FinanceVoucherTemplateRepository financeVoucherTemplateRepository;
-
 
     public List<FinanceVoucherTemplate> query(FinanceVoucherTemplateService.Query query) {
         return bqf.selectFrom(qFinanceVoucherTemplate)
@@ -82,19 +75,15 @@ public class FinanceVoucherTemplateService extends AbsService {
                 .fetchOne();
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qFinanceVoucherTemplate.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qFinanceVoucherTemplate.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qFinanceVoucherTemplate.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qFinanceVoucherTemplate.accountBookId, accountBookId);
         }
 
     }

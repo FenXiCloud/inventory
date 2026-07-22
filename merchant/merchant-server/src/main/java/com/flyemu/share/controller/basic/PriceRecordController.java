@@ -1,7 +1,8 @@
 package com.flyemu.share.controller.basic;
 
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.basic.PriceRecord;
@@ -13,13 +14,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * @功能描述: 价格记录
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/priceRecord")
 @RequiredArgsConstructor
@@ -28,74 +22,64 @@ public class PriceRecordController {
     private final PriceRecordService priceRecordService;
 
     @GetMapping
-    public JsonResult list(Page page, PriceRecordService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(Page page, PriceRecordService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(priceRecordService.query(page, query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PriceRecord priceRecord, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        priceRecord.setMerchantId(merchantId);
-        priceRecord.setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid PriceRecord priceRecord, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(priceRecord, accountDto);
         priceRecordService.save(priceRecord);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PriceRecord priceRecord, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        priceRecord.setMerchantId(merchantId);
-        priceRecord.setAccountBookId(accountBookId);
+    public JsonResult update(@RequestBody @Valid PriceRecord priceRecord, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(priceRecord, accountDto);
         priceRecordService.save(priceRecord);
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{priceRecordId}")
-    public JsonResult delete(@PathVariable Long priceRecordId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        priceRecordService.delete(priceRecordId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long priceRecordId, @SaAccountVal AccountDto accountDto) {
+        priceRecordService.delete(priceRecordId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(priceRecordService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(priceRecordService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     @GetMapping("/product")
     public JsonResult productList(Page page,
-                                  ProductService.Query query,
-                                  @SaMerchantId Long merchantId,
-                                  @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+                                  ProductService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(priceRecordService.productList(page, query));
     }
 
     @PostMapping("/product")
-    public JsonResult productSave(@RequestBody ProductForm productForm, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        priceRecordService.productSave(productForm, merchantId, accountBookId);
+    public JsonResult productSave(@RequestBody ProductForm productForm, @SaAccountVal AccountDto accountDto) {
+        priceRecordService.productSave(productForm, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @PostMapping("/product/cell")
-    public JsonResult productCellSave(@RequestBody @Valid ProductPriceCellForm form,
-                                      @SaMerchantId Long merchantId,
-                                      @SaAccountBookId Long accountBookId) {
-        priceRecordService.productCellSave(form, merchantId, accountBookId);
+    public JsonResult productCellSave(@RequestBody @Valid ProductPriceCellForm form, @SaAccountVal AccountDto accountDto) {
+        priceRecordService.productCellSave(form, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/price")
-    public JsonResult price(Page page, PriceRecordService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult price(Page page, PriceRecordService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(priceRecordService.showPrice(page, query));
     }
 
     @GetMapping("/purchasePrice")
-    public JsonResult purchasePrice(PriceRecordService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult purchasePrice(PriceRecordService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(priceRecordService.showPurchasePrice(query));
     }
 

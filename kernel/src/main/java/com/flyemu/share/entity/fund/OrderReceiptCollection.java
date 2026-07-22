@@ -17,7 +17,8 @@ import java.math.BigDecimal;
  *
  * @author shuaiqi
  * @since 2025-05-20 11:29:36
- */@JsonInclude()
+ */
+@JsonInclude()
 @Getter
 @Setter
 @Entity

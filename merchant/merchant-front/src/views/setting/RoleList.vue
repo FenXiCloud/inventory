@@ -45,6 +45,18 @@
         </template>
       </t-table>
     </div>
+
+    <div class="simple-page__pager">
+      <t-pagination
+          v-model:current="pagination.page"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-jumper="true"
+          :show-page-size="true"
+          :popup-props="{ attach: 'body' }"
+          @change="onPageChange"
+      />
+    </div>
   </div>
 </template>
 
@@ -56,14 +68,6 @@ import {MessagePlugin} from 'tdesign-vue-next';
 import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, openDrawer, closeDialog} from '@common/dialog';
 import {h} from 'vue';
-
-/**
- * @功能描述: 角色列表
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 export default {
   name: 'RoleList',
   data() {
@@ -76,7 +80,7 @@ export default {
       dataList: [],
       pagination: {
         page: 1,
-        size: 20,
+        pageSize: 20,
         total: 0
       },
       columns: [
@@ -90,7 +94,7 @@ export default {
     queryParams() {
       return Object.assign({}, this.params, {
         page: this.pagination.page,
-        pageSize: this.pagination.size
+        pageSize: this.pagination.pageSize
       });
     }
   },
@@ -143,6 +147,11 @@ export default {
       this.pagination.page = 1;
       this.loadList();
     },
+    onPageChange(pageInfo) {
+      this.pagination.page = pageInfo.current;
+      this.pagination.pageSize = pageInfo.pageSize;
+      this.loadList();
+    },
     doRemove(row) {
       DialogPlugin.confirm({
         header: '系统提示',
@@ -162,27 +171,3 @@ export default {
 };
 </script>
 
-<style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
-
-.simple-page__table {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-</style>

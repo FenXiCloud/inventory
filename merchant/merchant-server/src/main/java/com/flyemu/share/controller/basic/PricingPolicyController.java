@@ -1,7 +1,8 @@
 package com.flyemu.share.controller.basic;
 
-import com.flyemu.share.annotation.SaAccountBookId;
-import com.flyemu.share.annotation.SaMerchantId;
+import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.annotation.SaAccountVal;
+import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.basic.PricingPolicy;
 import com.flyemu.share.form.price.PricingPolicyForm;
@@ -10,13 +11,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * @功能描述: 价格策略
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @RestController
 @RequestMapping("/pricingPolicy")
 @RequiredArgsConstructor
@@ -25,43 +19,39 @@ public class PricingPolicyController {
     private final PricingPolicyService pricingPolicyService;
 
     @GetMapping
-    public JsonResult list(PricingPolicyService.Query query, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        query.setMerchantId(merchantId);
-        query.setAccountBookId(accountBookId);
+    public JsonResult list(PricingPolicyService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
         return JsonResult.successful(pricingPolicyService.query(query));
     }
 
     @PostMapping
-    public JsonResult save(@RequestBody @Valid PricingPolicy pricingPolicy, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        pricingPolicy.setMerchantId(merchantId);
-        pricingPolicy.setAccountBookId(accountBookId);
+    public JsonResult save(@RequestBody @Valid PricingPolicy pricingPolicy, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(pricingPolicy, accountDto);
         pricingPolicyService.save(pricingPolicy);
         return JsonResult.successful();
     }
 
     @PutMapping
-    public JsonResult update(@RequestBody @Valid PricingPolicy pricingPolicy, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        pricingPolicy.setMerchantId(merchantId);
-        pricingPolicy.setAccountBookId(accountBookId);
+    public JsonResult update(@RequestBody @Valid PricingPolicy pricingPolicy, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(pricingPolicy, accountDto);
         pricingPolicyService.save(pricingPolicy);
         return JsonResult.successful();
     }
 
     @DeleteMapping("/{pricingPolicyId}")
-    public JsonResult delete(@PathVariable Long pricingPolicyId, @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        pricingPolicyService.delete(pricingPolicyId, merchantId, accountBookId);
+    public JsonResult delete(@PathVariable Long pricingPolicyId, @SaAccountVal AccountDto accountDto) {
+        pricingPolicyService.delete(pricingPolicyId, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 
     @GetMapping("/select")
-    public JsonResult select(@SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        return JsonResult.successful(pricingPolicyService.select(merchantId, accountBookId));
+    public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(pricingPolicyService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     @PutMapping("/sort")
-    public JsonResult sort(@RequestBody @Valid PricingPolicyForm pricingPolicyForm,
-                           @SaMerchantId Long merchantId, @SaAccountBookId Long accountBookId) {
-        pricingPolicyService.sort(pricingPolicyForm, merchantId, accountBookId);
+    public JsonResult sort(@RequestBody @Valid PricingPolicyForm pricingPolicyForm, @SaAccountVal AccountDto accountDto) {
+        pricingPolicyService.sort(pricingPolicyForm, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful();
     }
 

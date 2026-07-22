@@ -57,6 +57,5 @@ public class AccountBookParameters implements Serializable {
      */
     private Date updateTime;
 
-
 }
 

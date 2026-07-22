@@ -1,5 +1,6 @@
 package com.flyemu.share.entity.fund;
 
+import com.flyemu.share.common.TenantAware;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.flyemu.share.enums.OrderStatus;
 import jakarta.persistence.*;
@@ -13,20 +14,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * @功能描述: 付款单
- * @创建时间: 2024年04月28日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */@JsonInclude()
+@JsonInclude()
 @Getter
 @Setter
 @Entity
 @NoArgsConstructor
 @Table
 @DynamicUpdate
-public class OrderPayment {
+public class OrderPayment implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,7 +50,6 @@ public class OrderPayment {
     @Comment("总欠款")
     private BigDecimal totalAmountsOwed;
 
-
     @Comment("本次核销金额")
     private BigDecimal verificationAmount;
     @Comment("预付款金额")
@@ -82,11 +76,13 @@ public class OrderPayment {
     @Comment("创建人")
     private Long createdBy;
     @Comment("最后修改人")
-    private Long updateBy;
+    @Column(name = "update_by")
+    private Long updatedBy;
     @Comment("创建时间")
     private LocalDateTime createdAt;
     @Comment("最后修改时间")
-    private LocalDateTime updateAt;
+    @Column(name = "update_at")
+    private LocalDateTime updatedAt;
 
     @Comment("审核人")
     private Long approvedBy;

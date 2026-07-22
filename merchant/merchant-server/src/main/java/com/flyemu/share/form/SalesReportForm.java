@@ -1,12 +1,13 @@
 package com.flyemu.share.form;
 
+import com.flyemu.share.common.TenantAware;
 import lombok.Data;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Data
-public class SalesReportForm {
+public class SalesReportForm implements TenantAware {
 
     private Long merchantId;
     private Long accountBookId;

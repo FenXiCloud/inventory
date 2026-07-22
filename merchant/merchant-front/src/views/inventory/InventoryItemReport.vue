@@ -84,134 +84,52 @@
       </t-space>
     </div>
     <div class="simple-page__table">
-      <vxe-table row-id="id"
-                 ref="table"
-                 height="auto"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 show-footer
-                 :footer-method="footerMethod"
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :sort-config="{remote:true}"
-                 :loading="loading">
-        <vxe-column title="产品编码" field="productCode" align="center" width="130"/>
-        <vxe-column title="产品名称" field="productName" width="200"/>
-        <vxe-column title="产品类别" field="productCategoryName" width="200"/>
-        <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
-        <vxe-column title="单据日期" field="inventoryDate" width="120">
-          <template #default="{ row }">
-            <div v-if="row.operationType !== '期初余额'">
-              {{ row.inventoryDate }}
-            </div>
-            <div v-else>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="业务类型" field="operationType" width="120"/>
-        <vxe-column title="单据编号" field="batchNumber" width="200"/>
-        <vxe-column title="往来单位" field="supplierName" width="120">
-          <template #default="{ row }">
-            <div v-if="row.supplierName && row.supplierName !== ''">
-              {{ row.supplierName }}
-            </div>
-            <div v-else-if="row.customerName && row.customerName !== ''">
-              {{ row.customerName }}
-            </div>
-            <div v-else>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="仓库" field="warehouseName" align="center" width="100"/>
-        <vxe-column title="单位" field="unitName" width="80"/>
-        <vxe-column title="产品名称备注" field="productRemarks" width="80"/>
-        <vxe-column title="入库数量" field="quantity" width="80">
-          <template #default="{ row }">
-            <div v-if="inboundItems.includes(row['operationType'])">
-              {{ row.quantity }}
-            </div>
-            <div v-else>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-colgroup title="入库" align="center">
-          <vxe-column title="基本单位数量" field="quantity" align="center" width="100">
-            <template #default="{ row }">
-              <div v-if="inboundItems.includes(row['operationType'])">
-                {{ row.quantity }}
-              </div>
-              <div v-else>
-              </div>
-            </template>
-          </vxe-column>
-          <vxe-column title="单位成本" field="unitPrice" align="center" width="100">
-            <template #default="{ row }">
-              <div v-if="inboundItems.includes(row['operationType'])">
-                {{ row.unitPrice }}
-              </div>
-              <div v-else>
-              </div>
-            </template>
-          </vxe-column>
-          <vxe-column title="成本" field="subtotal" align="center" width="100">
-            <template #default="{ row }">
-              <div
-                  v-if="inboundItems.includes(row['operationType']) || ['成本调整'].includes(row['operationType'])">
-                {{ row.subtotal }}
-              </div>
-              <div v-else>
-              </div>
-            </template>
-          </vxe-column>
-        </vxe-colgroup>
-        <vxe-column title="出库数量" field="quantity" width="80">
-          <template #default="{ row }">
-            <div v-if="outboundItems.includes(row['operationType'])">
-              {{ getAbsoluteValue(row.quantity) }}
-            </div>
-            <div v-else>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-colgroup title="出库" align="center">
-          <vxe-column title="基本单位数量" field="quantity" align="center" width="100">
-            <template #default="{ row }">
-              <div v-if="outboundItems.includes(row['operationType'])">
-                {{ getAbsoluteValue(row.quantity) }}
-              </div>
-              <div v-else>
-              </div>
-            </template>
-          </vxe-column>
-          <vxe-column title="单位成本" field="unitPrice" align="center" width="100">
-            <template #default="{ row }">
-              <div v-if="outboundItems.includes(row['operationType'])">
-                {{ row.unitPrice }}
-              </div>
-              <div v-else>
-              </div>
-            </template>
-          </vxe-column>
-          <vxe-column title="成本" field="subtotal" align="center" width="100">
-            <template #default="{ row }">
-              <div v-if="outboundItems.includes(row['operationType'])">
-                {{ row.subtotal }}
-              </div>
-              <div v-else>
-              </div>
-            </template>
-          </vxe-column>
-        </vxe-colgroup>
-        <vxe-colgroup title="结存" align="center">
-          <vxe-column title="基本单位数量" field="summaryQuantity" align="center" width="100"/>
-          <vxe-column title="单位成本" field="summaryAverage" align="center" width="100"/>
-          <vxe-column title="成本" field="summaryCost" align="center" width="100"/>
-        </vxe-colgroup>
-      </vxe-table>
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+          :foot-data="footData"
+      >
+        <template #inventoryDate="{ row }">
+          <span v-if="row.operationType !== '期初余额'">{{ row.inventoryDate }}</span>
+        </template>
+        <template #correspondent="{ row }">
+          <span v-if="row.supplierName && row.supplierName !== ''">{{ row.supplierName }}</span>
+          <span v-else-if="row.customerName && row.customerName !== ''">{{ row.customerName }}</span>
+        </template>
+        <template #inQuantityCol="{ row }">
+          <span v-if="inboundItems.includes(row.operationType)">{{ row.quantity }}</span>
+        </template>
+        <template #inBaseQty="{ row }">
+          <span v-if="inboundItems.includes(row.operationType)">{{ row.quantity }}</span>
+        </template>
+        <template #inUnitPrice="{ row }">
+          <span v-if="inboundItems.includes(row.operationType)">{{ row.unitPrice }}</span>
+        </template>
+        <template #inSubtotal="{ row }">
+          <span v-if="inboundItems.includes(row.operationType) || ['成本调整'].includes(row.operationType)">{{ row.subtotal }}</span>
+        </template>
+        <template #outQuantityCol="{ row }">
+          <span v-if="outboundItems.includes(row.operationType)">{{ getAbsoluteValue(row.quantity) }}</span>
+        </template>
+        <template #outBaseQty="{ row }">
+          <span v-if="outboundItems.includes(row.operationType)">{{ getAbsoluteValue(row.quantity) }}</span>
+        </template>
+        <template #outUnitPrice="{ row }">
+          <span v-if="outboundItems.includes(row.operationType)">{{ row.unitPrice }}</span>
+        </template>
+        <template #outSubtotal="{ row }">
+          <span v-if="outboundItems.includes(row.operationType)">{{ row.subtotal }}</span>
+        </template>
+      </t-table>
     </div>
     <div class="simple-page__pager">
-      <span class="simple-page__total"></span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -293,7 +211,52 @@ export default {
         {label: "成本调整", value: "成本调整"},
       ],
       summaryQuantity: 0,
-      summaryCost: 0
+      summaryCost: 0,
+      columns: [
+        {colKey: 'productCode', title: '产品编码', width: 130, align: 'center', ellipsis: true},
+        {colKey: 'productName', title: '产品名称', width: 200, ellipsis: true},
+        {colKey: 'productCategoryName', title: '产品类别', width: 200, ellipsis: true},
+        {colKey: 'productSpecification', title: '规格型号', minWidth: 120, ellipsis: true},
+        {colKey: 'inventoryDate', title: '单据日期', width: 120, ellipsis: true},
+        {colKey: 'operationType', title: '业务类型', width: 120, ellipsis: true},
+        {colKey: 'batchNumber', title: '单据编号', width: 200, ellipsis: true},
+        {colKey: 'correspondent', title: '往来单位', width: 120, ellipsis: true},
+        {colKey: 'warehouseName', title: '仓库', width: 100, align: 'center', ellipsis: true},
+        {colKey: 'unitName', title: '单位', width: 80, ellipsis: true},
+        {colKey: 'productRemarks', title: '产品名称备注', width: 80, ellipsis: true},
+        {colKey: 'inQuantityCol', title: '入库数量', width: 80, align: 'center'},
+        {
+          colKey: 'inbound',
+          title: '入库',
+          align: 'center',
+          children: [
+            {colKey: 'inBaseQty', title: '基本单位数量', width: 100, align: 'center'},
+            {colKey: 'inUnitPrice', title: '单位成本', width: 100, align: 'center'},
+            {colKey: 'inSubtotal', title: '成本', width: 100, align: 'center'},
+          ],
+        },
+        {colKey: 'outQuantityCol', title: '出库数量', width: 80, align: 'center'},
+        {
+          colKey: 'outbound',
+          title: '出库',
+          align: 'center',
+          children: [
+            {colKey: 'outBaseQty', title: '基本单位数量', width: 100, align: 'center'},
+            {colKey: 'outUnitPrice', title: '单位成本', width: 100, align: 'center'},
+            {colKey: 'outSubtotal', title: '成本', width: 100, align: 'center'},
+          ],
+        },
+        {
+          colKey: 'balance',
+          title: '结存',
+          align: 'center',
+          children: [
+            {colKey: 'summaryQuantity', title: '基本单位数量', width: 100, align: 'center'},
+            {colKey: 'summaryAverage', title: '单位成本', width: 100, align: 'center'},
+            {colKey: 'summaryCost', title: '成本', width: 100, align: 'center'},
+          ],
+        },
+      ],
     }
   },
   computed: {
@@ -306,6 +269,43 @@ export default {
         end: end || null,
       })
     },
+    footData() {
+      let inQuantity = 0;
+      let outQuantity = 0;
+      let inTotal = 0;
+      let outTotal = 0;
+      (this.dataList || []).forEach((row) => {
+        const rd = row.quantity;
+        if (rd) {
+          if (this.inboundItems.includes(row.operationType)) {
+            inQuantity += Number(rd || 0);
+          }
+          if (this.outboundItems.includes(row.operationType)) {
+            outQuantity += Number(this.getAbsoluteValue(rd) || 0);
+          }
+        }
+        const sub = row.subtotal;
+        if (sub) {
+          if (this.inboundItems.includes(row.operationType)) {
+            inTotal += Number(sub || 0);
+          }
+          if (this.outboundItems.includes(row.operationType)) {
+            outTotal += Number(this.getAbsoluteValue(sub) || 0);
+          }
+        }
+      });
+      return [{
+        productCode: '合计',
+        inQuantityCol: inQuantity,
+        inBaseQty: inQuantity,
+        inSubtotal: inTotal.toFixed(2),
+        outQuantityCol: outQuantity,
+        outBaseQty: outQuantity,
+        outSubtotal: outTotal.toFixed(2),
+        summaryQuantity: this.summaryQuantity,
+        summaryCost: Number(this.summaryCost || 0).toFixed(2),
+      }];
+    },
   },
   methods: {
     ...mapMutations(['pushTab']),
@@ -313,35 +313,6 @@ export default {
       this.pagination.page = pageInfo.current;
       this.pagination.pageSize = pageInfo.pageSize;
       this.loadList();
-    },
-    footerMethod({columns, data}) {
-      let inQuantity = 0;
-      let outQuantity = 0;
-      let inTotal = 0;
-      let outTotal = 0;
-      data.forEach((row) => {
-        let rd = row['quantity'];
-        if (rd) {
-          if (this.inboundItems.includes(row['operationType'])) {
-            inQuantity += Number(rd || 0);
-          }
-          if (this.outboundItems.includes(row['operationType'])) {
-            outQuantity += Number(this.getAbsoluteValue(rd) || 0);
-          }
-        }
-      });
-      data.forEach((row) => {
-        let rd = row['subtotal'];
-        if (rd) {
-          if (this.inboundItems.includes(row['operationType'])) {
-            inTotal += Number(rd || 0);
-          }
-          if (this.outboundItems.includes(row['operationType'])) {
-            outTotal += Number(this.getAbsoluteValue(rd) || 0);
-          }
-        }
-      });
-      return [['合计', '', '', '', '', '', '', '', '', '', '', inQuantity, inQuantity, '', inTotal.toFixed(2), outQuantity, outQuantity, '', outTotal.toFixed(2), this.summaryQuantity, '', this.summaryCost.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -503,44 +474,3 @@ export default {
 }
 </script>
 
-<style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
-
-.simple-page__table {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.simple-page__pager {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--td-component-border, #dcdcdc);
-  background: #fff;
-}
-
-.simple-page__total {
-  font-size: 14px;
-  color: #333639;
-  flex-shrink: 0;
-}
-</style>

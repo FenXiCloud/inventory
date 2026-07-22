@@ -58,7 +58,7 @@ import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 import ProductCategory from '@js/api/basic/ProductCategory';
 import ProductCategoryForm from '@views/basic/ProductCategoryForm.vue';
-import {toArrayTree} from 'xe-utils';
+import {toArrayTree} from '@common/utils';
 import defaultImg from '@/assets/good-img-bg.png';
 
 export default {
@@ -135,28 +135,3 @@ export default {
 };
 </script>
 
-<style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
-
-.simple-page__table {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-</style>

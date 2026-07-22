@@ -5,13 +5,14 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.RoleSimpleDto;
 import com.flyemu.share.entity.setting.*;
-import com.flyemu.share.repository.MenuRoleRepository;
-import com.flyemu.share.repository.RoleRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.MenuRoleRepository;
+import com.flyemu.share.repository.setting.RoleRepository;
+import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,18 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @功能描述: 角色管理
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class RoleService extends AbsService {
+public class RoleService extends BaseService {
 
     private final static QRole qRole = QRole.role;
 
@@ -40,11 +34,9 @@ public class RoleService extends AbsService {
 
     private final RoleRepository roleRepository;
 
-
     private final MenuRoleRepository menuRoleRepository;
 
     private final QAdmin qAdmin = QAdmin.admin;
-
 
     public PageResults<Role> query(Page page, Query query) {
         PagedList<Role> fetchPage = bqf.selectFrom(qRole)
@@ -53,7 +45,6 @@ public class RoleService extends AbsService {
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
         return new PageResults<>(fetchPage, page);
     }
-
 
     @Transactional
     public Role save(Role role) {
@@ -67,7 +58,6 @@ public class RoleService extends AbsService {
         return roleRepository.save(role);
     }
 
-
     @Transactional
     public void delete(Long roleId, Long merchantId) {
         long count = bqf.selectFrom(qAdmin).where(qAdmin.roleId.eq(roleId)).fetchCount();
@@ -77,7 +67,6 @@ public class RoleService extends AbsService {
                 .where(qRole.id.eq(roleId).and(qRole.merchantId.eq(merchantId)))
                 .execute();
     }
-
 
     public List<RoleSimpleDto> simpleList(Long merchantId) {
         BooleanBuilder builder = new BooleanBuilder();
@@ -94,7 +83,6 @@ public class RoleService extends AbsService {
                 });
         return dtos;
     }
-
 
     public List<Long> getMenuRole(Long roleId) {
         return bqf.selectFrom(qMenuRole).select(qMenuRole.menuId).where(qMenuRole.roleId.eq(roleId)).fetch();
@@ -125,9 +113,7 @@ public class RoleService extends AbsService {
         public final BooleanBuilder builder = new BooleanBuilder();
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qRole.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qRole.merchantId, merchantId);
         }
 
     }

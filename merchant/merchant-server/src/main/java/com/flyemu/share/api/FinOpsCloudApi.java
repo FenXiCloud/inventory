@@ -89,7 +89,6 @@ public class FinOpsCloudApi {
         return res.getInteger("data");
     }
 
-
     public JSONObject loadVoucherSelect(FinOpsRequest finOpsRequest, String accountSetsId) {
         JSONObject res = this.executeJson(0, finOpsRequest.getBaseUrl() + "/api/subject/voucher/select", accountSetsId, finOpsRequest);
         log.info("凭证号{}", res);
@@ -124,7 +123,6 @@ public class FinOpsCloudApi {
             throw new ServiceException("workflowFormsSchemasProcessCodes HttpCode：" + response.getStatus());
         }
     }
-
 
     private JSONObject execute(HttpRequest post, int retry, String accountSetsId, FinOpsRequest finOpsRequest) {
         post.header("cookie", finOpsRequest.getCookie());
@@ -212,7 +210,6 @@ public class FinOpsCloudApi {
         }
         throw new ServiceException(execute.getString("msg"));
     }
-
 
     /**
      * 更新凭证

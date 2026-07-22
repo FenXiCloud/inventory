@@ -1,5 +1,6 @@
 package com.flyemu.share.service.purchase;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
@@ -8,6 +9,7 @@ import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.purchase.PurchaseInboundItemDto;
@@ -20,10 +22,10 @@ import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.PurchaseOrderForm;
-import com.flyemu.share.repository.PurchaseOrderItemRepository;
-import com.flyemu.share.repository.PurchaseOrderRepository;
+import com.flyemu.share.repository.purchase.PurchaseOrderItemRepository;
+import com.flyemu.share.repository.purchase.PurchaseOrderRepository;
 import com.flyemu.share.service.setting.CheckoutService;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -41,18 +43,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * @功能描述: 采购订单
- * @创建时间: 2025年02月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class PurchaseOrderService extends AbsService {
+public class PurchaseOrderService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QUnit qUnit = QUnit.unit;
@@ -118,8 +113,8 @@ public class PurchaseOrderService extends AbsService {
     public List<PurchaseInboundItemDto> loadToInbound(List<Long> orderIds, Long merchantId, Long supplierId) {
         QUnit qUnit1 = new QUnit("id");
 
-        List<PurchaseInboundItemDto> collect = bqf.selectFrom(qPurchaseOrderItem)
-                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name,qProductCategory.name,qProduct.specification,
+        return bqf.selectFrom(qPurchaseOrderItem)
+                .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name, qProductCategory.name, qProduct.specification,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
                 .leftJoin(qPurchaseOrder).on(qPurchaseOrder.id.eq(qPurchaseOrderItem.purchaseOrderId))
@@ -142,7 +137,6 @@ public class PurchaseOrderService extends AbsService {
                     dto.setSpec(tuple.get(qProduct.specification));
                     list.add(dto);
                 }, List::addAll);
-        return collect;
     }
 
     @Transactional
@@ -292,9 +286,8 @@ public class PurchaseOrderService extends AbsService {
         return Dict.create().set("purchaseOrder", orderDto).set("purchaseOrderItemList", collect);
     }
 
-    public static class Query {
+    public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
-
 
         public void setSupplierId(Long supplierId) {
             if (supplierId != null) {
@@ -326,17 +319,12 @@ public class PurchaseOrderService extends AbsService {
             }
         }
 
-
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qPurchaseOrder.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qPurchaseOrder.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qPurchaseOrder.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qPurchaseOrder.accountBookId, accountBookId);
         }
     }
 }

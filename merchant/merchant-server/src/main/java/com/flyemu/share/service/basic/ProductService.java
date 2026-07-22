@@ -1,5 +1,6 @@
 package com.flyemu.share.service.basic;
 
+import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
@@ -10,6 +11,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.blazebit.persistence.PagedList;
 import com.blazebit.persistence.querydsl.BlazeJPAQuery;
 import com.flyemu.share.common.PinYinUtil;
+import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
@@ -24,11 +26,11 @@ import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.ProductForm;
-import com.flyemu.share.repository.CustomerLevelPriceRepository;
-import com.flyemu.share.repository.CustomerLevelRepository;
-import com.flyemu.share.repository.InventoryItemRepository;
-import com.flyemu.share.repository.ProductRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.basic.CustomerLevelPriceRepository;
+import com.flyemu.share.repository.basic.CustomerLevelRepository;
+import com.flyemu.share.repository.inventory.InventoryItemRepository;
+import com.flyemu.share.repository.basic.ProductRepository;
+import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.inventory.*;
 import com.flyemu.share.service.purchase.PurchaseInboundService;
 import com.flyemu.share.service.purchase.PurchaseOrderService;
@@ -58,19 +60,11 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-
-/**
- * @功能描述: 商品列表
- * @创建时间: 2023年08月08日
- * @公司官网: www.fenxi365.com
- * @公司信息: 纷析云（杭州）科技有限公司
- * @公司介绍: 专注于财务相关软件开发, 企业会计自动化解决方案
- */
 @Service
 @Slf4j
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class ProductService extends AbsService {
+public class ProductService extends BaseService {
 
     private final static QProduct qProduct = QProduct.product;
     private final static QProductCategory qProductCategory = QProductCategory.productCategory;
@@ -337,7 +331,6 @@ public class ProductService extends AbsService {
         priceRecordService.savePriceRecord(priceRecord);
     }
 
-
     @Transactional
     public void delete(Long productId, Long merchantId, Long accountBookId) {
         if (existenceChecker.existsInPurchaseOrder(productId, 1)) {
@@ -416,7 +409,6 @@ public class ProductService extends AbsService {
         return result;
     }
 
-
     public Product loadById(Long productId, Long merchantId) {
         return jqf.selectFrom(qProduct).where(qProduct.id.eq(productId).and(qProduct.merchantId.eq(merchantId))).fetchFirst();
     }
@@ -441,7 +433,7 @@ public class ProductService extends AbsService {
     }
 
     @Data
-    public static class Query {
+    public static class Query implements TenantAware {
 
         public final BooleanBuilder builder = new BooleanBuilder();
 
@@ -456,15 +448,11 @@ public class ProductService extends AbsService {
         private Long id;
 
         public void setMerchantId(Long merchantId) {
-            if (merchantId != null) {
-                builder.and(qProduct.merchantId.eq(merchantId));
-            }
+            TenantFilters.merchant(builder, qProduct.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
-            if (accountBookId != null) {
-                builder.and(qProduct.accountBookId.eq(accountBookId));
-            }
+            TenantFilters.accountBook(builder, qProduct.accountBookId, accountBookId);
         }
 
         public void setEnabled(Boolean enabled) {

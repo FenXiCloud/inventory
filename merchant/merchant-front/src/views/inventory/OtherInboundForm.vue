@@ -1,8 +1,8 @@
 <template>
   <div class="page-column">
     <div class="page-column-full-body">
-      <vxe-toolbar class-name="!size--mini">
-        <template #buttons>
+      <div class="form-toolbar">
+        <div class="form-toolbar__left">
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
           <t-date-picker v-model="form.orderDate" :disabled="isLocked"
                          :disable-date="{ before: accountBook.checkoutDate }"
@@ -20,109 +20,113 @@
                     :keys="{ value: 'id', label: 'name' }"
                     :clearable="false" v-model="form.inboundType" :disabled="isLocked"
                     placeholder="请选择业务类型"/>
+        </div>
+        <Stamp v-if="isAudited"/>
+      </div>
+      <t-table
+          ref="xTable"
+          row-key="_rowKey"
+          size="small"
+          bordered
+          stripe
+          hover
+          table-layout="fixed"
+          :columns="columns"
+          :data="otherInboundData"
+          :foot-data="footData"
+          :loading="loading"
+      >
+        <template #ops="{ rowIndex }">
+          <template v-if="!isLocked">
+            <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
+            <div v-if="otherInboundData.length !== 1" class="fa fa-minus text-hover-danger"
+                 @click="adjustRows('delete', rowIndex)"></div>
+          </template>
+          <template v-else>{{ rowIndex + 1 }}</template>
         </template>
-        <template #tools>
-          <Stamp v-if="isAudited"/>
+        <template #productUrl="{ row }">
+          <img v-if="row.productUrl" :src="row.productUrl" alt="" class="product-img"/>
         </template>
-      </vxe-toolbar>
-      <vxe-table :edit-rules="validRules" size="mini" ref="xTable" border show-overflow keep-source
-                 :edit-config="isLocked ? undefined : editConfig" :row-config="{ height: 40, isCurrent: true, isHover: true }"
-                 :tooltip-config="tooltipConfig" show-footer :footer-method="footerMethod" stripe
-                 :data="otherInboundData"
-                 @current-change="currentChangeEvent" @cell-click="tableCellClick">
-        <vxe-column title="操作" field="seq" width="70" align="center" fixed="left">
-          <template #default="{ row, rowIndex }">
-            <div v-if="!isLocked">
-              <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
-              <div v-if="otherInboundData.length !== 1" class="fa fa-minus text-hover-danger"
-                   @click="adjustRows('delete', rowIndex)"></div>
+        <template #productName="{ row, rowIndex }">
+          <div class="input-group goodsSelect" v-if="!isLocked">
+            <t-select :clearable="false" ref="ms" v-model="row.productId" :options="productList" filterable
+                      placeholder="输入编码/名称" :keys="{ value: 'id', label: 'customName' }"
+                      @change="(e) => changeRow({ rowIndex }, 'product', e)"/>
+          </div>
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.productCode }}--{{ row.productName }}</div>
             </div>
-            <div v-else>
-              {{ rowIndex + 1 }}
+          </div>
+        </template>
+        <template #warehouseName="{ row, rowIndex }">
+          <div class="input-group goodsSelect" v-if="!isLocked">
+            <t-select :clearable="false" ref="ms" v-model="row.warehouseId" :options="warehouseList" filterable
+                      placeholder="请选择仓库" :keys="{ value: 'id', label: 'name' }"
+                      @change="(e) => changeRow({ rowIndex }, 'warehouse', e)"/>
+          </div>
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.warehouseName }}</div>
             </div>
-          </template>
-        </vxe-column>
-        <vxe-column field="productUrl" title="产品图片" width="100" :cell-render="imgUrlCellRender"></vxe-column>
-        <vxe-column field="productCode" title="产品编码" width="100"></vxe-column>
-        <vxe-column field="productName" title="产品名称" min-width="300">
-          <template #default="scope">
-            <div class="input-group goodsSelect" v-if="!isLocked">
-              <t-select :clearable="false" ref="ms" v-model="scope.row.productId" :options="productList" filterable
-                        placeholder="输入编码/名称" :keys="{ value: 'id', label: 'customName' }"
-                        @change="(e) => changeRow(scope, 'product', e)"/>
+          </div>
+        </template>
+        <template #quantity="{ row, rowIndex }">
+          <t-tooltip v-if="!isLocked" theme="light">
+            <template #content>
+              <div style="white-space: pre-line">{{ row.quantityTips }}</div>
+            </template>
+            <t-input-number
+                v-model="row.quantity"
+                theme="normal"
+                :min="0"
+                :decimal-places="0"
+                style="width: 100%"
+                @focus="quantityFocus({ rowIndex })"
+                @blur="quantityBlur('quantity', { rowIndex })"
+            />
+          </t-tooltip>
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.quantity }}</div>
             </div>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.productCode }}--{{ scope.row.productName }}</div>
-              </div>
+          </div>
+        </template>
+        <template #unitPrice="{ row, rowIndex }">
+          <t-input-number
+              v-if="!isLocked"
+              v-model="row.unitPrice"
+              theme="normal"
+              :min="0"
+              :decimal-places="2"
+              style="width: 100%"
+              @focus="quantityFocus({ rowIndex })"
+              @blur="quantityBlur('unitPrice', { rowIndex })"
+          />
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.unitPrice }}</div>
             </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="规格型号" field="productSpecification" align="center" width="80"></vxe-column>
-        <vxe-column title="产品类别" field="productCategoryName" align="center" width="120"></vxe-column>
-        <!-- <vxe-column title="品牌" field="productBrand" width="90"></vxe-column> -->
-        <!-- <vxe-column title="产地" field="productOrigin" align="center" width="80" /> -->
-        <vxe-column title="单位" field="productUnitName" width="90"/>
-        <vxe-column title="仓库" field="warehouseName" width="300">
-          <template #default="scope">
-            <div class="input-group goodsSelect" v-if="!isLocked">
-              <t-select :clearable="false" ref="ms" v-model="scope.row.warehouseId" :options="warehouseList" filterable
-                        placeholder="请选择仓库" :keys="{ value: 'id', label: 'name' }"
-                        @change="(e) => changeRow(scope, 'warehouse', e)"/>
+          </div>
+        </template>
+        <template #subtotal="{ row, rowIndex }">
+          <t-input-number
+              v-if="!isLocked"
+              v-model="row.subtotal"
+              theme="normal"
+              :min="0"
+              :decimal-places="2"
+              style="width: 100%"
+              @focus="quantityFocus({ rowIndex })"
+              @blur="quantityBlur('subtotal', { rowIndex })"
+          />
+          <div v-else class="flex">
+            <div class="flex1 ml-8px">
+              <div>{{ row.subtotal }}</div>
             </div>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.warehouseName }}</div>
-              </div>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="数量" field="quantity" width="100">
-          <template #default="scope">
-            <vxe-tooltip v-if="!isLocked" :content="scope.row.quantityTips" theme="light">
-              <vxe-input @focus="quantityFocus(scope)" @blur="quantityBlur('quantity',scope)"
-                         v-model.number="scope.row.quantity" type="int" min="0" :controls="false">
-              </vxe-input>
-            </vxe-tooltip>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.quantity }}</div>
-              </div>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="入库单价" field="unitPrice" width="125">
-          <template #default="scope">
-            <vxe-input v-if="!isLocked" @focus="quantityFocus(scope)"
-                       @blur="quantityBlur('unitPrice',scope)"
-                       v-model.number="scope.row.unitPrice" type="int" min="0" :controls="false">
-            </vxe-input>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.unitPrice }}</div>
-              </div>
-            </div>
-          </template>
-        </vxe-column>
-        <vxe-column title="入库金额" field="subtotal" width="125">
-          <template #default="scope">
-            <vxe-input v-if="!isLocked" @focus="quantityFocus(scope)"
-                       @blur="quantityBlur('subtotal',scope)"
-                       v-model.number="scope.row.subtotal" type="int" min="0" :controls="false">
-            </vxe-input>
-            <div v-else class="flex">
-              <div class="flex1 ml-8px">
-                <div>{{ scope.row.subtotal }}</div>
-              </div>
-            </div>
-          </template>
-        </vxe-column>
-        <!-- <vxe-column title="备注" field="remarks" :edit-render="{}" width="100">
-          <template #edit="scope">
-            <vxe-input v-model="scope.row.remarks"></vxe-input>
-          </template>
-        </vxe-column> -->
-      </vxe-table>
+          </div>
+        </template>
+      </t-table>
       <div class="mt-10px"></div>
       <div class="filler-panel">
         <div class="filler-item">
@@ -165,6 +169,11 @@ import Inventory from "@js/api/inventory/Inventory";
 import {mapMutations, mapState} from "vuex";
 import Stamp from "../common/Stamp.vue";
 
+let rowSeq = 0;
+function newRow(extra = {}) {
+  return { _rowKey: `r-${++rowSeq}`, productId: null, warehouseId: null, quantity: null, ...extra };
+}
+
 export default {
   name: "OtherInboundForm",
   components: {Stamp},
@@ -185,6 +194,37 @@ export default {
     },
     isLocked() {
       return this.isAudited || this.looked;
+    },
+    columns() {
+      return [
+        {
+          colKey: 'ops',
+          title: '操作',
+          width: 70,
+          align: 'center',
+          fixed: 'left',
+          foot: () => '合计'
+        },
+        { colKey: 'productUrl', title: '产品图片', width: 100 },
+        { colKey: 'productCode', title: '产品编码', width: 100 },
+        { colKey: 'productName', title: '产品名称', minWidth: 300 },
+        { colKey: 'productSpecification', title: '规格型号', align: 'center', width: 80 },
+        { colKey: 'productCategoryName', title: '产品类别', align: 'center', width: 120 },
+        { colKey: 'productUnitName', title: '单位', width: 90 },
+        { colKey: 'warehouseName', title: '仓库', width: 300 },
+        { colKey: 'quantity', title: '数量', width: 100 },
+        { colKey: 'unitPrice', title: '入库单价', width: 125 },
+        { colKey: 'subtotal', title: '入库金额', width: 125 },
+      ];
+    },
+    footData() {
+      let totalQuantity = 0;
+      let totalAmount = 0;
+      (this.otherInboundData || []).forEach((row) => {
+        totalQuantity += Number(row.quantity || 0);
+        totalAmount += Number(row.subtotal || 0);
+      });
+      return [{ ops: '合计', quantity: totalQuantity, subtotal: totalAmount.toFixed(2) }];
     }
   },
   data() {
@@ -215,28 +255,8 @@ export default {
       inboundTypeList: [{id: '其他入库', name: '其他入库'}, {id: '盘盈入库', name: '盘盈入库'}],
       customerList: [],
       supplierList: [],
-      // 表格校验规则
-      validRules: {
-        productName: [
-          {required: true, message: '请选择产品名称'},
-        ],
-        warehouseName: [
-          {required: true, message: '请选择仓库'},
-        ],
-        quantity: [
-          {required: true, message: '请填写数量'},
-        ]
-      },
-      // 提示配置
-      tooltipConfig: {
-        showAll: false,
-        enterable: false,
-      },
-      // 编辑配置
-      editConfig: {trigger: 'click', mode: 'row'}
     };
   },
-  // 待优化使用hook方式调用
   methods: {
     doPrint() {
       const items = (this.otherInboundData || []).filter(r => r && !r.isNew && r.productId).map(r => {
@@ -259,41 +279,7 @@ export default {
       });
     },
 
-    // 关闭tab
     ...mapMutations(['closeSelfTab', 'pushTab']),
-    //footer合计
-    footerMethod({columns, data}) {
-      let totalQuantity = 0;
-      let totalAmount = 0.00;
-      columns.forEach(column => {
-        if (column.property && ['quantity', 'subtotal'].includes(column.property)) {
-          data.forEach((row) => {
-            switch (column.property) {
-              case 'quantity': {
-                let rd = row[column.property];
-                if (rd) {
-                  totalQuantity += Number(rd || 0);
-                }
-                break;
-              }
-              case 'subtotal': {
-                let rd = row[column.property];
-                if (rd) {
-                  totalAmount += Number(rd || 0);
-                }
-                break;
-              }
-              default:
-                break;
-            }
-          });
-        }
-      });
-      return [
-        ["", "", "", "", "", "", "", "", totalQuantity, "", totalAmount],
-      ];
-    },
-    // 设置行数据（TDesign @change 传 value；兼容对象入参
     changeRow: function ({rowIndex}, type, selected) {
       switch (type) {
         case 'product': {
@@ -390,7 +376,6 @@ export default {
     isEmpty(value) {
       return (value !== 0 && !value) || value === '';
     },
-    //保存新增、保存
     saveOrder(type) {
       const filterOtherInboundData = this.otherInboundData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
       if (!this.validatorsForm(filterOtherInboundData)) {
@@ -410,7 +395,6 @@ export default {
           })
           .finally(() => LoadingPlugin(false));
     },
-    //校验提交表单
     validatorsForm(filterOtherInboundData) {
       if (filterOtherInboundData.length === 0) {
         MessagePlugin.error("请填写操作数据~");
@@ -438,7 +422,6 @@ export default {
       }
       return true;
     },
-    //获取保存新增、保存方法提交数据
     getSaveOrderParams(filterOtherInboundData) {
       const otherInboundItems = [];
       const otherInbound = {
@@ -469,7 +452,6 @@ export default {
         otherInboundItems: otherInboundItems
       };
     },
-    //清除Form
     clearForm() {
       this.form = {
         id: null,
@@ -489,35 +471,24 @@ export default {
       this.newOtherInboundData();
     },
 
-    //添加行或减少行
     adjustRows(type, index) {
       if (type === "insert") {
-        this.otherInboundData.splice(index + 1, 0, {isNew: true});
+        this.otherInboundData.splice(index + 1, 0, newRow({isNew: true}));
       } else {
         this.otherInboundData.splice(index, 1);
       }
     },
-    //新增默认初始化行数
     newOtherInboundData() {
       for (let index = 0; index < 5; index++) {
-        this.otherInboundData.push({productId: null, warehouseId: null, quantity: null});
+        this.otherInboundData.push(newRow());
       }
     },
-    //行选中事件
-    currentChangeEvent({rowIndex}) {
-      this.selectRowIndex = rowIndex;
-    },
-    //表格行点击事件
-    tableCellClick({rowIndex}) {
-    },
-    //数量焦点获取库存数量到titile-prefix中
     quantityFocus({rowIndex}) {
-      const otherOutboundItem = this.otherInboundData[rowIndex];
-      const {productId, warehouseId} = otherOutboundItem;
+      const otherInboundItem = this.otherInboundData[rowIndex];
+      const {productId, warehouseId} = otherInboundItem;
       if (this.isEmpty(productId) || this.isEmpty(warehouseId)) {
         return;
       }
-      // 获取产品库存进行提示
       Inventory.list({productId}).then(res => {
         const {data} = res;
         if (data && data.results) {
@@ -535,7 +506,6 @@ export default {
         }
       });
     },
-    //失去焦点
     quantityBlur(type, {rowIndex}) {
       const inboundItem = this.otherInboundData[rowIndex];
       const quantity = inboundItem.quantity || 1;
@@ -563,9 +533,7 @@ export default {
           break;
       }
     },
-    //加载编辑表单
     loadEditForm(id) {
-      this.editConfig = {trigger: 'click', mode: 'row'};
       this.increase = false;
       this.otherInboundData = [];
       OtherInbound.load(this.otherInboundId || id).then(
@@ -585,7 +553,7 @@ export default {
               data.forEach(item => {
                 totalAmount += parseFloat(item.subtotal);
                 totalQuantity += parseInt(item.quantity);
-                this.otherInboundData.push({
+                this.otherInboundData.push(newRow({
                   productUrl: '',
                   productCode: item.productCode,
                   productName: item.productName,
@@ -599,7 +567,7 @@ export default {
                   quantity: item.quantity,
                   unitPrice: item.unitPrice,
                   subtotal: item.subtotal
-                });
+                }));
               });
               this.form.totalAmount = totalAmount;
               this.form.totalQuantity = totalQuantity;
@@ -607,7 +575,6 @@ export default {
           }
       );
     },
-    //加载字典
     loadDict(callback) {
       Promise.all([Product.select(), Warehouse.select(), Customer.select(), Supplier.select()])
           .then((results) => {
@@ -627,16 +594,14 @@ export default {
           })
           .finally(() => LoadingPlugin(false));
     },
-    //初始化表单
     initIncreaseForm() {
       this.increase = true;
       this.newOtherInboundData();
       this.form.adminName = this.user.admin.name;
       this.form.id = null;
-      this.editConfig = {trigger: 'click', mode: 'row'};
       if (this.stockTakeId) {
         this.form.inboundType = "盘盈入库";
-        this.otherInboundData = JSON.parse(JSON.stringify(this.importInbound));
+        this.otherInboundData = (JSON.parse(JSON.stringify(this.importInbound)) || []).map((row) => newRow(row));
       }
     },
     approved() {
@@ -684,3 +649,11 @@ export default {
   },
 };
 </script>
+<style lang="less" scoped>
+
+.product-img {
+  max-width: 48px;
+  max-height: 48px;
+  object-fit: contain;
+}
+</style>

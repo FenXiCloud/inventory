@@ -1,12 +1,11 @@
 package com.flyemu.share.service.setting;
 
-
 import cn.hutool.core.lang.Assert;
 import com.flyemu.share.entity.setting.AccountBookParameters;
 import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.entity.setting.AccountBook;
-import com.flyemu.share.repository.AccountBookParametersRepository;
-import com.flyemu.share.service.AbsService;
+import com.flyemu.share.repository.setting.AccountBookParametersRepository;
+import com.flyemu.share.service.BaseService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,22 +13,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 
-
-/**
- * 账套参数设置业务层
- *
- * @author shuaiqi
- * @since 2025-05-13 15:35:40
- */
+/** 账套参数设置 */
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class AccountBookParametersService extends AbsService {
+public class AccountBookParametersService extends BaseService {
     private static final QAccountBookParameters Q_ACCOUNT_BOOK_PARAMETERS = QAccountBookParameters.accountBookParameters;
 
     private final AccountBookParametersRepository accountBookParametersRepository;
     private final AccountBookService accountBookService;
-
 
     @Transactional
     public AccountBookParameters load(Long merchantId, Integer accountBookId) {
@@ -63,7 +55,6 @@ public class AccountBookParametersService extends AbsService {
         }
         return params;
     }
-
 
     @Transactional
     public void update(AccountBookParameters accountBookParameters) {

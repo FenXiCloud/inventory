@@ -55,89 +55,20 @@
       </t-space>
     </div>
     <div class="simple-page__table">
-      <vxe-table row-id="id"
-                 ref="table"
-                 height="auto"
-                 :data="dataList"
-                 highlight-hover-row
-                 show-overflow
-                 show-footer
-                 :footer-method="footerMethod"
-                 :row-config="{height: 48}"
-                 :column-config="{resizable: true}"
-                 :sort-config="{remote:true}"
-                 :loading="loading">
-        <vxe-column title="产品编号" field="productCode" align="center" width="130"/>
-        <vxe-column title="产品名称" field="productName" width="200"/>
-        <vxe-column title="产品类别" field="productCategoryName" width="200"/>
-        <vxe-column title="规格型号" field="productSpecification" min-width="120"/>
-        <vxe-column title="单位" field="unitName" width="120"/>
-        <vxe-column title="仓库" field="warehouseName" width="120"/>
-        <vxe-colgroup title="期初" align="center">
-          <vxe-column title="数量" field="initialQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="initialSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="采购入库" align="center">
-          <vxe-column title="数量" field="purchaseStockQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="purchaseStockSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="销售退货" align="center">
-          <vxe-column title="数量" field="salesReturnsQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="salesReturnsSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="调拨入库" align="center">
-          <vxe-column title="数量" field="channelInQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="channelInSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="其他入库" align="center">
-          <vxe-column title="数量" field="otherInQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="otherInSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="盘盈单" align="center">
-          <vxe-column title="数量" field="takeProfitQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="takeProfitSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="入库合计" align="center">
-          <vxe-column title="数量" field="inQuantityTotal" align="center" width="100"/>
-          <vxe-column title="成本" field="inSubtotalTotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="采购退货" align="center">
-          <vxe-column title="数量" field="purchaseReturnsQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="purchaseReturnsSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="销售出库" align="center">
-          <vxe-column title="数量" field="sellOutQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="sellOutSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="调拨出库" align="center">
-          <vxe-column title="数量" field="channelOutQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="channelOutSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="其他出库" align="center">
-          <vxe-column title="数量" field="otherOutQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="otherOutSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="盘亏单" align="center">
-          <vxe-column title="数量" field="taskDeficitQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="taskDeficitSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="出库合计" align="center">
-          <vxe-column title="数量" field="outQuantityTotal" align="center" width="100"/>
-          <vxe-column title="成本" field="outSubtotalTotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="成本调整" align="center">
-          <vxe-column title="数量" field="costQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="costSubtotal" align="center" width="100"/>
-        </vxe-colgroup>
-        <vxe-colgroup title="结存" align="center">
-          <vxe-column title="数量" field="currentQuantity" align="center" width="100"/>
-          <vxe-column title="成本" field="totalCost" align="center" width="100"/>
-        </vxe-colgroup>
-
-      </vxe-table>
+      <t-table
+          row-key="id"
+          size="medium"
+          bordered
+          hover
+          height="100%"
+          table-layout="fixed"
+          :data="dataList"
+          :columns="columns"
+          :loading="loading"
+          :foot-data="footData"
+      />
     </div>
     <div class="simple-page__pager">
-      <span class="simple-page__total"></span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -162,6 +93,11 @@ import {exportExcelHeader} from "@js/excel";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
+
+const qtyCostChildren = (qtyKey, costKey) => ([
+  {colKey: qtyKey, title: '数量', width: 100, align: 'center'},
+  {colKey: costKey, title: '成本', width: 100, align: 'center'},
+]);
 
 export default {
   name: "InventorySummaryReport",
@@ -192,6 +128,29 @@ export default {
       warehouseList: [],
       productList: [],
       productCategoryList: [],
+      columns: [
+        {colKey: 'productCode', title: '产品编号', width: 130, align: 'center', ellipsis: true},
+        {colKey: 'productName', title: '产品名称', width: 200, ellipsis: true},
+        {colKey: 'productCategoryName', title: '产品类别', width: 200, ellipsis: true},
+        {colKey: 'productSpecification', title: '规格型号', minWidth: 120, ellipsis: true},
+        {colKey: 'unitName', title: '单位', width: 120, ellipsis: true},
+        {colKey: 'warehouseName', title: '仓库', width: 120, ellipsis: true},
+        {colKey: 'initial', title: '期初', align: 'center', children: qtyCostChildren('initialQuantity', 'initialSubtotal')},
+        {colKey: 'purchaseStock', title: '采购入库', align: 'center', children: qtyCostChildren('purchaseStockQuantity', 'purchaseStockSubtotal')},
+        {colKey: 'salesReturns', title: '销售退货', align: 'center', children: qtyCostChildren('salesReturnsQuantity', 'salesReturnsSubtotal')},
+        {colKey: 'channelIn', title: '调拨入库', align: 'center', children: qtyCostChildren('channelInQuantity', 'channelInSubtotal')},
+        {colKey: 'otherIn', title: '其他入库', align: 'center', children: qtyCostChildren('otherInQuantity', 'otherInSubtotal')},
+        {colKey: 'takeProfit', title: '盘盈单', align: 'center', children: qtyCostChildren('takeProfitQuantity', 'takeProfitSubtotal')},
+        {colKey: 'inTotal', title: '入库合计', align: 'center', children: qtyCostChildren('inQuantityTotal', 'inSubtotalTotal')},
+        {colKey: 'purchaseReturns', title: '采购退货', align: 'center', children: qtyCostChildren('purchaseReturnsQuantity', 'purchaseReturnsSubtotal')},
+        {colKey: 'sellOut', title: '销售出库', align: 'center', children: qtyCostChildren('sellOutQuantity', 'sellOutSubtotal')},
+        {colKey: 'channelOut', title: '调拨出库', align: 'center', children: qtyCostChildren('channelOutQuantity', 'channelOutSubtotal')},
+        {colKey: 'otherOut', title: '其他出库', align: 'center', children: qtyCostChildren('otherOutQuantity', 'otherOutSubtotal')},
+        {colKey: 'taskDeficit', title: '盘亏单', align: 'center', children: qtyCostChildren('taskDeficitQuantity', 'taskDeficitSubtotal')},
+        {colKey: 'outTotal', title: '出库合计', align: 'center', children: qtyCostChildren('outQuantityTotal', 'outSubtotalTotal')},
+        {colKey: 'costAdj', title: '成本调整', align: 'center', children: qtyCostChildren('costQuantity', 'costSubtotal')},
+        {colKey: 'balance', title: '结存', align: 'center', children: qtyCostChildren('currentQuantity', 'totalCost')},
+      ],
     }
   },
   computed: {
@@ -204,6 +163,79 @@ export default {
         end: end || null,
       })
     },
+    footData() {
+      const map = {
+        initialQuantity: 0,
+        initialSubtotal: 0,
+        purchaseStockQuantity: 0,
+        purchaseStockSubtotal: 0,
+        salesReturnsQuantity: 0,
+        salesReturnsSubtotal: 0,
+        channelInQuantity: 0,
+        channelInSubtotal: 0,
+        otherInQuantity: 0,
+        otherInSubtotal: 0,
+        takeProfitQuantity: 0,
+        takeProfitSubtotal: 0,
+        inQuantityTotal: 0,
+        inSubtotalTotal: 0,
+        purchaseReturnsQuantity: 0,
+        purchaseReturnsSubtotal: 0,
+        sellOutQuantity: 0,
+        sellOutSubtotal: 0,
+        channelOutQuantity: 0,
+        channelOutSubtotal: 0,
+        otherOutQuantity: 0,
+        otherOutSubtotal: 0,
+        taskDeficitQuantity: 0,
+        taskDeficitSubtotal: 0,
+        outQuantityTotal: 0,
+        outSubtotalTotal: 0,
+        costSubtotal: 0,
+        currentQuantity: 0,
+        totalCost: 0,
+      };
+      (this.dataList || []).forEach((row) => {
+        Object.keys(map).forEach((key) => {
+          const rd = row[key];
+          if (rd) {
+            map[key] += Number(this.getAbsoluteValue(rd) || 0);
+          }
+        });
+      });
+      return [{
+        productCode: '合计',
+        initialQuantity: map.initialQuantity,
+        initialSubtotal: map.initialSubtotal.toFixed(2),
+        purchaseStockQuantity: map.purchaseStockQuantity,
+        purchaseStockSubtotal: map.purchaseStockSubtotal.toFixed(2),
+        salesReturnsQuantity: map.salesReturnsQuantity,
+        salesReturnsSubtotal: map.salesReturnsSubtotal.toFixed(2),
+        channelInQuantity: map.channelInQuantity,
+        channelInSubtotal: map.channelInSubtotal.toFixed(2),
+        otherInQuantity: map.otherInQuantity,
+        otherInSubtotal: map.otherInSubtotal.toFixed(2),
+        takeProfitQuantity: map.takeProfitQuantity,
+        takeProfitSubtotal: map.takeProfitSubtotal.toFixed(2),
+        inQuantityTotal: map.inQuantityTotal,
+        inSubtotalTotal: map.inSubtotalTotal.toFixed(2),
+        purchaseReturnsQuantity: map.purchaseReturnsQuantity,
+        purchaseReturnsSubtotal: map.purchaseReturnsSubtotal.toFixed(2),
+        sellOutQuantity: map.sellOutQuantity,
+        sellOutSubtotal: map.sellOutSubtotal.toFixed(2),
+        channelOutQuantity: map.channelOutQuantity,
+        channelOutSubtotal: map.channelOutSubtotal.toFixed(2),
+        otherOutQuantity: map.otherOutQuantity,
+        otherOutSubtotal: map.otherOutSubtotal.toFixed(2),
+        taskDeficitQuantity: map.taskDeficitQuantity,
+        taskDeficitSubtotal: map.taskDeficitSubtotal.toFixed(2),
+        outQuantityTotal: map.outQuantityTotal,
+        outSubtotalTotal: map.outSubtotalTotal.toFixed(2),
+        costSubtotal: map.costSubtotal.toFixed(2),
+        currentQuantity: map.currentQuantity,
+        totalCost: map.totalCost.toFixed(2),
+      }];
+    },
   },
   methods: {
     ...mapMutations(['pushTab']),
@@ -211,65 +243,6 @@ export default {
       this.pagination.page = pageInfo.current;
       this.pagination.pageSize = pageInfo.pageSize;
       this.loadList();
-    },
-    footerMethod({columns, data}) {
-      const map = {
-        "initialQuantity": 0,
-        "initialSubtotal": 0,
-        "purchaseStockQuantity": 0,
-        "purchaseStockSubtotal": 0,
-        "salesReturnsQuantity": 0,
-        "salesReturnsSubtotal": 0,
-        "channelInQuantity": 0,
-        "channelInSubtotal": 0,
-        "otherInQuantity": 0,
-        "otherInSubtotal": 0,
-        "takeProfitQuantity": 0,
-        "takeProfitSubtotal": 0,
-        "inQuantityTotal": 0,
-        "inSubtotalTotal": 0,
-        "purchaseReturnsQuantity": 0,
-        "purchaseReturnsSubtotal": 0,
-        "sellOutQuantity": 0,
-        "sellOutSubtotal": 0,
-        "channelOutQuantity": 0,
-        "channelOutSubtotal": 0,
-        "otherOutQuantity": 0,
-        "otherOutSubtotal": 0,
-        "taskDeficitQuantity": 0,
-        "taskDeficitSubtotal": 0,
-        "outQuantityTotal": 0,
-        "outSubtotalTotal": 0,
-        "costSubtotal": 0,
-        "currentQuantity": 0,
-        "totalCost": 0
-      };
-      for (let mapKey in map) {
-        let value = 0;
-        data.forEach((row) => {
-          let rd = row[mapKey];
-          if (rd) {
-            value += Number(this.getAbsoluteValue(rd) || 0);
-          }
-        });
-        map[mapKey] = value;
-      }
-      return [['合计', '', '', '', '', '',
-        map.initialQuantity, map.initialSubtotal.toFixed(2),
-        map.purchaseStockQuantity, map.purchaseStockSubtotal.toFixed(2),
-        map.salesReturnsQuantity, map.salesReturnsSubtotal.toFixed(2),
-        map.channelInQuantity, map.channelInSubtotal.toFixed(2),
-        map.otherInQuantity, map.otherInSubtotal.toFixed(2),
-        map.takeProfitQuantity, map.takeProfitSubtotal.toFixed(2),
-        map.inQuantityTotal, map.inSubtotalTotal.toFixed(2),
-        map.purchaseReturnsQuantity, map.purchaseReturnsSubtotal.toFixed(2),
-        map.sellOutQuantity, map.sellOutSubtotal.toFixed(2),
-        map.channelOutQuantity, map.channelOutSubtotal.toFixed(2),
-        map.otherOutQuantity, map.otherOutSubtotal.toFixed(2),
-        map.taskDeficitQuantity, map.taskDeficitSubtotal.toFixed(2),
-        map.outQuantityTotal, map.outSubtotalTotal.toFixed(2),
-        '', map.costSubtotal.toFixed(2),
-        map.currentQuantity, map.totalCost.toFixed(2)]];
     },
     doSearch() {
       this.pagination.page = 1;
@@ -679,44 +652,3 @@ export default {
 }
 </script>
 
-<style scoped>
-.simple-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-radius: 4px;
-  padding: 0 12px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.simple-page__toolbar {
-  flex-shrink: 0;
-  padding: 8px 0;
-}
-
-.simple-page__table {
-  flex: 1 1 0;
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.simple-page__pager {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--td-component-border, #dcdcdc);
-  background: #fff;
-}
-
-.simple-page__total {
-  font-size: 14px;
-  color: #333639;
-  flex-shrink: 0;
-}
-</style>

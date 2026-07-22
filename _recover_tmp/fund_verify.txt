@@ -1,6 +1,0 @@
-AccountTransferForm.vue: OK
-OrderPaymentForm.vue: OK
-OrderReceiptForm.vue: OK
-OtherExpenseForm.vue: OK
-OtherReceiptForm.vue: OK
-VerificationForm.vue: OK

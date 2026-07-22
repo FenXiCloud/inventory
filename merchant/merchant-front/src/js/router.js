@@ -498,7 +498,7 @@ const groupRoutes = [
   {
     name: 'CounterpartDebt',
     component: defineAsyncComponent(() =>
-      import('@views/fund/CounterpartDebt.vue')
+      import('@views/fund/counterpartDebt.vue')
     )
   },
   {
@@ -528,13 +528,13 @@ const groupRoutes = [
   {
     name: 'CustomerStatements',
     component: defineAsyncComponent(() =>
-      import('@views/fund/CustomerStatements.vue')
+      import('@views/fund/customerStatements.vue')
     )
   },
   {
     name: 'VendorStatements',
     component: defineAsyncComponent(() =>
-      import('@views/fund/VendorStatements.vue')
+      import('@views/fund/vendorStatements.vue')
     )
   },
   {

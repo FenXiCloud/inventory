@@ -8,9 +8,12 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.Merchant;
+import com.flyemu.share.entity.setting.MerchantMenu;
+import com.flyemu.share.entity.setting.QMenu;
 import com.flyemu.share.entity.setting.QMerchant;
 import com.flyemu.share.entity.setting.Role;
 import com.flyemu.share.repository.setting.AdminRepository;
+import com.flyemu.share.repository.setting.MerchantMenuRepository;
 import com.flyemu.share.repository.setting.MerchantRepository;
 import com.flyemu.share.repository.setting.RoleRepository;
 import com.flyemu.share.service.BaseService;
@@ -20,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -29,11 +34,15 @@ public class MerchantService extends BaseService {
 
     private final QMerchant qMerchant = QMerchant.merchant;
 
+    private static final QMenu qMenu = QMenu.menu;
+
     private final MerchantRepository merchantRepository;
 
     private final AdminRepository adminRepository;
 
     private final RoleRepository roleRepository;
+
+    private final MerchantMenuRepository merchantMenuRepository;
 
     public PageResults<Merchant> query(Page page) {
         PagedList<Merchant> fetchPage = bqf.selectFrom(qMerchant)
@@ -78,7 +87,29 @@ public class MerchantService extends BaseService {
         admin.setRoleId(role.getId());
         adminRepository.save(admin);
 
+        // 为新商户关联所有菜单
+        associateMerchantMenus(merchant.getId());
+
         return admin;
+    }
+
+    /**
+     * 为新商户关联所有菜单
+     */
+    private void associateMerchantMenus(Long merchantId) {
+        List<Long> menuIds = jqf.selectFrom(qMenu).select(qMenu.id).fetch();
+        if (menuIds.isEmpty()) {
+            return;
+        }
+        List<MerchantMenu> merchantMenus = menuIds.stream()
+                .map(menuId -> {
+                    MerchantMenu mm = new MerchantMenu();
+                    mm.setMenuId(menuId);
+                    mm.setMerchantId(merchantId);
+                    return mm;
+                })
+                .collect(Collectors.toList());
+        merchantMenuRepository.saveAll(merchantMenus);
     }
 
     @Transactional

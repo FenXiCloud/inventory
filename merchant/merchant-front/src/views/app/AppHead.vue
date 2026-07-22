@@ -2,11 +2,14 @@
   <div class="app-header">
     <div class="flex">
       <div class="account">
-        <t-select v-model="selectAccountBookId" @change="changeCurrent">
-          <t-option v-for="item in accountBooks" :key="item.key || item.id" :value="item.key || item.id" :label="item.name">
-            {{ item.name }}
-          </t-option>
-        </t-select>
+        <t-select
+            v-model="selectAccountBookId"
+            :options="accountBooks"
+            :keys="{ value: 'key', label: 'title' }"
+            :clearable="false"
+            placeholder="请选择账套"
+            @change="changeCurrent"
+        />
       </div>
     </div>
     <div class="flex app-header-info flex items-center" v-if="user.admin">
@@ -73,7 +76,7 @@ export default {
     },
   },
   created() {
-    if (this.accountBooks) {
+    if (this.accountBook?.key != null) {
       this.selectAccountBookId = this.accountBook.key;
     }
   }

@@ -1,5 +1,5 @@
 <template>
-  <div class="app-menu">
+  <div class="app-menu" @click="onMenuRootClick">
     <AppLogo/>
     <t-menu
         :key="menuRenderKey"
@@ -18,7 +18,7 @@
           {{ m.title }}
         </t-menu-item>
 
-        <!-- 一级：悬浮弹出；二级作标题；三级可点击 -->
+        <!-- 一级：悬浮/单击弹出；二级作标题；三级可点击 -->
         <t-submenu
             v-else
             :value="m.key || m.id"
@@ -89,6 +89,12 @@ export default {
       localStorage.setItem("currentTab", JSON.stringify(pick(this.tabs.find(value => value.key === val), ['key', 'title'])))
     }
   },
+  mounted() {
+    document.addEventListener('click', this.onDocumentClick);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.onDocumentClick);
+  },
   methods: {
     ...mapMutations(['pushTab', 'updateTab']),
     resolveMenuIcon(menu) {
@@ -97,6 +103,27 @@ export default {
       const icon = menu.icon;
       if (icon && typeof icon === 'string' && !icon.startsWith('fa')) return icon;
       return 'app';
+    },
+    /** 单击一级菜单标题：打开浮动层（与悬停共用 TDesign 内部 popupVisible） */
+    onMenuRootClick(e) {
+      const title = e.target.closest('.app-menu .t-submenu > .t-menu__item');
+      if (!title) return;
+      const li = title.closest('.t-submenu');
+      if (!li) return;
+      e.stopPropagation();
+      if (li.classList.contains('t-is-opened')) {
+        this.closeFloatingMenu();
+        return;
+      }
+      li.dispatchEvent(new MouseEvent('mouseenter', {bubbles: false}));
+    },
+    /** 点击菜单/弹层外时收起（单击打开后可能不会走 mouseleave） */
+    onDocumentClick(e) {
+      if (e.target.closest('.app-menu .t-submenu > .t-menu__item')) return;
+      if (e.target.closest('.app-menu')) return;
+      if (e.target.closest('.app-menu-popup, .t-menu__popup, .t-menu__popup-wrapper')) return;
+      if (!this.$el?.querySelector?.('.t-submenu.t-is-opened')) return;
+      this.closeFloatingMenu();
     },
     /** 悬浮菜单为 hover 触发，点击后鼠标仍在弹层上时不会自动收起，需主动关闭 */
     closeFloatingMenu() {
@@ -111,7 +138,7 @@ export default {
         popup.style.visibility = 'hidden';
         popup.style.pointerEvents = 'none';
       });
-      // 重建菜单，清除内部 hover 状态，保证下次悬停可再次打开
+      // 重建菜单，清除内部 hover 状态，保证下次悬停/单击可再次打开
       this.menuRenderKey += 1;
     },
     onMenuChange(value) {

@@ -5,11 +5,11 @@
         <t-input placeholder="请输入商户名称" v-model="model.name"/>
       </t-form-item>
       <div class="flex">
-        <t-form-item label="联系人姓名" name="linkman" class="flex-1 mr-16px">
-          <t-input placeholder="请输入联系人姓名" v-model="model.linkman"/>
+        <t-form-item label="联系人姓名" name="contact" class="flex-1 mr-16px">
+          <t-input placeholder="请输入联系人姓名" v-model="model.contact"/>
         </t-form-item>
         <t-form-item label="联系人电话" name="mobile" class="flex-1">
-          <t-input placeholder="请输入联系人常用手机号" v-model="model.phone"/>
+          <t-input placeholder="请输入联系人常用手机号" v-model="model.mobile"/>
         </t-form-item>
       </div>
       <div class="flex">
@@ -61,13 +61,18 @@ export default {
         id: null,
         address: null,
         email: null,
-        linkman: null,
+        contact: null,
         name: null,
-        phone: null,
+        mobile: null,
         startCheckDate: null,
       },
       rules: {
         name: [{ required: true, message: '请输入商户名称', trigger: 'blur' }],
+        contact: [{ required: true, message: '请输入联系人姓名', trigger: 'blur' }],
+        mobile: [
+          { required: true, message: '请输入联系人电话', trigger: 'blur' },
+          { pattern: /^1\d{10}$/, message: '请输入11位手机号', trigger: 'blur' }
+        ],
       }
     }
   },

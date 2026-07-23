@@ -2,6 +2,7 @@ package com.flyemu.share.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.lang.Assert;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
@@ -17,9 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -61,16 +60,7 @@ public class MerchantService extends BaseService {
             merchant.setContact("李泽龙");
             merchant.setMobile("13944878765");
             merchant.setEnabled(true);
-            LocalDate now = LocalDate.now();
-            LocalDate firstDay = now.with(TemporalAdjusters.firstDayOfMonth());
             this.save(merchant);
-
-            AccountBook accountBook = new AccountBook();
-            accountBook.setMerchantId(merchant.getId());
-            accountBook.setCurrent(true);
-            accountBook.setName("纷析云");
-            accountBook.setEnabled(true);
-            accountBookRepository.save(accountBook);
 
             // 初始化菜单数据
             initMenus(merchant.getId());
@@ -101,11 +91,21 @@ public class MerchantService extends BaseService {
             BeanUtil.copyProperties(merchant, original, CopyOptions.create().ignoreNullValue());
             return merchantRepository.save(original);
         } else {
+            Assert.notBlank(merchant.getName(), "商户名称不允许为空~");
+            Assert.notBlank(merchant.getContact(), "联系人不允许为空~");
+            Assert.notBlank(merchant.getMobile(), "联系人电话不允许为空~");
+            String mobile = merchant.getMobile().trim();
+            Assert.isTrue(mobile.length() >= 6, "联系人电话格式不正确~");
+            merchant.setMobile(mobile);
+
             merchant.setEnabled(true);
             merchant.setCreatedAt(LocalDateTime.now());
+            if (StrUtil.isBlank(merchant.getCode())) {
+                merchant.setCode(UUID.randomUUID().toString());
+            }
             merchantRepository.save(merchant);
 
-            //创建默认角色和管理员账号
+            //创建默认角色和管理员账号（初始密码为手机号后6位）
             Role role = new Role();
             role.setName("商户管理员");
             role.setSystemDefault(true);
@@ -114,14 +114,22 @@ public class MerchantService extends BaseService {
 
             Admin admin = new Admin();
             admin.setName(merchant.getContact());
-            admin.setMobile(merchant.getMobile());
-            admin.setUsername(merchant.getMobile());
-            admin.setPassword(DigestUtil.bcrypt(merchant.getMobile().substring(5)));
+            admin.setMobile(mobile);
+            admin.setUsername(mobile);
+            admin.setPassword(DigestUtil.bcrypt(mobile.substring(mobile.length() - 6)));
             admin.setEnabled(true);
             admin.setMerchantId(merchant.getId());
             admin.setSystemDefault(true);
             admin.setRoleId(role.getId());
             adminRepository.save(admin);
+
+            // 创建默认账套
+            AccountBook accountBook = new AccountBook();
+            accountBook.setMerchantId(merchant.getId());
+            accountBook.setCurrent(true);
+            accountBook.setName(merchant.getName());
+            accountBook.setEnabled(true);
+            accountBookRepository.save(accountBook);
 
             // 为新商户关联菜单
             associateMerchantMenus(merchant.getId());

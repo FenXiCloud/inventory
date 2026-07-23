@@ -517,12 +517,12 @@ public class SalesOutboundService extends BaseService {
         CustomerFlow flow = getCustomerFlow(salesOutbound, targetStatus);
 
         if (targetStatus == OrderStatus.已审核) {
-            customer.setBalance(customer.getBalance().subtract(amount));
+            customer.setBalance(customer.getBalance().add(amount));
         } else {
             if (!OrderStatus.已审核.equals(salesOutbound.getOrderStatus())) {
                 throw new ServiceException("只有已审核的单据才能反审核");
             }
-            customer.setBalance(customer.getBalance().add(amount));
+            customer.setBalance(customer.getBalance().subtract(amount));
         }
 
         flow.setBalanceReceivables(customer.getBalance());

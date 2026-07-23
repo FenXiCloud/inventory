@@ -60,7 +60,7 @@
           @select-change="onSelectChange"
       >
         <template #ops="{ row }">
-          <t-space size="small">
+          <t-space v-if="row.orderStatus === '已保存'" size="small">
             <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
             <t-link theme="primary" @click="doRemove(row)">删除</t-link>
           </t-space>
@@ -105,11 +105,11 @@ const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
 export default {
   name: "SalesOutboundList",
   watch: {
-    '$store.state.currentTabDataOutbound': {
+    '$store.state.currentTabData': {
       handler(newVal) {
         if (newVal && newVal.refresh) {
           this.loadList();
-          this.$store.commit('SET_TAB_DATA_OUTBOUND', null);
+          this.$store.commit('SET_TAB_DATA', null);
         }
       },
       deep: true
@@ -194,10 +194,10 @@ export default {
       this.loadList();
     },
     addForm(type = 'add', orderId = null) {
-      this.$store.commit('SET_TAB_DATA_OUTBOUND', {type, orderId});
       this.pushTab({
         key: 'SalesOutboundForm',
         title: type === 'edit' ? '编辑销售出库' : '新增销售出库',
+        params: {type, orderId},
       });
     },
     clearSelection() {
@@ -249,6 +249,10 @@ export default {
       })
     },
     doRemove(row) {
+      if (row.orderStatus !== '已保存') {
+        MessagePlugin.warning('已审核单据不能删除');
+        return;
+      }
       DialogPlugin.confirm({
         header: "系统提示",
         body: `确认删除：${row.orderNo}?`,

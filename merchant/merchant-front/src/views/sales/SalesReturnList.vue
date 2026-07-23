@@ -60,7 +60,7 @@
           @select-change="onSelectChange"
       >
         <template #ops="{ row }">
-          <t-space size="small">
+          <t-space v-if="row.orderStatus === '已保存'" size="small">
             <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
             <t-link theme="primary" @click="doRemove(row)">删除</t-link>
           </t-space>
@@ -249,6 +249,10 @@ export default {
       })
     },
     doRemove(row) {
+      if (row.orderStatus !== '已保存') {
+        MessagePlugin.warning('已审核单据不能删除');
+        return;
+      }
       DialogPlugin.confirm({
         header: "系统提示",
         body: `确认删除：${row.orderNo}?`,

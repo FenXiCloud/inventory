@@ -284,10 +284,11 @@ import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapState} from "vuex";
 import Product from "@js/api/basic/Product";
-import {openDialog, closeDialog} from '@common/dialog';
+import {openDrawer, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import SalesOrderSelect from "@views/sales/SalesOrderSelect.vue";
 import Unit from "@js/api/basic/Unit";
+import SalesOrder from "@js/api/sales/SalesOrder";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
 import Inventory from "@js/api/inventory/Inventory";
 import Stamp from "@views/common/Stamp.vue";
@@ -301,6 +302,10 @@ function newRow(extra = {}) {
 export default {
   name: "SalesOutboundForm",
   components: {Stamp},
+  props: {
+    orderId: [String, Number],
+    type: String,
+  },
   computed: {
     ...mapState(['accountBook']),
     isAudited() {
@@ -393,8 +398,6 @@ export default {
       },
       productData: [newRow({ isNew: true })],
       selectSalesOrderIdList: [],
-      orderId: null,
-      type: null,
       previewVisible: false,
       previewImageUrl: '',
       recentSales: [],
@@ -451,44 +454,31 @@ export default {
         MessagePlugin.error("请选择客户~");
         return;
       }
-      let dialogId = openDialog({
+      let dialogId = openDrawer({
         header: "请选择销售订单",
         closeOnOverlayClick: false,
         closeBtn: false,
-        width: '1000px',
+        size: '1200px',
         body: h(SalesOrderSelect, {
           customerId: this.customerId,
           onClose: () => closeDialog(dialogId),
           onSuccess: (params) => {
-            this.handleSelectedOrders(params);
+            this.loadToOutbound(params);
             closeDialog(dialogId);
           },
         }),
       });
     },
-    handleSelectedOrders(params) {
-      this.itemTemp = params.itemList;
-      let itemList = params.itemList || [];
-      const unitMap = new Map(this.unitList.map(unit => [unit.id, unit]));
-      itemList.forEach(row => {
-        const unit = unitMap.get(row.baseUnitId);
-        if (unit) {
-          row.unitName = unit.name;
+    loadToOutbound(params) {
+      this.selectSalesOrderIdList = params.orderIds || [];
+      SalesOrder.toOutbound(this.form.customerId, params.orderIds).then(({data}) => {
+        if (!data || !data.length) {
+          MessagePlugin.warning("所选订单没有可出库商品~");
+          return;
         }
-        row.tempId = row.id;
-        row.id = null;
+        const rows = this.applyDefaultWarehouse(data || []).map((row) => newRow({ ...row, isNew: false }));
+        this.productData = rows.concat([newRow({ isNew: true })]);
       });
-      this.productList.forEach(item => {
-        itemList.forEach(item2 => {
-          if (item.id === item2.productId) {
-            item2.productName = item.name;
-            item2.productCode = item.code;
-          }
-        });
-      });
-      const rows = this.applyDefaultWarehouse(itemList).map((row) => newRow({ ...row, isNew: false }));
-      this.productData = rows.concat([newRow({ isNew: true })]);
-      this.selectSalesOrderIdList = params.selectSalesOrderIdList;
     },
     selectProduct(value, index) {
       const d = (this.productList || []).find((item) => String(item.id) === String(value));
@@ -776,7 +766,7 @@ export default {
       this.$store.commit('closeTabKey', this.$store.state.currentTab);
       this.$store.commit('newTab', "SalesOutboundList");
       this.$nextTick(() => {
-        this.$store.commit('SET_TAB_DATA_OUTBOUND', {refresh: true});
+        this.$store.commit('SET_TAB_DATA', {refresh: true});
       });
     },
     discountRateComputeFinalAmount() {
@@ -809,10 +799,6 @@ export default {
       this.productList.forEach(item => {
         item.customName = `${item.code}--${item.name}`;
       });
-      const tabData = this.$store.state.currentTabDataOutbound;
-      this.$store.commit('SET_TAB_DATA_OUTBOUND', null);
-      this.type = tabData?.type;
-      this.orderId = tabData?.orderId;
       if (this.orderId) {
         SalesOutbound.load(this.orderId).then(response => {
           let salesOutbound = response.data;

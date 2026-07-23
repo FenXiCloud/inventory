@@ -130,10 +130,12 @@ public class SupplierService extends BaseService {
                     throw new ServiceException("编码已存在，请重新输入！");
                 }
             }
+            // 档案余额由业务单据/期初流水维护，新建固定为 0
+            supplier.setBalance(BigDecimal.ZERO);
             Supplier save = supplierRepository.save(supplier);
             SupplierFlow supplierFlow=new SupplierFlow();
             supplierFlow.setSupplierId(save.getId());
-            supplierFlow.setBalancePayable(save.getBalance());
+            supplierFlow.setBalancePayable(BigDecimal.ZERO);
             supplierFlow.setSupplierFlowType(SupplierFlow.SupplierFlowType.期初);
             supplierFlow.setAccountBookId(supplier.getAccountBookId());
             supplierFlow.setMerchantId(supplier.getMerchantId());

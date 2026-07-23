@@ -39,7 +39,7 @@ public class Supplier implements TenantAware {
     @Comment("货商分类ID")
     private Long supplierCategoryId;
 
-    @Comment("货商余额,应付账款")
+    @Comment("应付余额：正数=应付欠款，负数=预付")
     private BigDecimal balance;
 
     @Comment("状态")

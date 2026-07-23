@@ -93,9 +93,9 @@ export default {
         {colKey: 'ops', title: '操作', width: 90, fixed: 'left', align: 'center'},
         {colKey: 'supplierCode', title: '货商编码', width: 140},
         {colKey: 'supplierName', title: '货商名称', minWidth: 160, ellipsis: true},
-        {colKey: 'balanceBefore', title: '期初应付款', width: 120},
-        {colKey: 'amount', title: '期初预付款', width: 120},
-        {colKey: 'balanceAfter', title: '期初余额', width: 120}
+        {colKey: 'balanceBefore', title: '期初应付款', width: 120, align: 'right'},
+        {colKey: 'amount', title: '期初预付款', width: 120, align: 'right'},
+        {colKey: 'balanceAfter', title: '期初应付余额', width: 120, align: 'right'}
       ]
     };
   },

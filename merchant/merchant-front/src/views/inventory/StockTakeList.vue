@@ -12,6 +12,14 @@
             placeholder="审核状态"
             style="width: 140px; border-radius: 4px"
         />
+        <t-select
+            v-model="adjustStatus"
+            :options="adjustStatusOptions"
+            clearable
+            placeholder="调整状态"
+            style="width: 150px; border-radius: 4px"
+            @change="onAdjustStatusChange"
+        />
         <t-date-range-picker
             v-model="dateRangeValue"
             clearable
@@ -77,15 +85,63 @@
             </template>
             <template v-else>
               <t-link theme="primary" @click="addForm('look', row.id, row.orderStatus)">查看</t-link>
+              <t-link
+                  v-if="canGenerateInbound(row)"
+                  theme="primary"
+                  @click="addForm('look', row.id, row.orderStatus, 'inbound')"
+              >
+                生成盘盈
+              </t-link>
+              <t-link
+                  v-if="canGenerateOutbound(row)"
+                  theme="danger"
+                  @click="addForm('look', row.id, row.orderStatus, 'outbound')"
+              >
+                生成盘亏
+              </t-link>
             </template>
           </t-space>
         </template>
         <template #orderNoResult="{ row }">
-          <template v-if="row.orderNos !== undefined">
+          <template v-if="row.relatedOrders && row.relatedOrders.length">
+            <div v-for="(item, index) in row.relatedOrders" :key="index" class="order-no-item">
+              <t-link theme="primary" @click="openRelatedOrder(item)">{{ item.label || item.orderNo }}</t-link>
+            </div>
+          </template>
+          <template v-else-if="row.orderNos && row.orderNos.length">
             <div v-for="(item, index) in row.orderNos" :key="index" class="order-no-item">
               {{ item }}
             </div>
           </template>
+          <span v-else class="text-muted">-</span>
+        </template>
+        <template #adjustStatus="{ row }">
+          <template v-if="row.orderStatus !== '已审核'">
+            <span class="text-muted">-</span>
+          </template>
+          <t-space v-else size="4px" break-line>
+            <t-tag v-if="!row.needInbound && !row.needOutbound" theme="default" variant="light" size="small">
+              账实相符
+            </t-tag>
+            <template v-else>
+              <t-tag
+                  v-if="row.needInbound"
+                  :theme="row.inboundGenerated ? 'success' : 'warning'"
+                  variant="light"
+                  size="small"
+              >
+                {{ row.inboundGenerated ? '盘盈已生成' : '待生成盘盈' }}
+              </t-tag>
+              <t-tag
+                  v-if="row.needOutbound"
+                  :theme="row.outboundGenerated ? 'success' : 'danger'"
+                  variant="light"
+                  size="small"
+              >
+                {{ row.outboundGenerated ? '盘亏已生成' : '待生成盘亏' }}
+              </t-tag>
+            </template>
+          </t-space>
         </template>
         <template #orderStatus="{ row }">
           <t-tag
@@ -146,18 +202,25 @@ export default {
         sortCol: null,
         sort: null,
       },
+      adjustStatus: null,
       dateRangeValue: [startTime, endTime],
       stateOptions: [
         {label: '未审核', value: '已保存'},
         {label: '已审核', value: '已审核'},
       ],
+      adjustStatusOptions: [
+        {label: '待生成', value: 'pending'},
+        {label: '已完成', value: 'done'},
+        {label: '账实相符', value: 'matched'},
+      ],
       columns: [
         {colKey: 'row-select', type: 'multiple', width: 46},
-        {colKey: 'ops', title: '操作', width: 110, fixed: 'left', align: 'center'},
+        {colKey: 'ops', title: '操作', width: 200, fixed: 'left', align: 'center'},
         {colKey: 'checkDate', title: '盘点日期', width: 120, align: 'center'},
         {colKey: 'orderNo', title: '单据编号', minWidth: 160, ellipsis: true},
         {colKey: 'warehouseName', title: '仓库', minWidth: 120, ellipsis: true},
-        {colKey: 'orderNoResult', title: '盘点结果', minWidth: 200},
+        {colKey: 'adjustStatus', title: '调整状态', width: 180},
+        {colKey: 'orderNoResult', title: '关联单据', minWidth: 180},
         {colKey: 'createdByName', title: '制单人', width: 100, align: 'center'},
         {colKey: 'createdAt', title: '制单时间', width: 160, align: 'center', ellipsis: true},
         {colKey: 'orderStatus', title: '审核状态', width: 100, align: 'center', fixed: 'right'},
@@ -186,11 +249,56 @@ export default {
       this.pagination.pageSize = pageInfo.pageSize;
       this.loadList();
     },
-    addForm(type = 'add', stockTakeId = null, orderStatus = null) {
+    addForm(type = 'add', stockTakeId = null, orderStatus = null, autoGenerate = false) {
       this.pushTab({
         key: 'StockTakeForm',
         title: type === 'edit' ? '编辑盘点单' : type === 'look' ? '查看盘点单' : '新增盘点单',
-        params: {type: type, stockTakeId: stockTakeId, status: orderStatus}
+        params: {
+          type,
+          stockTakeId,
+          status: orderStatus,
+          autoGenerate
+        }
+      });
+    },
+    canGenerateInbound(row) {
+      return row.orderStatus === '已审核' && row.needInbound && !row.inboundGenerated;
+    },
+    canGenerateOutbound(row) {
+      return row.orderStatus === '已审核' && row.needOutbound && !row.outboundGenerated;
+    },
+    onAdjustStatusChange() {
+      if (this.adjustStatus) {
+        this.params.state = '已审核';
+      }
+      this.doSearch();
+    },
+    matchAdjustStatus(row) {
+      if (!this.adjustStatus) return true;
+      if (row.orderStatus !== '已审核') return false;
+      const pendingInbound = row.needInbound && !row.inboundGenerated;
+      const pendingOutbound = row.needOutbound && !row.outboundGenerated;
+      const matched = !row.needInbound && !row.needOutbound;
+      const done = !matched && !pendingInbound && !pendingOutbound;
+      if (this.adjustStatus === 'pending') return pendingInbound || pendingOutbound;
+      if (this.adjustStatus === 'done') return done;
+      if (this.adjustStatus === 'matched') return matched;
+      return true;
+    },
+    openRelatedOrder(item) {
+      if (!item || !item.id) return;
+      if (item.type === 'outbound') {
+        this.pushTab({
+          key: 'OtherOutboundForm',
+          title: '查看其他出库单',
+          params: {type: 'look', otherOutboundId: item.id}
+        });
+        return;
+      }
+      this.pushTab({
+        key: 'OtherInboundForm',
+        title: '查看其他入库单',
+        params: {type: 'look', otherInboundId: item.id}
       });
     },
     clearSelection() {
@@ -254,9 +362,22 @@ export default {
       const params = JSON.parse(JSON.stringify(this.queryParams));
       params.warehouseIds = (params.warehouseIds || []).join(",");
       params.productCategoryIds = (params.productCategoryIds || []).join(",");
+      // 调整状态筛选依赖盈亏标记，适当放大页容量再前端过滤
+      if (this.adjustStatus) {
+        params.state = '已审核';
+        params.pageSize = Math.max(params.pageSize || 20, 100);
+        params.page = 1;
+      }
       StockTake.list(params).then(({data: {results, total}}) => {
-        this.dataList = results || [];
-        this.pagination.total = total;
+        let list = results || [];
+        if (this.adjustStatus) {
+          list = list.filter((row) => this.matchAdjustStatus(row));
+          this.pagination.total = list.length;
+          this.pagination.page = 1;
+        } else {
+          this.pagination.total = total;
+        }
+        this.dataList = list;
       }).finally(() => this.loading = false);
     },
     loadDict() {
@@ -290,5 +411,9 @@ export default {
 
 .order-no-item {
   margin: 4px 0;
+}
+
+.text-muted {
+  color: var(--td-text-color-placeholder, #999);
 }
 </style>

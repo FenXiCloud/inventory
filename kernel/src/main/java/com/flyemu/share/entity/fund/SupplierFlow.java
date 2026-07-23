@@ -47,7 +47,7 @@ public class SupplierFlow implements Serializable, TenantAware{
     private BigDecimal copeWithAmount;
     @Comment("实付金额")
     private BigDecimal actualPaymentAmount;
-    @Comment("应付余额")
+    @Comment("应付余额：正数=应付欠款，负数=预付")
     private BigDecimal balancePayable;
     @Comment("创建人")
     private Long createdBy;

@@ -344,9 +344,9 @@ public class SalesReturnService extends BaseService {
 
         CustomerFlow flow = getCustomerFlow(salesReturn, targetStatus);
         if (targetStatus == OrderStatus.已审核) {
-            customer.setBalance(customer.getBalance().add(amount));
-        } else {
             customer.setBalance(customer.getBalance().subtract(amount));
+        } else {
+            customer.setBalance(customer.getBalance().add(amount));
         }
 
         flow.setBalanceReceivables(customer.getBalance());

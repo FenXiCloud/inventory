@@ -131,7 +131,7 @@ export default {
         {colKey: 'categoryName', title: '分类', width: 100},
         {colKey: 'contact', title: '联系人', width: 100},
         {colKey: 'phone', title: '电话', width: 120},
-        {colKey: 'balance', title: '余额', width: 100},
+        {colKey: 'balance', title: '应付余额', width: 110, align: 'right'},
         {colKey: 'enabled', title: '状态', width: 90, align: 'center', fixed: 'right'}
       ]
     };

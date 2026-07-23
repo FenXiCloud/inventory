@@ -74,9 +74,14 @@ public class SupplierFlowService extends BaseService {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qSupplierFlow).select(qSupplierFlow, qSupplier.name, qSupplier.code).leftJoin(qSupplier).on(qSupplier.id.eq(qSupplierFlow.supplierId)).where(query.buildersV2()).orderBy(qSupplierFlow.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
         ArrayList<SupplierFlowDTO> collect = fetchPage.stream().collect(ArrayList::new, (list, tuple) -> {
-            SupplierFlowDTO dto = BeanUtil.toBean(tuple.get(qSupplierFlow), SupplierFlowDTO.class);
+            SupplierFlow flow = tuple.get(qSupplierFlow);
+            SupplierFlowDTO dto = BeanUtil.toBean(flow, SupplierFlowDTO.class);
             dto.setSupplierName(tuple.get(qSupplier.name));
             dto.setSupplierCode(tuple.get(qSupplier.code));
+            // 期初列表字段：应付 / 预付 / 余额
+            dto.setBalanceBefore(flow.getCopeWithAmount());
+            dto.setAmount(flow.getActualPaymentAmount());
+            dto.setBalanceAfter(flow.getBalancePayable());
             list.add(dto);
         }, List::addAll);
 
@@ -131,6 +136,10 @@ public class SupplierFlowService extends BaseService {
             item.setMerchantId(form.getMerchantId());
             item.setCreatedBy(form.getCreatedBy());
             item.setCreatedAt(LocalDateTime.now());
+            item.setSupplierFlowType(SupplierFlow.SupplierFlowType.期初);
+            if (item.getBalancePayable() == null) {
+                throw new InvalidContextException("期初余额不能为空");
+            }
             if (item.getId() != null) {
                 //更新
                 SupplierFlow original = supplierFlowRepository.getById(item.getId());
@@ -155,12 +164,22 @@ public class SupplierFlowService extends BaseService {
                 //新增
                 supplierFlowRepository.save(item);
             }
+            jqf.update(qSupplier)
+                    .set(qSupplier.balance, item.getBalancePayable())
+                    .where(qSupplier.id.eq(item.getSupplierId())
+                            .and(qSupplier.merchantId.eq(form.getMerchantId()))
+                            .and(qSupplier.accountBookId.eq(form.getAccountBookId())))
+                    .execute();
         }
     }
 
     public SupplierFlowDTO getById(SupplierFlow query) {
         SupplierFlow item = supplierFlowRepository.getById(query.getId());
-        return BeanUtil.toBean(item, SupplierFlowDTO.class);
+        SupplierFlowDTO dto = BeanUtil.toBean(item, SupplierFlowDTO.class);
+        dto.setBalanceBefore(item.getCopeWithAmount());
+        dto.setAmount(item.getActualPaymentAmount());
+        dto.setBalanceAfter(item.getBalancePayable());
+        return dto;
     }
 
     @Transactional

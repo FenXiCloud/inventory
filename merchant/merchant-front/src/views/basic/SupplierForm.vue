@@ -38,12 +38,13 @@
             </t-form-item>
           </t-col>
           <t-col :span="6">
-            <t-form-item label="余额" name="balance">
+            <t-form-item label="应付余额" name="balance" tips="正数=应付欠款，负数=预付；由单据/期初维护">
               <t-input-number
                   v-model="model.balance"
                   theme="normal"
                   :decimal-places="2"
-                  placeholder="请输入余额"
+                  placeholder="0.00"
+                  disabled
                   style="width: 100%"
               />
             </t-form-item>
@@ -114,8 +115,7 @@ export default {
       },
       rules: {
         name: [{required: true, message: '请输入货商名称', type: 'error'}],
-        supplierCategoryId: [{required: true, message: '请选择货商分类', type: 'error'}],
-        balance: [{required: true, message: '请输入余额', type: 'error'}]
+        supplierCategoryId: [{required: true, message: '请选择货商分类', type: 'error'}]
       }
     };
   },
@@ -123,12 +123,12 @@ export default {
     confirm() {
       this.$refs.form.validate().then((result) => {
         if (result !== true) return;
-        if (Number(this.model.balance) < 0) {
-          MessagePlugin.warning('金额不可为负');
-          return;
-        }
         this.loading = true;
-        Supplier.save(this.model)
+        const payload = {...this.model};
+        if (!payload.id) {
+          payload.balance = 0;
+        }
+        Supplier.save(payload)
           .then(() => {
             MessagePlugin.success('保存成功~');
             this.$emit('success');

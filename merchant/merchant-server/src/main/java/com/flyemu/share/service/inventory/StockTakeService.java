@@ -118,15 +118,51 @@ public class StockTakeService extends BaseService {
             }
             // 获取对应关联的其他出库，其他入库订单
             List<String> orderNos = new ArrayList<>();
+            List<StockTakeDto.RelatedOrder> relatedOrders = new ArrayList<>();
             List<OtherInbound> otherInbounds = otherInboundService.findByStockTakeId(dto.getId());
             otherInbounds.forEach(inbound -> {
                 orderNos.add(inbound.getOrderNo() + "-盘盈单");
+                StockTakeDto.RelatedOrder related = new StockTakeDto.RelatedOrder();
+                related.setId(inbound.getId());
+                related.setOrderNo(inbound.getOrderNo());
+                related.setType("inbound");
+                related.setLabel(inbound.getOrderNo() + "-盘盈单");
+                relatedOrders.add(related);
             });
             List<OtherOutbound> otherOutbounds = otherOutboundService.findByStockTakeId(dto.getId());
             otherOutbounds.forEach(outbound -> {
                 orderNos.add(outbound.getOrderNo() + "-盘亏单");
+                StockTakeDto.RelatedOrder related = new StockTakeDto.RelatedOrder();
+                related.setId(outbound.getId());
+                related.setOrderNo(outbound.getOrderNo());
+                related.setType("outbound");
+                related.setLabel(outbound.getOrderNo() + "-盘亏单");
+                relatedOrders.add(related);
             });
             dto.setOrderNos(orderNos);
+            dto.setRelatedOrders(relatedOrders);
+            dto.setInboundGenerated(otherInbounds != null && !otherInbounds.isEmpty());
+            dto.setOutboundGenerated(otherOutbounds != null && !otherOutbounds.isEmpty());
+            boolean needInbound = false;
+            boolean needOutbound = false;
+            List<StockTakeItem> stockTakeItems = stockTakeItemService.findByStockTakeId(dto.getId());
+            if (stockTakeItems != null) {
+                for (StockTakeItem stockTakeItem : stockTakeItems) {
+                    int systemQuantity = Optional.ofNullable(stockTakeItem.getSystemQuantity()).orElse(0);
+                    int actualQuantity = Optional.ofNullable(stockTakeItem.getActualQuantity()).orElse(0);
+                    int diff = actualQuantity - systemQuantity;
+                    if (diff > 0) {
+                        needInbound = true;
+                    } else if (diff < 0) {
+                        needOutbound = true;
+                    }
+                    if (needInbound && needOutbound) {
+                        break;
+                    }
+                }
+            }
+            dto.setNeedInbound(needInbound);
+            dto.setNeedOutbound(needOutbound);
             dtos.add(dto);
         });
 
@@ -315,28 +351,25 @@ public class StockTakeService extends BaseService {
     }
 
     public Map<String, Object> export(Long id) {
-        Map<String, Object> result = new HashMap<>(2);
+        Map<String, Object> result = new HashMap<>(8);
         StockTake stockTake = jqf.selectFrom(qStockTake).where(qStockTake.id.eq(id).and(qStockTake.orderStatus.eq(OrderStatus.已审核))).fetchOne();
         if (stockTake == null) {
             return result;
         }
         List<StockTakeItem> stockTakeItems = stockTakeItemService.findByStockTakeId(id);
-        // 是否已有关联盘盈数据
+        List<Map<String, Object>> inbounds = this.getInbounds(stockTakeItems);
+        List<Map<String, Object>> outbounds = this.getOutbounds(stockTakeItems);
         List<OtherInbound> otherInbounds = otherInboundService.findByStockTakeId(id);
-        if (otherInbounds == null || otherInbounds.isEmpty()) {
-            // 获取盘点盘盈
-            List<Map<String, Object>> inbounds = this.getInbounds(stockTakeItems);
-            // 设置盘盈数据
-            result.put("inbounds", inbounds);
-        }
-        // 是否已有关联盘亏数据
         List<OtherOutbound> otherOutbounds = otherOutboundService.findByStockTakeId(id);
-        if (otherOutbounds == null || otherOutbounds.isEmpty()) {
-            // 获取盘点盘亏
-            List<Map<String, Object>> outbounds = this.getOutbounds(stockTakeItems);
-            // 设置盘亏数据
-            result.put("outbounds", outbounds);
-        }
+        boolean inboundGenerated = otherInbounds != null && !otherInbounds.isEmpty();
+        boolean outboundGenerated = otherOutbounds != null && !otherOutbounds.isEmpty();
+        result.put("needInbound", !inbounds.isEmpty());
+        result.put("needOutbound", !outbounds.isEmpty());
+        result.put("inboundGenerated", inboundGenerated);
+        result.put("outboundGenerated", outboundGenerated);
+        // 仅返回尚未生成的待开单据明细
+        result.put("inbounds", inboundGenerated ? Collections.emptyList() : inbounds);
+        result.put("outbounds", outboundGenerated ? Collections.emptyList() : outbounds);
         return result;
     }
 
@@ -348,13 +381,12 @@ public class StockTakeService extends BaseService {
      */
     private List<Map<String, Object>> getOutbounds(List<StockTakeItem> stockTakeItems) {
         List<Map<String, Object>> outbounds = new ArrayList<>();
-        Map<String, Object> item;
         for (StockTakeItem stockTakeItem : stockTakeItems) {
-            Integer systemQuantity = stockTakeItem.getSystemQuantity();
-            Integer actualQuantity = stockTakeItem.getActualQuantity();
-            if (actualQuantity - systemQuantity < 0) {
-                item = new HashMap<>();
-                // 盘亏
+            Integer systemQuantity = Optional.ofNullable(stockTakeItem.getSystemQuantity()).orElse(0);
+            Integer actualQuantity = Optional.ofNullable(stockTakeItem.getActualQuantity()).orElse(0);
+            int diff = actualQuantity - systemQuantity;
+            if (diff < 0) {
+                Map<String, Object> item = new HashMap<>();
                 this.getStockBoundsItem(stockTakeItem, item, systemQuantity - actualQuantity);
                 outbounds.add(item);
             }
@@ -363,11 +395,7 @@ public class StockTakeService extends BaseService {
     }
 
     /**
-     * 获取盘点单数据
-     *
-     * @param stockTakeItem 盘点单对象
-     * @param item          设置对象
-     * @param quantity      数量
+     * 组装盘盈/盘亏明细（供其他出入库单据带入）
      */
     private void getStockBoundsItem(StockTakeItem stockTakeItem, Map<String, Object> item, Integer quantity) {
         Long productId = stockTakeItem.getProductId();
@@ -376,34 +404,33 @@ public class StockTakeService extends BaseService {
         ProductCategory productCategory = productCategoryService.loadById(product.getMerchantId(), product.getProductCategoryId());
         Unit unit = unitService.selectByPrimaryKey(product.getUnitId());
         Warehouse warehouse = warehouseService.selectByPrimaryKey(warehouseId);
+        java.math.BigDecimal unitPrice = product.getPurchasePrice() != null
+                ? product.getPurchasePrice()
+                : java.math.BigDecimal.ZERO;
+        java.math.BigDecimal qty = java.math.BigDecimal.valueOf(quantity == null ? 0 : quantity);
         item.put("productName", product.getName());
         item.put("productId", product.getId());
         item.put("productCode", product.getCode());
         item.put("productSpecification", product.getSpecification());
         item.put("productCategoryId", product.getProductCategoryId());
-        item.put("productCategoryName", productCategory.getName());
-        item.put("productUnitName", unit.getName());
+        item.put("productCategoryName", productCategory != null ? productCategory.getName() : null);
+        item.put("productUnitName", unit != null ? unit.getName() : null);
         item.put("productUnitId", product.getUnitId());
-        item.put("warehouseName", warehouse.getName());
-        item.put("warehouseId", warehouse.getId());
+        item.put("warehouseName", warehouse != null ? warehouse.getName() : null);
+        item.put("warehouseId", warehouse != null ? warehouse.getId() : warehouseId);
         item.put("quantity", quantity);
+        item.put("unitPrice", unitPrice);
+        item.put("subtotal", unitPrice.multiply(qty));
     }
 
-    /**
-     * 获取盘点盘盈
-     *
-     * @param stockTakeItems 盘点明细列表
-     * @return 盘盈列表
-     */
     private List<Map<String, Object>> getInbounds(List<StockTakeItem> stockTakeItems) {
         List<Map<String, Object>> inbounds = new ArrayList<>();
-        Map<String, Object> item;
         for (StockTakeItem stockTakeItem : stockTakeItems) {
-            Integer systemQuantity = stockTakeItem.getSystemQuantity();
-            Integer actualQuantity = stockTakeItem.getActualQuantity();
-            if (actualQuantity - systemQuantity > 0) {
-                item = new HashMap<>();
-                // 盘盈
+            Integer systemQuantity = Optional.ofNullable(stockTakeItem.getSystemQuantity()).orElse(0);
+            Integer actualQuantity = Optional.ofNullable(stockTakeItem.getActualQuantity()).orElse(0);
+            int diff = actualQuantity - systemQuantity;
+            if (diff > 0) {
+                Map<String, Object> item = new HashMap<>();
                 this.getStockBoundsItem(stockTakeItem, item, actualQuantity - systemQuantity);
                 inbounds.add(item);
             }

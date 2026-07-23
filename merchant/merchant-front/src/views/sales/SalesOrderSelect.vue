@@ -1,29 +1,12 @@
 <template>
   <div class="order-select">
     <div class="order-select__toolbar">
-      <t-select
-          v-model="params.state"
-          class="order-select__state"
-          :options="[{ value: '已保存', label: '未审核' }, { value: '已审核', label: '已审核' }]"
-          placeholder="审核状态："
-      />
       <span class="order-select__label">订单日期：</span>
       <t-date-range-picker v-model="dateRange" clearable allow-input style="width: 260px; border-radius: 4px"/>
-      <span class="order-select__label">客户：</span>
-      <t-select
-          class="order-select__customer"
-          filterable
-          :options="customerList"
-          :keys="{ value: 'id', label: 'name' }"
-          v-model="params.customerId"
-          placeholder="请选择客户"
-          readonly
-          disabled
-      />
       <t-input
           v-model.trim="params.filter"
           class="order-select__search"
-          placeholder="请输入订单号"
+          placeholder="请输入订单编号"
           clearable
           style="width: 220px; border-radius: 4px"
           @enter="doSearch"
@@ -64,7 +47,7 @@
     </div>
     <div class="order-select__footer">
       <t-button @click="$emit('close')" :loading="loading">取消</t-button>
-      <t-button theme="primary" @click="batchSelect" :loading="loading">确认</t-button>
+      <t-button theme="primary" @click="confirm" :loading="loading">确认</t-button>
     </div>
   </div>
 </template>
@@ -72,7 +55,6 @@
 import manba from "manba";
 import SalesOrder from "@js/api/sales/SalesOrder";
 import {MessagePlugin} from "tdesign-vue-next";
-import Customer from "@js/api/basic/Customer";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-dd");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-dd");
@@ -96,11 +78,13 @@ export default {
         { colKey: 'row-select', type: 'multiple', width: 46 },
         { colKey: 'orderDate', title: '订单日期', width: 130, align: 'center' },
         { colKey: 'orderNo', title: '订单编号', width: 200 },
-        { colKey: 'code', title: '关联销售出库单', width: 200 },
+        { colKey: 'outOrderNo', title: '关联销售出库单', width: 200 },
         { colKey: 'customerName', title: '客户', minWidth: 120 },
         { colKey: 'totalAmount', title: '销售金额', width: 120 },
         { colKey: 'discountAmount', title: '折扣金额', width: 120 },
         { colKey: 'finalAmount', title: '折后金额', width: 120 },
+        { colKey: 'createdName', title: '制单人', width: 100, align: 'center' },
+        { colKey: 'createdAt', title: '制单时间', width: 160, align: 'center' },
       ],
       pagination: {
         page: 1,
@@ -109,12 +93,10 @@ export default {
       },
       params: {
         filter: null,
-        state: '已审核',
+        state: null,
         sortCol: null,
         sort: null,
-        customerId: null
       },
-      customerList: [],
       dateRange: [startTime, endTime],
     }
   },
@@ -122,12 +104,12 @@ export default {
     queryParams() {
       const [start, end] = this.dateRange || [];
       return Object.assign({}, this.params, {
+        customerId: this.customerId,
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
         start,
         end,
-        //查询未出库订单
-        queryUnOutOrder: 1
+        state: '已审核',
       })
     },
   },
@@ -141,41 +123,23 @@ export default {
       this.pagination.pageSize = pageInfo.pageSize;
       this.loadList();
     },
-    batchSelect() {
-      const selectedRows = this.selectedRows;
-      if (selectedRows.length === 0) {
-        MessagePlugin.error("请选择至少一条订单");
-        return;
+    confirm() {
+      let checkList = this.selectedRows;
+      if (checkList.length && checkList.length > 0) {
+        let ids = checkList.map(val => val.id);
+        this.$emit('success', {orderIds: ids});
+      } else {
+        MessagePlugin.error("未选择数据~");
       }
-      let allItemList = [];
-      let selectSalesOrderIdList = [];
-      selectedRows.forEach(row => {
-        if (row.salesOrderItemList && row.salesOrderItemList.length > 0) {
-          allItemList = allItemList.concat(row.salesOrderItemList);
-          allItemList.forEach(item => {
-            let quantity = item.quantity + item.quantityReturn;
-            let quantityOut = item.quantityOut;
-            if (quantity > quantityOut) {
-              item.quantity = quantity - quantityOut;
-            }
-          })
-          selectSalesOrderIdList = selectSalesOrderIdList.concat(row.id);
-        }
-      });
-
-      this.$emit('success', {
-        selectSalesOrderIdList: selectSalesOrderIdList,
-        itemList: allItemList
-      });
     },
     updateAmountTotal() {
-      let totalAmount = 0;
+      let total = 0;
       (this.dataList || []).forEach((row) => {
-        if (row.totalAmount) {
-          totalAmount += Number(row.totalAmount || 0);
+        if (row.finalAmount) {
+          total += Number(row.finalAmount || 0);
         }
       });
-      this.amountTotal = totalAmount.toFixed(2);
+      this.amountTotal = total.toFixed(2);
     },
     doSearch() {
       this.pagination.page = 1;
@@ -185,21 +149,14 @@ export default {
       this.loading = true;
       this.selectedRowKeys = [];
       this.selectedRows = [];
-      SalesOrder.list(this.queryParams).then(({data: {results, total}}) => {
+      SalesOrder.listToOutBound(this.queryParams).then(({data: {results, total}}) => {
         this.dataList = results || [];
         this.pagination.total = total;
         this.updateAmountTotal();
       }).finally(() => this.loading = false);
-
-      Customer.select().then(({data}) => {
-        this.customerList = data || [];
-      });
     },
   },
   created() {
-    if (this.customerId) {
-      this.params.customerId = this.customerId;
-    }
     this.loadList();
   }
 }
@@ -209,9 +166,8 @@ export default {
 .order-select {
   display: flex;
   flex-direction: column;
-  height: 70vh;
+  height: 100%;
   min-height: 480px;
-  max-height: calc(100vh - 120px);
   overflow: hidden;
   background: #fff;
 }
@@ -229,14 +185,6 @@ export default {
 .order-select__label {
   color: #333;
   white-space: nowrap;
-}
-
-.order-select__state {
-  width: 120px;
-}
-
-.order-select__customer {
-  width: 180px;
 }
 
 .order-select__search {

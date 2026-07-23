@@ -54,10 +54,9 @@
           <t-input-number
               v-model="row.balanceAfter"
               theme="normal"
-              :min="0"
               :decimal-places="2"
+              disabled
               style="width: 100%"
-              @blur="updateSubtotal(row)"
           />
         </template>
       </t-table>
@@ -117,9 +116,9 @@ export default {
       cols.push(
         {colKey: 'customerCode', title: '客户编码', width: 200},
         {colKey: 'customerName', title: '客户名称', minWidth: 200},
-        {colKey: 'balanceBefore', title: '期初应收款'},
-        {colKey: 'amount', title: '期初预收款'},
-        {colKey: 'balanceAfter', title: '期初余额'},
+        {colKey: 'balanceBefore', title: '期初应收款', align: 'right'},
+        {colKey: 'amount', title: '期初预收款', align: 'right'},
+        {colKey: 'balanceAfter', title: '期初应收余额', align: 'right'},
       );
       return cols;
     }
@@ -149,7 +148,9 @@ export default {
       this.compute(item);
     },
     compute(item){
-      item.balanceAfter = (item.balanceBefore - item.amount).toFixed(2);
+      const before = Number(item.balanceBefore || 0);
+      const prepaid = Number(item.amount || 0);
+      item.balanceAfter = Number((before - prepaid).toFixed(2));
     },
 
     //选择产品
@@ -192,18 +193,23 @@ export default {
     },
 
     save(){
-      let requestData = {
-        customerFlowList: this.dataList,
-      };
-      //移除掉productId 为null的数据
-      requestData.customerFlowList = requestData.customerFlowList.filter(item => item.customerId);
-      //校验
-      if (!this.checkHttp(requestData.customerFlowList)) {
-        return
+      const rows = this.dataList.filter(item => item.customerId);
+      if (!this.checkHttp(rows)) {
+        return;
       }
+      const customerFlowList = rows.map(item => {
+        this.compute(item);
+        return {
+          id: item.id,
+          customerId: item.customerId,
+          customerFlowType: '期初',
+          receivableAmount: Number(item.balanceBefore || 0),
+          paidUpAmount: Number(item.amount || 0),
+          balanceReceivables: Number(item.balanceAfter || 0)
+        };
+      });
       this.loading = true;
-      CustomerInitial.batch(requestData).then(({data}) => {
-        this.dataList = data;
+      CustomerInitial.batch({customerFlowList}).then(() => {
         this.closeWindow();
       }).finally(() => this.loading = false);
     },
@@ -211,43 +217,21 @@ export default {
     checkHttp(requestData) {
       if (requestData.length === 0) {
         MessagePlugin.error("请选择客户");
-        return false
+        return false;
       }
-      let quantityFlag = false
-      let unitPriceFlag = false
-      let subtotalFlag = false
-      let customerFlag = false
-      requestData.map(item => {
-        if (item.balanceBefore === 0 || !item.balanceBefore) {
-          quantityFlag = true
-        }
-        if (item.amount === 0 || !item.amount) {
-          unitPriceFlag = true
-        }
-        if (item.balanceAfter === 0 || !item.balanceAfter) {
-          subtotalFlag = true
-        }
+      for (const item of requestData) {
         if (!item.customerId) {
-          customerFlag = true
+          MessagePlugin.error("请选择客户~");
+          return false;
         }
-      })
-      if (customerFlag) {
-        MessagePlugin.error("请选择客户~");
-        return false
+        const before = Number(item.balanceBefore || 0);
+        const prepaid = Number(item.amount || 0);
+        if (before === 0 && prepaid === 0) {
+          MessagePlugin.error("请填写期初应收款或期初预收款~");
+          return false;
+        }
       }
-      if (quantityFlag) {
-        MessagePlugin.error("期初应收款为空~");
-        return false
-      }
-      if (unitPriceFlag) {
-        MessagePlugin.error("期初预收款为空~");
-        return false
-      }
-      if (subtotalFlag) {
-        MessagePlugin.error("期初余额为空~");
-        return false
-      }
-      return true
+      return true;
     },
 
     closeWindow() {

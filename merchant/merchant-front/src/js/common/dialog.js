@@ -127,6 +127,7 @@ const DrawerHost = defineComponent({
 			closeOnOverlayClick: props.closeOnOverlayClick,
 			destroyOnClose: true,
 			attach: 'body',
+			drawerClassName: 'app-drawer-flush',
 			onClose: close
 		}, {
 			default: () => props.body

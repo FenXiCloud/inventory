@@ -140,6 +140,12 @@ public class PurchaseInboundService extends BaseService {
             Set<Long> ids = new HashSet<>();
             Double secondarySum = 0.0;
             for (PurchaseInboundItem d : purchaseInboundForm.getPurchaseInboundItemList()) {
+                if (d.getProductId() == null) {
+                    throw new ServiceException("明细产品不能为空~");
+                }
+                if (d.getWarehouseId() == null) {
+                    throw new ServiceException("明细仓库不能为空~");
+                }
                 //计算基本单价
                 d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
                 if (d.getId() != null) {
@@ -174,6 +180,12 @@ public class PurchaseInboundService extends BaseService {
                         .execute();
             }
             for (PurchaseInboundItem d : purchaseInboundForm.getPurchaseInboundItemList()) {
+                if (d.getProductId() == null) {
+                    throw new ServiceException("明细产品不能为空~");
+                }
+                if (d.getWarehouseId() == null) {
+                    throw new ServiceException("明细仓库不能为空~");
+                }
                 //计算基本单价
                 d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
                 d.setAccountBookId(purchaseInbound.getAccountBookId());
@@ -336,7 +348,7 @@ public class PurchaseInboundService extends BaseService {
                 }
                 BigDecimal finalAmount = order.getFinalAmount();
                 Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
-                supplier.setBalance(supplier.getBalance().add(finalAmount));
+                supplier.setBalance(supplier.getBalance().subtract(finalAmount));
                 SupplierFlow flow = new SupplierFlow();
                 flow.setSupplierId(order.getSupplierId());
                 flow.setBusinessId(order.getId());
@@ -375,7 +387,7 @@ public class PurchaseInboundService extends BaseService {
     private void inboundSupplierFlows(Long adminId, PurchaseInbound order) {
         Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
         BigDecimal finalAmount = order.getFinalAmount();
-        supplier.setBalance(supplier.getBalance().subtract(finalAmount));
+        supplier.setBalance(supplier.getBalance().add(finalAmount));
         SupplierFlow flow = new SupplierFlow();
         flow.setSupplierId(order.getSupplierId());
         flow.setBusinessId(order.getId());
@@ -424,6 +436,14 @@ public class PurchaseInboundService extends BaseService {
                 List<Inventory> inventories = new ArrayList<>();
                 List<InventoryItem> inventoryItems = new ArrayList<>();
                 List<PurchaseInboundItem> inboundItems = inboundItemRepository.findByPurchaseInboundId(purchaseInbound.getId());
+                for (PurchaseInboundItem item : inboundItems) {
+                    if (item.getProductId() == null) {
+                        throw new ServiceException("单据「" + purchaseInbound.getOrderNo() + "」存在未选择产品的明细，无法审核");
+                    }
+                    if (item.getWarehouseId() == null) {
+                        throw new ServiceException("单据「" + purchaseInbound.getOrderNo() + "」存在未选择仓库的明细，无法审核");
+                    }
+                }
                 //处理库存
                 this.getComputedInventory(inboundItems, inventories, inventoryItems, purchaseInbound);
                 if (OrderStatus.已审核.equals(state)) {

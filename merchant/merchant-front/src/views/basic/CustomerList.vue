@@ -131,7 +131,7 @@ export default {
         {colKey: 'levelName', title: '等级', width: 100},
         {colKey: 'contact', title: '联系人', width: 100},
         {colKey: 'phone', title: '电话', width: 120},
-        {colKey: 'balance', title: '余额', width: 100},
+        {colKey: 'balance', title: '应收余额', width: 110, align: 'right'},
         {colKey: 'remarks', title: '备注', minWidth: 120, ellipsis: true}
       ]
     };

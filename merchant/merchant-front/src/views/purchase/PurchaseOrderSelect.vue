@@ -165,9 +165,8 @@ export default {
 .order-select {
   display: flex;
   flex-direction: column;
-  height: 70vh;
+  height: 100%;
   min-height: 480px;
-  max-height: calc(100vh - 120px);
   overflow: hidden;
   background: #fff;
 }

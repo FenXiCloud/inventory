@@ -13,7 +13,10 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
+import com.flyemu.share.entity.setting.AccountBookParameters;
+import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.enums.OperationType;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.inventory.InventoryRepository;
 import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
@@ -118,6 +121,9 @@ public class InventoryService extends BaseService {
      */
     @Transactional
     public void computedInventory(Inventory item, boolean increase, Long orderId, OperationType operationType, List<InventoryItem> inventoryItems, boolean operateItems) {
+        if (item.getProductId() == null || item.getWarehouseId() == null) {
+            throw new ServiceException("库存计算失败：产品或仓库不能为空");
+        }
         Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(item.getProductId()))
                 .where(qInventory.warehouseId.eq(item.getWarehouseId())).fetchFirst();
         if (inventory == null) {
@@ -144,16 +150,29 @@ public class InventoryService extends BaseService {
             this.operateInventory(orderId, operationType, inventoryItems, inventory, currentQuantity, totalCost, operateItems);
             return;
         }
-        //todo 负值库存待处理
+        // 减少库存
         currentQuantity -= computedQuantity;
         totalCost = totalCost.subtract(computedCost).setScale(2, RoundingMode.HALF_EVEN);
-        if (currentQuantity < 0) {
-            currentQuantity = 0;
-        }
-        if (totalCost.compareTo(BigDecimal.ZERO) < 1) {
-            totalCost = BigDecimal.ZERO;
+        Long accountBookId = inventory.getAccountBookId() != null ? inventory.getAccountBookId() : item.getAccountBookId();
+        if (!allowNegativeStock(accountBookId)) {
+            if (currentQuantity < 0) {
+                currentQuantity = 0;
+            }
+            if (totalCost.compareTo(BigDecimal.ZERO) < 1) {
+                totalCost = BigDecimal.ZERO;
+            }
         }
         this.operateInventory(orderId, operationType, inventoryItems, inventory, currentQuantity, totalCost, operateItems);
+    }
+
+    private boolean allowNegativeStock(Long accountBookId) {
+        if (accountBookId == null) {
+            return false;
+        }
+        AccountBookParameters params = bqf.selectFrom(QAccountBookParameters.accountBookParameters)
+                .where(QAccountBookParameters.accountBookParameters.accountBookId.eq(Math.toIntExact(accountBookId)))
+                .fetchFirst();
+        return params != null && params.getAvailableInventory() != null && params.getAvailableInventory() == 1;
     }
 
     /**

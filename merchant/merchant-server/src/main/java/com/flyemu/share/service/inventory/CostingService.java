@@ -164,19 +164,21 @@ public class CostingService extends BaseService {
             }
         }
 
+        BigDecimal valuationUnit = resolveOverageUnitCost(req, averageCost);
+
         BigDecimal costAmount;
         if (method == CostingMethod.先进先出) {
             costAmount = BigDecimal.ZERO;
             for (LayerTake take : takes) {
                 if (take.batch == null) {
-                    costAmount = costAmount.add(averageCost.multiply(BigDecimal.valueOf(take.qty)));
+                    costAmount = costAmount.add(valuationUnit.multiply(BigDecimal.valueOf(take.qty)));
                 } else {
                     costAmount = costAmount.add(take.batch.getUnitCost().multiply(BigDecimal.valueOf(take.qty)));
                 }
             }
             costAmount = costAmount.setScale(2, RoundingMode.HALF_EVEN);
         } else {
-            costAmount = averageCost.multiply(BigDecimal.valueOf(req.getQty())).setScale(2, RoundingMode.HALF_EVEN);
+            costAmount = valuationUnit.multiply(BigDecimal.valueOf(req.getQty())).setScale(2, RoundingMode.HALF_EVEN);
         }
 
         BigDecimal costPrice = req.getQty() == 0 ? BigDecimal.ZERO
@@ -191,7 +193,7 @@ public class CostingService extends BaseService {
             BigDecimal lineCost;
             BigDecimal lineUnit;
             if (method == CostingMethod.先进先出) {
-                lineUnit = take.batch != null ? take.batch.getUnitCost() : averageCost;
+                lineUnit = take.batch != null ? take.batch.getUnitCost() : valuationUnit;
                 lineCost = lineUnit.multiply(BigDecimal.valueOf(take.qty)).setScale(2, RoundingMode.HALF_EVEN);
             } else {
                 // 移动加权：按数量分摊本笔 costAmount
@@ -336,6 +338,26 @@ public class CostingService extends BaseService {
 
     private BigDecimal defaultCost(BigDecimal cost) {
         return cost == null ? BigDecimal.ZERO : cost;
+    }
+
+    /**
+     * 负库存/超批次部分的单位成本：优先账面均价；均价为 0 时回退最近入库批次单价。
+     */
+    private BigDecimal resolveOverageUnitCost(IssueRequest req, BigDecimal averageCost) {
+        if (averageCost != null && averageCost.compareTo(BigDecimal.ZERO) != 0) {
+            return averageCost;
+        }
+        List<InventoryCostBatch> history = batchRepository
+                .findByProductIdAndWarehouseIdAndMerchantIdAndAccountBookIdOrderByInboundDateDescIdDesc(
+                        req.getProductId(), req.getWarehouseId(), req.getMerchantId(), req.getAccountBookId());
+        if (history != null) {
+            for (InventoryCostBatch batch : history) {
+                if (batch.getUnitCost() != null && batch.getUnitCost().compareTo(BigDecimal.ZERO) != 0) {
+                    return batch.getUnitCost();
+                }
+            }
+        }
+        return averageCost == null ? BigDecimal.ZERO : averageCost;
     }
 
     private record LayerTake(InventoryCostBatch batch, int qty) {

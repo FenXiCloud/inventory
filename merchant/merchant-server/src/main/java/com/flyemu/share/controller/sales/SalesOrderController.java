@@ -35,6 +35,17 @@ public class SalesOrderController {
         return JsonResult.successful(salesOrderService.queryTotal(query));
     }
 
+    @GetMapping("/toOutBound")
+    public JsonResult listToOutBound(Page page, SalesOrderService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
+        return JsonResult.successful(salesOrderService.queryToOutBound(page, query));
+    }
+
+    @PostMapping("/toOutbound/{customerId}")
+    public JsonResult toOutbound(@RequestBody List<Long> orderIds, @PathVariable Long customerId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(salesOrderService.loadToOutbound(orderIds, accountDto.getMerchantId(), customerId));
+    }
+
     @PostMapping
     public JsonResult save(@RequestBody @Valid SalesOrderForm salesOrderForm,
             @SaAdminId Long adminId, @SaAccountVal AccountDto accountDto) {

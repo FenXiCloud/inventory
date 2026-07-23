@@ -19,7 +19,7 @@
     </div>
 
     <div class="simple-page__table">
-      <t-table
+      <t-enhanced-table
           row-key="id"
           size="medium"
           bordered
@@ -46,7 +46,7 @@
               style="width: 40px; height: 40px; object-fit: cover; border-radius: 2px"
           >
         </template>
-      </t-table>
+      </t-enhanced-table>
     </div>
   </div>
 </template>

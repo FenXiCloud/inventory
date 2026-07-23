@@ -394,7 +394,8 @@ public class PurchaseReturnService extends BaseService {
                 flow.setSupplierFlowType(SupplierFlow.SupplierFlowType.反审核_采购退货单);
                 flow.setPurchaseAmount(refundAmount);
                 flow.setCopeWithAmount(refundAmount);
-                flow.setBalancePayable(supplier.getBalance().add(refundAmount));
+                supplier.setBalance(supplier.getBalance().add(refundAmount));
+                flow.setBalancePayable(supplier.getBalance());
                 flow.setAccountBookId(order.getAccountBookId());
                 flow.setMerchantId(order.getMerchantId());
                 flow.setCreatedBy(adminId);
@@ -404,7 +405,6 @@ public class PurchaseReturnService extends BaseService {
                     flow.setPreferentialAmount(order.getDiscountAmount().negate());
                 }
                 flow.setBusinessDate(order.getReturnDate());
-                supplier.setBalance(supplier.getBalance().add(refundAmount));
                 supplierService.updateTheBalance(supplier, flow);
 
                 setIds.add(order.getId());
@@ -427,7 +427,7 @@ public class PurchaseReturnService extends BaseService {
         Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
         BigDecimal refundAmount = order.getRefundAmount();
 
-        supplier.setBalance(supplier.getBalance().add(refundAmount));
+        supplier.setBalance(supplier.getBalance().subtract(refundAmount));
 
         SupplierFlow flow = new SupplierFlow();
         if (order.getDiscountAmount() != null) {

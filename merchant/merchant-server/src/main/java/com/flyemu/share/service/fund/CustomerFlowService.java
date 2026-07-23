@@ -133,9 +133,14 @@ public class CustomerFlowService extends BaseService {
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
 
         ArrayList<CustomerFlowDTO> collect = fetchPage.stream().collect(ArrayList::new, (list, tuple) -> {
-            CustomerFlowDTO dto = BeanUtil.toBean(tuple.get(qCustomerFlow), CustomerFlowDTO.class);
+            CustomerFlow flow = tuple.get(qCustomerFlow);
+            CustomerFlowDTO dto = BeanUtil.toBean(flow, CustomerFlowDTO.class);
             dto.setCustomerName(tuple.get(qCustomer.name));
             dto.setCustomerCode(tuple.get(qCustomer.code));
+            // 期初列表字段：应收 / 预收 / 余额
+            dto.setBalanceBefore(flow.getReceivableAmount());
+            dto.setAmount(flow.getPaidUpAmount());
+            dto.setBalanceAfter(flow.getBalanceReceivables());
             list.add(dto);
         }, List::addAll);
 
@@ -150,6 +155,10 @@ public class CustomerFlowService extends BaseService {
             item.setMerchantId(form.getMerchantId());
             item.setCreatedBy(form.getCreatedBy());
             item.setCreatedAt(LocalDateTime.now());
+            item.setCustomerFlowType(CustomerFlow.CustomerFlowType.期初);
+            if (item.getBalanceReceivables() == null) {
+                throw new InvalidContextException("期初余额不能为空");
+            }
             if (item.getId() != null) {
                 //更新
                 CustomerFlow original = customerFlowRepository.getById(item.getId());
@@ -174,12 +183,22 @@ public class CustomerFlowService extends BaseService {
                 //新增
                 customerFlowRepository.save(item);
             }
+            jqf.update(qCustomer)
+                    .set(qCustomer.balance, item.getBalanceReceivables())
+                    .where(qCustomer.id.eq(item.getCustomerId())
+                            .and(qCustomer.merchantId.eq(form.getMerchantId()))
+                            .and(qCustomer.accountBookId.eq(form.getAccountBookId())))
+                    .execute();
         }
     }
 
     public CustomerFlowDTO getById(InventoryItem query) {
         CustomerFlow item = customerFlowRepository.getById(query.getId());
-        return BeanUtil.toBean(item, CustomerFlowDTO.class);
+        CustomerFlowDTO dto = BeanUtil.toBean(item, CustomerFlowDTO.class);
+        dto.setBalanceBefore(item.getReceivableAmount());
+        dto.setAmount(item.getPaidUpAmount());
+        dto.setBalanceAfter(item.getBalanceReceivables());
+        return dto;
     }
 
     @Transactional

@@ -118,10 +118,12 @@ public class CustomerService extends BaseService {
                 throw new ServiceException("编码已存在，请重新输入！");
             }
         }
+        // 档案余额由业务单据/期初流水维护，新建固定为 0
+        customer.setBalance(BigDecimal.ZERO);
         Customer m = customerRepository.save(customer);
         CustomerFlow customerFlow = new CustomerFlow();
         customerFlow.setCustomerId(m.getId());
-        customerFlow.setBalanceReceivables(customer.getBalance());
+        customerFlow.setBalanceReceivables(BigDecimal.ZERO);
         customerFlow.setCustomerFlowType(CustomerFlow.CustomerFlowType.期初);
         customerFlow.setAccountBookId(customer.getAccountBookId());
         customerFlow.setMerchantId(customer.getMerchantId());

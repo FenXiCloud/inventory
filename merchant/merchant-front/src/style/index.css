@@ -349,6 +349,30 @@ pre {
   border-radius: 0 0 var(--td-radius-large) var(--td-radius-large);
 }
 
+/* 命令式抽屉：内容区撑满，内嵌 pager/footer 贴底 */
+.t-drawer.app-drawer-flush .t-drawer__content-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.t-drawer.app-drawer-flush .t-drawer__body {
+  padding: 0 !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.t-drawer.app-drawer-flush .t-drawer__body > * {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 /* 不用 height:100%，避免小表单在未定高父级下塌成空白；大表单靠 max-height + 内部滚动 */
 .modal-column {
   display: flex;
@@ -409,6 +433,14 @@ pre {
   background-color: #f5f5f5;
   margin: 0;
   box-sizing: border-box;
+}
+
+/* 单据页脚右侧操作按钮间距 */
+.page-column-footer > div {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 /* 表单底部备注/优惠区 */

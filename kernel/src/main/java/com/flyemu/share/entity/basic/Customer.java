@@ -50,7 +50,7 @@ public class Customer implements TenantAware {
     @Column(nullable = false)
     private Long customerLevelId;
 
-    @Comment("客户余额,应收账款")
+    @Comment("应收余额：正数=客户欠款，负数=预收")
     private BigDecimal balance;
 
     @Comment("状态")

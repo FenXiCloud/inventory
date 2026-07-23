@@ -13,9 +13,8 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.sales.SalesOrderDto;
 import com.flyemu.share.dto.sales.SalesOrderItemDto;
+import com.flyemu.share.dto.sales.SalesOutboundItemDto;
 import com.flyemu.share.entity.basic.*;
-import com.flyemu.share.entity.inventory.Inventory;
-import com.flyemu.share.entity.inventory.QInventory;
 import com.flyemu.share.entity.sales.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
@@ -54,7 +53,6 @@ public class SalesOrderService extends BaseService {
 
     private final CheckoutService checkoutService;
     private final static QSalesOrder qSalesOrder = QSalesOrder.salesOrder;
-    private final static QInventory qInventory = QInventory.inventory;
     private final static QSalesOrderItem qSalesOrderItem = QSalesOrderItem.salesOrderItem;
 
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
@@ -69,7 +67,6 @@ public class SalesOrderService extends BaseService {
     private final static QCustomer qCustomer = QCustomer.customer;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProduct qProduct = QProduct.product;
-    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final static QUnit qUnit = QUnit.unit;
     private final PriceRecordService priceRecordService;
     private final PriceRecordRepository priceRecordRepository;
@@ -319,41 +316,6 @@ public class SalesOrderService extends BaseService {
                     throw new InvalidContextException("已关联销售出库单不能反审核");
                 }
             }
-            List<SalesOrderItem> salesOrderItems = bqf.selectFrom(qSalesOrderItem)
-                    .where(qSalesOrderItem.salesOrderId.eq(order.getId()))
-                    .fetch();
-
-            for (SalesOrderItem item : salesOrderItems) {
-                Long productId = item.getProductId();
-                Long warehouseId = item.getWarehouseId();
-                Double quantity = item.getQuantity();
-
-                Inventory inventory = bqf.selectFrom(qInventory)
-                        .where(qInventory.productId.eq(productId)
-                                .and(qInventory.warehouseId.eq(warehouseId))
-                                .and(qInventory.accountBookId.eq(order.getAccountBookId())))
-                        .fetchOne();
-                Product product = bqf.selectFrom(qProduct)
-                        .where(qProduct.id.eq(productId))
-                        .fetchOne();
-                if (product == null) {
-                    throw new InvalidContextException("产品不存在");
-                }
-                Warehouse warehouse = bqf.selectFrom(qWarehouse)
-                        .where(qWarehouse.id.eq(warehouseId))
-                        .fetchOne();
-                if (warehouse == null) {
-                    throw new InvalidContextException("仓库不存在");
-                }
-                if (inventory == null) {
-                    throw new InvalidContextException("仓库中没有该产品的库存: 产品=" + product.getName() + ", 仓库=" + warehouse.getName());
-                }
-                if (quantity > inventory.getCurrentQuantity()) {
-                    throw new InvalidContextException("库存不足: 产品=" + product.getName() + ", 仓库=" + warehouse.getName() +
-                            ", 需要数量=" + quantity + ", 当前库存=" + inventory.getCurrentQuantity());
-                }
-            }
-
             order.setOrderStatus(state);
             order.setApprovedAt(LocalDateTime.now());
             order.setApprovedBy(adminId);
@@ -368,6 +330,107 @@ public class SalesOrderService extends BaseService {
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
                 .where(query.builder).fetchFirst();
+    }
+
+    /**
+     * 销售出库选源单列表：已审核且未全部出库的销售订单
+     */
+    public PageResults<SalesOrderDto> queryToOutBound(Page page, Query query) {
+        BooleanBuilder builder = query.builder.and(qSalesOrder.status.ne(2));
+        long totalSize = bqf.selectFrom(qSalesOrder)
+                .where(builder)
+                .fetchCount();
+
+        List<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
+                .select(qSalesOrder, qCustomer.name, qMerchantUser.name)
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
+                .where(builder)
+                .orderBy(qSalesOrder.id.desc())
+                .offset(page.getOffset())
+                .limit(page.getOffsetEnd())
+                .fetch();
+
+        List<SalesOrderDto> dtos = new ArrayList<>();
+        fetchPage.forEach(tuple -> {
+            SalesOrderDto dto = BeanUtil.toBean(tuple.get(qSalesOrder), SalesOrderDto.class);
+            dto.setCustomerName(tuple.get(qCustomer.name));
+            dto.setCreatedName(tuple.get(qMerchantUser.name));
+            subQueryOutOrder(dto);
+            dtos.add(dto);
+        });
+        return new PageResults<>(dtos, page, totalSize);
+    }
+
+    /**
+     * 选中销售订单后，生成可出库明细（数量为剩余可出库数量）
+     */
+    public List<SalesOutboundItemDto> loadToOutbound(List<Long> orderIds, Long merchantId, Long customerId) {
+        if (CollectionUtils.isEmpty(orderIds)) {
+            return new ArrayList<>();
+        }
+        List<Tuple> rows = bqf.selectFrom(qSalesOrderItem)
+                .select(qSalesOrderItem, qSalesOrder.orderNo, qProduct.code, qProduct.name, qUnit.name)
+                .leftJoin(qSalesOrder).on(qSalesOrder.id.eq(qSalesOrderItem.salesOrderId))
+                .leftJoin(qProduct).on(qProduct.id.eq(qSalesOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
+                .leftJoin(qUnit).on(qUnit.id.eq(qSalesOrderItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
+                .where(qSalesOrderItem.salesOrderId.in(orderIds)
+                        .and(qSalesOrderItem.merchantId.eq(merchantId))
+                        .and(qSalesOrder.customerId.eq(customerId))
+                        .and(qSalesOrder.orderStatus.eq(OrderStatus.已审核))
+                        .and(qSalesOrder.status.ne(2)))
+                .orderBy(qSalesOrderItem.id.asc())
+                .fetch();
+
+        List<SalesOutboundItemDto> result = new ArrayList<>();
+        for (Tuple tuple : rows) {
+            SalesOrderItem item = tuple.get(qSalesOrderItem);
+            double[] outAndReturn = calcOutAndReturnQuantity(item.getSalesOrderId(), item.getId());
+            double orderQty = item.getQuantity() == null ? 0D : item.getQuantity();
+            double remain = orderQty + outAndReturn[1] - outAndReturn[0];
+            if (remain <= 0) {
+                continue;
+            }
+            SalesOutboundItemDto dto = BeanUtil.toBean(item, SalesOutboundItemDto.class);
+            dto.setTempId(item.getId());
+            dto.setId(null);
+            dto.setSalesOrderId(item.getSalesOrderId());
+            dto.setSalesOrderNo(tuple.get(qSalesOrder.orderNo));
+            dto.setProductCode(tuple.get(qProduct.code));
+            dto.setProductName(tuple.get(qProduct.name));
+            dto.setUnitName(tuple.get(qUnit.name));
+            dto.setQuantity(remain);
+            BigDecimal unitPrice = item.getUnitPrice() == null ? BigDecimal.ZERO : item.getUnitPrice();
+            BigDecimal discountRate = item.getDiscountRate() == null ? BigDecimal.ZERO : item.getDiscountRate();
+            BigDecimal qty = BigDecimal.valueOf(remain);
+            BigDecimal discountValue = unitPrice.multiply(qty).multiply(discountRate)
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            BigDecimal subtotal = unitPrice.multiply(qty).subtract(discountValue)
+                    .setScale(2, java.math.RoundingMode.HALF_UP);
+            dto.setDiscountValue(discountValue);
+            dto.setSubtotal(subtotal);
+            result.add(dto);
+        }
+        return result;
+    }
+
+    /** @return [outQuantity, returnQuantity] */
+    private double[] calcOutAndReturnQuantity(Long salesOrderId, Long orderItemId) {
+        List<Tuple> fetch = bqf.selectFrom(qSalesOutboundItem)
+                .leftJoin(qsalesReturnItem)
+                .on(qsalesReturnItem.salesOutboundId.eq(qSalesOutboundItem.salesOutboundId)
+                        .and(qsalesReturnItem.outItemId.eq(qSalesOutboundItem.id)))
+                .select(qSalesOutboundItem.quantity, qsalesReturnItem.quantity)
+                .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId)
+                        .and(qSalesOutboundItem.tempId.eq(orderItemId)))
+                .fetch();
+        double outQuantity = fetch.stream()
+                .mapToDouble(t -> t.get(qSalesOutboundItem.quantity) != null ? t.get(qSalesOutboundItem.quantity) : 0D)
+                .sum();
+        double returnQuantity = fetch.stream()
+                .mapToDouble(t -> t.get(qsalesReturnItem.quantity) != null ? t.get(qsalesReturnItem.quantity) : 0D)
+                .sum();
+        return new double[]{outQuantity, returnQuantity};
     }
 
     public static class Query implements TenantAware {

@@ -186,14 +186,214 @@ public class CostingServiceTest {
     }
 
     @Test
-    void toLocalDate_withSqlDate_doesNotThrow() {
-        java.sql.Date sqlDate = java.sql.Date.valueOf(LocalDate.of(2024, 6, 15));
-        LocalDate converted = CostingService.toLocalDate(sqlDate);
-        assertNotNull(converted);
-        assertEquals(LocalDate.of(2024, 6, 15), converted);
+    void issue_fifo_costPriceIsBlendedAverage() {
+        doReturn(CostingMethod.先进先出).when(costingService).resolveMethod(any());
 
-        assertNull(CostingService.toLocalDate(null));
+        Inventory inventory = new Inventory();
+        inventory.setCurrentQuantity(20);
+        inventory.setAverageCost(new BigDecimal("12.00"));
+        when(inventoryService.findByWarehouseIdAndProductId(10L, 20L)).thenReturn(inventory);
+
+        InventoryCostBatch older = batch(1L, LocalDate.of(2024, 1, 1), 5, new BigDecimal("10.00"));
+        InventoryCostBatch newer = batch(2L, LocalDate.of(2024, 2, 1), 10, new BigDecimal("20.00"));
+        when(batchRepository.findByProductIdAndWarehouseIdAndMerchantIdAndAccountBookIdAndQtyRemainGreaterThanOrderByInboundDateAscIdAsc(
+                eq(20L), eq(10L), eq(100L), eq(200L), anyInt()))
+                .thenReturn(List.of(older, newer));
+        when(batchRepository.save(any(InventoryCostBatch.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(consumeRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        // 5×10 + 2×20 = 90 → unit = 90/7 ≈ 12.857143
+        CostingService.IssueResult result = costingService.issue(issueRequest(7, 20L, 10L, 100L, 200L));
+
+        assertEquals(0, new BigDecimal("12.857143").compareTo(result.getCostPrice()));
+        // older fully consumed → remain cost cleared to 0
+        assertEquals(0, older.getQtyRemain());
+        assertEquals(0, BigDecimal.ZERO.compareTo(older.getTotalCostRemain()));
+        // newer: remain 8, cost remain 160
+        assertEquals(0, new BigDecimal("160.00").compareTo(newer.getTotalCostRemain()));
     }
+
+    @Test
+    void issue_movingAverage_ignoresLayerUnitCost() {
+        doReturn(CostingMethod.移动加权平均).when(costingService).resolveMethod(any());
+
+        Inventory inventory = new Inventory();
+        inventory.setCurrentQuantity(15);
+        // 加权后均价 12：例如先入10@10 + 再入5@16 → (100+80)/15 = 12
+        inventory.setAverageCost(new BigDecimal("12.00"));
+        when(inventoryService.findByWarehouseIdAndProductId(10L, 20L)).thenReturn(inventory);
+
+        InventoryCostBatch older = batch(1L, LocalDate.of(2024, 1, 1), 10, new BigDecimal("10.00"));
+        InventoryCostBatch newer = batch(2L, LocalDate.of(2024, 2, 1), 5, new BigDecimal("16.00"));
+        when(batchRepository.findByProductIdAndWarehouseIdAndMerchantIdAndAccountBookIdAndQtyRemainGreaterThanOrderByInboundDateAscIdAsc(
+                eq(20L), eq(10L), eq(100L), eq(200L), anyInt()))
+                .thenReturn(List.of(older, newer));
+        when(batchRepository.save(any(InventoryCostBatch.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(consumeRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        // 出库 6：移动加权成本 = 12×6 = 72（不是 FIFO 的 10×6=60）
+        CostingService.IssueResult result = costingService.issue(issueRequest(6, 20L, 10L, 100L, 200L));
+
+        assertEquals(6, result.getQty());
+        assertEquals(0, new BigDecimal("72.00").compareTo(result.getCostAmount()));
+        assertEquals(0, new BigDecimal("12.000000").compareTo(result.getCostPrice()));
+        // 仍按先进先出顺序扣批次数量
+        assertEquals(4, older.getQtyRemain());
+        assertEquals(5, newer.getQtyRemain());
+    }
+
+    @Test
+    void issue_fifo_singleBatchExactConsume() {
+        doReturn(CostingMethod.先进先出).when(costingService).resolveMethod(any());
+
+        Inventory inventory = new Inventory();
+        inventory.setCurrentQuantity(8);
+        inventory.setAverageCost(new BigDecimal("10.00"));
+        when(inventoryService.findByWarehouseIdAndProductId(10L, 20L)).thenReturn(inventory);
+
+        InventoryCostBatch layer = batch(1L, LocalDate.of(2024, 1, 1), 8, new BigDecimal("10.00"));
+        when(batchRepository.findByProductIdAndWarehouseIdAndMerchantIdAndAccountBookIdAndQtyRemainGreaterThanOrderByInboundDateAscIdAsc(
+                eq(20L), eq(10L), eq(100L), eq(200L), anyInt()))
+                .thenReturn(List.of(layer));
+        when(batchRepository.save(any(InventoryCostBatch.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(consumeRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CostingService.IssueResult result = costingService.issue(issueRequest(8, 20L, 10L, 100L, 200L));
+
+        assertEquals(8, result.getQty());
+        assertEquals(0, new BigDecimal("80.00").compareTo(result.getCostAmount()));
+        assertEquals(0, new BigDecimal("10.000000").compareTo(result.getCostPrice()));
+        assertEquals(0, layer.getQtyRemain());
+        assertTrue(layer.getClosed());
+        assertEquals(0, BigDecimal.ZERO.compareTo(layer.getTotalCostRemain()));
+    }
+
+    @Test
+    void reverseIssue_movingAverage_restoresByLayerUnitCost() {
+        InventoryCostBatch batch = batch(9L, LocalDate.of(2024, 1, 1), 3, new BigDecimal("10.00"));
+        batch.setQtyIn(10);
+        batch.setTotalCostRemain(new BigDecimal("30.00"));
+
+        // 移动加权出库时记账成本可能是均价 12，回补应按层入库单价 10
+        InventoryCostConsume consume = new InventoryCostConsume();
+        consume.setBatchId(9L);
+        consume.setQty(4);
+        consume.setCostAmount(new BigDecimal("48.00"));
+        consume.setCostingMethod(CostingMethod.移动加权平均);
+
+        when(consumeRepository.findByOutboundOrderIdAndOutboundOrderTypeAndMerchantIdAndAccountBookId(
+                55L, OperationType.销售出库, 100L, 200L))
+                .thenReturn(List.of(consume));
+        when(batchRepository.findById(9L)).thenReturn(Optional.of(batch));
+        when(batchRepository.save(any(InventoryCostBatch.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        costingService.reverseIssue(55L, OperationType.销售出库, 100L, 200L);
+
+        assertEquals(7, batch.getQtyRemain());
+        assertEquals(0, new BigDecimal("70.00").compareTo(batch.getTotalCostRemain()));
+    }
+
+    @Test
+    void createReceiptBatch_setsQtyAndCost() {
+        when(batchRepository.save(any(InventoryCostBatch.class))).thenAnswer(inv -> {
+            InventoryCostBatch b = inv.getArgument(0);
+            b.setId(100L);
+            return b;
+        });
+
+        CostingService.ReceiptRequest req = new CostingService.ReceiptRequest();
+        req.setQty(10);
+        req.setUnitCost(new BigDecimal("8.50"));
+        req.setProductId(1L);
+        req.setWarehouseId(2L);
+        req.setOrderId(3L);
+        req.setOrderType(OperationType.采购入库);
+        req.setInboundDate(LocalDate.of(2024, 3, 1));
+        req.setMerchantId(100L);
+        req.setAccountBookId(200L);
+
+        InventoryCostBatch saved = costingService.createReceiptBatch(req);
+
+        assertNotNull(saved);
+        assertEquals(10, saved.getQtyIn());
+        assertEquals(10, saved.getQtyRemain());
+        assertEquals(0, new BigDecimal("8.50").compareTo(saved.getUnitCost()));
+        assertEquals(0, new BigDecimal("85.00").compareTo(saved.getTotalCostRemain()));
+        assertFalse(saved.getClosed());
+    }
+
+    @Test
+    void issue_allowNegative_fifo_partialOverageUsesAverageCost() {
+        doReturn(CostingMethod.先进先出).when(costingService).resolveMethod(any());
+        doReturn(true).when(costingService).allowNegativeStock(any());
+
+        Inventory inventory = new Inventory();
+        inventory.setCurrentQuantity(3);
+        inventory.setAverageCost(new BigDecimal("10.00"));
+        when(inventoryService.findByWarehouseIdAndProductId(10L, 20L)).thenReturn(inventory);
+
+        InventoryCostBatch layer = batch(1L, LocalDate.of(2024, 1, 1), 3, new BigDecimal("10.00"));
+        when(batchRepository.findByProductIdAndWarehouseIdAndMerchantIdAndAccountBookIdAndQtyRemainGreaterThanOrderByInboundDateAscIdAsc(
+                eq(20L), eq(10L), eq(100L), eq(200L), anyInt()))
+                .thenReturn(List.of(layer));
+        when(batchRepository.save(any(InventoryCostBatch.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(consumeRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        // 库存 3，出库 5：3×10 + 2×10(均价) = 50
+        CostingService.IssueResult result = costingService.issue(issueRequest(5, 20L, 10L, 100L, 200L));
+
+        assertEquals(5, result.getQty());
+        assertEquals(0, new BigDecimal("50.00").compareTo(result.getCostAmount()));
+        assertEquals(0, new BigDecimal("10.000000").compareTo(result.getCostPrice()));
+        assertEquals(0, layer.getQtyRemain());
+        assertEquals(2, result.getConsumes().size());
+        assertEquals(0L, result.getConsumes().get(1).getBatchId());
+        assertEquals(2, result.getConsumes().get(1).getQty());
+    }
+
+    @Test
+    void issue_allowNegative_movingAverage_zeroStockUsesLastBatchCost() {
+        doReturn(CostingMethod.移动加权平均).when(costingService).resolveMethod(any());
+        doReturn(true).when(costingService).allowNegativeStock(any());
+
+        Inventory inventory = new Inventory();
+        inventory.setCurrentQuantity(0);
+        inventory.setAverageCost(BigDecimal.ZERO);
+        when(inventoryService.findByWarehouseIdAndProductId(10L, 20L)).thenReturn(inventory);
+        when(batchRepository.findByProductIdAndWarehouseIdAndMerchantIdAndAccountBookIdAndQtyRemainGreaterThanOrderByInboundDateAscIdAsc(
+                eq(20L), eq(10L), eq(100L), eq(200L), anyInt()))
+                .thenReturn(List.of());
+        InventoryCostBatch last = batch(9L, LocalDate.of(2024, 1, 1), 0, new BigDecimal("18.00"));
+        last.setQtyRemain(0);
+        last.setClosed(true);
+        when(batchRepository.findByProductIdAndWarehouseIdAndMerchantIdAndAccountBookIdOrderByInboundDateDescIdDesc(
+                eq(20L), eq(10L), eq(100L), eq(200L)))
+                .thenReturn(List.of(last));
+        when(consumeRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        // 零库存出库 4：回退最近批次单价 18 → 成本 72
+        CostingService.IssueResult result = costingService.issue(issueRequest(4, 20L, 10L, 100L, 200L));
+
+        assertEquals(4, result.getQty());
+        assertEquals(0, new BigDecimal("72.00").compareTo(result.getCostAmount()));
+        assertEquals(0, new BigDecimal("18.000000").compareTo(result.getCostPrice()));
+    }
+
+    @Test
+    void issue_disallowNegative_throwsWhenInsufficient() {
+        doReturn(CostingMethod.先进先出).when(costingService).resolveMethod(any());
+        doReturn(false).when(costingService).allowNegativeStock(any());
+
+        Inventory inventory = new Inventory();
+        inventory.setCurrentQuantity(2);
+        inventory.setAverageCost(new BigDecimal("10.00"));
+        when(inventoryService.findByWarehouseIdAndProductId(10L, 20L)).thenReturn(inventory);
+
+        org.junit.jupiter.api.Assertions.assertThrows(com.flyemu.share.exception.ServiceException.class,
+                () -> costingService.issue(issueRequest(5, 20L, 10L, 100L, 200L)));
+    }
+
+
 
     private static InventoryCostBatch batch(Long id, LocalDate inboundDate, int qtyRemain, BigDecimal unitCost) {
         InventoryCostBatch b = new InventoryCostBatch();

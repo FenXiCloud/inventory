@@ -7,6 +7,12 @@ export default {
     list(param) {
         return Ajax.get('/salesOrder', param)
     },
+    listToOutBound(param) {
+        return Ajax.get('/salesOrder/toOutBound', param)
+    },
+    toOutbound(customerId, ids) {
+        return Ajax.post('/salesOrder/toOutbound/' + customerId, ids);
+    },
     total(param) {
         return Ajax.get('/salesOrder/total', param)
     },

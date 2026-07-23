@@ -49,7 +49,7 @@ public class CustomerFlow implements Serializable, TenantAware{
     private BigDecimal receivableAmount;
     @Comment("实收金额")
     private BigDecimal paidUpAmount;
-    @Comment("应收款余额")
+    @Comment("应收余额：正数=客户欠款，负数=预收")
     private BigDecimal balanceReceivables;
     @Comment("创建人")
     private Long createdBy;

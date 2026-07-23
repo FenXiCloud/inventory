@@ -141,7 +141,15 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading"> 取消</t-button>
       <div>
-        <t-button theme="primary" v-if="!isLocked" @click="saveOrder('add')"
+        <t-button
+            v-if="!isLocked && fromStockTake"
+            theme="primary"
+            :loading="loading"
+            @click="saveAndApprove"
+        >
+          保存并审核
+        </t-button>
+        <t-button theme="primary" v-if="!isLocked && !fromStockTake" @click="saveOrder('add')"
                   :loading="loading">
           保存并新增
         </t-button>
@@ -194,6 +202,9 @@ export default {
     },
     isLocked() {
       return this.isAudited || this.looked;
+    },
+    fromStockTake() {
+      return !!(this.stockTakeId || this.form.stockTakeId);
     },
     columns() {
       return [
@@ -279,7 +290,7 @@ export default {
       });
     },
 
-    ...mapMutations(['closeSelfTab', 'pushTab']),
+    ...mapMutations(['closeSelfTab', 'pushTab', 'closeTabKey']),
     changeRow: function ({rowIndex}, type, selected) {
       switch (type) {
         case 'product': {
@@ -384,14 +395,40 @@ export default {
       const params = this.getSaveOrderParams(filterOtherInboundData, type);
       LoadingPlugin(true);
       OtherInbound.save(params)
-          .then(({success}) => {
+          .then(({success, data}) => {
             if (success) {
               MessagePlugin.success("保存成功~");
-              this.clearForm();
               if (type === 'save') {
                 this.closeWindow();
+                return;
+              }
+              this.clearForm();
+              if (data?.id) {
+                this.form.id = data.id;
               }
             }
+          })
+          .finally(() => LoadingPlugin(false));
+    },
+    saveAndApprove() {
+      const filterOtherInboundData = this.otherInboundData.filter(item => !this.isEmpty(item.productId) || !this.isEmpty(item.warehouseId) || !this.isEmpty(item.quantity) || !this.isEmpty(item.remarks));
+      if (!this.validatorsForm(filterOtherInboundData)) {
+        return;
+      }
+      const params = this.getSaveOrderParams(filterOtherInboundData, 'save');
+      LoadingPlugin(true);
+      OtherInbound.save(params)
+          .then(({success, data}) => {
+            if (!success) return;
+            const id = data?.id || this.form.id;
+            if (!id) {
+              MessagePlugin.error('保存成功但未取得单据号');
+              return;
+            }
+            return OtherInbound.approved('已审核', [id]).then(() => {
+              MessagePlugin.success('盘盈单已保存并审核');
+              this.closeWindow();
+            });
           })
           .finally(() => LoadingPlugin(false));
     },
@@ -629,7 +666,24 @@ export default {
       });
     },
     closeWindow() {
+      const stockTakeId = this.form.stockTakeId || this.stockTakeId;
       this.closeSelfTab(this.index);
+      if (stockTakeId) {
+        if ((this.$store.state.tabs || []).some((t) => t.key === 'StockTakeForm')) {
+          this.closeTabKey('StockTakeForm');
+        }
+        this.pushTab({
+          keepAlive: false,
+          key: 'StockTakeForm',
+          title: '查看盘点单',
+          params: {
+            type: 'look',
+            stockTakeId,
+            status: '已审核'
+          }
+        });
+        return;
+      }
       this.pushTab({
         keepAlive: false,
         key: "OtherInboundList",

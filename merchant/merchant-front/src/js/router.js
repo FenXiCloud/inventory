@@ -375,6 +375,12 @@ const groupRoutes = [
     )
   },
   {
+    name: 'InventoryCostBatchList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/InventoryCostBatchList.vue')
+    )
+  },
+  {
     name: 'InventoryTransferList',
     component: defineAsyncComponent(() =>
       import('@views/inventory/InventoryTransferList.vue')

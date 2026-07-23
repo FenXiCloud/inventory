@@ -510,7 +510,10 @@ export default {
         spec: d.spec,
         remark: ""
       });
-      this.productData[index] = Object.assign({}, d, g);
+      this.productData[index] = Object.assign({}, d, g, {
+        productId: d.productId,
+        isNew: false,
+      });
       if (!this.productData[index].warehouseId) {
         this.productData[index].warehouseId = defaultWarehouseId;
       }

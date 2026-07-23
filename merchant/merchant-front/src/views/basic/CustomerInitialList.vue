@@ -93,9 +93,9 @@ export default {
         {colKey: 'ops', title: '操作', width: 90, fixed: 'left', align: 'center'},
         {colKey: 'customerCode', title: '客户编码', width: 140},
         {colKey: 'customerName', title: '客户名称', minWidth: 160, ellipsis: true},
-        {colKey: 'balanceBefore', title: '期初应收款', width: 120},
-        {colKey: 'amount', title: '期初预收款', width: 120},
-        {colKey: 'balanceAfter', title: '期初余额', width: 120}
+        {colKey: 'balanceBefore', title: '期初应收款', width: 120, align: 'right'},
+        {colKey: 'amount', title: '期初预收款', width: 120, align: 'right'},
+        {colKey: 'balanceAfter', title: '期初应收余额', width: 120, align: 'right'}
       ]
     };
   },

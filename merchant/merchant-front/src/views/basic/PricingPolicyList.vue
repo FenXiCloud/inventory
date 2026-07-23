@@ -5,7 +5,6 @@
         <t-tab-panel value="销售价格取数" label="销售价格取数"/>
         <t-tab-panel value="采购价格取数" label="采购价格取数"/>
       </t-tabs>
-      <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="doSearch">刷新</t-button>
     </div>
 
     <div class="simple-page__table">
@@ -23,18 +22,14 @@
       >
         <template #ops="{ row }">
           <t-space size="small">
-            <t-link theme="primary" @click="moveUp(row)">上移</t-link>
-            <t-link theme="primary" @click="moveDown(row)">下移</t-link>
+            <t-link theme="primary" :disabled="saving" @click="moveUp(row)">上移</t-link>
+            <t-link theme="primary" :disabled="saving" @click="moveDown(row)">下移</t-link>
           </t-space>
         </template>
         <template #enabled="{ row }">
-          <t-switch v-model="row.enabled" @change="() => toggleStatus(row)"/>
+          <t-switch v-model="row.enabled" :disabled="saving" @change="() => persist()"/>
         </template>
       </t-table>
-    </div>
-
-    <div class="simple-page__footer">
-      <t-button theme="primary" style="border-radius: 4px" :loading="loading" @click="saveOrder">保存</t-button>
     </div>
   </div>
 </template>
@@ -42,11 +37,13 @@
 <script>
 import PricingPolicy from '@js/api/basic/PricingPolicy';
 import {MessagePlugin} from 'tdesign-vue-next';
+
 export default {
   name: 'PricingPolicyList',
   data() {
     return {
       loading: false,
+      saving: false,
       dataList: [],
       selected: '销售价格取数',
       params: {policyType: '销售价格取数'},
@@ -63,9 +60,6 @@ export default {
       this.params.policyType = value;
       this.loadList();
     },
-    doSearch() {
-      this.loadList();
-    },
     loadList() {
       this.loading = true;
       PricingPolicy.list(this.params)
@@ -73,6 +67,20 @@ export default {
           this.dataList = Array.isArray(data) ? data : [];
         })
         .finally(() => (this.loading = false));
+    },
+    persist() {
+      if (this.saving) return Promise.resolve();
+      this.saving = true;
+      return PricingPolicy.sort({dataList: this.dataList})
+        .then(() => {
+          MessagePlugin.success('已保存');
+        })
+        .catch(() => {
+          this.loadList();
+        })
+        .finally(() => {
+          this.saving = false;
+        });
     },
     moveUp(row) {
       const index = this.dataList.findIndex((item) => item.id === row.id);
@@ -83,24 +91,18 @@ export default {
       const newList = [...this.dataList];
       [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
       this.dataList = newList;
+      this.persist();
     },
     moveDown(row) {
       const index = this.dataList.findIndex((item) => item.id === row.id);
-      if (index >= this.dataList.length - 1) {
+      if (index < 0 || index >= this.dataList.length - 1) {
         MessagePlugin.warning('已经是最后一条数据了');
         return;
       }
       const newList = [...this.dataList];
       [newList[index], newList[index + 1]] = [newList[index + 1], newList[index]];
       this.dataList = newList;
-    },
-    saveOrder() {
-      PricingPolicy.sort({dataList: this.dataList}).then(() => {
-        MessagePlugin.success('保存成功');
-      });
-    },
-    toggleStatus() {
-      // 与原逻辑一致：仅本地切换，随排序一并保存
+      this.persist();
     }
   },
   created() {
@@ -108,14 +110,3 @@ export default {
   }
 };
 </script>
-
-<style scoped>
-
-.simple-page__footer {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  padding: 10px 0;
-  border-top: 1px solid var(--td-component-border, #dcdcdc);
-}
-</style>

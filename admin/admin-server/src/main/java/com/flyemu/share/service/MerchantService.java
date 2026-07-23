@@ -21,7 +21,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,6 +50,7 @@ public class MerchantService extends BaseService {
 
     @PostConstruct
     public void initDefaultUser() {
+        ensureDefaultMenus();
         Long count = jqf.selectFrom(qMerchant).select(qMerchant.count()).fetchFirst();
         if (count == 0) {
             Merchant merchant = new Merchant();
@@ -73,6 +76,12 @@ public class MerchantService extends BaseService {
             initMenus(merchant.getId());
 
             log.info("测试商户账号：13944878765，密码：878765");
+        } else {
+            // 已有商户：补齐新增菜单关联
+            List<Long> merchantIds = jqf.selectFrom(qMerchant).select(qMerchant.id).fetch();
+            for (Long merchantId : merchantIds) {
+                associateMissingMenus(merchantId);
+            }
         }
     }
 
@@ -130,17 +139,32 @@ public class MerchantService extends BaseService {
     }
 
     /**
-     * 初始化菜单数据（仅首次启动时执行）
+     * 初始化菜单数据（仅首次启动时全量写入；后续由 ensureDefaultMenus 补齐）
      */
     private void initMenus(Long merchantId) {
-        Long menuCount = jqf.selectFrom(qMenu).select(qMenu.count()).fetchFirst();
-        if (menuCount == 0) {
-            List<Menu> menus = buildDefaultMenus();
-            menuRepository.saveAll(menus);
-            log.info("初始化菜单数据完成，共 {} 条", menus.size());
-        }
-        // 为默认商户关联所有菜单
+        ensureDefaultMenus();
         associateMerchantMenus(merchantId);
+    }
+
+    /**
+     * 按默认菜单清单补齐缺失菜单（已有库升级用）
+     */
+    @Transactional
+    public void ensureDefaultMenus() {
+        List<Menu> defaults = buildDefaultMenus();
+        int added = 0;
+        for (Menu menu : defaults) {
+            Long exists = jqf.selectFrom(qMenu).select(qMenu.count())
+                    .where(qMenu.id.eq(menu.getId()))
+                    .fetchFirst();
+            if (exists == null || exists == 0) {
+                menuRepository.save(menu);
+                added++;
+            }
+        }
+        if (added > 0) {
+            log.info("补齐菜单数据完成，新增 {} 条", added);
+        }
     }
 
     /**
@@ -148,11 +172,23 @@ public class MerchantService extends BaseService {
      */
     @Transactional
     public void associateMerchantMenus(Long merchantId) {
+        associateMissingMenus(merchantId);
+    }
+
+    /**
+     * 仅为商户补齐尚未关联的菜单，避免重复插入
+     */
+    @Transactional
+    public void associateMissingMenus(Long merchantId) {
+        QMerchantMenu qMerchantMenu = QMerchantMenu.merchantMenu;
+        List<Long> existing = jqf.selectFrom(qMerchantMenu)
+                .select(qMerchantMenu.menuId)
+                .where(qMerchantMenu.merchantId.eq(merchantId))
+                .fetch();
+        Set<Long> existingSet = new HashSet<>(existing);
         List<Long> menuIds = jqf.selectFrom(qMenu).select(qMenu.id).fetch();
-        if (menuIds.isEmpty()) {
-            return;
-        }
         List<MerchantMenu> merchantMenus = menuIds.stream()
+                .filter(menuId -> !existingSet.contains(menuId))
                 .map(menuId -> {
                     MerchantMenu mm = new MerchantMenu();
                     mm.setMenuId(menuId);
@@ -160,8 +196,11 @@ public class MerchantService extends BaseService {
                     return mm;
                 })
                 .collect(Collectors.toList());
+        if (merchantMenus.isEmpty()) {
+            return;
+        }
         merchantMenuRepository.saveAll(merchantMenus);
-        log.info("为商户 {} 关联菜单完成，共 {} 条", merchantId, merchantMenus.size());
+        log.info("为商户 {} 补齐菜单关联 {} 条", merchantId, merchantMenus.size());
     }
 
     /**
@@ -182,19 +221,19 @@ public class MerchantService extends BaseService {
         menus.add(menu(8L, "SupplierList", "货商档案", null, 6L, 2));
         // id=9: 仓库管理
         menus.add(menu(9L, "WarehouseList", "仓库管理", null, 6L, 3));
-        // id=79: 账户管理
-        menus.add(menu(79L, "AccountList", "账户管理", null, 6L, 4));
-        // id=80: 计量单位
-        menus.add(menu(80L, "UnitList", "计量单位", null, 6L, 6));
 
         // id=10: 辅助资料 (子分类)
         menus.add(menu(10L, null, "辅助资料", null, 1L, 2));
         // id=12: 客户等级
         menus.add(menu(12L, "CustomerLevelList", "客户等级", null, 10L, 1));
+        // id=79: 账户管理
+        menus.add(menu(79L, "AccountList", "账户管理", null, 10L, 2));
+        // id=80: 计量单位
+        menus.add(menu(80L, "UnitList", "计量单位", null, 10L, 3));
         // id=23: 收支类型
-        menus.add(menu(23L, "AccountTypeList", "收支类型", null, 10L, 3));
+        menus.add(menu(23L, "AccountTypeList", "收支类型", null, 10L, 4));
         // id=24: 结算方式
-        menus.add(menu(24L, "PaymentMethodList", "结算方式", null, 10L, 4));
+        menus.add(menu(24L, "PaymentMethodList", "结算方式", null, 10L, 5));
 
         // id=43: 价格设置 (子分类)
         menus.add(menu(43L, null, "价格设置", null, 1L, 3));
@@ -293,10 +332,12 @@ public class MerchantService extends BaseService {
         menus.add(menu(68L, null, "库存报表", null, 27L, 1));
         // id=72: 库存余额表
         menus.add(menu(72L, "InventoryReport", "库存余额表", null, 68L, 0));
+        // id=87: 库存批次表
+        menus.add(menu(87L, "InventoryCostBatchList", "库存批次表", null, 68L, 1));
         // id=73: 进销存明细表
-        menus.add(menu(73L, "InventoryItemReport", "进销存明细表", null, 68L, 1));
+        menus.add(menu(73L, "InventoryItemReport", "进销存明细表", null, 68L, 2));
         // id=74: 进销存汇总表
-        menus.add(menu(74L, "InventorySummaryReport", "进销存汇总表", null, 68L, 2));
+        menus.add(menu(74L, "InventorySummaryReport", "进销存汇总表", null, 68L, 3));
 
         // id=28: 资金账户 (根菜单)
         menus.add(menu(28L, "Fund", "资金账户", "wallet", null, 4));

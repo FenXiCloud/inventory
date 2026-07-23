@@ -13,4 +13,7 @@ public interface InventoryCostBatchRepository extends JpaRepositoryImplementatio
 
     List<InventoryCostBatch> findByProductIdAndWarehouseIdAndMerchantIdAndAccountBookIdAndQtyRemainGreaterThanOrderByInboundDateAscIdAsc(
             Long productId, Long warehouseId, Long merchantId, Long accountBookId, Integer qtyRemain);
+
+    List<InventoryCostBatch> findByProductIdAndWarehouseIdAndMerchantIdAndAccountBookIdOrderByInboundDateDescIdDesc(
+            Long productId, Long warehouseId, Long merchantId, Long accountBookId);
 }

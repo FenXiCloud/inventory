@@ -1,17 +1,17 @@
 <template>
   <div class="simple-page">
     <div class="simple-page__toolbar">
-      <t-space break-line>
+      <t-space break-line align="center">
         <t-button theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
-        <span>类型：</span>
-        <t-select
+        <t-radio-group
             v-model="params.costType"
-            :options="costTypeOptions"
-            :keys="{ value: 'key', label: 'title' }"
-            :clearable="false"
-            style="width: 120px; border-radius: 4px"
-            @change="loadList"
-        />
+            variant="default-filled"
+            style="border-radius: 4px"
+            @change="onCostTypeChange"
+        >
+          <t-radio-button value="支出">支出</t-radio-button>
+          <t-radio-button value="收入">收入</t-radio-button>
+        </t-radio-group>
         <t-input
             v-model="params.name"
             clearable
@@ -39,7 +39,6 @@
           :data="dataList"
           :columns="columns"
           :loading="loading"
-          :tree="treeConfig"
       >
         <template #ops="{ row }">
           <t-space size="small">
@@ -47,6 +46,19 @@
             <t-link theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
             <t-link theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
           </t-space>
+        </template>
+        <template #name="{ row }">
+          <div class="account-type-name" :style="{ paddingLeft: `${row._level * 22}px` }">
+            <span
+                v-if="row._hasChildren"
+                class="account-type-name__icon"
+                @click.stop="toggleExpand(row.id)"
+            >
+              <t-icon :name="isExpanded(row.id) ? 'caret-down-small' : 'caret-right-small'"/>
+            </span>
+            <span v-else class="account-type-name__spacer"/>
+            <span class="account-type-name__text" :title="row.name">{{ row.name }}</span>
+          </div>
         </template>
         <template #enabled="{ row }">
           <t-tag
@@ -71,39 +83,79 @@ import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from 'vue';
 import {toArrayTree} from '@common/utils';
-import {costTypes} from '@common/dict';
+
 export default {
   name: 'AccountTypeList',
   data() {
     return {
       loading: false,
-      dataList: [],
+      treeData: [],
+      expandedIds: {},
       params: {
         name: '',
         costType: '支出'
       },
-      costTypeOptions: costTypes,
-      treeConfig: {
-        childrenKey: 'children',
-        treeNodeColumnIndex: 1,
-        defaultExpandAll: true,
-        indent: 24
-      },
       columns: [
         {colKey: 'ops', title: '操作', width: 140, fixed: 'left', align: 'center'},
-        {colKey: 'name', title: '名称', minWidth: 200, ellipsis: true},
+        {colKey: 'name', title: '名称', minWidth: 220, ellipsis: true},
         {colKey: 'costType', title: '收支类型', width: 100},
         {colKey: 'enabled', title: '状态', width: 90, align: 'center', fixed: 'right'}
       ]
     };
   },
+  computed: {
+    dataList() {
+      return this.flattenTree(this.treeData);
+    }
+  },
   methods: {
+    isExpanded(id) {
+      return !!this.expandedIds[id];
+    },
+    toggleExpand(id) {
+      this.expandedIds = {
+        ...this.expandedIds,
+        [id]: !this.expandedIds[id]
+      };
+    },
+    expandAll(nodes, map = {}) {
+      (nodes || []).forEach((node) => {
+        if (node.children && node.children.length) {
+          map[node.id] = true;
+          this.expandAll(node.children, map);
+        }
+      });
+      return map;
+    },
+    flattenTree(nodes, level = 0, result = []) {
+      (nodes || []).forEach((node) => {
+        const children = node.children || [];
+        const hasChildren = children.length > 0;
+        result.push({
+          id: node.id,
+          name: node.name,
+          costType: node.costType,
+          enabled: node.enabled,
+          pid: node.pid,
+          _level: level,
+          _hasChildren: hasChildren,
+          _childCount: children.length
+        });
+        if (hasChildren && this.isExpanded(node.id)) {
+          this.flattenTree(children, level + 1, result);
+        }
+      });
+      return result;
+    },
     showForm(entity, parent) {
+      const isChild = !!parent;
       const dialogId = openDialog({
-        header: '收支类别信息',
+        header: entity
+          ? '编辑收支类别'
+          : (isChild ? `新增下级（${parent.name}）` : `新增${this.params.costType}类别`),
         closeOnOverlayClick: false,
         closeBtn: false,
-        width: '400px',
+        width: '420px',
         body: h(AccountTypeForm, {
           entity: entity || null,
           parent: parent || null,
@@ -116,6 +168,10 @@ export default {
         })
       });
     },
+    onCostTypeChange() {
+      this.params.name = '';
+      this.loadList();
+    },
     doSearch() {
       this.loadList();
     },
@@ -126,11 +182,17 @@ export default {
       AccountType.list(query)
         .then(({data}) => {
           const list = Array.isArray(data) ? data : [];
-          this.dataList = toArrayTree(list, {key: 'id', parentKey: 'pid', children: 'children'});
+          const tree = toArrayTree(list, {key: 'id', parentKey: 'pid', children: 'children'});
+          this.treeData = tree;
+          this.expandedIds = this.expandAll(tree);
         })
         .finally(() => (this.loading = false));
     },
     doRemove(row) {
+      if (row._hasChildren || row._childCount > 0) {
+        MessagePlugin.warning('请先删除下级类别');
+        return;
+      }
       DialogPlugin.confirm({
         header: '系统提示',
         body: `确认删除：${row.name}?`,
@@ -162,3 +224,31 @@ export default {
 };
 </script>
 
+<style scoped>
+.account-type-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.account-type-name__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  margin-right: 4px;
+  cursor: pointer;
+  color: var(--td-text-color-secondary, #666);
+}
+
+.account-type-name__spacer {
+  display: inline-block;
+  width: 16px;
+  flex: 0 0 auto;
+}
+
+.account-type-name__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

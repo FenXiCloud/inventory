@@ -16,9 +16,7 @@ import java.io.Serializable;
 @Setter
 @Entity
 @NoArgsConstructor
-@Table(uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"merchantId", "accountBookId", "name"})
-})
+@Table
 @DynamicUpdate
 @DynamicInsert
 public class AccountType implements Serializable, TenantAware{

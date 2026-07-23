@@ -35,7 +35,7 @@ public class Product implements TenantAware {
     private String code;
 
     @Comment("名称")
-    @Column(length = 64, nullable = false)
+    @Column(length = 255, nullable = false)
     private String name;
 
     @Comment("拼音")

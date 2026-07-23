@@ -39,7 +39,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -97,12 +99,12 @@ public class SalesOrderService extends BaseService {
                     .where(qSalesOrderItem.salesOrderId.eq(salesOrderDTO.getId()))
                     .fetch();
             List<SalesOrderItemDto> itemDTOs = new ArrayList<>();
-            AtomicReference<Double> totalQuantity = new AtomicReference<>((double) 0L);
+            AtomicReference<BigDecimal> totalQuantity = new AtomicReference<>(BigDecimal.ZERO);
             salesOrderItemList.forEach(item -> {
                 SalesOrderItemDto itemDTO = BeanUtil.toBean(item, SalesOrderItemDto.class);
                 itemDTOs.add(itemDTO);
-                Double quantity = itemDTO.getQuantity();
-                totalQuantity.updateAndGet(v -> v + quantity);
+                BigDecimal quantity = itemDTO.getQuantity();
+                totalQuantity.updateAndGet(v -> v.add(quantity));
 
                 //查询销售出库数量和退货数量
                 List<Tuple> fetch = bqf.selectFrom(qSalesOutboundItem)
@@ -113,13 +115,13 @@ public class SalesOrderService extends BaseService {
                                 .and(qSalesOutboundItem.tempId.eq(item.getId())))
                         .fetch();
                 //出库数量
-                Double outQuantity = fetch.stream()
-                        .mapToDouble(tuple1 -> tuple1.get(qSalesOutboundItem.quantity))
-                        .sum();
+                BigDecimal outQuantity = fetch.stream()
+                        .map(tuple1 -> java.util.Objects.requireNonNullElse(tuple1.get(qSalesOutboundItem.quantity), BigDecimal.ZERO))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
                 //退货数量
-                Double returnQuantity = fetch.stream()
-                        .mapToDouble(tuple2 -> tuple2.get(qsalesReturnItem.quantity) != null ? tuple2.get(qsalesReturnItem.quantity) : 0.0)
-                        .sum();
+                BigDecimal returnQuantity = fetch.stream()
+                        .map(tuple2 -> java.util.Objects.requireNonNullElse(tuple2.get(qsalesReturnItem.quantity), BigDecimal.ZERO))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                 itemDTO.setQuantityOut(outQuantity);
                 itemDTO.setQuantityReturn(returnQuantity);
@@ -212,9 +214,9 @@ public class SalesOrderService extends BaseService {
                     item.setCreatedBy(salesOrder.getCreatedBy());
                     item.setCreatedAt(salesOrder.getCreatedAt());
                     //初始化出库数量
-                    item.setQuantityOut(0D);
+                    item.setQuantityOut(BigDecimal.ZERO);
                     //初始化退货数量
-                    item.setQuantityReturn(0D);
+                    item.setQuantityReturn(BigDecimal.ZERO);
                 });
                 //批量添加销售订单商品
                 salesOrderItemRepository.saveAll(salesOrderItemList);
@@ -324,12 +326,25 @@ public class SalesOrderService extends BaseService {
         salesOrderRepository.saveAll(salesOrders);
     }
 
-    public BigDecimal queryTotal(Query query) {
-        return bqf.selectFrom(qSalesOrder)
+    public Map<String, BigDecimal> queryTotal(Query query) {
+        BigDecimal amount = bqf.selectFrom(qSalesOrder)
                 .select(qSalesOrder.finalAmount.sum())
                 .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
                 .where(query.builder).fetchFirst();
+        // 子查询统计所有符合条件的订单的商品数量总和，避免 JOIN 导致金额翻倍
+        BigDecimal quantity = bqf.selectFrom(qSalesOrderItem)
+                .select(qSalesOrderItem.quantity.sum())
+                .where(qSalesOrderItem.salesOrderId.in(
+                        bqf.selectFrom(qSalesOrder).select(qSalesOrder.id)
+                                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
+                                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOrder.createdBy))
+                                .where(query.builder)
+                )).fetchFirst();
+        Map<String, BigDecimal> result = new HashMap<>();
+        result.put("amount", amount);
+        result.put("quantity", java.util.Objects.requireNonNullElse(quantity, BigDecimal.ZERO));
+        return result;
     }
 
     /**
@@ -385,10 +400,10 @@ public class SalesOrderService extends BaseService {
         List<SalesOutboundItemDto> result = new ArrayList<>();
         for (Tuple tuple : rows) {
             SalesOrderItem item = tuple.get(qSalesOrderItem);
-            double[] outAndReturn = calcOutAndReturnQuantity(item.getSalesOrderId(), item.getId());
-            double orderQty = item.getQuantity() == null ? 0D : item.getQuantity();
-            double remain = orderQty + outAndReturn[1] - outAndReturn[0];
-            if (remain <= 0) {
+            BigDecimal[] outAndReturn = calcOutAndReturnQuantity(item.getSalesOrderId(), item.getId());
+            BigDecimal orderQty = item.getQuantity() == null ? BigDecimal.ZERO : item.getQuantity();
+            BigDecimal remain = orderQty.add(outAndReturn[1]).subtract(outAndReturn[0]);
+            if (remain.compareTo(BigDecimal.ZERO) <= 0) {
                 continue;
             }
             SalesOutboundItemDto dto = BeanUtil.toBean(item, SalesOutboundItemDto.class);
@@ -402,7 +417,7 @@ public class SalesOrderService extends BaseService {
             dto.setQuantity(remain);
             BigDecimal unitPrice = item.getUnitPrice() == null ? BigDecimal.ZERO : item.getUnitPrice();
             BigDecimal discountRate = item.getDiscountRate() == null ? BigDecimal.ZERO : item.getDiscountRate();
-            BigDecimal qty = BigDecimal.valueOf(remain);
+            BigDecimal qty = remain;
             BigDecimal discountValue = unitPrice.multiply(qty).multiply(discountRate)
                     .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
             BigDecimal subtotal = unitPrice.multiply(qty).subtract(discountValue)
@@ -415,7 +430,7 @@ public class SalesOrderService extends BaseService {
     }
 
     /** @return [outQuantity, returnQuantity] */
-    private double[] calcOutAndReturnQuantity(Long salesOrderId, Long orderItemId) {
+    private BigDecimal[] calcOutAndReturnQuantity(Long salesOrderId, Long orderItemId) {
         List<Tuple> fetch = bqf.selectFrom(qSalesOutboundItem)
                 .leftJoin(qsalesReturnItem)
                 .on(qsalesReturnItem.salesOutboundId.eq(qSalesOutboundItem.salesOutboundId)
@@ -424,13 +439,13 @@ public class SalesOrderService extends BaseService {
                 .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId)
                         .and(qSalesOutboundItem.tempId.eq(orderItemId)))
                 .fetch();
-        double outQuantity = fetch.stream()
-                .mapToDouble(t -> t.get(qSalesOutboundItem.quantity) != null ? t.get(qSalesOutboundItem.quantity) : 0D)
-                .sum();
-        double returnQuantity = fetch.stream()
-                .mapToDouble(t -> t.get(qsalesReturnItem.quantity) != null ? t.get(qsalesReturnItem.quantity) : 0D)
-                .sum();
-        return new double[]{outQuantity, returnQuantity};
+        BigDecimal outQuantity = fetch.stream()
+                .map(t -> java.util.Objects.requireNonNullElse(t.get(qSalesOutboundItem.quantity), BigDecimal.ZERO))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal returnQuantity = fetch.stream()
+                .map(t -> java.util.Objects.requireNonNullElse(t.get(qsalesReturnItem.quantity), BigDecimal.ZERO))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new BigDecimal[]{outQuantity, returnQuantity};
     }
 
     public static class Query implements TenantAware {

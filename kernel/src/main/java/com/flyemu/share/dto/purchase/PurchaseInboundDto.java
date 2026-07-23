@@ -47,7 +47,7 @@ public class PurchaseInboundDto {
     /**
      * 采购数量合计
      */
-    private Double secondarySum;
+    private BigDecimal secondarySum;
 
     /**
      * 订单金额

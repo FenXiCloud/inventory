@@ -57,7 +57,7 @@ public class OtherOutboundItemService extends BaseService {
         final BigDecimal[] totalAmount = {BigDecimal.ZERO};
         otherOutboundItems.forEach(otherOutboundItem -> {
             Long productId = otherOutboundItem.getProductId();
-            Double quantity = otherOutboundItem.getQuantity();
+            BigDecimal quantity = otherOutboundItem.getQuantity();
             otherOutboundItem.setOtherOutboundId(otherOutboundId);
             otherOutboundItem.setMerchantId(merchantId);
             otherOutboundItem.setAccountBookId(accountBookId);
@@ -66,7 +66,7 @@ public class OtherOutboundItemService extends BaseService {
             // 获取商品出库单位成本
             BigDecimal otherOutboundUnitPrice = this.findOtherOutboundUnitPrice(productId, customerId, merchantId);
             otherOutboundItem.setUnitPrice(otherOutboundUnitPrice);
-            otherOutboundItem.setSubtotal(otherOutboundUnitPrice.multiply(new BigDecimal(quantity)));
+            otherOutboundItem.setSubtotal(otherOutboundUnitPrice.multiply(quantity));
             totalAmount[0] = totalAmount[0].add(otherOutboundItem.getSubtotal());
             otherOutboundItem.setProductId(productId);
             otherOutboundItem.setBatchNumber(orderNo);
@@ -86,11 +86,11 @@ public class OtherOutboundItemService extends BaseService {
         final BigDecimal[] totalAmount = {BigDecimal.ZERO};
         fetch.forEach(otherOutboundItem -> {
             Long productId = otherOutboundItem.getProductId();
-            Double quantity = otherOutboundItem.getQuantity();
+            BigDecimal quantity = otherOutboundItem.getQuantity();
             // 获取商品出库单位成本
             BigDecimal otherOutboundUnitPrice = this.findOtherOutboundUnitPrice(productId, customerId, merchantId);
             otherOutboundItem.setUnitPrice(otherOutboundUnitPrice);
-            otherOutboundItem.setSubtotal(otherOutboundUnitPrice.multiply(new BigDecimal(quantity)));
+            otherOutboundItem.setSubtotal(otherOutboundUnitPrice.multiply(quantity));
             totalAmount[0] = totalAmount[0].add(otherOutboundItem.getSubtotal());
             otherOutboundItemRepository.save(otherOutboundItem);
         });

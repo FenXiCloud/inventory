@@ -41,7 +41,7 @@ public class PurchaseOrderDto {
     /**
      * 采购数量合计
      */
-    private Double secondarySum;
+    private BigDecimal secondarySum;
 
     /**
      * 入库日期

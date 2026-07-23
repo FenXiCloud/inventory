@@ -41,6 +41,8 @@ public class FinanceAccountLink implements TenantAware {
     private String financeCookie;
 
     @Comment("财务软件密码")
+    @Convert(converter = com.flyemu.share.crypto.EncryptedStringConverter.class)
+    @Column(length = 256)
     private String financePassword;
 
     @Comment("关联状态")

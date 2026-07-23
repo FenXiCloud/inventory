@@ -82,7 +82,7 @@
     </div>
 
     <div class="simple-page__pager">
-      <span class="simple-page__total">合计金额：{{ amountTotal }}元</span>
+      <span class="simple-page__total">合计金额：{{ amountTotal }}元&nbsp;&nbsp;合计数量：{{ totalQuantity }}&nbsp;&nbsp;</span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -116,6 +116,7 @@ export default {
       selectedRows: [],
       loading: false,
       amountTotal: 0,
+      totalQuantity: 0,
       pagination: {
         page: 1,
         pageSize: 20,
@@ -172,7 +173,7 @@ export default {
         finalAmount: sum('finalAmount'),
         secondarySum: sum('secondarySum', 0),
       }];
-    }
+    },
   },
   methods: {
     ...mapMutations(['pushTab']),
@@ -264,7 +265,8 @@ export default {
     },
     loadTotal() {
       PurchaseOrder.total(this.queryParams).then(({data}) => {
-        this.amountTotal = data || 0;
+        this.amountTotal = data?.amount || 0;
+        this.totalQuantity = data?.quantity || 0;
       })
     },
     loadSupplier() {
@@ -287,8 +289,8 @@ export default {
   },
   created() {
     this.loadSupplier();
-    this.loadTotal();
     this.loadList();
+    this.loadTotal();
   }
 }
 </script>

@@ -204,7 +204,7 @@ public class OtherOutboundService extends BaseService {
 
     private void applyIssueCost(OtherOutbound otherOutbound, List<OtherOutboundItem> items, OperationType operationType) {
         for (OtherOutboundItem line : items) {
-            int qty = line.getQuantity() == null ? 0 : (int) Double.parseDouble(line.getQuantity().toString());
+            int qty = line.getQuantity() == null ? 0 : line.getQuantity().intValue();
             CostingService.IssueRequest req = new CostingService.IssueRequest();
             req.setProductId(line.getProductId());
             req.setWarehouseId(line.getWarehouseId());
@@ -244,14 +244,14 @@ public class OtherOutboundService extends BaseService {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         otherOutboundItems.forEach(otherOutboundItem -> {
-            Double quantity = otherOutboundItem.getQuantity();
+            BigDecimal quantity = otherOutboundItem.getQuantity();
             BigDecimal subtotal = otherOutboundItem.getCostAmount() != null
                     ? otherOutboundItem.getCostAmount() : otherOutboundItem.getSubtotal();
             if (subtotal == null) {
                 Inventory inv = inventoryService.findByWarehouseIdAndProductId(
                         otherOutboundItem.getWarehouseId(), otherOutboundItem.getProductId());
                 BigDecimal avg = inv != null && inv.getAverageCost() != null ? inv.getAverageCost() : BigDecimal.ZERO;
-                subtotal = avg.multiply(BigDecimal.valueOf(quantity == null ? 0D : quantity))
+                subtotal = avg.multiply(quantity == null ? BigDecimal.ZERO : quantity)
                         .setScale(2, RoundingMode.HALF_EVEN);
             }
             BigDecimal finalSubtotal = subtotal;
@@ -265,16 +265,16 @@ public class OtherOutboundService extends BaseService {
                                 BigDecimal totalCost = item.getTotalCost();
                                 BigDecimal added = totalCost.add(finalSubtotal)
                                         .setScale(2, RoundingMode.HALF_EVEN);
-                                double parsed = Double.parseDouble(quantity.toString());
-                                currentQuantity += (int) parsed;
+                                int parsed = quantity.intValue();
+                                currentQuantity += parsed;
                                 item.setCurrentQuantity(currentQuantity);
                                 item.setTotalCost(added);
                             }, () -> {
                                 Inventory inventory = new Inventory();
                                 inventory.setProductId(otherOutboundItem.getProductId());
                                 inventory.setWarehouseId(otherOutboundItem.getWarehouseId());
-                                double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
-                                inventory.setCurrentQuantity((int) parsed);
+                                int parsed = otherOutboundItem.getQuantity().intValue();
+                                inventory.setCurrentQuantity(parsed);
                                 inventory.setTotalCost(finalSubtotal);
                                 inventory.setMerchantId(otherOutboundItem.getMerchantId());
                                 inventory.setBaseUnitId(otherOutboundItem.getBaseUnitId());
@@ -299,8 +299,8 @@ public class OtherOutboundService extends BaseService {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(otherOutboundItem.getProductId());
         inventoryItem.setWarehouseId(otherOutboundItem.getWarehouseId());
-        double parsed = Double.parseDouble(otherOutboundItem.getQuantity().toString());
-        inventoryItem.setQuantity((int) parsed);
+        int parsed = otherOutboundItem.getQuantity().intValue();
+        inventoryItem.setQuantity(parsed);
         inventoryItem.setBaseUnitId(otherOutboundItem.getBaseUnitId());
         inventoryItem.setOperationType(operationType);
         inventoryItem.setOrderId(otherOutboundItem.getOtherOutboundId());

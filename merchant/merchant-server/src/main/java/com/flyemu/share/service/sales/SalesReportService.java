@@ -322,13 +322,13 @@ public class SalesReportService extends BaseService {
 
             //退货取反
             BigDecimal subtotal = salesReportItemDTO.getSubtotal();
-            Double quantity = salesReportItemDTO.getQuantity();
+            BigDecimal quantity = salesReportItemDTO.getQuantity();
             BigDecimal costAmount = salesReportItemDTO.getCostAmount();
             if (subtotal != null) {
                 salesReportItemDTO.setSubtotal(subtotal.negate());
             }
             if (quantity != null) {
-                salesReportItemDTO.setQuantity(-quantity);
+                salesReportItemDTO.setQuantity(quantity.negate());
             }
             if (costAmount != null) {
                 salesReportItemDTO.setCostAmount(costAmount.negate());
@@ -564,7 +564,7 @@ public class SalesReportService extends BaseService {
             dtos.addAll(productCustomerWarehouseSummary.values());
         }
         //移除数量为0的数据
-        dtos.removeIf(item -> item.getQuantity() == null || item.getQuantity() == 0);
+        dtos.removeIf(item -> item.getQuantity() == null || item.getQuantity().compareTo(BigDecimal.ZERO) == 0);
         //返回分页数据
         return getSalesReportItemDtoPageResults(page, dtos);
     }
@@ -616,7 +616,7 @@ public class SalesReportService extends BaseService {
     }
 
     private void fillProfitFields(SalesReportItemDto dto, Product product) {
-        BigDecimal qty = BigDecimal.valueOf(dto.getQuantity() == null ? 0D : dto.getQuantity());
+        BigDecimal qty = dto.getQuantity() == null ? BigDecimal.ZERO : dto.getQuantity();
         BigDecimal salesAmount = dto.getSubtotal() == null ? BigDecimal.ZERO : dto.getSubtotal();
         BigDecimal costAmount = dto.getCostAmount();
         BigDecimal costPrice = dto.getCostPrice();
@@ -637,7 +637,7 @@ public class SalesReportService extends BaseService {
         if (salesAmount.compareTo(BigDecimal.ZERO) == 0) {
             dto.setProfitRate(BigDecimal.ZERO);
         } else {
-            dto.setProfitRate(profitAmount.multiply(BigDecimal.valueOf(100))
+            dto.setProfitRate(profitAmount.multiply(new BigDecimal("100"))
                     .divide(salesAmount, 2, RoundingMode.HALF_UP));
         }
     }
@@ -669,17 +669,17 @@ public class SalesReportService extends BaseService {
 
     private void aggregateQtyAndAmount(SalesReportItemDto dto, List<SalesReportItemDto> items) {
         dto.setQuantity(items.stream()
-                .mapToDouble(item -> item.getQuantity() != null ? item.getQuantity() : 0.0)
-                .sum());
+                .map(item -> item.getQuantity() != null ? item.getQuantity() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
         dto.setSubtotal(items.stream()
                 .map(item -> item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
         dto.setCostAmount(items.stream()
                 .map(item -> item.getCostAmount() != null ? item.getCostAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
-        if (dto.getQuantity() != null && dto.getQuantity() != 0) {
-            dto.setUnitPrice(dto.getSubtotal().divide(BigDecimal.valueOf(dto.getQuantity()), 2, RoundingMode.HALF_UP));
-            dto.setCostPrice(dto.getCostAmount().divide(BigDecimal.valueOf(dto.getQuantity()), 2, RoundingMode.HALF_UP));
+        if (dto.getQuantity() != null && dto.getQuantity().compareTo(BigDecimal.ZERO) != 0) {
+            dto.setUnitPrice(dto.getSubtotal().divide(dto.getQuantity(), 2, RoundingMode.HALF_UP));
+            dto.setCostPrice(dto.getCostAmount().divide(dto.getQuantity(), 2, RoundingMode.HALF_UP));
         } else {
             dto.setUnitPrice(BigDecimal.ZERO);
             dto.setCostPrice(BigDecimal.ZERO);

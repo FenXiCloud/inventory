@@ -71,8 +71,8 @@
             bordered
             stripe
             hover
-            height="100%"
-            table-layout="auto"
+            max-height="100%"
+            table-layout="fixed"
             :data="productDataList"
             :columns="productColumns"
             :loading="loading"
@@ -372,7 +372,7 @@ export default {
 .product-main__table {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .product-main__pager {

@@ -47,7 +47,7 @@ public class PurchaseReturnDto {
     /**
      * 采购数量合计
      */
-    private Double secondarySum;
+    private BigDecimal secondarySum;
 
     /**
      * 退货金额

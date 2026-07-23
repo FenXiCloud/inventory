@@ -26,12 +26,15 @@ public class InventoryItem implements TenantAware {
     private Long id;
 
     @Comment("关联单据ID")
+    @Column(nullable = false)
     private Long orderId;
 
     @Comment("产品ID")
+    @Column(nullable = false)
     private Long productId;
 
     @Comment("仓库ID")
+    @Column(nullable = false)
     private Long warehouseId;
 
     @Comment("操作类型：期初、入库、出库、调拨")

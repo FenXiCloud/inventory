@@ -36,11 +36,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -102,12 +105,16 @@ public class PurchaseOrderService extends BaseService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-    public BigDecimal queryTotal(Query query) {
-        return bqf.selectFrom(qPurchaseOrder)
-                .select(qPurchaseOrder.finalAmount.sum())
+    public Map<String, BigDecimal> queryTotal(Query query) {
+        Tuple tuple = bqf.selectFrom(qPurchaseOrder)
+                .select(qPurchaseOrder.finalAmount.sum(), qPurchaseOrder.secondarySum.sum())
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseOrder.createdBy))
-                .where(query.builder).fetchFirst();
+                .where(query.builder).fetchOne();
+        Map<String, BigDecimal> result = new HashMap<>();
+        result.put("amount", tuple.get(0, BigDecimal.class));
+        result.put("quantity", java.util.Objects.requireNonNullElse(tuple.get(1, BigDecimal.class), BigDecimal.ZERO));
+        return result;
     }
 
     public List<PurchaseInboundItemDto> loadToInbound(List<Long> orderIds, Long merchantId, Long supplierId) {
@@ -149,10 +156,10 @@ public class PurchaseOrderService extends BaseService {
             BeanUtil.copyProperties(order, original, CopyOptions.create().ignoreNullValue());
 
             Set<Long> ids = new HashSet<>();
-            Double secondarySum = 0.0;
+            BigDecimal secondarySum = BigDecimal.ZERO;
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
+                d.setUnitPrice(d.getSecondaryPrice().divide(d.getQuantity(), 2, RoundingMode.HALF_UP));
                 if (d.getId() != null) {
                     ids.add(d.getId());
                 }
@@ -160,7 +167,7 @@ public class PurchaseOrderService extends BaseService {
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);
                 //保存更新购货商品价格
-                secondarySum += d.getSecondaryQuantity();
+                secondarySum = secondarySum.add(d.getSecondaryQuantity());
                 savePrice(d, order);
             }
             original.setSecondarySum(secondarySum);
@@ -169,16 +176,16 @@ public class PurchaseOrderService extends BaseService {
         } else {
             order.setOrderNo(codeSeedService.generateCode(order.getMerchantId(), order.getAccountBookId(), "采购订单"));
 
-            Double secondarySum = purchaseOrderForm.getPurchaseOrderItemList()
+            BigDecimal secondarySum = purchaseOrderForm.getPurchaseOrderItemList()
                     .stream()
                     .map(PurchaseOrderItem::getSecondaryQuantity)
-                    .reduce(0.0, Double::sum);
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             order.setSecondarySum(secondarySum);
 
             purchaseOrderRepository.save(order);
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
                 //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
+                d.setUnitPrice(d.getSecondaryPrice().divide(d.getQuantity(), 2, RoundingMode.HALF_UP));
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);

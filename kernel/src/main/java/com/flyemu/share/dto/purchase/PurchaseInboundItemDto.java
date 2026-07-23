@@ -56,7 +56,7 @@ public class PurchaseInboundItemDto {
     /**
      * 基本数量
      */
-    private Double quantity;
+    private BigDecimal quantity;
 
     /**
      * 采购单位ID
@@ -71,17 +71,17 @@ public class PurchaseInboundItemDto {
     /**
      * 采购数量
      */
-    private Double secondaryQuantity;
+    private BigDecimal secondaryQuantity;
 
     /**
      * 退货数量
      */
-    private Double returnQuantity;
+    private BigDecimal returnQuantity;
 
     /**
      * 采购单价
      */
-    private Double secondaryPrice;
+    private BigDecimal secondaryPrice;
 
     /**
      * 换算率

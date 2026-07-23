@@ -17,7 +17,7 @@
                   <t-input
                       v-model="model.code"
                       placeholder="请输入编码,不填自动生成"
-                      :maxlength="64"
+                      :maxlength="255"
                       :disabled="!!model.id"
                   />
                 </t-form-item>
@@ -26,8 +26,8 @@
                 <t-form-item label="产品名称" name="name">
                   <t-input
                       v-model="model.name"
-                      placeholder="长度 < 64"
-                      :maxlength="64"
+                      placeholder="请输入产品名称"
+                      :maxlength="255"
                   />
                 </t-form-item>
               </t-col>

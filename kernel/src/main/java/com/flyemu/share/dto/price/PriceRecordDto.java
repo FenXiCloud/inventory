@@ -48,7 +48,7 @@ public class PriceRecordDto {
     private String specification;
 
     @Comment("数量（以基本单位计）")
-    private Double quantity;
+    private BigDecimal quantity;
 
     @Comment("单价（以基本单位计）")
     private BigDecimal unitPrice;

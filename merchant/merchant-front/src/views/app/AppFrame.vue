@@ -26,7 +26,7 @@
           <Suspense>
             <component
                 v-if="tab.keepAlive === false ? tab.key === currentTab : true"
-                :is="tab.key"
+                :is="tab.component || tab.key"
                 v-bind="tab.params"
                 :index="index"
                 :pro="tab.params"

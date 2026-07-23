@@ -123,7 +123,7 @@
     </div>
 
     <div class="simple-page__pager">
-      <span class="simple-page__total">合计金额：{{ amountTotal }}元</span>
+      <span class="simple-page__total">合计金额：{{ amountTotal }}元&nbsp;&nbsp;&nbsp;</span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -157,6 +157,7 @@ export default {
       selectedRows: [],
       loading: false,
       amountTotal: 0,
+      totalQuantity: 0,
       pagination: {
         page: 1,
         pageSize: 20,
@@ -230,7 +231,7 @@ export default {
         hasVerificationAmount: sum('hasVerificationAmount'),
         notVerificationAmount: sum('notVerificationAmount'),
       }];
-    }
+    },
   },
   methods: {
     ...mapMutations(['pushTab', 'closeTabKey']),
@@ -259,11 +260,6 @@ export default {
         title: '付款单'
       });
     },
-    loadTotal() {
-      OrderPayment.total(this.queryParams).then(({data}) => {
-        this.amountTotal = data || 0;
-      })
-    },
     loadList() {
       this.loading = true;
       OrderPayment.list(this.queryParams)
@@ -272,6 +268,12 @@ export default {
             this.pagination.total = total;
           })
           .finally(() => this.loading = false);
+    },
+    loadTotal() {
+      OrderPayment.total(this.queryParams).then(({data}) => {
+        this.amountTotal = data?.amount || 0;
+        this.totalQuantity = data?.quantity || 0;
+      })
     },
     loadSupplier() {
       Supplier.select().then(({data}) => {
@@ -347,8 +349,8 @@ export default {
   },
   created() {
     this.loadSupplier();
-    this.loadTotal();
     this.loadList();
+    this.loadTotal();
   }
 }
 </script>

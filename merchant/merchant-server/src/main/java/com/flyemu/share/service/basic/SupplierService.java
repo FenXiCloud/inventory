@@ -38,6 +38,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
+
 @Service
 @Slf4j
 @Transactional(readOnly = true)
@@ -69,7 +71,7 @@ public class SupplierService extends BaseService {
         }, List::addAll);
         return new PageResults<>(collect, page, pagedList.getTotalSize());
     }
-
+//添加
     @Transactional
     public Supplier save(Supplier supplier) {
         try {
@@ -132,7 +134,9 @@ public class SupplierService extends BaseService {
             }
             // 档案余额由业务单据/期初流水维护，新建固定为 0
             supplier.setBalance(BigDecimal.ZERO);
-            Supplier save = supplierRepository.save(supplier);
+
+            // 保存 Supplier，如果编码冲突（并发或随机码碰撞），自动重试随机码
+            Supplier save = saveSupplierWithRetry(supplier);
             SupplierFlow supplierFlow=new SupplierFlow();
             supplierFlow.setSupplierId(save.getId());
             supplierFlow.setBalancePayable(BigDecimal.ZERO);
@@ -144,8 +148,41 @@ public class SupplierService extends BaseService {
             return save;
         } catch (Exception e) {
             log.error("supplier save", e);
-            throw new ServiceException(e.getMessage());
+            if (e instanceof ServiceException) {
+                throw (ServiceException) e;
+            }
+            // 提取根因，避免丢失关键错误信息（如唯一约束违反、字段不能为空等）
+            Throwable root = e;
+            while (root.getCause() != null) {
+                root = root.getCause();
+            }
+            String rootMsg = root.getMessage() != null ? root.getMessage() : e.getMessage();
+            throw new ServiceException(rootMsg, e);
         }
+    }
+
+    /**
+     * 保存 Supplier，如果因编码唯一约束冲突则自动重试（最多 3 次）。
+     * 解决并发场景下 count-based 或随机码的编码碰撞问题。
+     */
+    private Supplier saveSupplierWithRetry(Supplier supplier) {
+        int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                return supplierRepository.save(supplier);
+            } catch (DataIntegrityViolationException e) {
+                String msg = e.getMessage() != null ? e.getMessage() : "";
+                // 仅重试编码冲突；其他约束冲突（如 name 重复）直接抛出
+                if (attempt < maxRetries - 1 && msg.contains("code")) {
+                    log.warn("supplier code collision, retrying (attempt {})", attempt + 1);
+                    supplier.setCode(CodeGenerator.generateCode());
+                    continue;
+                }
+                throw e;
+            }
+        }
+        // should never reach here
+        throw new ServiceException("供应商保存失败，请重试");
     }
 
     @Transactional

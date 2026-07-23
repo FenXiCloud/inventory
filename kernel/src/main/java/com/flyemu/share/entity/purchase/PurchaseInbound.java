@@ -78,10 +78,12 @@ public class PurchaseInbound implements TenantAware {
     private LocalDateTime createdAt;
 
     @Comment("基本数量和")
-    private Double secondarySum;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal secondarySum;
 
     @Comment("退货数量和")
-    private Double returnSum;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal returnSum;
 
     @Comment("审核人")
     private Long approvedBy;

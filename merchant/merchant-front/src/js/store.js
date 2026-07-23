@@ -45,9 +45,29 @@ export default createStore({
       state.currentTab = tab;
     },
     pushTab(state, tab) {
+      // 保存原始组件名用于渲染，key 用于 tab 去重和切换
+      const component = tab.component || tab.key;
+      const tabData = state.currentTabData;
+      // 新增类型：每次创建独立 tab，不与已有 tab 冲突
+      if (tabData && tabData.type === 'add') {
+        const uniqueKey = tab.key + '_add_' + Date.now();
+        state.tabs.push({...tab, key: uniqueKey, component});
+        state.currentTab = uniqueKey;
+        return;
+      }
+      // 编辑类型：按 orderId 去重，同一订单复用同一 tab
+      if (tabData && tabData.type === 'edit' && tabData.orderId) {
+        const editKey = tab.key + '_edit_' + tabData.orderId;
+        if (!state.tabs.some(val => String(val.key) === String(editKey))) {
+          state.tabs.push({...tab, key: editKey, component});
+        }
+        state.currentTab = editKey;
+        return;
+      }
+      // 其他类型：按 key 去重
       const key = tab.key;
       if (!state.tabs.some(val => String(val.key) === String(key))) {
-        state.tabs.push({...tab, key});
+        state.tabs.push({...tab, key, component});
       }
       state.currentTab = key;
     },

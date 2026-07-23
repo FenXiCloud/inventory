@@ -15,7 +15,9 @@ import java.time.LocalDateTime;
 @Setter
 @Entity
 @NoArgsConstructor
-@Table
+@Table(uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"productId", "warehouseId", "accountBookId", "merchantId"})
+})
 @DynamicUpdate
 public class Inventory implements TenantAware {
 
@@ -24,9 +26,11 @@ public class Inventory implements TenantAware {
     private Long id;
 
     @Comment("产品ID")
+    @Column(nullable = false)
     private Long productId;
 
     @Comment("仓库ID")
+    @Column(nullable = false)
     private Long warehouseId;
 
     @Comment("基础单位ID")

@@ -33,13 +33,15 @@ public class SalesOutboundItem implements TenantAware {
     private Long baseUnitId;
 
     @Comment("数量（以基本单位计）")
-    private Double quantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal quantity;
 
     @Comment("辅助单位ID(可为空)")
     private Long secondaryUnitId;
 
     @Comment("辅助单位数量 (可为空")
-    private Double secondaryQuantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal secondaryQuantity;
 
     @Comment("换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)")
     private BigDecimal conversionRate;

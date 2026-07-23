@@ -217,8 +217,8 @@ public class InventoryTransferService extends BaseService {
                 toInventory.setCurrentQuantity(0);
                 toInventory.setBaseUnitId(fromInventory.getBaseUnitId());
             }
-            Double transferQuantity = inventoryTransferItem.getQuantity();
-            int qty = transferQuantity == null ? 0 : (int) Math.round(transferQuantity);
+            BigDecimal transferQuantity = inventoryTransferItem.getQuantity();
+            int qty = transferQuantity == null ? 0 : transferQuantity.intValue();
             if (qty <= 0) {
                 continue;
             }
@@ -261,7 +261,7 @@ public class InventoryTransferService extends BaseService {
                             .setScale(2, RoundingMode.HALF_EVEN);
                 }
             }
-            Double qtyForItem = (double) qty;
+            BigDecimal qtyForItem = BigDecimal.valueOf(qty);
             this.operateTransferItem(reduceInventory, fromWarehouseId, productId, fromInventory, qtyForItem, subtotal);
             this.operateTransferItem(increaseInventory, toWarehouseId, productId, toInventory, qtyForItem, subtotal);
             InventoryItem toInventoryItem = this.getInventoryItem(inventoryTransferItem, inventoryTransfer, toInventory,
@@ -305,12 +305,12 @@ public class InventoryTransferService extends BaseService {
      * @return inventoryItem 库存明细
      */
     private InventoryItem getInventoryItem(InventoryTransferItem inventoryTransferItem, InventoryTransfer inventoryTransfer,
-                                           Inventory inventory, Double transferQuantity, BigDecimal subtotal, Long warehouseId, Boolean isOut) {
+                                           Inventory inventory, BigDecimal transferQuantity, BigDecimal subtotal, Long warehouseId, Boolean isOut) {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(inventoryTransferItem.getProductId());
         inventoryItem.setWarehouseId(warehouseId);
         inventoryItem.setInventoryDate(inventoryTransfer.getTransferDate());
-        int qty = transferQuantity == null ? 0 : (int) Math.round(transferQuantity);
+        int qty = transferQuantity == null ? 0 : transferQuantity.intValue();
         inventoryItem.setQuantity(isOut ? -qty : qty);
         inventoryItem.setOperationType(isOut ? OperationType.调拨出库 : OperationType.调拨入库);
         inventoryItem.setBaseUnitId(inventory.getBaseUnitId());
@@ -340,7 +340,7 @@ public class InventoryTransferService extends BaseService {
      * @param subtotal         价格
      */
     private void operateTransferItem(List<Inventory> inventories, Long warehouseId, Long productId,
-                                     Inventory fromInventory, Double transferQuantity, BigDecimal subtotal) {
+                                     Inventory fromInventory, BigDecimal transferQuantity, BigDecimal subtotal) {
         inventories.stream().filter(item -> item.getProductId().equals(productId) &&
                 item.getWarehouseId().equals(warehouseId)).findFirst().ifPresentOrElse(item -> {
             Integer currentQuantity = item.getCurrentQuantity();

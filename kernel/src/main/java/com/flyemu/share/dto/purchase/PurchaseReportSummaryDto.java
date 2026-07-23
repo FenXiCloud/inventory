@@ -68,7 +68,7 @@ public class PurchaseReportSummaryDto {
     /**
      * 基本数量
      */
-    private Double baseQuantitySum;
+    private BigDecimal baseQuantitySum;
 
     /**
      * 采购金额

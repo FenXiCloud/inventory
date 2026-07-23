@@ -118,12 +118,16 @@ public class PurchaseInboundService extends BaseService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-    public BigDecimal queryTotal(Query query) {
-        return bqf.selectFrom(qPurchaseInbound)
-                .select(qPurchaseInbound.finalAmount.sum())
+    public Map<String, BigDecimal> queryTotal(Query query) {
+        Tuple tuple = bqf.selectFrom(qPurchaseInbound)
+                .select(qPurchaseInbound.finalAmount.sum(), qPurchaseInbound.secondarySum.sum())
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseInbound.createdBy))
-                .where(query.builder).fetchFirst();
+                .where(query.builder).fetchOne();
+        Map<String, BigDecimal> result = new HashMap<>();
+        result.put("amount", tuple.get(0, BigDecimal.class));
+        result.put("quantity", java.util.Objects.requireNonNullElse(tuple.get(1, BigDecimal.class), BigDecimal.ZERO));
+        return result;
     }
 
     @Transactional
@@ -138,7 +142,7 @@ public class PurchaseInboundService extends BaseService {
                     .where(QPurchaseInboundItem.purchaseInboundItem.purchaseInboundId.eq(purchaseInbound.getId()))
                     .execute();
             Set<Long> ids = new HashSet<>();
-            Double secondarySum = 0.0;
+            BigDecimal secondarySum = BigDecimal.ZERO;
             for (PurchaseInboundItem d : purchaseInboundForm.getPurchaseInboundItemList()) {
                 if (d.getProductId() == null) {
                     throw new ServiceException("明细产品不能为空~");
@@ -147,7 +151,7 @@ public class PurchaseInboundService extends BaseService {
                     throw new ServiceException("明细仓库不能为空~");
                 }
                 //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
+                d.setUnitPrice(d.getSecondaryPrice().divide(d.getQuantity(), 2, RoundingMode.HALF_UP));
                 if (d.getId() != null) {
                     ids.add(d.getId());
                 }
@@ -155,7 +159,7 @@ public class PurchaseInboundService extends BaseService {
                 d.setPurchaseInboundId(purchaseInbound.getId());
                 d.setMerchantId(merchantId);
                 d.setReturnQuantity(d.getSecondaryQuantity());
-                secondarySum += d.getSecondaryQuantity();
+                secondarySum = secondarySum.add(d.getSecondaryQuantity());
             }
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
             original.setSecondarySum(secondarySum);
@@ -165,10 +169,10 @@ public class PurchaseInboundService extends BaseService {
 
             purchaseInbound.setOrderNo(codeSeedService.generateCode(merchantId, purchaseInbound.getAccountBookId(), "采购入库单"));
             purchaseInbound.setOrderStatus(OrderStatus.已保存);
-            Double secondarySum = purchaseInboundForm.getPurchaseInboundItemList()
+            BigDecimal secondarySum = purchaseInboundForm.getPurchaseInboundItemList()
                     .stream()
                     .map(PurchaseInboundItem::getSecondaryQuantity)
-                    .reduce(0.0, Double::sum);
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             purchaseInbound.setSecondarySum(secondarySum);
             purchaseInbound.setReturnSum(secondarySum);
             purchaseInbound = purchaseInboundRepository.save(purchaseInbound);
@@ -187,7 +191,7 @@ public class PurchaseInboundService extends BaseService {
                     throw new ServiceException("明细仓库不能为空~");
                 }
                 //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
+                d.setUnitPrice(d.getSecondaryPrice().divide(d.getQuantity(), 2, RoundingMode.HALF_UP));
                 d.setAccountBookId(purchaseInbound.getAccountBookId());
                 d.setPurchaseInboundId(purchaseInbound.getId());
                 d.setMerchantId(merchantId);
@@ -467,7 +471,7 @@ public class PurchaseInboundService extends BaseService {
             CostingService.ReceiptRequest req = new CostingService.ReceiptRequest();
             req.setProductId(item.getProductId());
             req.setWarehouseId(item.getWarehouseId());
-            int qty = item.getQuantity() == null ? 0 : (int) Double.parseDouble(item.getQuantity().toString());
+            int qty = item.getQuantity() == null ? 0 : item.getQuantity().intValue();
             req.setQty(qty);
             req.setUnitCost(item.getUnitPrice());
             req.setInboundDate(purchaseInbound.getInboundDate());
@@ -487,7 +491,7 @@ public class PurchaseInboundService extends BaseService {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         inboundItems.forEach(purchaseInboundItem -> {
             BigDecimal subtotal = purchaseInboundItem.getSubtotal();
-            Double quantity = purchaseInboundItem.getQuantity();
+            BigDecimal quantity = purchaseInboundItem.getQuantity();
             inventories.stream()
                     .filter(item -> item.getProductId().equals(purchaseInboundItem.getProductId())
                             && item.getWarehouseId().equals(purchaseInboundItem.getWarehouseId()))
@@ -498,16 +502,15 @@ public class PurchaseInboundService extends BaseService {
                                 Integer currentQuantity = item.getCurrentQuantity();
                                 BigDecimal added = totalCost.add(subtotal)
                                         .setScale(2, RoundingMode.HALF_EVEN);
-                                double parsed = Double.parseDouble(quantity.toString());
-                                currentQuantity += (int) parsed;
+                                currentQuantity += quantity.intValue();
                                 item.setCurrentQuantity(currentQuantity);
                                 item.setTotalCost(added);
                             }, () -> {
                                 Inventory inventory = new Inventory();
                                 inventory.setWarehouseId(purchaseInboundItem.getWarehouseId());
                                 inventory.setProductId(purchaseInboundItem.getProductId());
-                                double parsed = Double.parseDouble(purchaseInboundItem.getQuantity().toString());
-                                inventory.setCurrentQuantity((int) parsed);
+                                int parsed = purchaseInboundItem.getQuantity().intValue();
+                                inventory.setCurrentQuantity(parsed);
                                 inventory.setTotalCost(purchaseInboundItem.getSubtotal());
                                 inventory.setMerchantId(purchaseInboundItem.getMerchantId());
                                 inventory.setAccountBookId(purchaseInboundItem.getAccountBookId());
@@ -532,8 +535,8 @@ public class PurchaseInboundService extends BaseService {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setWarehouseId(purchaseInboundItem.getWarehouseId());
         inventoryItem.setProductId(purchaseInboundItem.getProductId());
-        double parsed = Double.parseDouble(purchaseInboundItem.getQuantity().toString());
-        inventoryItem.setQuantity((int) parsed);
+        int parsed = purchaseInboundItem.getQuantity().intValue();
+        inventoryItem.setQuantity(parsed);
         inventoryItem.setBaseUnitId(purchaseInboundItem.getBaseUnitId());
         inventoryItem.setSupplierId(purchaseInbound.getSupplierId());
         inventoryItem.setOperationType(OperationType.采购入库);

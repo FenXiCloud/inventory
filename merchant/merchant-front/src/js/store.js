@@ -47,7 +47,7 @@ export default createStore({
     pushTab(state, tab) {
       // 保存原始组件名用于渲染，key 用于 tab 去重和切换
       const component = tab.component || tab.key;
-      const tabData = state.currentTabData;
+      const tabData = tab.params || state.currentTabData;
       // 新增类型：每次创建独立 tab，不与已有 tab 冲突
       if (tabData && tabData.type === 'add') {
         const uniqueKey = tab.key + '_add_' + Date.now();

@@ -156,6 +156,9 @@ public class SalesReturnService extends BaseService {
 
             BeanUtil.copyProperties(salesReturn, original, CopyOptions.create().ignoreNullValue());
             SalesReturn update = salesReturnRepository.save(original);
+            jqf.delete(qsalesReturnItem)
+                    .where(qsalesReturnItem.salesReturnId.eq(id))
+                    .execute();
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
                     checkQuantity(item);

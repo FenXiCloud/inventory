@@ -163,28 +163,19 @@ public class CustomerService extends BaseService {
     public void importData(List<CustomerImportVo> rows, Long merchantId, Long accountBookId) {
         for (int i = 0; i < rows.size(); i++) {
             if (StringUtils.isEmpty(rows.get(i).getName())){
-                throw new ServiceException("客户名称不能为空");
-            }
-            if (StringUtils.isEmpty(rows.get(i).getCode())){
-                throw new ServiceException("客户编码不能为空");
-            }
-            if (StringUtils.isEmpty(rows.get(i).getPhone())){
-                throw new ServiceException("手机号不能为空");
-            }
-            if (StringUtils.isEmpty(rows.get(i).getContact())){
-                throw new ServiceException("联系人不能为空");
+                throw new ServiceException("第" + (i + 2) + "行：客户名称不能为空");
             }
             if (rows.get(i).getCustomerCategoryName() == null){
-                throw new ServiceException("客户分类不能为空");
+                throw new ServiceException("第" + (i + 2) + "行：客户分类不能为空");
             }
             if (rows.get(i).getCustomerLevelName() == null){
-                throw new ServiceException("客户等级不能为空");
+                throw new ServiceException("第" + (i + 2) + "行：客户等级不能为空");
             }
         }
         Set<String> codeSet = new HashSet<>();
         List<String> duplicateCodes = rows.stream()
-                .filter(row -> !codeSet.add(row.getCode()))
                 .map(CustomerImportVo::getCode)
+                .filter(c -> StrUtil.isNotBlank(c) && !codeSet.add(c))
                 .distinct()
                 .toList();
 
@@ -197,14 +188,14 @@ public class CustomerService extends BaseService {
         Set<String> existingCodeSet = new HashSet<>(existingCodes);
         List<String> duplicatedInDb = rows.stream()
                 .map(CustomerImportVo::getCode)
-                .filter(existingCodeSet::contains)
+                .filter(c -> StrUtil.isNotBlank(c) && existingCodeSet.contains(c))
                 .distinct()
                 .toList();
 
         Assert.isTrue(duplicatedInDb.isEmpty(), "以下客户编码已在系统中存在，请修改后重新导入：" + String.join("、", duplicatedInDb));
 
         for (CustomerImportVo row : rows) {
-            if (row.getCode() != null && StringUtils.isNotBlank(row.getName())
+            if (StringUtils.isNotBlank(row.getName())
                     && StringUtils.isNotBlank(row.getCustomerLevelName()) &&
                     StringUtils.isNotBlank(row.getCustomerCategoryName())) {
                 Customer customer = new Customer();
@@ -222,8 +213,30 @@ public class CustomerService extends BaseService {
                 customer.setCustomerLevelId(level.getId());
                 customer.setMerchantId(merchantId);
                 customer.setAccountBookId(accountBookId);
-                customer.setCode(row.getCode());
-                customer.setName(row.getName());
+                if (StrUtil.isNotBlank(row.getCode())) {
+                    customer.setCode(row.getCode());
+                } else {
+                    CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
+                            CodeRule.DocumentType.客户, merchantId, accountBookId);
+                    if (codeRule != null) {
+                        StringBuilder codeBuilder = new StringBuilder();
+                        if (StrUtil.isNotBlank(codeRule.getPrefix())) codeBuilder.append(codeRule.getPrefix());
+                        if (StrUtil.isNotBlank(codeRule.getFormat())) codeBuilder.append(DateUtil.format(LocalDateTime.now(), codeRule.getFormat()));
+                        Integer serialLength = codeRule.getSerialNumberLength();
+                        if (serialLength != null && serialLength > 0) {
+                            Long count = jqf.select(qCustomer.id.count()).from(qCustomer).where(qCustomer.merchantId.eq(merchantId).and(qCustomer.accountBookId.eq(accountBookId))).fetchOne();
+                            codeBuilder.append(String.format("%0" + serialLength + "d", (count != null ? count : 0) + 1));
+                        }
+                        customer.setCode(codeBuilder.toString());
+                    } else {
+                        customer.setCode(CodeGenerator.generateCode());
+                    }
+                }
+                String name = row.getName();
+                if (name != null && name.length() > 32) {
+                    name = name.substring(0, 32);
+                }
+                customer.setName(name);
                 customer.setPhone(row.getPhone());
                 customer.setContact(row.getContact());
                 customer.setRemarks(row.getRemarks());

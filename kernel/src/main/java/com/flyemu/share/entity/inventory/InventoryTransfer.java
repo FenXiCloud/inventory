@@ -36,7 +36,6 @@ public class InventoryTransfer implements TenantAware {
     private Long ToWarehouseId;
 
     @Comment("调拨日期")
-    @CreationTimestamp
     private Date transferDate;
 
     @Comment("备注")

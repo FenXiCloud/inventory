@@ -84,6 +84,7 @@ public class OrderPaymentService extends BaseService {
     private final PurchaseInboundRepository quantityRepository;
     private final OrderPaymentItemRepository orderPaymentItemRepository;
     private final OrderPaymentCollectionRepository orderPaymentCollectionRepository;
+    private final SettlementService settlementService;
     private final static QOrderPaymentItem QorderPaymentItem = QOrderPaymentItem.orderPaymentItem;
     private final static QOrderPaymentCollection QorderPaymentCollection = QOrderPaymentCollection.orderPaymentCollection;
 
@@ -313,7 +314,7 @@ public class OrderPaymentService extends BaseService {
     }
 
     public PageResults<PayableDetailReportVO> payableDetail(Page page, PayableDetailReportQuery query) {
-        List<PayableDetailReportVO> result = jqf.select(Projections.bean(PayableDetailReportVO.class, qOrderPayment.supplierName.as("supplierName"), qOrderPayment.orderStaffName.as("staffName"), qOrderPayment.orderDate.as("orderDate"), qOrderPayment.orderNo.as("orderNo"), Expressions.cases().when(qItem.id.isNull()).then("预付款").otherwise("采购付款").as("businessType"), qItem.currentVerifyAmount.as("payableAmount"), Expressions.numberTemplate(BigDecimal.class, "CASE WHEN {0} IS NULL THEN {1} ELSE {2} END", qItem.id, qOrderPayment.advanceCollectionsAmount, BigDecimal.ZERO).as("prepaymentAmount"), qOrderPayment.shouldVerificationAmount.subtract(qOrderPayment.hasVerificationAmount).as("balance"), qOrderPayment.remarks.as("remarks"))).from(qOrderPayment).leftJoin(qItem).on(qItem.paymentId.eq(qOrderPayment.id)).where(query.builder, qOrderPayment.orderStatus.eq(OrderStatus.已审核)).offset(page.getOffset()).limit(page.getPageSize()).fetch();
+        List<PayableDetailReportVO> result = jqf.select(Projections.bean(PayableDetailReportVO.class, qOrderPayment.supplierName.as("supplierName"), qOrderPayment.orderStaffName.as("staffName"), qOrderPayment.orderDate.as("orderDate"), qOrderPayment.orderNo.as("orderNo"), Expressions.cases().when(qItem.id.isNull()).then("预付款").otherwise("采购付款").as("businessType"), qItem.currentVerifyAmount.as("payableAmount"), Expressions.numberTemplate(BigDecimal.class, "CASE WHEN {0} IS NULL THEN {1} ELSE {2} END", qItem.id, qOrderPayment.advanceCollectionsAmount, BigDecimal.ZERO).as("prepaymentAmount"), qOrderPayment.notVerificationAmount.as("balance"), qOrderPayment.remarks.as("remarks"))).from(qOrderPayment).leftJoin(qItem).on(qItem.paymentId.eq(qOrderPayment.id)).where(query.builder, qOrderPayment.orderStatus.eq(OrderStatus.已审核)).offset(page.getOffset()).limit(page.getPageSize()).fetch();
 
         Long total = jqf.select(qOrderPayment.count()).from(qOrderPayment).leftJoin(qItem).on(qItem.paymentId.eq(qOrderPayment.id)).where(query.builder, qOrderPayment.orderStatus.eq(OrderStatus.已审核)).fetchOne();
 
@@ -505,18 +506,21 @@ public class OrderPaymentService extends BaseService {
 
         BigDecimal discountAmount = orderPayment.getDiscountAmount() == null ? BigDecimal.ZERO : orderPayment.getDiscountAmount();
 
-        // 应核销金额 = 实际支付 + 折扣
-        BigDecimal shouldVerifyAmount = totalPaymentAmount.add(discountAmount);
+        // 应核销金额 = 订单总额 + 折扣（取自源单金额，不是实付金额）
+        BigDecimal shouldVerifyAmount = totalDocumentAmount.add(discountAmount);
+        // 预付款金额 = 实付金额 - 应核销金额（多付的部分）
+        BigDecimal advanceAmount = totalPaymentAmount.subtract(shouldVerifyAmount);
 
         orderPayment.setCollectionAmount(totalPaymentAmount);
         orderPayment.setDiscountAmount(discountAmount);
         orderPayment.setShouldVerificationAmount(shouldVerifyAmount);
-        orderPayment.setHasVerificationAmount(totalVerifiedAmount.add(totalCurrentVerifyAmount));
+        orderPayment.setHasVerificationAmount(totalCurrentVerifyAmount); // 已核销金额（本单）
         orderPayment.setVerificationAmount(totalCurrentVerifyAmount);
-        // 未核销金额 = 应核销金额 - 已核销金额
-        BigDecimal notVerifyAmount = shouldVerifyAmount.subtract(orderPayment.getHasVerificationAmount());
+        // 未核销金额 = 应核销 - 本单已核销
+        BigDecimal notVerifyAmount = shouldVerifyAmount.subtract(totalCurrentVerifyAmount);
         orderPayment.setNotVerificationAmount(notVerifyAmount);
-        orderPayment.setAdvanceCollectionsAmount(notVerifyAmount); // 预付款金额 = 未核销金额
+        // 预付款金额 = 实付金额 - 本次核销
+        orderPayment.setAdvanceCollectionsAmount(totalPaymentAmount.subtract(totalCurrentVerifyAmount));
 
         writeOffStatus(items, orderPayment);
 
@@ -553,6 +557,11 @@ public class OrderPaymentService extends BaseService {
                 item.setMerchantId(orderPayment.getMerchantId());
                 item.setAccountBookId(orderPayment.getAccountBookId());
                 orderPaymentItemRepository.save(item);
+                // 审核时同步更新结算单
+                if (OrderStatus.已审核.equals(orderPayment.getOrderStatus())) {
+                    settlementService.updateWriteOff(item.getBusinessId(), item.getCurrentVerifyAmount(),
+                            orderPayment.getMerchantId(), orderPayment.getAccountBookId());
+                }
             }
         }
     }
@@ -739,8 +748,10 @@ public class OrderPaymentService extends BaseService {
                     totalUsedInOtherPayments = BigDecimal.ZERO;
                 }
 
-                BigDecimal alreadyUsed = totalUsedInOtherPayments.add(verifiedAmount); // 已被使用的总金额
-                BigDecimal maxAllowed = documentAmount; // 总应付金额
+                // alreadyUsed = 其他已审核付款单对该采购单已使用的核销金额
+                // verifiedAmount 已在前面按单明细校验过(第726-733行)，不应重复累加
+                BigDecimal alreadyUsed = totalUsedInOtherPayments;
+                BigDecimal maxAllowed = documentAmount;
 
                 if (alreadyUsed.add(currentVerifyAmount).compareTo(maxAllowed) > 0) {
                     throw new ServiceException("与其他已审核单据冲突，核销金额将超出采购单总额：" + purchaseOrderId);
@@ -829,6 +840,15 @@ public class OrderPaymentService extends BaseService {
 
         for (OrderPayment payment : payments) {
             updateSupplierAndAccountBalances(payment, targetStatus);
+            // 审核时同步更新结算单
+            if (targetStatus == OrderStatus.已审核) {
+                List<OrderPaymentItem> items = jqf.select(qItem).from(qItem)
+                        .where(qItem.paymentId.eq(payment.getId())).fetch();
+                for (OrderPaymentItem item : items) {
+                    settlementService.updateWriteOff(item.getBusinessId(), item.getCurrentVerifyAmount(),
+                            payment.getMerchantId(), payment.getAccountBookId());
+                }
+            }
         }
 
     }
@@ -1021,6 +1041,12 @@ public class OrderPaymentService extends BaseService {
         public void setWriteOff(Integer writeOff) {
             if (writeOff != null && writeOff == 1) {
                 builder.and(qOrderPayment.notVerificationAmount.gt(BigDecimal.ZERO));
+            }
+        }
+
+        public void setAdvance(Integer advance) {
+            if (advance != null && advance == 1) {
+                builder.and(qOrderPayment.advanceCollectionsAmount.gt(BigDecimal.ZERO));
             }
         }
 

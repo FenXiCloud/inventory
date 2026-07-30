@@ -35,7 +35,6 @@ public class OtherOutbound implements TenantAware {
     private Long customerId;
 
     @Comment("入库日期")
-    @CreationTimestamp
     @JsonFormat(locale = "zh", timezone = "GMT+8", pattern = "yyyy-MM-dd")
     private Date inboundDate;
 

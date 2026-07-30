@@ -38,7 +38,6 @@ public class PurchaseInbound implements TenantAware {
     private Long supplierId;
 
     @Comment("入库日期")
-    @CreationTimestamp
     private LocalDate inboundDate;
 
     @Comment("订单金额")

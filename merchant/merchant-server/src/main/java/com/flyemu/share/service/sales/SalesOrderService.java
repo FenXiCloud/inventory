@@ -1,10 +1,12 @@
 package com.flyemu.share.service.sales;
 
 import com.flyemu.share.repository.basic.PriceRecordRepository;
+import com.flyemu.share.repository.basic.WarehouseRepository;
 import com.flyemu.share.repository.sales.SalesOrderItemRepository;
 import com.flyemu.share.repository.sales.SalesOrderRepository;
 import com.flyemu.share.repository.sales.SalesOutboundRepository;
 import com.flyemu.share.common.TenantAware;
+import com.flyemu.share.dto.SalesOrderImportVo;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
@@ -40,6 +42,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -497,5 +500,132 @@ public class SalesOrderService extends BaseService {
             }
         }
 
+    }
+
+    @Transactional
+    public void importData(List<SalesOrderImportVo> rows, Long merchantId, Long accountBookId, Long adminId) {
+        for (int i = 0; i < rows.size(); i++) {
+            SalesOrderImportVo row = rows.get(i);
+            int excelRow = i + 2;
+            if (StrUtil.isEmpty(row.getCustomerName())) {
+                throw new ServiceException("第" + excelRow + "行：客户名称不能为空");
+            }
+            if (StrUtil.isEmpty(row.getProductCode()) && StrUtil.isEmpty(row.getProductName())) {
+                throw new ServiceException("第" + excelRow + "行：产品编码或产品名称不能为空");
+            }
+            if (row.getQuantity() == null || row.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ServiceException("第" + excelRow + "行：数量必须大于0");
+            }
+            if (row.getUnitPrice() == null) {
+                throw new ServiceException("第" + excelRow + "行：单价不能为空");
+            }
+        }
+
+        // 按单据编号分组（空编号 = 每行独立订单）
+        Map<String, List<SalesOrderImportVo>> groups = new LinkedHashMap<>();
+        for (SalesOrderImportVo row : rows) {
+            String key = StrUtil.isNotEmpty(row.getOrderNo()) ? row.getOrderNo() : "ROW_" + System.nanoTime();
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
+        }
+
+        for (Map.Entry<String, List<SalesOrderImportVo>> entry : groups.entrySet()) {
+            List<SalesOrderImportVo> group = entry.getValue();
+            SalesOrderImportVo first = group.get(0);
+
+            // 查找客户
+            Customer customer;
+            if (StrUtil.isNotEmpty(first.getCustomerCode())) {
+                customer = bqf.selectFrom(qCustomer)
+                        .where(qCustomer.code.eq(first.getCustomerCode())
+                                .and(qCustomer.merchantId.eq(merchantId))
+                                .and(qCustomer.accountBookId.eq(accountBookId)))
+                        .fetchFirst();
+            } else {
+                customer = bqf.selectFrom(qCustomer)
+                        .where(qCustomer.name.eq(first.getCustomerName())
+                                .and(qCustomer.merchantId.eq(merchantId))
+                                .and(qCustomer.accountBookId.eq(accountBookId)))
+                        .fetchFirst();
+            }
+            if (customer == null) {
+                throw new ServiceException("客户「" + (StrUtil.isNotEmpty(first.getCustomerCode()) ? first.getCustomerCode() : first.getCustomerName()) + "」不存在");
+            }
+
+            // 日期
+            LocalDate orderDate;
+            try {
+                orderDate = LocalDate.parse(first.getOrderDate());
+            } catch (Exception e) {
+                throw new ServiceException("单据日期格式错误：" + first.getOrderDate());
+            }
+
+            // 累计金额
+            BigDecimal totalSubtotal = BigDecimal.ZERO;
+            BigDecimal totalDiscountRate = first.getDiscountRate() != null ? first.getDiscountRate() : BigDecimal.ZERO;
+
+            List<SalesOrderItem> items = new ArrayList<>();
+            for (SalesOrderImportVo row : group) {
+                Product product = null;
+                if (StrUtil.isNotEmpty(row.getProductCode())) {
+                    product = bqf.selectFrom(QProduct.product)
+                            .where(QProduct.product.code.eq(row.getProductCode()).and(QProduct.product.merchantId.eq(merchantId)))
+                            .fetchFirst();
+                }
+                if (product == null && StrUtil.isNotEmpty(row.getProductName())) {
+                    product = bqf.selectFrom(QProduct.product)
+                            .where(QProduct.product.name.eq(row.getProductName()).and(QProduct.product.merchantId.eq(merchantId)))
+                            .fetchFirst();
+                }
+                if (product == null) {
+                    throw new ServiceException("产品「" + (StrUtil.isNotEmpty(row.getProductCode()) ? row.getProductCode() : row.getProductName()) + "」不存在");
+                }
+                Warehouse warehouse = null;
+                if (StrUtil.isNotEmpty(row.getWarehouseName())) {
+                    warehouse = bqf.selectFrom(QWarehouse.warehouse)
+                            .where(QWarehouse.warehouse.name.eq(row.getWarehouseName()).and(QWarehouse.warehouse.merchantId.eq(merchantId)))
+                            .fetchFirst();
+                }
+                if (warehouse == null) {
+                    warehouse = bqf.selectFrom(QWarehouse.warehouse)
+                            .where(QWarehouse.warehouse.merchantId.eq(merchantId).and(QWarehouse.warehouse.systemDefault.isTrue()))
+                            .fetchFirst();
+                }
+                BigDecimal qty = row.getQuantity(); BigDecimal price = row.getUnitPrice();
+                BigDecimal dr = row.getDiscountRate() != null ? row.getDiscountRate() : BigDecimal.ZERO;
+                BigDecimal st = qty.multiply(price);
+                BigDecimal da = st.multiply(dr).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+
+                SalesOrderItem item = new SalesOrderItem();
+                item.setProductId(product.getId()); item.setBaseUnitId(product.getUnitId());
+                item.setQuantity(qty); item.setSecondaryQuantity(qty);
+                item.setSecondaryUnitId(product.getUnitId()); item.setConversionRate(BigDecimal.ONE);
+                item.setUnitPrice(price); item.setDiscountRate(dr); item.setDiscountValue(da);
+                item.setSubtotal(st.subtract(da)); item.setWarehouseId(warehouse != null ? warehouse.getId() : null);
+                item.setQuantityOut(BigDecimal.ZERO); item.setQuantityReturn(BigDecimal.ZERO);
+                item.setCreatedBy(adminId); item.setCreatedAt(LocalDateTime.now());
+                item.setMerchantId(merchantId); item.setAccountBookId(accountBookId);
+                item.setRemark(row.getRemarks());
+                items.add(item);
+                totalSubtotal = totalSubtotal.add(st);
+            }
+
+            BigDecimal totalDiscountAmount = totalSubtotal.multiply(totalDiscountRate).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            BigDecimal totalFinalAmount = totalSubtotal.subtract(totalDiscountAmount);
+
+            SalesOrder order = new SalesOrder();
+            order.setOrderNo(codeSeedService.generateCode(merchantId, accountBookId, "销售订单"));
+            order.setCustomerId(customer.getId()); order.setOrderDate(orderDate);
+            order.setTotalAmount(totalSubtotal); order.setDiscountRate(totalDiscountRate);
+            order.setDiscountAmount(totalDiscountAmount); order.setFinalAmount(totalFinalAmount);
+            order.setRemarks(first.getRemarks()); order.setOrderStatus(OrderStatus.已保存); order.setStatus(0);
+            order.setCreatedBy(adminId); order.setCreatedAt(LocalDateTime.now());
+            order.setMerchantId(merchantId); order.setAccountBookId(accountBookId);
+            SalesOrder saved = salesOrderRepository.save(order);
+
+            items.forEach(item -> {
+                item.setSalesOrderId(saved.getId());
+                salesOrderItemRepository.save(item);
+            });
+        }
     }
 }

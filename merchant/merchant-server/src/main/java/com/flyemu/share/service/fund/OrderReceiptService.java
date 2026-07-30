@@ -81,6 +81,7 @@ public class OrderReceiptService extends BaseService {
     private final SalesOutboundRepository salesOrderRepository;
     private final OrderReceiptItemRepository orderReceiptItemRepository;
     private final OrderReceiptCollectionRepository orderReceiptCollectionRepository;
+    private final SettlementService settlementService;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
 
     private final static QOrderReceiptItem qOrderReceiptItem = QOrderReceiptItem.orderReceiptItem;
@@ -489,7 +490,7 @@ public class OrderReceiptService extends BaseService {
                                                 qReceipt.advanceCollectionsAmount,
                                                 BigDecimal.ZERO)
                                         .as("prepaymentAmount"),
-                                qReceipt.shouldVerificationAmount.subtract(qReceipt.hasVerificationAmount).as("balance"),
+                                qReceipt.notVerificationAmount.as("balance"),
                                 qReceipt.orderStaffName.as("staffName"),
                                 qReceipt.remarks.as("remarks")
                         )
@@ -596,17 +597,18 @@ public class OrderReceiptService extends BaseService {
         // 获取折扣金额
         BigDecimal discountAmount = orderReceipt.getDiscountAmount() == null ? BigDecimal.ZERO : orderReceipt.getDiscountAmount();
 
-        // 计算应核销金额 = 收款金额 + 折扣
-        BigDecimal shouldVerifyAmount = totalPaymentAmount.add(discountAmount);
+        // 应核销金额 = 订单总额 + 折扣（取自源单金额，不是实收金额）
+        BigDecimal shouldVerifyAmount = totalDocumentAmount.add(discountAmount);
         orderReceipt.setCollectionAmount(totalPaymentAmount); // 收款金额
         orderReceipt.setDiscountAmount(discountAmount); // 整单折扣
         orderReceipt.setShouldVerificationAmount(shouldVerifyAmount); //应核销金额
-        orderReceipt.setHasVerificationAmount(totalVerifiedAmount.add(totalCurrentVerifyAmount)); // 已核销金额
+        orderReceipt.setHasVerificationAmount(totalCurrentVerifyAmount); // 已核销金额（本单）
         orderReceipt.setVerificationAmount(totalCurrentVerifyAmount); // 本次核销金额
-        // 未核销金额 = 应核销金额 - 已核销金额
-        BigDecimal notVerifyAmount = shouldVerifyAmount.subtract(orderReceipt.getHasVerificationAmount());
+        // 未核销金额 = 应核销 - 本单已核销
+        BigDecimal notVerifyAmount = shouldVerifyAmount.subtract(totalCurrentVerifyAmount);
         orderReceipt.setNotVerificationAmount(notVerifyAmount);
-        orderReceipt.setAdvanceCollectionsAmount(notVerifyAmount); // 预收款金额 = 未核销金额
+        // 预收款金额 = 本单收款 - 本次核销
+        orderReceipt.setAdvanceCollectionsAmount(totalPaymentAmount.subtract(totalCurrentVerifyAmount));
         writeOffStatus(items, orderReceipt);
 
         updateYourBalance(orderReceipt);
@@ -718,8 +720,10 @@ public class OrderReceiptService extends BaseService {
                     totalUsedInOtherReceipts = BigDecimal.ZERO;
                 }
 
-                BigDecimal alreadyUsed = totalUsedInOtherReceipts.add(verifiedAmount); // 已被使用的总金额
-                BigDecimal maxAllowed = documentAmount; // 总应收金额
+                // alreadyUsed = 其他已审核收款单对该销售单已使用的核销金额
+                // verifiedAmount 已在前面按单明细校验过，不应重复累加
+                BigDecimal alreadyUsed = totalUsedInOtherReceipts;
+                BigDecimal maxAllowed = documentAmount;
 
                 if (alreadyUsed.add(currentVerifyAmount).compareTo(maxAllowed) > 0) {
                     throw new ServiceException("与其他已审核单据冲突，核销金额将超出销售单总额：" + salesOrderId);
@@ -798,6 +802,11 @@ public class OrderReceiptService extends BaseService {
                 item.setMerchantId(orderReceipt.getMerchantId());
                 item.setAccountBookId(orderReceipt.getAccountBookId());
                 orderReceiptItemRepository.save(item);
+                // 审核时同步更新结算单
+                if (OrderStatus.已审核.equals(orderReceipt.getOrderStatus())) {
+                    settlementService.updateWriteOff(item.getSalesOrderId(), item.getCurrentVerifyAmount(),
+                            orderReceipt.getMerchantId(), orderReceipt.getAccountBookId());
+                }
             }
         }
     }
@@ -953,6 +962,15 @@ public class OrderReceiptService extends BaseService {
 
         for (OrderReceipt receipt : receipts) {
             calculateTheAmount(receipt, targetStatus);
+            // 审核时同步更新结算单
+            if (targetStatus == OrderStatus.已审核) {
+                List<OrderReceiptItem> items = jqf.select(qOrderReceiptItem)
+                        .from(qOrderReceiptItem).where(qOrderReceiptItem.receiptId.eq(receipt.getId())).fetch();
+                for (OrderReceiptItem item : items) {
+                    settlementService.updateWriteOff(item.getSalesOrderId(), item.getCurrentVerifyAmount(),
+                            receipt.getMerchantId(), receipt.getAccountBookId());
+                }
+            }
         }
     }
 
@@ -1211,6 +1229,12 @@ public class OrderReceiptService extends BaseService {
         public void setWriteOff(Integer writeOff) {
             if (writeOff != null && writeOff == 1) {
                 builder.and(qOrderReceipt.notVerificationAmount.gt(BigDecimal.ZERO));
+            }
+        }
+
+        public void setAdvance(Integer advance) {
+            if (advance != null && advance == 1) {
+                builder.and(qOrderReceipt.advanceCollectionsAmount.gt(BigDecimal.ZERO));
             }
         }
 

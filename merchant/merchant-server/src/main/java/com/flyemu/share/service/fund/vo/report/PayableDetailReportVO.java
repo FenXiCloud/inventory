@@ -24,7 +24,7 @@ public class PayableDetailReportVO {
     private BigDecimal payableAmount;
     // 增加预付款
     private BigDecimal prepaymentAmount;
-    // 应付款余额
+    // 应付款余额 = 应核销金额 - 本次核销金额（本单剩余未核销部分）
     private BigDecimal balance;
     // 备注
     private String remarks;

@@ -3,6 +3,8 @@
     <div class="simple-page__toolbar">
       <t-space break-line>
         <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button style="border-radius: 4px" @click="showImportForm()">导 入</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="batchDelete()">批量删除</t-button>
         <t-button variant="outline" style="border-radius: 4px"           @click="approved()">审 核</t-button>
         <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
         <t-select
@@ -94,9 +96,12 @@
 <script>
 import manba from "manba";
 import {mapMutations} from "vuex";
-import {MessagePlugin} from "tdesign-vue-next";
+import {h} from "vue";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
+import {openDialog, closeDialog} from '@common/dialog';
 import Customer from "@js/api/basic/Customer";
+import SalesOutboundImportForm from "@views/sales/SalesOutboundImportForm.vue";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
@@ -154,6 +159,7 @@ export default {
         {colKey: 'totalQuantity', title: '数量', width: 90, align: 'right'},
         {colKey: 'createdName', title: '制单人', width: 90, align: 'center'},
         {colKey: 'createdAt', title: '制单时间', width: 160, align: 'center', ellipsis: true},
+        {colKey: 'settlementStatus', title: '结算状态', width: 100, align: 'center', fixed: 'right'},
         {colKey: 'orderStatus', title: '状态', width: 100, align: 'center', fixed: 'right'},
       ]
     }
@@ -195,10 +201,44 @@ export default {
       this.loadList();
     },
     addForm(type = 'add', orderId = null) {
+      sessionStorage.setItem('SalesOutboundList_filters', JSON.stringify({
+        params: this.params, dateRangeValue: this.dateRangeValue
+      }));
       this.pushTab({
         key: 'SalesOutboundForm',
         title: type === 'edit' ? '编辑销售出库' : '新增销售出库',
         params: {type, orderId},
+      });
+    },
+    showImportForm() {
+      const dialogId = openDialog({
+        header: '导入销售出库单',
+        closeOnOverlayClick: false,
+        width: '50vw',
+        body: h(SalesOutboundImportForm, {
+          onClose: () => closeDialog(dialogId),
+          onSuccess: () => {
+            this.loadList();
+            closeDialog(dialogId);
+          }
+        })
+      });
+    },
+    batchDelete() {
+      if (!this.selectedRows.length) return MessagePlugin.warning('请先选择要删除的单据');
+      const ids = this.selectedRows.map(r => r.id);
+      DialogPlugin.confirm({
+        header: "批量删除",
+        body: `确认删除选中的 ${ids.length} 张单据？`,
+        onConfirm: () => {
+          LoadingPlugin(true);
+          const tasks = ids.map(id => SalesOutbound.remove(id));
+          Promise.all(tasks).then(() => {
+            MessagePlugin.success(`成功删除 ${ids.length} 张单据`);
+            this.clearSelection();
+            this.loadList();
+          }).finally(() => LoadingPlugin(false));
+        }
       });
     },
     clearSelection() {
@@ -291,6 +331,14 @@ export default {
     },
   },
   created() {
+    const saved = sessionStorage.getItem('SalesOutboundList_filters');
+    if (saved) {
+      try {
+        const f = JSON.parse(saved);
+        if (f.params) Object.assign(this.params, f.params);
+        if (f.dateRangeValue) this.dateRangeValue = f.dateRangeValue;
+      } catch(e) {}
+    }
     this.loadCustomer();
     this.loadList();
     this.loadTotal();

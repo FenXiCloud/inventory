@@ -22,4 +22,7 @@ export default {
     approved(state, ids) {
         return Ajax.post('/salesOutbound/approved/' + state, ids);
     },
+    importData(formData) {
+        return Ajax.post('/salesOutbound/importData', formData, {'Content-Type': 'multipart/form-data', repeatable: true});
+    },
 }

@@ -5,7 +5,6 @@
         <div class="form-toolbar__left">
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
           <t-date-picker v-model="form.transferDate" :disabled="isLocked"
-                         :disable-date="{ before: accountBook.checkoutDate }"
                          :clearable="false"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">调出仓库：</label>
           <t-select class="w-178px" filterable :options="warehouseList"

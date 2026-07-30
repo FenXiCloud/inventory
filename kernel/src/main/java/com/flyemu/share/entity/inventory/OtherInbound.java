@@ -35,7 +35,6 @@ public class OtherInbound implements TenantAware {
     private Long customerId;
 
     @Comment("入库日期")
-    @CreationTimestamp
     private Date inboundDate;
 
     @Comment("订单金额")

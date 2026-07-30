@@ -122,4 +122,9 @@ public class PurchaseInboundDto {
      * 关联采购单号
      */
     private String purchaseOrderNos;
+
+    /**
+     * 结算状态
+     */
+    private String settlementStatus;
 }

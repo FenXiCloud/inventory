@@ -490,6 +490,18 @@ const groupRoutes = [
     )
   },
   {
+    name: 'SettlementList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/SettlementList.vue')
+    )
+  },
+  {
+    name: 'SettlementForm',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/SettlementForm.vue')
+    )
+  },
+  {
     name: 'AccountTransferList',
     component: defineAsyncComponent(() =>
       import('@views/fund/AccountTransferList.vue')

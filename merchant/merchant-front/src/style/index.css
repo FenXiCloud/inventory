@@ -512,7 +512,7 @@ pre {
   flex: 1 1 0;
   height: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .simple-page__pager {

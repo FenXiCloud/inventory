@@ -342,9 +342,10 @@ export default {
 }
 
 .customer-main__table {
-  flex: 1 1 auto;
+  flex: 1;
+  height: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .customer-main__pager {

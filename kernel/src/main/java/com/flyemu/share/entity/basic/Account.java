@@ -70,5 +70,15 @@ public class Account implements Serializable, TenantAware{
         现金账户, 银行账户, 虚拟账户, 数字货币, 信用账户
     }
 
+    @PrePersist
+    public void prePersist() {
+        if (accountType == null) {
+            accountType = AccountType.资产;
+        }
+        if (accountTypeItem == null) {
+            accountTypeItem = AccountTypeItem.银行账户;
+        }
+    }
+
 }
 

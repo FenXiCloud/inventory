@@ -21,6 +21,7 @@ import com.flyemu.share.entity.setting.QFinanceVoucher;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.form.InventoryInitialForm;
 import com.flyemu.share.repository.inventory.InventoryItemRepository;
+import com.flyemu.share.repository.inventory.InventoryRepository;
 import com.flyemu.share.repository.basic.ProductRepository;
 import com.flyemu.share.repository.basic.WarehouseRepository;
 import com.flyemu.share.service.BaseService;
@@ -73,6 +74,8 @@ public class InventoryItemService extends BaseService {
     private final static QFinanceVoucher qFinanceVoucher = QFinanceVoucher.financeVoucher;
 
     private final InventoryItemRepository inventoryItemRepository;
+
+    private final InventoryRepository inventoryRepository;
 
     private final ProductRepository productRepository;
 
@@ -508,6 +511,39 @@ public class InventoryItemService extends BaseService {
                 //新增
                 inventoryItemRepository.save(inventoryItem);
             }
+        }
+
+        // 同步更新库存余额表（jxc_inventory）
+        for (InventoryItem item : inventoryItemList) {
+            Inventory inventory = jqf.selectFrom(qInventory)
+                    .where(qInventory.productId.eq(item.getProductId())
+                            .and(qInventory.warehouseId.eq(item.getWarehouseId()))
+                            .and(qInventory.merchantId.eq(item.getMerchantId()))
+                            .and(qInventory.accountBookId.eq(item.getAccountBookId())))
+                    .fetchFirst();
+            if (inventory == null) {
+                inventory = new Inventory();
+                inventory.setProductId(item.getProductId());
+                inventory.setWarehouseId(item.getWarehouseId());
+                inventory.setBaseUnitId(item.getBaseUnitId());
+                inventory.setMerchantId(item.getMerchantId());
+                inventory.setAccountBookId(item.getAccountBookId());
+                inventory.setCurrentQuantity(0);
+                inventory.setTotalCost(BigDecimal.ZERO);
+                inventory.setAverageCost(BigDecimal.ZERO);
+                inventory.setUpdatedAt(LocalDateTime.now());
+            }
+            Integer qty = item.getQuantity() != null ? item.getQuantity() : 0;
+            BigDecimal cost = item.getTotalCost() != null ? item.getTotalCost() :
+                          (item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO);
+            inventory.setCurrentQuantity(inventory.getCurrentQuantity() + qty);
+            inventory.setTotalCost(inventory.getTotalCost().add(cost));
+            if (inventory.getCurrentQuantity() != 0) {
+                inventory.setAverageCost(inventory.getTotalCost().divide(
+                        new BigDecimal(inventory.getCurrentQuantity()), 2, RoundingMode.HALF_UP));
+            }
+            inventory.setUpdatedAt(LocalDateTime.now());
+            inventoryRepository.save(inventory);
         }
     }
 

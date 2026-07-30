@@ -226,10 +226,10 @@ export default {
       return [{
         ops: '合计',
         discountAmount: sum('discountAmount'),
-        collectionAmount: sum('collectionAmount'),
+
         shouldVerificationAmount: sum('shouldVerificationAmount'),
-        hasVerificationAmount: sum('hasVerificationAmount'),
-        notVerificationAmount: sum('notVerificationAmount'),
+
+
       }];
     },
   },

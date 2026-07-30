@@ -73,7 +73,7 @@ public class InventoryTransferService extends BaseService {
     private final static QUnit qUnit = QUnit.unit;
 
     private final static QInventory qInventory = QInventory.inventory;
-
+    // 查询
     public PageResults<InventoryTransferDto> query(Page page, InventoryTransferService.Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventoryTransfer)
                 .select(qInventoryTransfer, toQWarehouse.name, formQWarehouse.name, qAdmin.name)

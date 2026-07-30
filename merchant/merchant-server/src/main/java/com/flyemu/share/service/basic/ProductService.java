@@ -83,7 +83,7 @@ public class ProductService extends BaseService {
     private final CodeRuleService codeRuleService;
     private final ProductCategoryService productCategoryService;
     private final ProductExistenceChecker existenceChecker;
-
+    //连表分页查询
     public PageResults<ProductDto> query(Page page, Query query) {
         PagedList<Tuple> pagedList = bqf.selectFrom(qProduct).select(qProduct, qUnit.name, qProductCategory.name).leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId)).where(query.builders()).orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         ArrayList<ProductDto> collect = pagedList.stream().collect(ArrayList::new, (list, tuple) -> {

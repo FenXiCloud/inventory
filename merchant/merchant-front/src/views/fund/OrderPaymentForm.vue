@@ -130,7 +130,7 @@
       </t-table>
 
       <div v-if="!isAudited" class="form-toolbar form-toolbar--end">
-        <t-button @click="sourceForm('OrderPayment')">选择源单</t-button>
+        <t-button @click="sourceForm()">选择源单</t-button>
         <t-button @click="autoMatic()">自动核销</t-button>
       </div>
 
@@ -661,12 +661,13 @@ export default {
       MessagePlugin.success('已核销');
       this.syncCollectionAmount();
     },
-    sourceForm(URL) {
+    sourceForm() {
       if (!this.form.supplierId) {
         return MessagePlugin.error('请选择供应商');
       }
       let params = {
         supplierId: this.form.supplierId,
+        type: 2,
         balance: this.form.totalAmountsOwed
       };
       let dialogId = openDialog({
@@ -676,16 +677,21 @@ export default {
         width: '900px',
         body: h(SourceForm, {
           params,
-          URL,
+          URL: 'Settlement',
           onClose: () => {
             closeDialog(dialogId);
           },
           onSuccess: (checkList) => {
+            const mappedList = checkList.map(item => ({
+              ...item,
+              businessNo: item.businessNo,
+              businessId: item.businessId,
+            }));
             const rowKey = (item) => item.businessNo || item.salesOrderNo;
             const merged = new Map(
               this.tableData2.map((item) => [rowKey(item), item])
             );
-            checkList.forEach((item) => {
+            mappedList.forEach((item) => {
               const key = rowKey(item);
               if (key && !merged.has(key)) {
                 merged.set(key, item);

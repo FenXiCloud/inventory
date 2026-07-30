@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -50,6 +51,11 @@ public class MerchantService extends BaseService {
     @PostConstruct
     public void initDefaultUser() {
         ensureDefaultMenus();
+        // 为所有已有商户补齐新增菜单的关联
+        List<Long> allMerchantIds = jqf.selectFrom(qMerchant).select(qMerchant.id).fetch();
+        for (Long merchantId : allMerchantIds) {
+            associateMissingMenus(merchantId);
+        }
         Long count = jqf.selectFrom(qMerchant).select(qMerchant.count()).fetchFirst();
         if (count == 0) {
             Merchant merchant = new Merchant();
@@ -155,23 +161,46 @@ public class MerchantService extends BaseService {
     }
 
     /**
-     * 按默认菜单清单补齐缺失菜单（已有库升级用）
+     * 按默认菜单清单补齐缺失菜单，并更新已有菜单的 component/name 等字段
      */
     @Transactional
     public void ensureDefaultMenus() {
         List<Menu> defaults = buildDefaultMenus();
         int added = 0;
+        int updated = 0;
         for (Menu menu : defaults) {
-            Long exists = jqf.selectFrom(qMenu).select(qMenu.count())
+            Menu existing = jqf.selectFrom(qMenu)
                     .where(qMenu.id.eq(menu.getId()))
                     .fetchFirst();
-            if (exists == null || exists == 0) {
+            if (existing == null) {
                 menuRepository.save(menu);
                 added++;
+            } else {
+                boolean changed = false;
+                if (!Objects.equals(existing.getComponent(), menu.getComponent())) {
+                    existing.setComponent(menu.getComponent());
+                    changed = true;
+                }
+                if (!Objects.equals(existing.getName(), menu.getName())) {
+                    existing.setName(menu.getName());
+                    changed = true;
+                }
+                if (!Objects.equals(existing.getParentId(), menu.getParentId())) {
+                    existing.setParentId(menu.getParentId());
+                    changed = true;
+                }
+                if (!Objects.equals(existing.getPos(), menu.getPos())) {
+                    existing.setPos(menu.getPos());
+                    changed = true;
+                }
+                if (changed) {
+                    menuRepository.save(existing);
+                    updated++;
+                }
             }
         }
-        if (added > 0) {
-            log.info("补齐菜单数据完成，新增 {} 条", added);
+        if (added > 0 || updated > 0) {
+            log.info("菜单数据同步完成，新增 {} 条，更新 {} 条", added, updated);
         }
     }
 

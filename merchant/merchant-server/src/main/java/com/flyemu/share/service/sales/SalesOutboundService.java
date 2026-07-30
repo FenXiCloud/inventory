@@ -15,10 +15,12 @@ import cn.hutool.json.JSONUtil;
 import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.SalesOutboundImportVo;
 import com.flyemu.share.dto.sales.SalesOutboundDto;
 import com.flyemu.share.dto.sales.SalesOutboundItemDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.*;
+import com.flyemu.share.service.fund.SettlementService;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.purchase.QPurchaseOrder;
@@ -57,6 +59,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -97,6 +100,7 @@ public class SalesOutboundService extends BaseService {
     private CostingService costingService;
     private final PriceRecordService priceRecordService;
     private final CustomerService customerService;
+    private final SettlementService settlementService;
 
     private static final QAccountBookParameters Q_ACCOUNT_BOOK_PARAMETERS = QAccountBookParameters.accountBookParameters;
 
@@ -152,6 +156,15 @@ public class SalesOutboundService extends BaseService {
             }
             //orderNoList 去重
             salesOutboundDTO.setSalesOrderNos(orderNoList.stream().distinct().collect(Collectors.joining(",")));
+            // 结算状态
+            QSettlement qS = QSettlement.settlement;
+            QSettlementItem qSI = QSettlementItem.settlementItem;
+            String status = jqf.select(qS.orderStatus.stringValue())
+                    .from(qSI)
+                    .innerJoin(qS).on(qS.id.eq(qSI.settlementId))
+                    .where(qSI.businessId.eq(salesOutboundDTO.getId()).and(qSI.businessCategory.eq("INVENTORY")))
+                    .fetchFirst();
+            salesOutboundDTO.setSettlementStatus(status);
             dtos.add(salesOutboundDTO);
         });
 
@@ -206,6 +219,10 @@ public class SalesOutboundService extends BaseService {
             BeanUtil.copyProperties(salesOutbound, original, CopyOptions.create().ignoreNullValue());
             //修改
             SalesOutbound update = salesOutboundRepository.save(original);
+            //清除旧商品
+            jqf.delete(qSalesOutboundItem)
+                    .where(qSalesOutboundItem.salesOutboundId.eq(id))
+                    .execute();
             //保存新关系
             if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                 salesOutboundItemList.forEach(item -> {
@@ -390,7 +407,8 @@ public class SalesOutboundService extends BaseService {
         }
         List<Long> salesOrderIds = bqf.select(qSalesOutboundItem.salesOrderId)
                 .from(qSalesOutboundItem)
-                .where(qSalesOutboundItem.salesOutboundId.eq(salesOutboundId))
+                .where(qSalesOutboundItem.salesOutboundId.eq(salesOutboundId)
+                        .and(qSalesOutboundItem.salesOrderId.isNotNull()))
                 .distinct()
                 .fetch();
 
@@ -413,7 +431,7 @@ public class SalesOutboundService extends BaseService {
     public List<SalesOutbound> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qSalesOutbound).where(qSalesOutbound.merchantId.eq(merchantId).and(qSalesOutbound.accountBookId.eq(accountBookId))).fetch();
     }
-
+    //销售出库单详情查询接口：根据商户 ID + 出库单 ID，查询出库单头部信息、出库明细，并且补齐商品名称、编码、单位名称；同时如果明细关联销售订单，顺带查出销售订单编号，组装成 DTO 返回前端详情页渲染。
     public SalesOutboundDto load(Long merchantId, Long orderId) {
         SalesOutbound salesOutbound = bqf.selectFrom(qSalesOutbound)
                 .where(qSalesOutbound.merchantId.eq(merchantId).and(qSalesOutbound.id.eq(orderId)))
@@ -448,7 +466,7 @@ public class SalesOutboundService extends BaseService {
         dto.setSalesOutboundItemList(salesOutboundItemDTOList);
         return dto;
     }
-
+    //销售出库单审核
     @Transactional
     public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
         if (ids == null || ids.isEmpty()) {
@@ -475,6 +493,11 @@ public class SalesOutboundService extends BaseService {
                     });
                 }
                 removeOutboundPrices(order);
+                // 删除关联的结算单
+                jqf.delete(QSettlementItem.settlementItem)
+                        .where(QSettlementItem.settlementItem.businessId.eq(order.getId())
+                                .and(QSettlementItem.settlementItem.businessCategory.eq("INVENTORY")))
+                        .execute();
             } else if (OrderStatus.已审核.equals(state)) {
                 if (OrderStatus.已保存.equals(order.getOrderStatus())) {
                     recordOutboundPrices(order);
@@ -488,8 +511,18 @@ public class SalesOutboundService extends BaseService {
 
         salesOutboundRepository.saveAll(salesOutboundList);
         salesOutboundList.forEach(this::salesOutboundToInventory);
+        // 审核时自动生成结算单
+        if (OrderStatus.已审核.equals(state)) {
+            salesOutboundList.forEach(order -> {
+                String customerName = bqf.selectFrom(qCustomer).select(qCustomer.name)
+                        .where(qCustomer.id.eq(order.getCustomerId())).fetchOne();
+                settlementService.createFromOrder(order.getMerchantId(), order.getAccountBookId(),
+                        1, order.getCustomerId(), customerName != null ? customerName : "",
+                        order.getOrderNo(), order.getFinalAmount(), order.getId(), "销售出库单");
+            });
+        }
     }
-
+    //看是否有付款单或核销单
     private boolean checkHasPaymentOrVerification(Long inboundId) {
         QOrderReceiptItem orderReceiptItem = QOrderReceiptItem.orderReceiptItem;
         QVerificationItem qVerificationItem = QVerificationItem.verificationItem;
@@ -511,7 +544,7 @@ public class SalesOutboundService extends BaseService {
         long verificationTotal = Optional.of(verificationCount).orElse(0L);
         return paymentTotal > 0 || verificationTotal > 0;
     }
-
+    //修改客户应收余额和生成一条往来的流水记录
     private void updateCustomerBalanceAndRecordFlow(SalesOutbound salesOutbound, OrderStatus targetStatus) {
         Customer customer = customerService.findById(salesOutbound.getCustomerId());
         BigDecimal amount = salesOutbound.getFinalAmount();
@@ -534,7 +567,7 @@ public class SalesOutboundService extends BaseService {
         flow.setBalanceReceivables(customer.getBalance());
         customerService.updateTheBalance(customer, flow);
     }
-
+    //构造一条客户往来流水实体
     private CustomerFlow getCustomerFlow(SalesOutbound salesOutbound, OrderStatus targetStatus) {
         CustomerFlow flow = new CustomerFlow();
         flow.setCustomerId(salesOutbound.getCustomerId());
@@ -545,7 +578,7 @@ public class SalesOutboundService extends BaseService {
         BigDecimal finalAmount = salesOutbound.getFinalAmount();
 
         flow.setRemarks(targetStatus == OrderStatus.已审核 ? "销售出库单审核通过" : "销售出库单反审核");
-
+        //添加流水
         if (targetStatus == OrderStatus.已审核) {
             flow.setCustomerFlowType(CustomerFlow.CustomerFlowType.销售出库单);
             flow.setSalesAmount(finalAmount);
@@ -566,7 +599,7 @@ public class SalesOutboundService extends BaseService {
         flow.setCreatedAt(LocalDateTime.now());
         return flow;
     }
-
+    //在销售出库单审核和反审核时，更新库存余额和批次
     private void salesOutboundToInventory(SalesOutbound original) {
         List<Inventory> inventories = new ArrayList<>();
         List<InventoryItem> inventoryItems = new ArrayList<>();
@@ -591,6 +624,7 @@ public class SalesOutboundService extends BaseService {
     /**
      * 审核出库：按成本法扣批次并回写明细成本
      */
+    //销售出库审核时，调用成本服务扣减成本批次、算出本行商品出库成本；然后把成本单价、成本金额回填到出库明细并保存入库
     private void applyIssueCost(SalesOutbound original, List<SalesOutboundItem> outboundItems) {
         for (SalesOutboundItem line : outboundItems) {
             int qty = line.getQuantity() == null ? 0 : line.getQuantity().intValue();
@@ -609,7 +643,7 @@ public class SalesOutboundService extends BaseService {
         }
         salesOutboundItemRepository.saveAll(outboundItems);
     }
-
+    //反审核时，清空成本
     private void clearIssueCost(List<SalesOutboundItem> outboundItems) {
         for (SalesOutboundItem line : outboundItems) {
             line.setCostPrice(null);
@@ -617,7 +651,7 @@ public class SalesOutboundService extends BaseService {
         }
         salesOutboundItemRepository.saveAll(outboundItems);
     }
-
+    //销售出库场景下，在内存里完成库存数量、库存总成本的变动计算，同时生成库存变动流水对象
     private void getComputedInventory(List<SalesOutboundItem> outboundItems, List<Inventory> inventories,
                                       List<InventoryItem> inventoryItems, SalesOutbound salesOutbound) {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
@@ -635,6 +669,7 @@ public class SalesOutboundService extends BaseService {
                         .setScale(2, RoundingMode.HALF_EVEN);
             }
             BigDecimal finalSubtotal = subtotal;
+            // 库存数量、库存总成本
             inventories.stream()
                     .filter(item -> item.getProductId().equals(productId)
                             && item.getWarehouseId().equals(outboundItem.getWarehouseId()))
@@ -662,12 +697,13 @@ public class SalesOutboundService extends BaseService {
                                 inventoryAtomicReference.set(inventory);
                                 inventories.add(inventoryAtomicReference.get());
                             });
+            // 库存变动流水
             InventoryItem inventoryItem = getInventoryItem(outboundItem, salesOutbound, finalSubtotal);
             inventoryItemAtomicReference.set(inventoryItem);
             inventoryItems.add(inventoryItemAtomicReference.get());
         });
     }
-
+    //组装一条库存变动流水记录
     private InventoryItem getInventoryItem(SalesOutboundItem outboundItem, SalesOutbound salesOutbound,
                                            BigDecimal costAmount) {
         InventoryItem inventoryItem = new InventoryItem();
@@ -690,11 +726,13 @@ public class SalesOutboundService extends BaseService {
         inventoryItem.setSubtotal(costAmount);
         return inventoryItem;
     }
-
+//    统计销售出库汇总数据：符合条件的出库单总金额 + 所有出库明细总数量，返回给前端做统计看板、报表。
     public Map<String, BigDecimal> queryTotal(Query query) {
+        // 得到销售出库总金额
         BigDecimal amount = bqf.selectFrom(qSalesOutbound)
                 .select(qSalesOutbound.finalAmount.sum())
                 .where(query.builder).fetchFirst();
+        // 得到筛选范围内销售出库总数量
         BigDecimal quantity = bqf.selectFrom(qSalesOutboundItem)
                 .select(qSalesOutboundItem.quantity.sum())
                 .where(qSalesOutboundItem.salesOutboundId.in(
@@ -751,6 +789,103 @@ public class SalesOutboundService extends BaseService {
         public void setQueryUnReturnOrder(Integer queryUnReturnOrder) {
             if (queryUnReturnOrder != null && queryUnReturnOrder == 1) {
                 builder.and(qSalesOutbound.returnOrderId.isNull());
+            }
+        }
+    }
+
+    @Transactional
+    public void importData(List<SalesOutboundImportVo> rows, Long merchantId, Long accountBookId, Long adminId) {
+        for (int i = 0; i < rows.size(); i++) {
+            SalesOutboundImportVo row = rows.get(i);
+            int excelRow = i + 2;
+            if (StrUtil.isEmpty(row.getCustomerName())) {
+                throw new ServiceException("第" + excelRow + "行：客户名称不能为空");
+            }
+            if (StrUtil.isEmpty(row.getProductCode()) && StrUtil.isEmpty(row.getProductName())) {
+                throw new ServiceException("第" + excelRow + "行：产品编码或产品名称不能为空");
+            }
+            if (row.getQuantity() == null || row.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ServiceException("第" + excelRow + "行：数量必须大于0");
+            }
+            if (row.getUnitPrice() == null) {
+                throw new ServiceException("第" + excelRow + "行：单价不能为空");
+            }
+        }
+
+        // 按单据编号分组（空编号 = 每行独立订单）
+        Map<String, List<SalesOutboundImportVo>> groups = new LinkedHashMap<>();
+        for (SalesOutboundImportVo row : rows) {
+            String key = StrUtil.isNotEmpty(row.getOrderNo()) ? row.getOrderNo() : "ROW_" + System.nanoTime();
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
+        }
+
+        for (Map.Entry<String, List<SalesOutboundImportVo>> entry : groups.entrySet()) {
+            List<SalesOutboundImportVo> group = entry.getValue();
+            SalesOutboundImportVo first = group.get(0);
+
+            Customer customer;
+            if (StrUtil.isNotEmpty(first.getCustomerCode())) {
+                customer = bqf.selectFrom(qCustomer).where(qCustomer.code.eq(first.getCustomerCode()).and(qCustomer.merchantId.eq(merchantId)).and(qCustomer.accountBookId.eq(accountBookId))).fetchFirst();
+            } else {
+                customer = bqf.selectFrom(qCustomer).where(qCustomer.name.eq(first.getCustomerName()).and(qCustomer.merchantId.eq(merchantId)).and(qCustomer.accountBookId.eq(accountBookId))).fetchFirst();
+            }
+            if (customer == null) throw new ServiceException("客户「" + (StrUtil.isNotEmpty(first.getCustomerCode()) ? first.getCustomerCode() : first.getCustomerName()) + "」不存在");
+
+            LocalDate outboundDate;
+            try { outboundDate = LocalDate.parse(first.getOutboundDate()); } catch (Exception e) { throw new ServiceException("出库日期格式错误：" + first.getOutboundDate()); }
+
+            BigDecimal totalSubtotal = BigDecimal.ZERO;
+            BigDecimal totalDiscountRate = first.getDiscountRate() != null ? first.getDiscountRate() : BigDecimal.ZERO;
+            List<SalesOutboundItem> items = new ArrayList<>();
+
+            for (SalesOutboundImportVo row : group) {
+                Product product = null;
+                if (StrUtil.isNotEmpty(row.getProductCode())) {
+                    product = bqf.selectFrom(QProduct.product).where(QProduct.product.code.eq(row.getProductCode()).and(QProduct.product.merchantId.eq(merchantId))).fetchFirst();
+                }
+                if (product == null && StrUtil.isNotEmpty(row.getProductName())) {
+                    product = bqf.selectFrom(QProduct.product).where(QProduct.product.name.eq(row.getProductName()).and(QProduct.product.merchantId.eq(merchantId))).fetchFirst();
+                }
+                if (product == null) throw new ServiceException("产品「" + (StrUtil.isNotEmpty(row.getProductCode()) ? row.getProductCode() : row.getProductName()) + "」不存在");
+
+                Warehouse warehouse = null;
+                if (StrUtil.isNotEmpty(row.getWarehouseName())) {
+                    warehouse = bqf.selectFrom(QWarehouse.warehouse).where(QWarehouse.warehouse.name.eq(row.getWarehouseName()).and(QWarehouse.warehouse.merchantId.eq(merchantId))).fetchFirst();
+                }
+                if (warehouse == null) warehouse = bqf.selectFrom(QWarehouse.warehouse).where(QWarehouse.warehouse.merchantId.eq(merchantId).and(QWarehouse.warehouse.systemDefault.isTrue())).fetchFirst();
+
+                BigDecimal qty = row.getQuantity(); BigDecimal price = row.getUnitPrice();
+                BigDecimal dr = row.getDiscountRate() != null ? row.getDiscountRate() : BigDecimal.ZERO;
+                BigDecimal st = qty.multiply(price);
+                BigDecimal da = st.multiply(dr).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+
+                SalesOutboundItem item = new SalesOutboundItem();
+                item.setProductId(product.getId()); item.setBaseUnitId(product.getUnitId());
+                item.setQuantity(qty); item.setSecondaryQuantity(qty);
+                item.setSecondaryUnitId(product.getUnitId()); item.setConversionRate(BigDecimal.ONE);
+                item.setUnitPrice(price); item.setDiscountRate(dr); item.setDiscountValue(da);
+                item.setSubtotal(st.subtract(da)); item.setWarehouseId(warehouse != null ? warehouse.getId() : null);
+                item.setCreatedBy(adminId); item.setCreatedAt(LocalDateTime.now());
+                item.setMerchantId(merchantId); item.setAccountBookId(accountBookId);
+                item.setRemark(row.getRemarks()); items.add(item);
+                totalSubtotal = totalSubtotal.add(st);
+            }
+
+            BigDecimal totalDiscountAmount = totalSubtotal.multiply(totalDiscountRate).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            SalesOutbound outbound = new SalesOutbound();
+            outbound.setOrderNo(codeSeedService.generateCode(merchantId, accountBookId, "销售出库单"));
+            outbound.setCustomerId(customer.getId()); outbound.setOutboundDate(outboundDate);
+            outbound.setTotalAmount(totalSubtotal); outbound.setDiscountRate(totalDiscountRate);
+            outbound.setDiscountAmount(totalDiscountAmount); outbound.setFinalAmount(totalSubtotal.subtract(totalDiscountAmount));
+            outbound.setRemarks(first.getRemarks()); outbound.setOrderStatus(OrderStatus.已保存);
+            outbound.setCreatedBy(adminId); outbound.setCreatedAt(LocalDateTime.now());
+            outbound.setMerchantId(merchantId); outbound.setAccountBookId(accountBookId);
+            outbound.setVerifiedAmount(BigDecimal.ZERO); outbound.setCollectionAmount(BigDecimal.ZERO);
+            SalesOutbound saved = salesOutboundRepository.save(outbound);
+
+            for (SalesOutboundItem item : items) {
+                item.setSalesOutboundId(saved.getId());
+                salesOutboundItemRepository.save(item);
             }
         }
     }

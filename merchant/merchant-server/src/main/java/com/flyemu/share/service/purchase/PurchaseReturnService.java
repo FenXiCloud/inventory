@@ -365,6 +365,7 @@ public class PurchaseReturnService extends BaseService {
     }
 
     @Transactional
+    //批量审核
     public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
         List<PurchaseReturn> orders = bqf.selectFrom(qPurchaseReturn)
                 .where(qPurchaseReturn.merchantId.eq(merchantId).and(qPurchaseReturn.id.in(ids)))
@@ -426,7 +427,7 @@ public class PurchaseReturnService extends BaseService {
             this.purchaseReturnToInventory(state, setIds);
         }
     }
-
+    //采购退货单审核之后,自动扣减供应商应付账款的余额,并生成供应商资金流水记录
     private void outboundSupplierFlows(Long adminId, PurchaseReturn order) {
         Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
         BigDecimal refundAmount = order.getRefundAmount();

@@ -3,7 +3,9 @@
     <div class="simple-page__toolbar">
       <t-space break-line>
         <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button style="border-radius: 4px" @click="showImportForm()">导 入</t-button>
         <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="batchDelete()">批量删除</t-button>
         <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
         <t-select
             v-model="params.state"
@@ -100,9 +102,12 @@
 <script>
 import manba from "manba";
 import SalesOrder from "@js/api/sales/SalesOrder";
+import SalesOrderImportForm from "@views/sales/SalesOrderImportForm.vue";
 import {mapMutations} from "vuex";
-import {MessagePlugin} from "tdesign-vue-next";
+import {h} from "vue";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
+import {openDialog, closeDialog} from '@common/dialog';
 import Customer from "@js/api/basic/Customer";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
@@ -202,10 +207,42 @@ export default {
       this.loadList();
     },
     addForm(type = 'add', orderId = null) {
+      sessionStorage.setItem('SalesOrderList_filters', JSON.stringify({
+        params: this.params, dateRangeValue: this.dateRangeValue
+      }));
       this.$store.commit('SET_TAB_DATA', {type, orderId});
       this.pushTab({
         key: 'SalesOrderForm',
         title: type === 'edit' ? '编辑销售订单' : '新增销售订单',
+      });
+    },
+    showImportForm() {
+      const dialogId = openDialog({
+        header: '导入销售订单',
+        closeOnOverlayClick: false,
+        width: '50vw',
+        body: h(SalesOrderImportForm, {
+          onClose: () => closeDialog(dialogId),
+          onSuccess: () => {
+            this.loadList();
+            closeDialog(dialogId);
+          }
+        })
+      });
+    },
+    batchDelete() {
+      if (!this.selectedRows.length) return MessagePlugin.warning('请先选择要删除的单据');
+      const ids = this.selectedRows.map(r => r.id);
+      DialogPlugin.confirm({
+        header: "批量删除",
+        body: `确认删除选中的 ${ids.length} 张单据？`,
+        onConfirm: () => {
+          LoadingPlugin(true);
+          Promise.all(ids.map(id => SalesOrder.remove(id))).then(() => {
+            MessagePlugin.success(`成功删除 ${ids.length} 张单据`);
+            this.clearSelection(); this.loadList();
+          }).finally(() => LoadingPlugin(false));
+        }
       });
     },
     clearSelection() {
@@ -300,6 +337,8 @@ export default {
     },
   },
   created() {
+    const saved = sessionStorage.getItem('SalesOrderList_filters');
+    if (saved) { try { const f = JSON.parse(saved); if (f.params) Object.assign(this.params, f.params); if (f.dateRangeValue) this.dateRangeValue = f.dateRangeValue; } catch(e) {} }
     this.loadCustomer();
     this.loadList();
     this.loadTotal();

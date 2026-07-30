@@ -123,7 +123,6 @@
     </div>
 
     <div class="simple-page__pager">
-      <span class="simple-page__total">合计金额：{{ amountTotal }}元&nbsp;&nbsp;&nbsp;</span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -226,10 +225,7 @@ export default {
       return [{
         ops: '合计',
         discountAmount: sum('discountAmount'),
-        collectionAmount: sum('collectionAmount'),
         shouldVerificationAmount: sum('shouldVerificationAmount'),
-        hasVerificationAmount: sum('hasVerificationAmount'),
-        notVerificationAmount: sum('notVerificationAmount'),
       }];
     },
   },
@@ -344,13 +340,11 @@ export default {
       this.pagination.page = 1;
       this.clearSelection();
       this.loadList();
-      this.loadTotal();
     },
   },
   created() {
     this.loadCustomer();
     this.loadList();
-    this.loadTotal();
   }
 }
 </script>

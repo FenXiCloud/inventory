@@ -1,21 +1,31 @@
 package com.flyemu.share.controller.sales;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.poi.excel.ExcelReader;
+import cn.hutool.poi.excel.ExcelUtil;
 import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.annotation.SaAdminId;
+import com.flyemu.share.common.ImportVoUtil;
 import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.dto.AccountDto;
+import com.flyemu.share.dto.SalesOrderImportVo;
 import com.flyemu.share.enums.OrderStatus;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.SalesOrderForm;
 import com.flyemu.share.service.sales.SalesOrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/salesOrder")
 @RequiredArgsConstructor
@@ -83,6 +93,17 @@ public class SalesOrderController {
     public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
         salesOrderService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());
         return JsonResult.successful();
+    }
+
+    @PostMapping("/importData")
+    public JsonResult importData(@RequestParam("file") MultipartFile multipartFile, @SaAccountVal AccountDto accountDto) {
+        try {
+            List<SalesOrderImportVo> rows = ImportVoUtil.readImportFile(multipartFile, SalesOrderImportVo.class);
+            if (CollUtil.isEmpty(rows)) throw new ServiceException("excel中未解析到可以导入的数据");
+            if (rows.size() > 1000) throw new ServiceException("导入数据不能大于1000行");
+            salesOrderService.importData(rows, accountDto.getMerchantId(), accountDto.getAccountBookId(), accountDto.getAdminId());
+            return JsonResult.successful();
+        } catch (Exception e) { log.error(e.getMessage(), e); throw new ServiceException(e.getMessage()); }
     }
 
 }

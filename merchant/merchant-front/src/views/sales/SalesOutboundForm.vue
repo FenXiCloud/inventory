@@ -19,7 +19,6 @@
             <label class="mr-20px ml-16px" style="font-size: 16px !important;">出库日期：</label>
             <t-date-picker
                 v-model="form.outboundDate"
-                :disable-date="{ before: accountBook.checkoutDate }"
                 :clearable="false"
                 :disabled="isAudited"
             />

@@ -21,6 +21,8 @@ public class ProductDto {
 
     private BigDecimal purchasePrice;
 
+    private BigDecimal retailCustomerPrice;
+
     private Integer productCategoryId;
 
     private String productCategoryName;

@@ -161,8 +161,9 @@ public class PurchaseOrderService extends BaseService {
             Set<Long> ids = new HashSet<>();
             BigDecimal secondarySum = BigDecimal.ZERO;
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
-                //计算基本单价
-                d.setUnitPrice(d.getSecondaryPrice().divide(d.getQuantity(), 2, RoundingMode.HALF_UP));
+                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
+                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
+                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
                 if (d.getId() != null) {
                     ids.add(d.getId());
                 }
@@ -187,8 +188,9 @@ public class PurchaseOrderService extends BaseService {
 
             purchaseOrderRepository.save(order);
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
-                //计算基本单价
-                d.setUnitPrice(d.getSecondaryPrice().divide(d.getQuantity(), 2, RoundingMode.HALF_UP));
+                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
+                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
+                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);

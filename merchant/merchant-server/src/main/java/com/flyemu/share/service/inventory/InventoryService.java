@@ -307,7 +307,9 @@ public class InventoryService extends BaseService {
                         qProduct.name.as("productName"),
                         qProductCategory.name.as("productCategoryName"),
                         qProduct.specification.as("productSpecification"),
-                        qUnit.name.as("productUnitName")
+                        qUnit.name.as("productUnitName"),
+                        qProduct.retailCustomerPrice.as("retailCustomerPrice"),
+                        qProduct.purchasePrice.as("purchasePrice")
                 )
                 .leftJoin(qProduct).on(qInventory.productId.eq(qProduct.id))
                 .leftJoin(qProductCategory).on(qProduct.productCategoryId.eq(qProductCategory.id))
@@ -320,7 +322,9 @@ public class InventoryService extends BaseService {
                         qProduct.name,
                         qProductCategory.name,
                         qProduct.specification,
-                        qUnit.name
+                        qUnit.name,
+                        qProduct.retailCustomerPrice,
+                        qProduct.purchasePrice
                 )
                 .orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         List<InventoryReportDto> dtos = new ArrayList<>();
@@ -333,6 +337,8 @@ public class InventoryService extends BaseService {
             dto.setProductCategoryName(tuple.get(qProductCategory.name.as("productCategoryName")));
             dto.setProductSpecification(tuple.get(qProduct.specification.as("productSpecification")));
             dto.setProductUnitName(tuple.get(qUnit.name.as("productUnitName")));
+            dto.setRetailCustomerPrice(tuple.get(qProduct.retailCustomerPrice.as("retailCustomerPrice")));
+            dto.setPurchasePrice(tuple.get(qProduct.purchasePrice.as("purchasePrice")));
             dtos.add(dto);
         }
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
@@ -346,6 +352,74 @@ public class InventoryService extends BaseService {
                 .where(query.builders())
                 .orderBy(qInventory.productId.desc())
                 .fetch();
+    }
+
+    /**
+     * 按产品聚合销售加权均价（销售出库 − 销售退货，按各自 quantity 加权合并）
+     * @return Map<productId, unitPrice>
+     */
+    @SuppressWarnings("unchecked")
+    public Map<Long, BigDecimal> productSalesPrices(Query query) {
+        Map<Long, BigDecimal> result = new HashMap<>();
+        Long merchantId = query.getMerchantId();
+        Long accountBookId = query.getAccountBookId();
+        if (merchantId == null || accountBookId == null) {
+            return result;
+        }
+        // 销售出库：按产品聚合 quantity 和 subtotal
+        String outSql = """
+            SELECT soi.product_id, SUM(soi.quantity), SUM(soi.subtotal)
+            FROM jxc_sales_outbound_item soi
+            WHERE soi.merchant_id = ?1 AND soi.account_book_id = ?2
+            GROUP BY soi.product_id
+            """;
+        Map<Long, BigDecimal[]> outMap = new HashMap<>(); // productId -> [qty, subtotal]
+        List<Object[]> outRows = entityManager.createNativeQuery(outSql)
+                .setParameter(1, merchantId)
+                .setParameter(2, accountBookId)
+                .getResultList();
+        for (Object[] row : outRows) {
+            Long pid = ((Number) row[0]).longValue();
+            BigDecimal qty = new BigDecimal(row[1].toString());
+            BigDecimal subtotal = new BigDecimal(row[2].toString());
+            outMap.put(pid, new BigDecimal[]{qty, subtotal});
+        }
+        // 销售退货：按产品聚合 quantity 和 subtotal
+        String retSql = """
+            SELECT sri.product_id, SUM(sri.quantity), SUM(sri.subtotal)
+            FROM jxc_sales_return_item sri
+            WHERE sri.merchant_id = ?1 AND sri.account_book_id = ?2
+            GROUP BY sri.product_id
+            """;
+        Map<Long, BigDecimal[]> retMap = new HashMap<>(); // productId -> [qty, subtotal]
+        List<Object[]> retRows = entityManager.createNativeQuery(retSql)
+                .setParameter(1, merchantId)
+                .setParameter(2, accountBookId)
+                .getResultList();
+        for (Object[] row : retRows) {
+            Long pid = ((Number) row[0]).longValue();
+            BigDecimal qty = new BigDecimal(row[1].toString());
+            BigDecimal subtotal = new BigDecimal(row[2].toString());
+            retMap.put(pid, new BigDecimal[]{qty, subtotal});
+        }
+        // 合并：净额加权均价 = (outSubtotal - retSubtotal) / (outQty - retQty)
+        Set<Long> allProductIds = new HashSet<>();
+        allProductIds.addAll(outMap.keySet());
+        allProductIds.addAll(retMap.keySet());
+        for (Long pid : allProductIds) {
+            BigDecimal[] out = outMap.getOrDefault(pid, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            BigDecimal[] ret = retMap.getOrDefault(pid, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            BigDecimal outQty = out[0], outSubtotal = out[1];
+            BigDecimal retQty = ret[0], retSubtotal = ret[1];
+            BigDecimal netQty = outQty.subtract(retQty);
+            BigDecimal netSubtotal = outSubtotal.subtract(retSubtotal);
+            if (netQty.compareTo(BigDecimal.ZERO) > 0) {
+                result.put(pid, netSubtotal.divide(netQty, 2, RoundingMode.HALF_UP));
+            } else if (outQty.compareTo(BigDecimal.ZERO) > 0) {
+                result.put(pid, outSubtotal.divide(outQty, 2, RoundingMode.HALF_UP));
+            }
+        }
+        return result;
     }
 
     public BigDecimal totalCost(Long productId, Long warehouseId, Long merchantId, Long accountBookId) {
@@ -459,11 +533,17 @@ public class InventoryService extends BaseService {
 
         private String warehouseIds;
 
+        private Long merchantId;
+
+        private Long accountBookId;
+
         public void setMerchantId(Long merchantId) {
+            this.merchantId = merchantId;
             TenantFilters.merchant(builder, qInventory.merchantId, merchantId);
         }
 
         public void setAccountBookId(Long accountBookId) {
+            this.accountBookId = accountBookId;
             TenantFilters.accountBook(builder, qInventory.accountBookId, accountBookId);
         }
 

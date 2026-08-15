@@ -6,6 +6,7 @@ import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.entity.inventory.Inventory;
+import com.flyemu.share.service.inventory.InventoryItemService;
 import com.flyemu.share.service.inventory.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+
+    private final InventoryItemService inventoryItemService;
 
     @GetMapping
     public JsonResult list(Page page, InventoryService.Query query, @SaAccountVal AccountDto accountDto) {
@@ -80,6 +83,18 @@ public class InventoryController {
     public JsonResult balanceTotal(InventoryService.Query query, @SaAccountVal AccountDto accountDto) {
         TenantScope.bind(query, accountDto);
         return JsonResult.successful(inventoryService.balanceTotal(query));
+    }
+
+    @GetMapping("/balanceSalesPrice")
+    public JsonResult balanceSalesPrice(InventoryService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
+        return JsonResult.successful(inventoryService.productSalesPrices(query));
+    }
+
+    @PostMapping("/rebuildCostChain")
+    public JsonResult rebuildCostChain(@RequestParam Long merchantId, @RequestParam Long accountBookId) {
+        inventoryItemService.rebuildCostChain(merchantId, accountBookId);
+        return JsonResult.successful();
     }
 
 }

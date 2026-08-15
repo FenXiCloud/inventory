@@ -65,6 +65,7 @@
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
           :total="pagination.total"
+          :page-size-options="pagination.pageSizeOptions"
           :show-jumper="true"
           :show-page-size="true"
           :popup-props="{ attach: 'body' }"
@@ -94,7 +95,17 @@ export default {
       customerList: [],
       productList: [],
       amountTotal: '0.00',
-      pagination: { page: 1, pageSize: 20, total: 0 },
+      pagination: {
+        page: 1,
+        pageSize: 20,
+        pageSizeOptions: [
+          {label: "50条/页", value: 50},
+          {label: "100条/页", value: 100},
+          {label: "200条/页", value: 200},
+          {label: "500条/页", value: 500},
+        ],
+        total: 0
+      },
       params: {
         rankingType: 'PRODUCT',
         customerIds: [],

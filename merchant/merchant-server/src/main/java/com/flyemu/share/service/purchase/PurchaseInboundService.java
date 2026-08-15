@@ -164,8 +164,9 @@ public class PurchaseInboundService extends BaseService {
                 if (d.getWarehouseId() == null) {
                     throw new ServiceException("明细仓库不能为空~");
                 }
-                //计算基本单价
-                d.setUnitPrice(d.getSecondaryPrice().divide(d.getQuantity(), 2, RoundingMode.HALF_UP));
+                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
+                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
+                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
                 if (d.getId() != null) {
                     ids.add(d.getId());
                 }
@@ -204,8 +205,9 @@ public class PurchaseInboundService extends BaseService {
                 if (d.getWarehouseId() == null) {
                     throw new ServiceException("明细仓库不能为空~");
                 }
-                //计算基本单价
-                d.setUnitPrice(d.getSecondaryPrice().divide(d.getQuantity(), 2, RoundingMode.HALF_UP));
+                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
+                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
+                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
                 d.setAccountBookId(purchaseInbound.getAccountBookId());
                 d.setPurchaseInboundId(purchaseInbound.getId());
                 d.setMerchantId(merchantId);

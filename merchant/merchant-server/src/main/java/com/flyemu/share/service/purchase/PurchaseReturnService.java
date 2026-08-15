@@ -176,8 +176,9 @@ public class PurchaseReturnService extends BaseService {
             for (PurchaseReturnItem d : purchaseReturnForm.getPurchaseReturnItemList()) {
                 PurchaseInboundItem purchaseInboundItem = inboundItemMap.get(d.getPurchaseInboundItemId());
 
-                //计算基本单价
-                d.setUnitPrice(d.getSecondaryPrice().divide(d.getQuantity(), 2, RoundingMode.HALF_UP));
+                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
+                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
+                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
 
                 if (d.getId() != null) {
                     ids.add(d.getId());
@@ -263,8 +264,9 @@ public class PurchaseReturnService extends BaseService {
                 jqf.update(qPurchaseInboundItem)
                         .set(qPurchaseInboundItem.returnQuantity, v)
                         .where(qPurchaseInboundItem.id.eq(purchaseInboundItem.getId())).execute();
-                //计算基本单价
-                d.setUnitPrice(d.getSecondaryPrice().divide(d.getQuantity(), 2, RoundingMode.HALF_UP));
+                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
+                BigDecimal conversionRate2 = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
+                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate2, 2, RoundingMode.HALF_UP));
 
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseReturnId(order.getId());

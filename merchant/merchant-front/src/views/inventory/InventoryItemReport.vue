@@ -110,7 +110,7 @@
           <span v-if="inboundItems.includes(row.operationType)">{{ row.quantity }}</span>
         </template>
         <template #inUnitPrice="{ row }">
-          <span v-if="inboundItems.includes(row.operationType)">{{ row.unitPrice }}</span>
+          <span v-if="inboundItems.includes(row.operationType)">{{ row.averageCost }}</span>
         </template>
         <template #inSubtotal="{ row }">
           <span v-if="inboundItems.includes(row.operationType) || ['成本调整'].includes(row.operationType)">{{ row.subtotal }}</span>
@@ -122,7 +122,7 @@
           <span v-if="outboundItems.includes(row.operationType)">{{ getAbsoluteValue(row.quantity) }}</span>
         </template>
         <template #outUnitPrice="{ row }">
-          <span v-if="outboundItems.includes(row.operationType)">{{ row.unitPrice }}</span>
+          <span v-if="outboundItems.includes(row.operationType)">{{ row.averageCost }}</span>
         </template>
         <template #outSubtotal="{ row }">
           <span v-if="outboundItems.includes(row.operationType)">{{ row.subtotal }}</span>
@@ -147,7 +147,7 @@
 import manba from "manba";
 import InventoryItem from "@js/api/inventory/InventoryItem";
 import {mapMutations} from "vuex";
-import {LoadingPlugin} from "tdesign-vue-next";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import Product from "@js/api/basic/Product";
 import ProductCategory from "@js/api/basic/ProductCategory";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -374,6 +374,10 @@ export default {
       const params = this.buildQueryParams({page: 1, pageSize: 99999});
       InventoryItem.item(params).then(({data: {results, total}}) => {
         let dataList = results || [];
+        if (dataList.length === 0) {
+          MessagePlugin.warning("没有数据可以导出");
+          return;
+        }
         let headList = [
           {label: "产品编码", key: "productCode"},
           {label: "产品名称", key: "productName"},
@@ -423,6 +427,8 @@ export default {
           '单位成本', '成本', '基本单位数量', '单位成本', '成本']];
         dataList = this.handleDataList(dataList);
         exportExcelHeader(dataList, tHeader, headList, merges, list, manba(new Date()).format("YYYYMMddHHmmss") + "_进销存明细");
+      }).catch(() => {
+        // API 请求失败已在 Request 层提示，此处仅恢复状态
       }).finally(() => this.loading = false);
     },
     handleDataList(dataList) {
@@ -442,7 +448,7 @@ export default {
           case "盘盈入库":
             element.correspondent = item.supplierName;
             element.inQuantity = quantity;
-            element.inUnitPrice = item.unitPrice;
+            element.inUnitPrice = item.averageCost;
             element.inSubtotal = item.subtotal;
             break;
           case "采购退货":
@@ -452,7 +458,7 @@ export default {
           case "其他出库":
             element.correspondent = item.customerName;
             element.outQuantity = this.getAbsoluteValue(quantity);
-            element.outUnitPrice = item.unitPrice;
+            element.outUnitPrice = item.averageCost;
             element.outSubtotal = item.subtotal;
             break;
           case "成本调整":

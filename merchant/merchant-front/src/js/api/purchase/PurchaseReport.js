@@ -7,4 +7,7 @@ export default {
   summary(param) {
     return Ajax.get('/purchaseReport/summary', param)
   },
+  statistics(param) {
+    return Ajax.get('/purchaseReport/statistics', param)
+  },
 }

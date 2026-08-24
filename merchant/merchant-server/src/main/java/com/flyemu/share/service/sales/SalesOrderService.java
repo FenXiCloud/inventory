@@ -2,6 +2,9 @@ package com.flyemu.share.service.sales;
 
 import com.flyemu.share.repository.basic.PriceRecordRepository;
 import com.flyemu.share.repository.basic.WarehouseRepository;
+import com.flyemu.share.repository.purchase.PurchaseInboundItemRepository;
+import com.flyemu.share.repository.purchase.PurchaseInboundRepository;
+import com.flyemu.share.repository.purchase.ToOrderLogRepository;
 import com.flyemu.share.repository.sales.SalesOrderItemRepository;
 import com.flyemu.share.repository.sales.SalesOrderRepository;
 import com.flyemu.share.repository.sales.SalesOutboundRepository;
@@ -13,17 +16,31 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.sales.OrderTrackingDto;
+import com.flyemu.share.dto.sales.PendingPurchaseItemDto;
+import com.flyemu.share.dto.sales.PendingPurchaseOrderDto;
 import com.flyemu.share.dto.sales.SalesOrderDto;
 import com.flyemu.share.dto.sales.SalesOrderItemDto;
 import com.flyemu.share.dto.sales.SalesOutboundItemDto;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.basic.QSupplier;
+import com.flyemu.share.entity.basic.QWarehouse;
+import com.flyemu.share.entity.purchase.PurchaseInbound;
+import com.flyemu.share.entity.purchase.PurchaseInboundItem;
+import com.flyemu.share.entity.purchase.QPurchaseInbound;
+import com.flyemu.share.entity.purchase.QPurchaseInboundItem;
+import com.flyemu.share.entity.purchase.ToOrderLog;
 import com.flyemu.share.entity.sales.*;
+import com.flyemu.share.entity.setting.AccountBookParameters;
+import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
+import com.flyemu.share.form.CreatePurchaseInboundForm;
 import com.flyemu.share.form.SalesOrderForm;
+import com.flyemu.share.form.TransferToPurchaseForm;
 import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.PriceRecordService;
@@ -33,6 +50,7 @@ import com.querydsl.core.Tuple;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -45,6 +63,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -73,11 +92,20 @@ public class SalesOrderService extends BaseService {
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProduct qProduct = QProduct.product;
     private final static QUnit qUnit = QUnit.unit;
+    private final static QSupplier qSupplier = QSupplier.supplier;
+    private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final PriceRecordService priceRecordService;
     private final PriceRecordRepository priceRecordRepository;
+    private final PurchaseInboundRepository purchaseInboundRepository;
+    private final PurchaseInboundItemRepository purchaseInboundItemRepository;
+    private final ToOrderLogRepository toOrderLogRepository;
+    private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
+    private final static QPurchaseInboundItem qPurchaseInboundItem = QPurchaseInboundItem.purchaseInboundItem;
+    private final static QAccountBookParameters qAccountBookParameters = QAccountBookParameters.accountBookParameters;
 
     public PageResults<SalesOrderDto> query(Page page, SalesOrderService.Query query) {
         long totalSize = bqf.selectFrom(qSalesOrder)
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
                 .where(query.builder)
                 .fetchCount();
 
@@ -133,6 +161,9 @@ public class SalesOrderService extends BaseService {
             salesOrderDTO.setTotalQuantity(totalQuantity);
             //关联查询出库单
             subQueryOutOrder(salesOrderDTO);
+            //关联查询采购入库单
+            subQueryPurchaseInbound(salesOrderDTO);
+            salesOrderDTO.setPurchaseStatusText(getPurchaseStatusText(salesOrderDTO.getPurchaseStatus()));
             dtos.add(salesOrderDTO);
         });
         return new PageResults<>(dtos, page, totalSize);
@@ -160,11 +191,28 @@ public class SalesOrderService extends BaseService {
         }
     }
 
+    private void subQueryPurchaseInbound(SalesOrderDto salesOrderDTO) {
+        // 通过sourceSalesOrderId查询关联的采购入库单
+        List<PurchaseInbound> inbounds = bqf.selectFrom(qPurchaseInbound)
+                .where(qPurchaseInbound.sourceSalesOrderId.eq(salesOrderDTO.getId())
+                        .and(qPurchaseInbound.merchantId.eq(salesOrderDTO.getMerchantId())))
+                .fetch();
+        if (!CollectionUtils.isEmpty(inbounds)) {
+            String orderNos = inbounds.stream()
+                    .map(PurchaseInbound::getOrderNo)
+                    .filter(StrUtil::isNotBlank)
+                    .distinct()
+                    .collect(Collectors.joining(","));
+            salesOrderDTO.setPurchaseInOrderNos(orderNos);
+        }
+    }
+
     @Transactional
     public SalesOrder save(SalesOrderForm salesOrderForm, Long merchantId) {
         SalesOrder salesOrder = salesOrderForm.getSalesOrder();
         checkoutService.assertEditable(salesOrder.getMerchantId(), salesOrder.getAccountBookId(), salesOrder.getOrderDate());
         salesOrder.setMerchantId(merchantId);
+        assertCreditLimit(salesOrder.getCustomerId(), salesOrder.getFinalAmount(), salesOrder.getMerchantId(), salesOrder.getAccountBookId());
         Long id = salesOrder.getId();
         List<SalesOrderItem> salesOrderItemList = salesOrderForm.getSalesOrderItemList();
         if (id != null) {
@@ -243,9 +291,37 @@ public class SalesOrderService extends BaseService {
         priceRecordService.savePriceRecord(priceRecord);
     }
 
+    /**
+     * 信用额度校验：客户应收余额 + 本单金额 超过信用额度时拦截。
+     * creditLimit 为 null 视为不限制。
+     */
+    private void assertCreditLimit(Long customerId, BigDecimal amount, Long merchantId, Long accountBookId) {
+        if (customerId == null) {
+            return;
+        }
+        Customer customer = bqf.selectFrom(qCustomer)
+                .where(qCustomer.id.eq(customerId)
+                        .and(qCustomer.merchantId.eq(merchantId))
+                        .and(qCustomer.accountBookId.eq(accountBookId)))
+                .fetchOne();
+        if (customer == null || customer.getCreditLimit() == null) {
+            return;
+        }
+        BigDecimal balance = customer.getBalance() == null ? BigDecimal.ZERO : customer.getBalance();
+        BigDecimal orderAmount = amount == null ? BigDecimal.ZERO : amount;
+        if (balance.add(orderAmount).compareTo(customer.getCreditLimit()) > 0) {
+            throw new ServiceException("客户「" + customer.getName() + "」超出信用额度：应收余额 " + balance
+                    + " + 本单金额 " + orderAmount + " > 信用额度 " + customer.getCreditLimit());
+        }
+    }
+
     @Transactional
     public void delete(Long salesOrderId, Long merchantId, Long accountBookId) {
         SalesOrder original = salesOrderRepository.getById(salesOrderId);
+
+        // 结账日期校验：已结账的单据不能删除
+        checkoutService.assertEditable(original.getMerchantId(), original.getAccountBookId(), original.getOrderDate());
+
         //已审核单据不能删除
         OrderStatus orderStatus = original.getOrderStatus();
         if (orderStatus.equals(OrderStatus.已审核)) {
@@ -298,6 +374,7 @@ public class SalesOrderService extends BaseService {
             salesOrderItemDTOS.add(salesOrderItemDTO);
         });
         dto.setSalesOrderItemList(salesOrderItemDTOS);
+        dto.setPurchaseStatusText(getPurchaseStatusText(dto.getPurchaseStatus()));
         return dto;
     }
 
@@ -312,6 +389,12 @@ public class SalesOrderService extends BaseService {
         if (salesOrders.isEmpty()) {
             throw new ServiceException("未找到数据~");
         }
+
+        // 结账日期校验：已结账的单据不能审核/反审核
+        for (SalesOrder order : salesOrders) {
+            checkoutService.assertEditable(order.getMerchantId(), order.getAccountBookId(), order.getOrderDate());
+        }
+
         salesOrders.forEach(order -> {
             if (OrderStatus.已保存.equals(state)) {
                 List<SalesOutboundItem> salesOutboundItemList = bqf.selectFrom(qSalesOutboundItem)
@@ -320,6 +403,14 @@ public class SalesOrderService extends BaseService {
                 if (!CollectionUtils.isEmpty(salesOutboundItemList)) {
                     throw new InvalidContextException("已关联销售出库单不能反审核");
                 }
+            }
+            if (OrderStatus.已取消.equals(state)) {
+                if (OrderStatus.已审核.equals(order.getOrderStatus())) {
+                    throw new InvalidContextException("已审核单据不能取消");
+                }
+            }
+            if (OrderStatus.已审核.equals(state)) {
+                assertCreditLimit(order.getCustomerId(), order.getFinalAmount(), merchantId, order.getAccountBookId());
             }
             order.setOrderStatus(state);
             order.setApprovedAt(LocalDateTime.now());
@@ -356,6 +447,7 @@ public class SalesOrderService extends BaseService {
     public PageResults<SalesOrderDto> queryToOutBound(Page page, Query query) {
         BooleanBuilder builder = query.builder.and(qSalesOrder.status.ne(2));
         long totalSize = bqf.selectFrom(qSalesOrder)
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
                 .where(builder)
                 .fetchCount();
 
@@ -375,6 +467,7 @@ public class SalesOrderService extends BaseService {
             dto.setCustomerName(tuple.get(qCustomer.name));
             dto.setCreatedName(tuple.get(qMerchantUser.name));
             subQueryOutOrder(dto);
+            dto.setPurchaseStatusText(getPurchaseStatusText(dto.getPurchaseStatus()));
             dtos.add(dto);
         });
         return new PageResults<>(dtos, page, totalSize);
@@ -451,6 +544,279 @@ public class SalesOrderService extends BaseService {
         return new BigDecimal[]{outQuantity, returnQuantity};
     }
 
+    /**
+     * 销售订单转采购入库
+     * 输入：salesOrderId + supplierId + 采购明细（商品、数量、单价、仓库）+ 预计到货日期/备注/自动审核
+     * 处理：校验 → 读取系统参数（默认单据状态/是否自动审核/是否允许分批） → 生成采购入库单 → 写操作日志 → 更新销售订单采购状态
+     * 输出：采购入库单ID
+     */
+    @Transactional
+    public Long transferToPurchaseInbound(Long salesOrderId, Long supplierId,
+                                           List<PurchaseInboundItem> items,
+                                           LocalDate expectedDeliveryDate, String remark, Boolean autoAudit, String orderStatus,
+                                           Long merchantId, Long adminId, Long accountBookId) {
+        if (salesOrderId == null) throw new ServiceException("销售订单ID不能为空");
+        if (supplierId == null) throw new ServiceException("请选择供货商");
+        if (CollectionUtils.isEmpty(items)) throw new ServiceException("采购明细不能为空");
+
+        // 0. 结账日期校验：采购入库单日期不能早于或等于结账日期
+        checkoutService.assertEditable(merchantId, accountBookId, LocalDate.now());
+
+        // 1. 校验销售订单
+        SalesOrder salesOrder = bqf.selectFrom(qSalesOrder)
+                .where(qSalesOrder.id.eq(salesOrderId).and(qSalesOrder.merchantId.eq(merchantId)))
+                .fetchFirst();
+        if (salesOrder == null) throw new ServiceException("销售订单不存在");
+        if (!OrderStatus.已审核.equals(salesOrder.getOrderStatus())) {
+            throw new ServiceException("销售订单未审核，不能转采购");
+        }
+        if (Boolean.TRUE.equals(salesOrder.getClosed())) {
+            throw new ServiceException("销售订单已关闭，不能转采购");
+        }
+        if (salesOrder.getPurchaseStatus() != null && salesOrder.getPurchaseStatus() >= 2) {
+            throw new ServiceException("该销售订单已全部采购");
+        }
+
+        // 1.1 读取系统参数（以销定购默认单据状态/是否自动审核/是否允许分批采购）
+        AccountBookParameters params = bqf.selectFrom(qAccountBookParameters)
+                .where(qAccountBookParameters.accountBookId.eq(Math.toIntExact(accountBookId)))
+                .fetchFirst();
+        String defaultStatus = StrUtil.isNotBlank(orderStatus) ? orderStatus
+                : (params != null && StrUtil.isNotBlank(params.getToOrderDefaultStatus())
+                ? params.getToOrderDefaultStatus() : "待审核");
+        boolean sysAutoAudit = params != null && Boolean.TRUE.equals(params.getToOrderAutoAudit());
+        boolean autoAuditFlag = autoAudit != null ? autoAudit : sysAutoAudit;
+
+        // 生成状态：仅"已审核"直接置为已审核；"草稿"/"待审核"/其他 一律生成"已保存"（草稿），
+        // 与采购入库单列表的编辑/审核操作（仅认"已保存"）保持一致，避免生成后无法操作
+        OrderStatus targetStatus;
+        if ("已审核".equals(defaultStatus)) {
+            targetStatus = OrderStatus.已审核;
+        } else {
+            targetStatus = OrderStatus.已保存;
+        }
+        if (autoAuditFlag) {
+            targetStatus = OrderStatus.已审核;
+        }
+
+        // 1.2 限制采购总量：允许分批采购，但每个商品的累计采购数量不得超过待采购数量
+        for (PurchaseInboundItem item : items) {
+            if (item.getProductId() == null) continue;
+            BigDecimal pendingPurchase = calcOrderProductPendingPurchase(salesOrderId, item.getProductId(), merchantId);
+            BigDecimal qty = item.getSecondaryQuantity() != null ? item.getSecondaryQuantity() : BigDecimal.ZERO;
+            if (qty.compareTo(pendingPurchase) > 0) {
+                throw new ServiceException("采购数量超过待采购数量（剩余可采购：" + pendingPurchase + "）");
+            }
+        }
+
+        // 2. 生成采购入库单
+        PurchaseInbound inbound = new PurchaseInbound();
+        inbound.setOrderNo(codeSeedService.generateCode(merchantId, accountBookId, "采购入库单"));
+        inbound.setSupplierId(supplierId);
+        inbound.setInboundDate(LocalDate.now());
+        inbound.setExpectedDeliveryDate(expectedDeliveryDate);
+        inbound.setRemarks(remark);
+        inbound.setSourceSalesOrderId(salesOrderId);
+        inbound.setSourceType("以销定购");
+        inbound.setOrderStatus(targetStatus);
+        if (OrderStatus.已审核.equals(targetStatus)) {
+            inbound.setApprovedBy(adminId);
+            inbound.setApprovedAt(LocalDateTime.now());
+        }
+        inbound.setCreatedBy(adminId);
+        inbound.setCreatedAt(LocalDateTime.now());
+        inbound.setMerchantId(merchantId);
+        inbound.setAccountBookId(accountBookId);
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal secondarySum = BigDecimal.ZERO;
+
+        // 3. 保存明细
+        PurchaseInbound savedInbound = purchaseInboundRepository.save(inbound);
+        for (PurchaseInboundItem item : items) {
+            if (item.getProductId() == null) throw new ServiceException("明细产品不能为空");
+            if (item.getWarehouseId() == null) throw new ServiceException("明细仓库不能为空");
+            if (item.getSecondaryQuantity() == null || item.getSecondaryQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ServiceException("采购数量必须大于0");
+            }
+
+            BigDecimal conversionRate = item.getConversionRate() != null ? item.getConversionRate() : BigDecimal.ONE;
+            BigDecimal secondaryPrice = item.getSecondaryPrice() != null ? item.getSecondaryPrice() : BigDecimal.ZERO;
+            BigDecimal quantity = item.getSecondaryQuantity().multiply(conversionRate);
+            BigDecimal subtotal = secondaryPrice.multiply(item.getSecondaryQuantity());
+
+            item.setPurchaseInboundId(savedInbound.getId());
+            item.setUnitPrice(secondaryPrice.divide(conversionRate, 2, java.math.RoundingMode.HALF_UP));
+            item.setQuantity(quantity);
+            item.setSubtotal(subtotal);
+            item.setReturnQuantity(item.getSecondaryQuantity());
+            item.setDiscountRate(item.getDiscountRate() != null ? item.getDiscountRate() : BigDecimal.ZERO);
+            item.setDiscountAmount(item.getDiscountAmount() != null ? item.getDiscountAmount() : BigDecimal.ZERO);
+            item.setCreatedBy(adminId);
+            item.setCreatedAt(LocalDateTime.now());
+            item.setMerchantId(merchantId);
+            item.setAccountBookId(accountBookId);
+
+            totalAmount = totalAmount.add(subtotal);
+            secondarySum = secondarySum.add(item.getSecondaryQuantity());
+        }
+        purchaseInboundItemRepository.saveAll(items);
+
+        // 更新采购入库单金额汇总（折扣默认 0，避免订单头折扣字段为空影响列表展示/编辑）
+        savedInbound.setDiscountRate(BigDecimal.ZERO);
+        savedInbound.setDiscountAmount(BigDecimal.ZERO);
+        savedInbound.setTotalAmount(totalAmount);
+        savedInbound.setFinalAmount(totalAmount);
+        savedInbound.setSecondarySum(secondarySum);
+        savedInbound.setReturnSum(secondarySum);
+        purchaseInboundRepository.save(savedInbound);
+
+        // 4. 更新销售订单采购状态
+        updateSalesOrderPurchaseStatus(salesOrderId, merchantId);
+
+        // 5. 追加关联采购入库单ID到销售订单
+        appendPurchaseInboundToSalesOrder(salesOrderId, savedInbound.getId(), merchantId);
+
+        // 6. 写以销定购操作日志
+        List<ToOrderLog> logs = new ArrayList<>();
+        for (PurchaseInboundItem item : items) {
+            ToOrderLog log = new ToOrderLog();
+            log.setSaleOrderId(salesOrderId);
+            log.setPurchaseInId(savedInbound.getId());
+            log.setGoodsId(item.getProductId());
+            log.setPurchaseQuantity(item.getSecondaryQuantity());
+            log.setPurchasePrice(item.getSecondaryPrice());
+            log.setSupplierId(supplierId);
+            log.setCreatedBy(adminId);
+            log.setMerchantId(merchantId);
+            log.setAccountBookId(accountBookId);
+            logs.add(log);
+        }
+        toOrderLogRepository.saveAll(logs);
+
+        return savedInbound.getId();
+    }
+
+    /**
+     * 原签名兼容方法（无预计到货日期/备注/自动审核）
+     */
+    @Transactional
+    public Long transferToPurchaseInbound(Long salesOrderId, Long supplierId,
+                                           List<PurchaseInboundItem> items,
+                                           Long merchantId, Long adminId, Long accountBookId) {
+        return transferToPurchaseInbound(salesOrderId, supplierId, items, null, null, null, null,
+                merchantId, adminId, accountBookId);
+    }
+
+    /**
+     * 追加采购入库单ID到销售订单的 purchaseInIds（JSON数组）
+     */
+    private void appendPurchaseInboundToSalesOrder(Long salesOrderId, Long purchaseInId, Long merchantId) {
+        SalesOrder salesOrder = bqf.selectFrom(qSalesOrder)
+                .where(qSalesOrder.id.eq(salesOrderId).and(qSalesOrder.merchantId.eq(merchantId)))
+                .fetchFirst();
+        if (salesOrder == null) return;
+        List<Long> ids = new ArrayList<>();
+        if (StrUtil.isNotBlank(salesOrder.getPurchaseInIds())) {
+            try {
+                ids = JSONUtil.toList(salesOrder.getPurchaseInIds(), Long.class);
+            } catch (Exception ignored) {
+                ids = new ArrayList<>();
+            }
+            if (ids == null) ids = new ArrayList<>();
+        }
+        if (!ids.contains(purchaseInId)) {
+            ids.add(purchaseInId);
+        }
+        jqf.update(qSalesOrder)
+                .set(qSalesOrder.purchaseInIds, JSONUtil.toJsonStr(ids))
+                .where(qSalesOrder.id.eq(salesOrderId))
+                .execute();
+    }
+
+    /**
+     * 计算某销售订单中某商品的待采购数量（未出库数量 - 已采购数量）
+     */
+    private BigDecimal calcOrderProductPendingPurchase(Long salesOrderId, Long productId, Long merchantId) {
+        SalesOrderItem orderItem = bqf.selectFrom(qSalesOrderItem)
+                .where(qSalesOrderItem.salesOrderId.eq(salesOrderId)
+                        .and(qSalesOrderItem.productId.eq(productId))
+                        .and(qSalesOrderItem.merchantId.eq(merchantId)))
+                .fetchFirst();
+        if (orderItem == null) return BigDecimal.ZERO;
+        BigDecimal orderQty = orderItem.getQuantity() != null ? orderItem.getQuantity() : BigDecimal.ZERO;
+        BigDecimal[] outAndReturn = calcOutAndReturnQuantity(salesOrderId, orderItem.getId());
+        BigDecimal pendingOutbound = orderQty.add(outAndReturn[1]).subtract(outAndReturn[0]);
+        BigDecimal purchased = calcPurchasedQuantity(salesOrderId, productId, merchantId);
+        return pendingOutbound.subtract(purchased);
+    }
+
+    /**
+     * 更新销售订单的采购状态：根据所有关联采购入库单的已入库数量 vs 销售订单数量
+     */
+    private void updateSalesOrderPurchaseStatus(Long salesOrderId, Long merchantId) {
+        SalesOrder salesOrder = bqf.selectFrom(qSalesOrder)
+                .where(qSalesOrder.id.eq(salesOrderId).and(qSalesOrder.merchantId.eq(merchantId)))
+                .fetchFirst();
+        if (salesOrder == null) return;
+
+        // 查询该销售订单的所有已审核采购入库单的明细数量（按商品汇总）
+        List<PurchaseInboundItem> allInboundItems = bqf.selectFrom(qPurchaseInboundItem)
+                .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
+                .where(qPurchaseInbound.sourceSalesOrderId.eq(salesOrderId)
+                        .and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核))
+                        .and(qPurchaseInboundItem.merchantId.eq(merchantId)))
+                .fetch();
+
+        // 按 productId 汇总已采购数量
+        Map<Long, BigDecimal> purchasedByProduct = new HashMap<>();
+        for (PurchaseInboundItem item : allInboundItems) {
+            purchasedByProduct.merge(item.getProductId(), item.getSecondaryQuantity(), BigDecimal::add);
+        }
+
+        // 查询销售订单明细
+        List<SalesOrderItem> orderItems = bqf.selectFrom(qSalesOrderItem)
+                .where(qSalesOrderItem.salesOrderId.eq(salesOrderId).and(qSalesOrderItem.merchantId.eq(merchantId)))
+                .fetch();
+
+        if (orderItems.isEmpty()) return;
+
+        boolean allFull = true;
+        boolean anyPurchased = false;
+
+        for (SalesOrderItem orderItem : orderItems) {
+            BigDecimal orderQty = orderItem.getQuantity() != null ? orderItem.getQuantity() : BigDecimal.ZERO;
+            BigDecimal purchasedQty = purchasedByProduct.getOrDefault(orderItem.getProductId(), BigDecimal.ZERO);
+            if (purchasedQty.compareTo(BigDecimal.ZERO) > 0) {
+                anyPurchased = true;
+            }
+            if (purchasedQty.compareTo(orderQty) < 0) {
+                allFull = false;
+            }
+        }
+
+        Integer newStatus;
+        if (allFull && anyPurchased) {
+            newStatus = 2; // 已全部采购
+        } else if (anyPurchased) {
+            newStatus = 1; // 部分采购
+        } else {
+            newStatus = 0; // 未采购
+        }
+
+        jqf.update(qSalesOrder)
+                .set(qSalesOrder.purchaseStatus, newStatus)
+                .where(qSalesOrder.id.eq(salesOrderId))
+                .execute();
+    }
+
+    private String getPurchaseStatusText(Integer purchaseStatus) {
+        if (purchaseStatus == null || purchaseStatus == 0) return "待采购";
+        if (purchaseStatus == 1) return "部分采购";
+        if (purchaseStatus == 2) return "已采购";
+        return "待采购";
+    }
+
     public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
@@ -492,6 +858,20 @@ public class SalesOrderService extends BaseService {
             }
         }
 
+        /** 以销定购采购状态筛选：0待处理/1部分采购/2已采购 */
+        public void setPendingStatus(Integer pendingStatus) {
+            if (pendingStatus != null) {
+                builder.and(qSalesOrder.purchaseStatus.eq(pendingStatus));
+            }
+        }
+
+        /** 客户名称模糊匹配 */
+        public void setCustomerName(String customerName) {
+            if (StrUtil.isNotBlank(customerName)) {
+                builder.and(qCustomer.name.like("%" + customerName + "%"));
+            }
+        }
+
         //查询未出库订单
         public void setQueryUnOutOrder(Integer queryUnOutOrder) {
             if (queryUnOutOrder == 1) {
@@ -500,6 +880,437 @@ public class SalesOrderService extends BaseService {
             }
         }
 
+    }
+
+    /**
+     * 以销定购看板 - 查询待采购商品清单
+     * 条件：已审核、未关闭、出库状态!=2、待采购数量>0
+     */
+    public PageResults<PendingPurchaseItemDto> queryPendingPurchase(Page page, Query query) {
+        // 查询已审核、未关闭、未全部出库的销售订单
+        BooleanBuilder builder = query.builder
+                .and(qSalesOrder.orderStatus.eq(OrderStatus.已审核))
+                .and(qSalesOrder.closed.isFalse())
+                .and(qSalesOrder.status.ne(2));
+
+        long totalSize = bqf.selectFrom(qSalesOrder)
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
+                .where(builder).fetchCount();
+
+        List<Tuple> fetchPage = bqf.selectFrom(qSalesOrder)
+                .select(qSalesOrder, qCustomer.name)
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
+                .where(builder)
+                .orderBy(qSalesOrder.id.desc())
+                .offset(page.getOffset())
+                .limit(page.getOffsetEnd())
+                .fetch();
+
+        List<PendingPurchaseItemDto> result = new ArrayList<>();
+        for (Tuple tuple : fetchPage) {
+            SalesOrder order = tuple.get(qSalesOrder);
+            String customerName = tuple.get(qCustomer.name);
+
+            // 查询该订单的明细
+            List<SalesOrderItem> items = bqf.selectFrom(qSalesOrderItem)
+                    .where(qSalesOrderItem.salesOrderId.eq(order.getId())
+                            .and(qSalesOrderItem.merchantId.eq(order.getMerchantId())))
+                    .fetch();
+
+            for (SalesOrderItem item : items) {
+                BigDecimal orderQty = item.getQuantity() != null ? item.getQuantity() : BigDecimal.ZERO;
+
+                // 计算已出库数量
+                BigDecimal[] outAndReturn = calcOutAndReturnQuantity(order.getId(), item.getId());
+                BigDecimal outboundQty = outAndReturn[0];
+                BigDecimal returnQty = outAndReturn[1];
+                BigDecimal pendingOutbound = orderQty.add(returnQty).subtract(outboundQty);
+                if (pendingOutbound.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                // 计算已采购数量
+                BigDecimal purchasedQty = calcPurchasedQuantity(order.getId(), item.getProductId(), order.getMerchantId());
+                BigDecimal pendingPurchase = pendingOutbound.subtract(purchasedQty);
+                if (pendingPurchase.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                // 查询商品信息
+                Product product = bqf.selectFrom(qProduct)
+                        .where(qProduct.id.eq(item.getProductId()).and(qProduct.merchantId.eq(order.getMerchantId())))
+                        .fetchFirst();
+
+                // 过滤不可采购商品（需求：仅展示商品特性为“可采购”的明细行）
+                if (product != null && Boolean.FALSE.equals(product.getPurchasable())) continue;
+
+                // 查询仓库名称
+                String warehouseName = "";
+                if (item.getWarehouseId() != null) {
+                    warehouseName = bqf.selectFrom(QWarehouse.warehouse)
+                            .select(QWarehouse.warehouse.name)
+                            .where(QWarehouse.warehouse.id.eq(item.getWarehouseId()))
+                            .fetchFirst();
+                }
+
+                // 查询最近采购价
+                BigDecimal lastPrice = getLastPurchasePrice(item.getProductId(), order.getMerchantId());
+
+                // 查询默认供应商
+                Long supplierId = null;
+                String supplierName = "";
+                if (product != null && product.getDefaultSupplierId() != null) {
+                    supplierId = product.getDefaultSupplierId();
+                    Supplier supplier = bqf.selectFrom(qSupplier)
+                            .where(qSupplier.id.eq(supplierId))
+                            .fetchFirst();
+                    if (supplier != null) supplierName = supplier.getName();
+                }
+
+                PendingPurchaseItemDto dto = new PendingPurchaseItemDto();
+                dto.setSalesOrderId(order.getId());
+                dto.setSalesOrderNo(order.getOrderNo());
+                dto.setCustomerName(customerName);
+                dto.setOrderDate(order.getOrderDate());
+                dto.setProductId(item.getProductId());
+                dto.setProductCode(product != null ? product.getCode() : "");
+                dto.setProductName(product != null ? product.getName() : "");
+                dto.setSpecification(product != null ? product.getSpecification() : "");
+                dto.setUnitName(bqf.selectFrom(qUnit).select(qUnit.name)
+                        .where(qUnit.id.eq(item.getBaseUnitId())).fetchFirst());
+                dto.setBaseUnitId(item.getBaseUnitId());
+                dto.setWarehouseId(item.getWarehouseId());
+                dto.setWarehouseName(warehouseName);
+                dto.setOrderQuantity(orderQty);
+                dto.setOutboundQuantity(outboundQty);
+                dto.setPendingOutboundQuantity(pendingOutbound);
+                dto.setPurchasedQuantity(purchasedQty);
+                dto.setPendingPurchaseQuantity(pendingPurchase);
+                dto.setSupplierId(supplierId);
+                dto.setSupplierName(supplierName);
+                dto.setLastPurchasePrice(lastPrice);
+                result.add(dto);
+            }
+        }
+        return new PageResults<>(result, page, totalSize);
+    }
+
+    /**
+     * 以销定购看板 - 查询待采购销售订单（订单级，一行一订单，展开查看商品明细）
+     * 条件：已审核、未关闭、出库状态!=2、存在可采购明细、待采购数量>0
+     * 状态筛选：0待处理 / 1部分采购 / 2已采购（已采购时展示待采购数量=0 的订单）
+     */
+    public PageResults<PendingPurchaseOrderDto> queryPendingPurchaseOrders(Page page, Query query, Integer pendingStatus) {
+        BooleanBuilder builder = query.builder
+                .and(qSalesOrder.orderStatus.eq(OrderStatus.已审核))
+                .and(qSalesOrder.closed.isFalse())
+                .and(qSalesOrder.status.ne(2));
+        if (pendingStatus != null) {
+            builder.and(qSalesOrder.purchaseStatus.eq(pendingStatus));
+        }
+        // 默认（未筛选状态）也展示已采购订单；仅筛选"待处理/部分采购"时排除待采购数量=0 的订单
+        boolean includeFullyPurchased = pendingStatus == null || pendingStatus == 2;
+
+        // 先取出全部粗粒度匹配的订单，内存细粒度过滤后再分页，保证"总数=实际展示条数"
+        List<Tuple> fetchAll = bqf.selectFrom(qSalesOrder)
+                .select(qSalesOrder, qCustomer.name)
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOrder.customerId))
+                .where(builder)
+                .orderBy(qSalesOrder.id.desc())
+                .fetch();
+
+        List<PendingPurchaseOrderDto> result = new ArrayList<>();
+        for (Tuple tuple : fetchAll) {
+            SalesOrder order = tuple.get(qSalesOrder);
+            String customerName = tuple.get(qCustomer.name);
+
+            List<SalesOrderItem> items = bqf.selectFrom(qSalesOrderItem)
+                    .where(qSalesOrderItem.salesOrderId.eq(order.getId())
+                            .and(qSalesOrderItem.merchantId.eq(order.getMerchantId())))
+                    .fetch();
+
+            PendingPurchaseOrderDto dto = new PendingPurchaseOrderDto();
+            dto.setSalesOrderId(order.getId());
+            dto.setSalesOrderNo(order.getOrderNo());
+            dto.setCustomerName(customerName);
+            dto.setOrderDate(order.getOrderDate());
+            dto.setPendingPurchaseQuantity(BigDecimal.ZERO);
+            dto.setProductCount(0);
+
+            for (SalesOrderItem item : items) {
+                Product product = bqf.selectFrom(qProduct)
+                        .where(qProduct.id.eq(item.getProductId()).and(qProduct.merchantId.eq(order.getMerchantId())))
+                        .fetchFirst();
+                // 过滤不可采购商品
+                if (product != null && Boolean.FALSE.equals(product.getPurchasable())) continue;
+
+                BigDecimal orderQty = item.getQuantity() != null ? item.getQuantity() : BigDecimal.ZERO;
+                BigDecimal[] outAndReturn = calcOutAndReturnQuantity(order.getId(), item.getId());
+                BigDecimal pendingOutbound = orderQty.add(outAndReturn[1]).subtract(outAndReturn[0]);
+                if (pendingOutbound.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                BigDecimal purchasedQty = calcPurchasedQuantity(order.getId(), item.getProductId(), order.getMerchantId());
+                BigDecimal pendingPurchase = pendingOutbound.subtract(purchasedQty);
+                if (pendingPurchase.compareTo(BigDecimal.ZERO) < 0) pendingPurchase = BigDecimal.ZERO;
+                if (pendingPurchase.compareTo(BigDecimal.ZERO) == 0 && !includeFullyPurchased) continue;
+
+                // 建议供应商（商品默认供应商）
+                String supplierName = "";
+                Long supplierId = null;
+                if (product != null && product.getDefaultSupplierId() != null) {
+                    supplierId = product.getDefaultSupplierId();
+                    supplierName = bqf.selectFrom(qSupplier).select(qSupplier.name)
+                            .where(qSupplier.id.eq(supplierId)).fetchFirst();
+                }
+                if (StrUtil.isNotBlank(supplierName) && !dto.getSupplierNames().contains(supplierName)) {
+                    dto.getSupplierNames().add(supplierName);
+                }
+
+                PendingPurchaseItemDto itemDto = new PendingPurchaseItemDto();
+                itemDto.setSalesOrderId(order.getId());
+                itemDto.setSalesOrderNo(order.getOrderNo());
+                itemDto.setCustomerName(customerName);
+                itemDto.setOrderDate(order.getOrderDate());
+                itemDto.setProductId(item.getProductId());
+                itemDto.setProductCode(product != null ? product.getCode() : "");
+                itemDto.setProductName(product != null ? product.getName() : "");
+                itemDto.setSpecification(product != null ? product.getSpecification() : "");
+                itemDto.setUnitName(bqf.selectFrom(qUnit).select(qUnit.name)
+                        .where(qUnit.id.eq(item.getBaseUnitId())).fetchFirst());
+                itemDto.setBaseUnitId(item.getBaseUnitId());
+                itemDto.setWarehouseId(item.getWarehouseId());
+                itemDto.setOrderQuantity(orderQty);
+                itemDto.setOutboundQuantity(outAndReturn[0]);
+                itemDto.setPendingOutboundQuantity(pendingOutbound);
+                itemDto.setPurchasedQuantity(purchasedQty);
+                itemDto.setPendingPurchaseQuantity(pendingPurchase);
+                itemDto.setSupplierId(supplierId);
+                itemDto.setSupplierName(supplierName);
+                itemDto.setLastPurchasePrice(getLastPurchasePrice(item.getProductId(), order.getMerchantId()));
+                dto.getItems().add(itemDto);
+
+                dto.setProductCount(dto.getProductCount() + 1);
+                dto.setPendingPurchaseQuantity(dto.getPendingPurchaseQuantity().add(pendingPurchase));
+            }
+
+            if (dto.getItems().isEmpty()) continue;
+
+            // 采购状态文本：待处理/部分采购/已采购
+            dto.setPurchaseStatusText(calcOrderPurchaseStatusText(dto));
+            result.add(dto);
+        }
+
+        // 内存分页：总数=细粒度过滤后的条数，与列表实际展示一致
+        long totalSize = result.size();
+        int fromIndex = Math.min(page.getOffset(), result.size());
+        int toIndex = Math.min(page.getOffset() + page.getOffsetEnd(), result.size());
+        return new PageResults<>(result.subList(fromIndex, toIndex), page, totalSize);
+    }
+
+    /** 计算订单级采购状态文本 */
+    private String calcOrderPurchaseStatusText(PendingPurchaseOrderDto dto) {
+        if (dto.getPendingPurchaseQuantity() != null && dto.getPendingPurchaseQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+            return "已采购";
+        }
+        boolean anyPurchased = dto.getItems().stream()
+                .anyMatch(i -> i.getPurchasedQuantity() != null && i.getPurchasedQuantity().compareTo(BigDecimal.ZERO) > 0);
+        return anyPurchased ? "部分采购" : "待处理";
+    }
+
+    /** 计算某商品的已采购数量（已审核的采购入库单） */
+    private BigDecimal calcPurchasedQuantity(Long salesOrderId, Long productId, Long merchantId) {
+        QPurchaseInboundItem qPII = QPurchaseInboundItem.purchaseInboundItem;
+        QPurchaseInbound qPI = QPurchaseInbound.purchaseInbound;
+        BigDecimal purchased = bqf.selectFrom(qPII)
+                .select(qPII.secondaryQuantity.sum())
+                .leftJoin(qPI).on(qPI.id.eq(qPII.purchaseInboundId))
+                .where(qPI.sourceSalesOrderId.eq(salesOrderId)
+                        .and(qPI.orderStatus.eq(OrderStatus.已审核))
+                        .and(qPII.productId.eq(productId))
+                        .and(qPII.merchantId.eq(merchantId)))
+                .fetchFirst();
+        return purchased != null ? purchased : BigDecimal.ZERO;
+    }
+
+    /** 查询最近采购价（无采购历史时回退到商品档案的预计进货价） */
+    private BigDecimal getLastPurchasePrice(Long productId, Long merchantId) {
+        QPurchaseInboundItem qPII = QPurchaseInboundItem.purchaseInboundItem;
+        QPurchaseInbound qPI = QPurchaseInbound.purchaseInbound;
+        BigDecimal price = bqf.selectFrom(qPII)
+                .select(qPII.secondaryPrice)
+                .leftJoin(qPI).on(qPI.id.eq(qPII.purchaseInboundId))
+                .where(qPII.productId.eq(productId)
+                        .and(qPII.merchantId.eq(merchantId))
+                        .and(qPI.orderStatus.eq(OrderStatus.已审核)))
+                .orderBy(qPI.approvedAt.desc())
+                .fetchFirst();
+        if (price != null && price.compareTo(BigDecimal.ZERO) > 0) {
+            return price;
+        }
+        // 无采购历史或最近采购价为0时，回退到商品档案的预计进货价
+        Product product = bqf.selectFrom(qProduct)
+                .where(qProduct.id.eq(productId).and(qProduct.merchantId.eq(merchantId)))
+                .fetchFirst();
+        return product != null && product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO;
+    }
+
+    /**
+     * 批量转采购入库单（按供应商拆分）
+     * @return 生成的采购入库单ID列表
+     */
+    @Transactional
+    public List<Long> batchTransferToPurchaseInbound(List<TransferToPurchaseForm> forms,
+                                                      Long merchantId, Long adminId, Long accountBookId) {
+        List<Long> inboundIds = new ArrayList<>();
+        for (TransferToPurchaseForm form : forms) {
+            if (form.getSupplierId() == null) {
+                throw new ServiceException("请选择供货商");
+            }
+            if (form.getItems() == null || form.getItems().isEmpty()) {
+                continue;
+            }
+            // 按销售订单分组
+            Map<Long, List<PurchaseInboundItem>> itemsByOrder = new LinkedHashMap<>();
+            for (PurchaseInboundItem item : form.getItems()) {
+                // 这里需要从item中获取salesOrderId，通过form传递
+                itemsByOrder.computeIfAbsent(0L, k -> new ArrayList<>()).add(item);
+            }
+            Long inboundId = transferToPurchaseInbound(
+                    form.getSalesOrderId(), form.getSupplierId(), form.getItems(),
+                    form.getExpectedDeliveryDate(), form.getRemark(), form.getAutoAudit(), form.getOrderStatus(),
+                    merchantId, adminId, accountBookId);
+            inboundIds.add(inboundId);
+        }
+        return inboundIds;
+    }
+
+    /**
+     * 以销定购 - 生成采购入库单（单订单，按供应商自动拆分）
+     * 同一供应商的商品合并到一张采购入库单，不同供应商生成多张
+     */
+    @Transactional
+    public List<Long> createPurchaseInboundBySupplier(CreatePurchaseInboundForm form,
+                                                       Long merchantId, Long adminId, Long accountBookId) {
+        if (form == null || form.getSaleOrderId() == null) {
+            throw new ServiceException("销售订单ID不能为空");
+        }
+        if (CollectionUtils.isEmpty(form.getItems())) {
+            throw new ServiceException("采购明细不能为空");
+        }
+        // 按供应商分组
+        Map<Long, List<CreatePurchaseInboundForm.Item>> group = form.getItems().stream()
+                .filter(i -> i.getSupplierId() != null)
+                .collect(Collectors.groupingBy(CreatePurchaseInboundForm.Item::getSupplierId, LinkedHashMap::new, Collectors.toList()));
+        if (group.isEmpty()) {
+            throw new ServiceException("请为商品选择供应商");
+        }
+        List<TransferToPurchaseForm> forms = new ArrayList<>();
+        for (Map.Entry<Long, List<CreatePurchaseInboundForm.Item>> entry : group.entrySet()) {
+            TransferToPurchaseForm transferForm = new TransferToPurchaseForm();
+            transferForm.setSalesOrderId(form.getSaleOrderId());
+            transferForm.setSupplierId(entry.getKey());
+            transferForm.setExpectedDeliveryDate(form.getExpectedDeliveryDate());
+            transferForm.setRemark(form.getRemark());
+            transferForm.setAutoAudit(form.getAutoAudit());
+            transferForm.setOrderStatus(form.getOrderStatus());
+            List<PurchaseInboundItem> items = new ArrayList<>();
+            for (CreatePurchaseInboundForm.Item item : entry.getValue()) {
+                PurchaseInboundItem inboundItem = new PurchaseInboundItem();
+                inboundItem.setProductId(item.getGoodsId());
+                inboundItem.setSecondaryQuantity(item.getQuantity());
+                inboundItem.setSecondaryPrice(item.getPurchasePrice());
+                inboundItem.setWarehouseId(item.getWarehouseId());
+                inboundItem.setBaseUnitId(item.getBaseUnitId());
+                inboundItem.setConversionRate(item.getConversionRate());
+                items.add(inboundItem);
+            }
+            transferForm.setItems(items);
+            forms.add(transferForm);
+        }
+        return batchTransferToPurchaseInbound(forms, merchantId, adminId, accountBookId);
+    }
+
+    /**
+     * 批量设置供应商（更新商品默认供应商）
+     */
+    @Transactional
+    public void batchSetSupplier(List<Long> productIds, Long supplierId, Long merchantId) {
+        if (productIds == null || productIds.isEmpty()) {
+            throw new ServiceException("请选择商品");
+        }
+        if (supplierId == null) {
+            throw new ServiceException("请选择供应商");
+        }
+        jqf.update(qProduct)
+                .set(qProduct.defaultSupplierId, supplierId)
+                .where(qProduct.id.in(productIds).and(qProduct.merchantId.eq(merchantId)))
+                .execute();
+    }
+
+    /**
+     * 订单追踪：查询销售订单的完整采购-入库-出库链
+     */
+    public OrderTrackingDto trackOrder(Long salesOrderId, Long merchantId) {
+        SalesOrder order = bqf.selectFrom(qSalesOrder)
+                .where(qSalesOrder.id.eq(salesOrderId).and(qSalesOrder.merchantId.eq(merchantId)))
+                .fetchFirst();
+        if (order == null) throw new ServiceException("销售订单不存在");
+
+        OrderTrackingDto dto = new OrderTrackingDto();
+        dto.setSalesOrderId(order.getId());
+        dto.setSalesOrderNo(order.getOrderNo());
+        dto.setOrderDate(order.getOrderDate());
+        dto.setOrderStatus(order.getOrderStatus() != null ? order.getOrderStatus().name() : "");
+        dto.setPurchaseStatus(order.getPurchaseStatus());
+        dto.setPurchaseStatusText(getPurchaseStatusText(order.getPurchaseStatus()));
+        dto.setOutboundStatus(order.getStatus());
+
+        // 客户名称
+        String customerName = bqf.selectFrom(qCustomer).select(qCustomer.name)
+                .where(qCustomer.id.eq(order.getCustomerId())).fetchFirst();
+        dto.setCustomerName(customerName);
+
+        // 关联采购入库单
+        List<PurchaseInbound> inbounds = bqf.selectFrom(qPurchaseInbound)
+                .where(qPurchaseInbound.sourceSalesOrderId.eq(salesOrderId)
+                        .and(qPurchaseInbound.merchantId.eq(merchantId)))
+                .orderBy(qPurchaseInbound.id.asc())
+                .fetch();
+        List<OrderTrackingDto.PurchaseInboundBrief> inboundBriefs = new ArrayList<>();
+        for (PurchaseInbound pi : inbounds) {
+            OrderTrackingDto.PurchaseInboundBrief brief = new OrderTrackingDto.PurchaseInboundBrief();
+            brief.setId(pi.getId());
+            brief.setOrderNo(pi.getOrderNo());
+            brief.setInboundDate(pi.getInboundDate());
+            brief.setOrderStatus(pi.getOrderStatus() != null ? pi.getOrderStatus().name() : "");
+            brief.setFinalAmount(pi.getFinalAmount());
+            brief.setSourceType(pi.getSourceType());
+            String supplierName = bqf.selectFrom(qSupplier).select(qSupplier.name)
+                    .where(qSupplier.id.eq(pi.getSupplierId())).fetchFirst();
+            brief.setSupplierName(supplierName);
+            inboundBriefs.add(brief);
+        }
+        dto.setPurchaseInbounds(inboundBriefs);
+
+        // 关联销售出库单
+        List<SalesOutboundItem> outboundItems = bqf.selectFrom(qSalesOutboundItem)
+                .where(qSalesOutboundItem.salesOrderId.eq(salesOrderId))
+                .fetch();
+        Set<Long> outboundIds = outboundItems.stream()
+                .map(SalesOutboundItem::getSalesOutboundId)
+                .collect(Collectors.toSet());
+        List<OrderTrackingDto.SalesOutboundBrief> outboundBriefs = new ArrayList<>();
+        if (!outboundIds.isEmpty()) {
+            List<SalesOutbound> outbounds = bqf.selectFrom(qSalesOutbound)
+                    .where(qSalesOutbound.id.in(outboundIds))
+                    .fetch();
+            for (SalesOutbound so : outbounds) {
+                OrderTrackingDto.SalesOutboundBrief brief = new OrderTrackingDto.SalesOutboundBrief();
+                brief.setId(so.getId());
+                brief.setOrderNo(so.getOrderNo());
+                brief.setOrderStatus(so.getOrderStatus() != null ? so.getOrderStatus().name() : "");
+                outboundBriefs.add(brief);
+            }
+        }
+        dto.setSalesOutbounds(outboundBriefs);
+
+        return dto;
     }
 
     @Transactional

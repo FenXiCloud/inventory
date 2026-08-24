@@ -16,10 +16,25 @@ export default {
 	select(param) {
 		return Ajax.get('/product/select', param)
 	},
+	quickCreate(param) {
+		return Ajax.post('/product/quickCreate', param)
+	},
 	update(param) {
 		return Ajax.put('/product', {product: param})
 	},
     customerLevelPrice(productId) {
         return Ajax.get('/product/customerLevel/price/' + productId)
+    },
+    importData(formData) {
+        return Ajax.post('/product/importData', formData)
+    },
+    brands() {
+        return Ajax.get('/product/brands')
+    },
+    renameBrand(param) {
+        return Ajax.put('/product/brand', param)
+    },
+    deleteBrand(brand) {
+        return Ajax.delete('/product/brand?brand=' + encodeURIComponent(brand))
     },
 }

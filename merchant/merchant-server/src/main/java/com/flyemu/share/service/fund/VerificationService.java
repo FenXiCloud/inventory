@@ -135,13 +135,15 @@ public class VerificationService extends BaseService {
             handleOrderReceiptOrPayment(verification, direction);
             // 同步更新结算单
             if (items != null) {
+                String businessType = verification.getType() != null && verification.getType() == 2 ? "采购入库单" : "销售出库单";
                 for (VerificationItem item : items) {
                     if (item.getBusinessId() != null && item.getCurrentVerifyAmount() != null) {
                         settlementService.updateWriteOff(
                                 item.getBusinessId().longValue(),
                                 item.getCurrentVerifyAmount(),
                                 verification.getMerchantId(),
-                                verification.getAccountBookId());
+                                verification.getAccountBookId(),
+                                businessType);
                     }
                 }
             }
@@ -483,13 +485,15 @@ public class VerificationService extends BaseService {
             handleOrderReceiptOrPayment(verification, direction);
             // 审核时同步更新结算单
             if (isAudit) {
+                String businessType = verification.getType() != null && verification.getType() == 2 ? "采购入库单" : "销售出库单";
                 for (VerificationItem item : items) {
                     if (item.getBusinessId() != null && item.getCurrentVerifyAmount() != null) {
                         settlementService.updateWriteOff(
                                 item.getBusinessId().longValue(),
                                 item.getCurrentVerifyAmount(),
                                 verification.getMerchantId(),
-                                verification.getAccountBookId());
+                                verification.getAccountBookId(),
+                                businessType);
                     }
                 }
             }

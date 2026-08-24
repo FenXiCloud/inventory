@@ -17,6 +17,7 @@ public class SelectProductDto {
     private String categoryName;
     private Long unitId;
     private BigDecimal price;
+    private BigDecimal taxRate;
     private String path;
 
     private List<AuxiliaryUnitPrice> auxiliaryUnitPrices;

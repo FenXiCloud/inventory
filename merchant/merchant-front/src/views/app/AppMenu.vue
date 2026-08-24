@@ -3,15 +3,15 @@
     <AppLogo/>
     <t-menu
         :key="menuRenderKey"
-        :value="currentTab"
+        :value="activeMenuId"
         theme="dark"
         width="100%"
         expand-type="popup"
         @change="onMenuChange"
     >
-      <template v-for="m in menus" :key="m.key || m.id">
+      <template v-for="m in filteredMenus" :key="m.id">
         <!-- 一级无子级 -->
-        <t-menu-item v-if="!m.children || !m.children.length" :value="m.key || m.id">
+        <t-menu-item v-if="!m.children || !m.children.length" :value="m.id">
           <template #icon>
             <t-icon :name="resolveMenuIcon(m)"/>
           </template>
@@ -21,7 +21,7 @@
         <!-- 一级：悬浮/单击弹出；二级作标题；三级可点击 -->
         <t-submenu
             v-else
-            :value="m.key || m.id"
+            :value="m.id"
             :title="m.title"
             :popup-props="popupProps"
         >
@@ -29,17 +29,17 @@
             <t-icon :name="resolveMenuIcon(m)"/>
           </template>
 
-          <template v-for="c1 in m.children" :key="c1.key || c1.id">
+          <template v-for="c1 in m.children" :key="c1.id">
             <t-menu-group v-if="c1.children && c1.children.length" :title="c1.title">
               <t-menu-item
                   v-for="c2 in c1.children"
-                  :key="c2.key || c2.id"
-                  :value="c2.key || c2.id"
+                  :key="c2.id"
+                  :value="c2.id"
               >
                 {{ c2.title }}
               </t-menu-item>
             </t-menu-group>
-            <t-menu-item v-else :value="c1.key || c1.id">
+            <t-menu-item v-else :value="c1.id">
               {{ c1.title }}
             </t-menu-item>
           </template>
@@ -61,6 +61,7 @@ const MENU_ICON_BY_KEY = {
   Sales: 'shop',
   Inventory: 'layers',
   Fund: 'wallet',
+  Invoice: 'bill',
   Setting: 'setting',
   DashboardMain: 'dashboard'
 };
@@ -82,6 +83,20 @@ export default {
   },
   computed: {
     ...mapState(['siderCollapsed', 'menus', "currentTab", 'tabs']),
+    /** 菜单按数据库 enabled 状态展示（启用/禁用由后端菜单配置控制） */
+    filteredMenus() {
+      return this.menus || [];
+    },
+    /** 当前激活的菜单 id（用 id 而非组件名，避免多个菜单复用同一组件时高亮错乱） */
+    activeMenuId() {
+      const val = this.currentTab;
+      if (val === 'DashboardMain') return null;
+      const tab = this.tabs.find(t => String(t.key) === String(val));
+      if (tab && tab.menuId != null) return tab.menuId;
+      // 兜底：无 menuId（头部下拉/表单页等）时按组件名反查菜单
+      const menu = this.findMenu(this.filteredMenus, val);
+      return menu ? menu.id : null;
+    }
   },
   watch: {
     currentTab(val) {
@@ -142,12 +157,7 @@ export default {
       this.menuRenderKey += 1;
     },
     onMenuChange(value) {
-      if (value === 'DashboardMain') {
-        this.updateTab('DashboardMain');
-        this.closeFloatingMenu();
-        return;
-      }
-      const menu = this.findMenu(this.menus, value);
+      const menu = this.findMenuById(this.filteredMenus, value);
       // 必须用前端组件名（menu.key）；缺 key 时勿回退到数字 id，否则 :is 渲染会失败
       const componentKey = menu && menu.key;
       if (menu && componentKey) {
@@ -155,12 +165,29 @@ export default {
           keepAlive: false,
           key: componentKey,
           title: menu.title,
-          icon: menu.icon
+          icon: menu.icon,
+          menuId: menu.id
         });
       } else if (menu) {
         console.warn('[AppMenu] 菜单缺少 component/key，无法打开：', menu.title, menu.id);
       }
       this.closeFloatingMenu();
+    },
+    findMenuById(list, id) {
+      const match = (item) => String(item.id) === String(id);
+      for (const item of list) {
+        if (match(item)) return item;
+        if (item.children) {
+          for (const c1 of item.children) {
+            if (match(c1)) return c1;
+            if (c1.children) {
+              const c2 = c1.children.find(match);
+              if (c2) return c2;
+            }
+          }
+        }
+      }
+      return null;
     },
     findMenu(list, key) {
       const match = (item) => String(item.key ?? item.id) === String(key);

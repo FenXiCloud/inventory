@@ -33,6 +33,9 @@ public class Inventory implements TenantAware {
     @Column(nullable = false)
     private Long warehouseId;
 
+    @Comment("货位ID")
+    private Long locationId;
+
     @Comment("基础单位ID")
     private Long baseUnitId;
 

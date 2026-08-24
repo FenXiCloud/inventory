@@ -29,6 +29,8 @@ public class ProductDto {
 
     private String specification;
 
+    private String brand;
+
     private String imgPath;
 
     private Integer unitId;
@@ -38,6 +40,10 @@ public class ProductDto {
     private Boolean enableMultiUnit;
 
     private Boolean enabled;
+
+    private Boolean enableBatch;
+
+    private Boolean enableSerial;
 
     private Date createDate;
 
@@ -49,9 +55,15 @@ public class ProductDto {
     
     private String pinyin;
 
+    private String barcode;
+
+    private List<ProductAttributeValue> productAttributes;
+
     private Integer stockQuantity;
 
     private Integer alertQuantity;
+
+    private Integer maxStockQuantity;
 
     private LocalDateTime createdAt;
 
@@ -60,4 +72,8 @@ public class ProductDto {
     List<CustomerLevelPrice> customerLevelPriceList;
 
     private BigDecimal lastSalePrice;
+
+    private BigDecimal taxRate;
+
+    private String goodsCode;
 }

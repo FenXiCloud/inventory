@@ -16,6 +16,8 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.ProductDto;
+import com.flyemu.share.dto.ProductImportVo;
+import com.flyemu.share.dto.SelectProductDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.*;
 import com.flyemu.share.entity.sales.SalesOrder;
@@ -28,6 +30,7 @@ import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.ProductForm;
 import com.flyemu.share.repository.basic.CustomerLevelPriceRepository;
 import com.flyemu.share.repository.basic.CustomerLevelRepository;
+import com.flyemu.share.repository.basic.UnitRepository;
 import com.flyemu.share.repository.inventory.InventoryItemRepository;
 import com.flyemu.share.repository.basic.ProductRepository;
 import com.flyemu.share.service.BaseService;
@@ -75,6 +78,7 @@ public class ProductService extends BaseService {
     private final QCustomerLevelPrice qCustomerLevelPrice = QCustomerLevelPrice.customerLevelPrice;
 
     private final ProductRepository productRepository;
+    private final UnitRepository unitRepository;
     private final CustomerLevelPriceRepository customerLevelPriceRepository;
     private final CustomerLevelRepository customerLevelRepository;
     private final InventoryItemRepository inventoryItemRepository;
@@ -283,6 +287,213 @@ public class ProductService extends BaseService {
     }
 
     /**
+     * 采购订单/采购入库单录入时，商品档案中不存在该商品则按名称快速建档：
+     * 编码自动生成、单位取第一个计量单位、分类取第一个末级分类、预计进货价默认 0。
+     */
+    @Transactional
+    public SelectProductDto quickCreate(String name, String unitName, Long productCategoryId, Long merchantId, Long accountBookId) {
+        Assert.notBlank(name, "商品名称不能为空");
+        String trimmed = name.trim();
+
+        // 获取或创建单位
+        Unit unit;
+        if (StrUtil.isNotBlank(unitName)) {
+            // 查找或创建单位
+            unit = jqf.selectFrom(qUnit)
+                    .where(qUnit.merchantId.eq(merchantId)
+                            .and(qUnit.accountBookId.eq(accountBookId))
+                            .and(qUnit.name.eq(unitName.trim())))
+                    .fetchFirst();
+            if (unit == null) {
+                // 创建新单位
+                unit = new Unit();
+                unit.setName(unitName.trim());
+                unit.setMerchantId(merchantId);
+                unit.setAccountBookId(accountBookId);
+                unit = unitRepository.save(unit);
+            }
+        } else {
+            unit = jqf.selectFrom(qUnit)
+                    .where(qUnit.merchantId.eq(merchantId).and(qUnit.accountBookId.eq(accountBookId)))
+                    .orderBy(qUnit.id.asc())
+                    .fetchFirst();
+            Assert.notNull(unit, "请先到「基本资料-单位」维护计量单位");
+        }
+
+        // 获取或创建类别
+        ProductCategory category;
+        if (productCategoryId != null) {
+            category = jqf.selectFrom(qProductCategory)
+                    .where(qProductCategory.id.eq(productCategoryId)
+                            .and(qProductCategory.merchantId.eq(merchantId))
+                            .and(qProductCategory.accountBookId.eq(accountBookId)))
+                    .fetchFirst();
+            Assert.notNull(category, "产品类别不存在");
+        } else {
+            List<ProductCategory> categories = jqf.selectFrom(qProductCategory)
+                    .where(qProductCategory.merchantId.eq(merchantId).and(qProductCategory.accountBookId.eq(accountBookId)))
+                    .orderBy(qProductCategory.id.asc())
+                    .fetch();
+            Assert.notEmpty(categories, "请先到「基本资料-产品分类」维护分类");
+            Set<Long> parentIds = categories.stream().map(ProductCategory::getPid).filter(Objects::nonNull).collect(Collectors.toSet());
+            category = categories.stream().filter(c -> !parentIds.contains(c.getId())).findFirst().orElse(categories.get(0));
+        }
+
+        Product product = new Product();
+        product.setName(trimmed);
+        product.setUnitId(unit.getId());
+        product.setProductCategoryId(category.getId());
+        product.setPurchasePrice(BigDecimal.ZERO);
+        product.setEnableMultiUnit(false);
+        product.setEnabled(true);
+
+        ProductForm form = new ProductForm();
+        form.setProduct(product);
+        save(form, merchantId, accountBookId);
+
+        return buildSelectProductDto(product, unit.getName(), category.getName());
+    }
+
+    private SelectProductDto buildSelectProductDto(Product product, String unitName, String categoryName) {
+        SelectProductDto dto = new SelectProductDto();
+        dto.setProductId(product.getId());
+        dto.setImgPath(product.getImgPath());
+        dto.setProductCode(product.getCode());
+        dto.setProductName(product.getName());
+        dto.setSpec(product.getSpecification());
+        dto.setUnitId(product.getUnitId());
+        dto.setUnitName(unitName);
+        dto.setCategoryName(categoryName);
+        dto.setPrice(product.getPurchasePrice());
+        dto.setAuxiliaryUnitPrices(product.getAuxiliaryUnitPrices());
+        dto.setTitle();
+        return dto;
+    }
+
+    /**
+     * 批量导入商品
+     *
+     * @param rows          导入行
+     * @param merchantId    商户
+     * @param accountBookId 账套
+     */
+    @Transactional
+    public void importData(List<ProductImportVo> rows, Long merchantId, Long accountBookId) {
+        // 基础校验
+        for (int i = 0; i < rows.size(); i++) {
+            ProductImportVo row = rows.get(i);
+            if (StrUtil.isBlank(row.getName())) {
+                throw new ServiceException("第" + (i + 2) + "行：商品名称不能为空");
+            }
+            if (StrUtil.isBlank(row.getProductCategoryName())) {
+                throw new ServiceException("第" + (i + 2) + "行：分类不能为空");
+            }
+            if (StrUtil.isBlank(row.getUnitName())) {
+                throw new ServiceException("第" + (i + 2) + "行：单位不能为空");
+            }
+        }
+
+        // 文件内编码去重
+        Set<String> codeSet = new HashSet<>();
+        List<String> duplicateCodes = rows.stream()
+                .map(ProductImportVo::getCode)
+                .filter(c -> StrUtil.isNotBlank(c) && !codeSet.add(c))
+                .distinct()
+                .toList();
+        Assert.isTrue(duplicateCodes.isEmpty(), "导入数据中存在重复的商品编码：" + String.join("、", duplicateCodes));
+
+        // 已存在编码校验
+        List<String> existingCodes = jqf.select(qProduct.code)
+                .from(qProduct)
+                .where(qProduct.merchantId.eq(merchantId).and(qProduct.accountBookId.eq(accountBookId)))
+                .fetch();
+        Set<String> existingCodeSet = new HashSet<>(existingCodes);
+        List<String> duplicatedInDb = rows.stream()
+                .map(ProductImportVo::getCode)
+                .filter(c -> StrUtil.isNotBlank(c) && existingCodeSet.contains(c))
+                .distinct()
+                .toList();
+        Assert.isTrue(duplicatedInDb.isEmpty(), "以下商品编码已存在：" + String.join("、", duplicatedInDb));
+
+        for (ProductImportVo row : rows) {
+            ProductCategory category = jqf.selectFrom(qProductCategory)
+                    .where(qProductCategory.merchantId.eq(merchantId)
+                            .and(qProductCategory.accountBookId.eq(accountBookId))
+                            .and(qProductCategory.name.eq(row.getProductCategoryName())))
+                    .fetchFirst();
+            if (category == null) {
+                throw new ServiceException("分类不存在：" + row.getProductCategoryName());
+            }
+            Unit unit = jqf.selectFrom(qUnit)
+                    .where(qUnit.merchantId.eq(merchantId)
+                            .and(qUnit.accountBookId.eq(accountBookId))
+                            .and(qUnit.name.eq(row.getUnitName())))
+                    .fetchFirst();
+            if (unit == null) {
+                throw new ServiceException("单位不存在：" + row.getUnitName());
+            }
+
+            Product product = new Product();
+            product.setCode(StrUtil.isNotBlank(row.getCode()) ? row.getCode().trim() : generateProductCode(merchantId, accountBookId));
+            product.setName(row.getName());
+            product.setBrand(row.getBrand());
+            product.setSpecification(row.getSpecification());
+            product.setUnitId(unit.getId());
+            product.setProductCategoryId(category.getId());
+            product.setPurchasePrice(row.getPurchasePrice() != null ? row.getPurchasePrice() : BigDecimal.ZERO);
+            product.setAlertQuantity(row.getAlertQuantity());
+            product.setRemarks(row.getRemarks());
+            product.setEnabled(true);
+            product.setEnableMultiUnit(false);
+            product.setAccountBookId(accountBookId);
+            product.setMerchantId(merchantId);
+            product.setPinyin(PinYinUtil.getFirstLettersLo(product.getName()) + "," + PinYinUtil.getPinyinString(product.getName()));
+            productRepository.save(product);
+
+            // 初始化期初余额
+            InventoryItem inventoryItem = new InventoryItem();
+            inventoryItem.setProductId(product.getId());
+            inventoryItem.setMerchantId(merchantId);
+            inventoryItem.setAccountBookId(accountBookId);
+            inventoryItem.setOperationType(OperationType.期初余额);
+            inventoryItem.setCreatedAt(LocalDateTime.now());
+            inventoryItem.setCreatedBy(-1L);
+            inventoryItem.setFirstSort(true);
+            inventoryItemRepository.save(inventoryItem);
+
+            // 末级状态按分类下是否有产品刷新
+            productCategoryService.refreshLeafByProducts(category.getId(), merchantId, accountBookId);
+        }
+    }
+
+    /**
+     * 生成商品编码（与保存逻辑一致：编码规则优先，否则随机）
+     */
+    private String generateProductCode(Long merchantId, Long accountBookId) {
+        CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
+                CodeRule.DocumentType.商品, merchantId, accountBookId);
+        if (codeRule == null) {
+            return CodeGenerator.generateCode();
+        }
+        StringBuilder codeBuilder = new StringBuilder();
+        if (StrUtil.isNotBlank(codeRule.getPrefix())) {
+            codeBuilder.append(codeRule.getPrefix());
+        }
+        if (StrUtil.isNotBlank(codeRule.getFormat())) {
+            codeBuilder.append(DateUtil.format(LocalDateTime.now(), codeRule.getFormat()));
+        }
+        Integer serialLength = codeRule.getSerialNumberLength();
+        if (serialLength != null && serialLength > 0) {
+            Long count = jqf.select(qProduct.id.count())
+                    .from(qProduct)
+                    .where(qProduct.merchantId.eq(merchantId).and(qProduct.accountBookId.eq(accountBookId)))
+                    .fetchOne();
+            codeBuilder.append(String.format("%0" + serialLength + "d", (count != null ? count : 0) + 1));
+        }
+        return codeBuilder.toString();
+    }
+
+    /**
      * 保存预计采购价格
      *
      * @param product
@@ -432,6 +643,64 @@ public class ProductService extends BaseService {
 
     }
 
+    /**
+     * 品牌列表（去重，含商品数量）
+     */
+    public List<Map<String, Object>> brandList(Long merchantId, Long accountBookId) {
+        List<Tuple> tuples = jqf.select(qProduct.brand, qProduct.id.count())
+                .from(qProduct)
+                .where(qProduct.merchantId.eq(merchantId)
+                        .and(qProduct.accountBookId.eq(accountBookId))
+                        .and(qProduct.brand.isNotNull())
+                        .and(qProduct.brand.ne("")))
+                .groupBy(qProduct.brand)
+                .orderBy(qProduct.brand.asc())
+                .fetch();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Tuple t : tuples) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("brand", t.get(qProduct.brand));
+            m.put("count", t.get(qProduct.id.count()));
+            result.add(m);
+        }
+        return result;
+    }
+
+    /**
+     * 重命名品牌：更新所有引用该品牌的商品
+     */
+    @Transactional
+    public void renameBrand(String oldBrand, String newBrand, Long merchantId, Long accountBookId) {
+        if (StrUtil.isBlank(oldBrand)) {
+            throw new ServiceException("原品牌名称不能为空");
+        }
+        if (StrUtil.isBlank(newBrand)) {
+            throw new ServiceException("新品牌名称不能为空");
+        }
+        jqf.update(qProduct)
+                .set(qProduct.brand, newBrand.trim())
+                .where(qProduct.brand.eq(oldBrand.trim())
+                        .and(qProduct.merchantId.eq(merchantId))
+                        .and(qProduct.accountBookId.eq(accountBookId)))
+                .execute();
+    }
+
+    /**
+     * 删除品牌：清空所有引用该品牌的商品
+     */
+    @Transactional
+    public void deleteBrand(String brand, Long merchantId, Long accountBookId) {
+        if (StrUtil.isBlank(brand)) {
+            throw new ServiceException("品牌名称不能为空");
+        }
+        jqf.update(qProduct)
+                .set(qProduct.brand, (String) null)
+                .where(qProduct.brand.eq(brand.trim())
+                        .and(qProduct.merchantId.eq(merchantId))
+                        .and(qProduct.accountBookId.eq(accountBookId)))
+                .execute();
+    }
+
     @Data
     public static class Query implements TenantAware {
 
@@ -440,6 +709,8 @@ public class ProductService extends BaseService {
         private String path;
 
         private String filter;
+
+        private String brand;
 
         private Long productCategoryId;
 
@@ -465,6 +736,9 @@ public class ProductService extends BaseService {
 
             if (StrUtil.isNotBlank(filter) && StrUtil.isNotBlank(filter.trim())) {
                 builder.and(qProduct.name.contains(filter).or(qProduct.code.contains(filter)).or(qProduct.pinyin.contains(filter)));
+            }
+            if (StrUtil.isNotBlank(brand)) {
+                builder.and(qProduct.brand.contains(brand.trim()));
             }
             if (enabled != null) {
                 builder.and(qProduct.enabled.eq(enabled));

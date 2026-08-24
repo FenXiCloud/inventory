@@ -621,6 +621,26 @@ public class OrderReceiptService extends BaseService {
             orderReceipt = orderReceiptRepository.save(orderReceipt);
             saveItems(orderReceipt, items);
             saveCollections(orderReceipt, collections);
+            // 直接保存为已审核时，同步更新销售出库单核销金额、客户余额、结算单
+            if (OrderStatus.已审核.equals(orderReceipt.getOrderStatus()) && items != null) {
+                calculateTheAmount(orderReceipt, OrderStatus.已审核);
+                for (OrderReceiptItem item : items) {
+                    settlementService.updateWriteOff(item.getSalesOrderId(), item.getCurrentVerifyAmount(),
+                            orderReceipt.getMerchantId(), orderReceipt.getAccountBookId(), "销售出库单");
+                    if (item.getSalesOrderId() != null && item.getCurrentVerifyAmount() != null) {
+                        // 用QueryDSL直接更新，避免JPA实体缓存问题
+                        // COALESCE处理NULL值：NULL + 40 = NULL，所以需要先转为0
+                        jqf.update(qSalesOutbound)
+                                .set(qSalesOutbound.verifiedAmount,
+                                        Expressions.numberTemplate(BigDecimal.class,
+                                                "COALESCE({0}, 0) + {1}",
+                                                qSalesOutbound.verifiedAmount,
+                                                item.getCurrentVerifyAmount()))
+                                .where(qSalesOutbound.id.eq(item.getSalesOrderId()))
+                                .execute();
+                    }
+                }
+            }
             return orderReceipt;
         } else {
 
@@ -802,11 +822,6 @@ public class OrderReceiptService extends BaseService {
                 item.setMerchantId(orderReceipt.getMerchantId());
                 item.setAccountBookId(orderReceipt.getAccountBookId());
                 orderReceiptItemRepository.save(item);
-                // 审核时同步更新结算单
-                if (OrderStatus.已审核.equals(orderReceipt.getOrderStatus())) {
-                    settlementService.updateWriteOff(item.getSalesOrderId(), item.getCurrentVerifyAmount(),
-                            orderReceipt.getMerchantId(), orderReceipt.getAccountBookId());
-                }
             }
         }
     }
@@ -968,7 +983,34 @@ public class OrderReceiptService extends BaseService {
                         .from(qOrderReceiptItem).where(qOrderReceiptItem.receiptId.eq(receipt.getId())).fetch();
                 for (OrderReceiptItem item : items) {
                     settlementService.updateWriteOff(item.getSalesOrderId(), item.getCurrentVerifyAmount(),
-                            receipt.getMerchantId(), receipt.getAccountBookId());
+                            receipt.getMerchantId(), receipt.getAccountBookId(), "销售出库单");
+                    // 同步更新销售出库单的已核销金额
+                    if (item.getSalesOrderId() != null && item.getCurrentVerifyAmount() != null) {
+                        jqf.update(qSalesOutbound)
+                                .set(qSalesOutbound.verifiedAmount,
+                                        Expressions.numberTemplate(BigDecimal.class,
+                                                "COALESCE({0}, 0) + {1}",
+                                                qSalesOutbound.verifiedAmount,
+                                                item.getCurrentVerifyAmount()))
+                                .where(qSalesOutbound.id.eq(item.getSalesOrderId()))
+                                .execute();
+                    }
+                }
+            } else if (targetStatus == OrderStatus.已保存) {
+                // 反审核时还原已核销金额
+                List<OrderReceiptItem> items = jqf.select(qOrderReceiptItem)
+                        .from(qOrderReceiptItem).where(qOrderReceiptItem.receiptId.eq(receipt.getId())).fetch();
+                for (OrderReceiptItem item : items) {
+                    if (item.getSalesOrderId() != null && item.getCurrentVerifyAmount() != null) {
+                        jqf.update(qSalesOutbound)
+                                .set(qSalesOutbound.verifiedAmount,
+                                        Expressions.numberTemplate(BigDecimal.class,
+                                                "COALESCE({0}, 0) - {1}",
+                                                qSalesOutbound.verifiedAmount,
+                                                item.getCurrentVerifyAmount()))
+                                .where(qSalesOutbound.id.eq(item.getSalesOrderId()))
+                                .execute();
+                    }
                 }
             }
         }

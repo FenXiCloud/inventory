@@ -34,11 +34,21 @@ public class PurchaseInbound implements TenantAware {
     @Comment("采购订单ID")
     private Long orderId;
 
+    @Comment("来源销售订单ID")
+    private Long sourceSalesOrderId;
+
+    @Comment("来源类型：以销定购/普通采购")
+    @Column(length = 20)
+    private String sourceType = "普通采购";
+
     @Comment("供货商ID")
     private Long supplierId;
 
     @Comment("入库日期")
     private LocalDate inboundDate;
+
+    @Comment("预计到货日期")
+    private LocalDate expectedDeliveryDate;
 
     @Comment("订单金额")
     private BigDecimal totalAmount;

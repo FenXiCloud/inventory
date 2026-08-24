@@ -150,7 +150,8 @@ export default {
     stockTakeId: [String, Number],
     importOutbound: Array,
     type: String,
-    index: Number
+    index: Number,
+    outboundType: String
   },
   computed: {
     ...mapState(["user", "accountBook"]),
@@ -589,6 +590,8 @@ export default {
       if (this.stockTakeId) {
         this.form.outboundType = "盘亏出库";
         this.otherOutboundData = (JSON.parse(JSON.stringify(this.importOutbound)) || []).map((row) => newRow(row));
+      } else if (this.outboundType) {
+        this.form.outboundType = this.outboundType;
       }
     },
     approved() {

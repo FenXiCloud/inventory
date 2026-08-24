@@ -35,6 +35,7 @@
         />
         <t-date-range-picker
             v-model="dateRangeValue"
+            :presets="datePresets"
             clearable
             allow-input
             placeholder="单据日期"
@@ -161,6 +162,17 @@ export default {
     }
   },
   computed: {
+    datePresets() {
+      return {
+        '近期': () => [manba().format('YYYY-MM-dd'), manba().format('YYYY-MM-dd')],
+        '昨天': () => [manba().add(-1, 'day').format('YYYY-MM-dd'), manba().add(-1, 'day').format('YYYY-MM-dd')],
+        '今天': () => [manba().format('YYYY-MM-dd'), manba().format('YYYY-MM-dd')],
+        '本月': () => [manba().startOf(manba.MONTH).format('YYYY-MM-dd'), manba().endOf(manba.MONTH).format('YYYY-MM-dd')],
+        '上月': () => [manba().add(-1, 'month').startOf(manba.MONTH).format('YYYY-MM-dd'), manba().add(-1, 'month').endOf(manba.MONTH).format('YYYY-MM-dd')],
+        '本年': () => [manba().startOf(manba.YEAR).format('YYYY-MM-dd'), manba().endOf(manba.YEAR).format('YYYY-MM-dd')],
+        '上年': () => [manba().add(-1, 'year').startOf(manba.YEAR).format('YYYY-MM-dd'), manba().add(-1, 'year').endOf(manba.YEAR).format('YYYY-MM-dd')],
+      };
+    },
     queryParams() {
       const [start, end] = this.dateRangeValue || [];
       return Object.assign({}, this.params, {

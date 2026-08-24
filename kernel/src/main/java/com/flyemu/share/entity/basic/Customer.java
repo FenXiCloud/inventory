@@ -39,6 +39,10 @@ public class Customer implements TenantAware {
     @Comment("电话")
     private String phone;
 
+    @Comment("税号")
+    @Column(length = 32)
+    private String taxNo;
+
     @Comment("备注")
     private String remarks;
 
@@ -52,6 +56,9 @@ public class Customer implements TenantAware {
 
     @Comment("应收余额：正数=客户欠款，负数=预收")
     private BigDecimal balance;
+
+    @Comment("信用额度：null=不限制")
+    private BigDecimal creditLimit;
 
     @Comment("状态")
     @Column(nullable = false)

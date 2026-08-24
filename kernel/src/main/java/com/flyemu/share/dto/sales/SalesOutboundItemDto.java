@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -22,6 +23,15 @@ public class SalesOutboundItemDto {
 
     @Comment("产品ID")
     private Long productId;
+
+    @Comment("批次号")
+    private String batchNumber;
+
+    @Comment("生产日期")
+    private LocalDate productionDate;
+
+    @Comment("有效期至")
+    private LocalDate expiryDate;
 
     @Comment("基本单位ID")
     private Long baseUnitId;
@@ -49,6 +59,9 @@ public class SalesOutboundItemDto {
 
     @Comment("小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)")
     private BigDecimal subtotal;
+
+    @Comment("税率")
+    private BigDecimal taxRate;
 
     @Comment("仓库ID")
     private Long warehouseId;

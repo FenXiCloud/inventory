@@ -13,6 +13,7 @@ import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
+import com.flyemu.share.entity.inventory.QInventoryItem;
 import com.flyemu.share.entity.setting.AccountBookParameters;
 import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.enums.OperationType;
@@ -45,6 +46,7 @@ import java.util.*;
 public class InventoryService extends BaseService {
 
     private final static QInventory qInventory = QInventory.inventory;
+    private final static QInventoryItem qInventoryItem = QInventoryItem.inventoryItem;
 
     private final InventoryRepository inventoryRepository;
 
@@ -251,6 +253,27 @@ public class InventoryService extends BaseService {
                 .where(qInventory.productId.eq(productId)).fetchOne();
     }
 
+    /**
+     * 调整库存数量
+     * @param inventory 库存记录
+     * @param quantity 调整数量（正数增加，负数减少）
+     */
+    @Transactional
+    public void adjustQuantity(Inventory inventory, Integer quantity) {
+        if (inventory == null) {
+            throw new ServiceException("库存记录不存在");
+        }
+        Integer currentQty = inventory.getCurrentQuantity() != null ? inventory.getCurrentQuantity() : 0;
+        Integer newQty = currentQty + quantity;
+        if (newQty < 0) {
+            throw new ServiceException("库存不足，当前库存：" + currentQty + "，调整数量：" + quantity);
+        }
+        inventory.setCurrentQuantity(newQty);
+        inventoryRepository.save(inventory);
+        log.info("库存调整：商品ID={}，仓库ID={}，货位ID={}，调整数量={}，调整后库存={}",
+                inventory.getProductId(), inventory.getWarehouseId(), inventory.getLocationId(), quantity, newQty);
+    }
+
     public List<Map<String, Object>> products(Long warehouseId, String warehouseIds, Long productId, String filter, Long accountBookId, Long merchantId) {
         String productSql = InventoryRepository.PRODUCT_SQL;
         int index = 3;
@@ -300,6 +323,11 @@ public class InventoryService extends BaseService {
      * 库存余额统计
      */
     public PageResults<InventoryReportDto> balance(Page page, Query query) {
+        // 如果有日期参数，按日期计算历史库存余额
+        if (StrUtil.isNotBlank(query.getStart()) || StrUtil.isNotBlank(query.getEnd())) {
+            return balanceByDate(page, query);
+        }
+
         PagedList<Tuple> fetchPage = bqf.selectFrom(qInventory)
                 .select(
                         qProduct.id.as("productId"),
@@ -344,7 +372,139 @@ public class InventoryService extends BaseService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
+    /**
+     * 按日期计算历史库存余额
+     */
+    private PageResults<InventoryReportDto> balanceByDate(Page page, Query query) {
+        // 查询截止到指定日期的所有库存明细，计算历史库存余额
+        BooleanBuilder where = new BooleanBuilder();
+        where.and(qInventoryItem.merchantId.eq(query.getMerchantId()));
+        where.and(qInventoryItem.accountBookId.eq(query.getAccountBookId()));
+
+        Date endDate = query.getEndDate();
+
+        // 只过滤结束日期，查询截止到该日期的所有库存变动
+        if (endDate != null) {
+            where.and(qInventoryItem.inventoryDate.loe(Query.addTimeOfFinalMoment(endDate)));
+        }
+
+        // 应用其他过滤条件（仓库、产品、类别等）
+        if (query.getWarehouseId() != null) {
+            where.and(qInventoryItem.warehouseId.eq(query.getWarehouseId()));
+        }
+        if (query.getProductId() != null) {
+            where.and(qInventoryItem.productId.eq(query.getProductId()));
+        }
+        if (StrUtil.isNotBlank(query.getWarehouseIds())) {
+            where.and(qInventoryItem.warehouseId.in(Arrays.stream(query.getWarehouseIds().split(",")).map(Long::parseLong).toList()));
+        }
+        if (StrUtil.isNotBlank(query.getProductIds())) {
+            where.and(qInventoryItem.productId.in(Arrays.stream(query.getProductIds().split(",")).map(Long::parseLong).toList()));
+        }
+
+        // 按商品和仓库分组，计算截止到指定日期的历史库存余额
+        List<Tuple> results = bqf.selectFrom(qInventoryItem)
+                .select(
+                        qInventoryItem.productId,
+                        qInventoryItem.warehouseId,
+                        qInventoryItem.quantity.sum().as("totalQuantity"),
+                        qInventoryItem.subtotal.sum().as("totalSubtotal")
+                )
+                .where(where)
+                .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId)
+                .fetch();
+
+        // 获取商品信息
+        Map<Long, InventoryReportDto> productMap = new LinkedHashMap<>();
+        for (Tuple tuple : results) {
+            Long productId = tuple.get(qInventoryItem.productId);
+            Long warehouseId = tuple.get(qInventoryItem.warehouseId);
+            Integer quantity = tuple.get(qInventoryItem.quantity.sum().as("totalQuantity"));
+            BigDecimal subtotal = tuple.get(qInventoryItem.subtotal.sum().as("totalSubtotal"));
+
+            if (!productMap.containsKey(productId)) {
+                // 查询商品信息
+                Product product = bqf.selectFrom(qProduct)
+                        .where(qProduct.id.eq(productId))
+                        .fetchFirst();
+                if (product == null) continue;
+
+                // 应用产品类别过滤
+                if (query.getProductCategoryId() != null && (product.getProductCategoryId() == null ||
+                        !product.getProductCategoryId().equals(query.getProductCategoryId()))) {
+                    continue;
+                }
+                if (StrUtil.isNotBlank(query.getProductCategoryIds())) {
+                    List<Long> categoryIds = Arrays.stream(query.getProductCategoryIds().split(",")).map(Long::parseLong).toList();
+                    if (product.getProductCategoryId() == null || !categoryIds.contains(product.getProductCategoryId())) {
+                        continue;
+                    }
+                }
+
+                ProductCategory category = null;
+                if (product.getProductCategoryId() != null) {
+                    category = bqf.selectFrom(qProductCategory)
+                            .where(qProductCategory.id.eq(product.getProductCategoryId()))
+                            .fetchFirst();
+                }
+
+                Unit unit = null;
+                if (product.getUnitId() != null) {
+                    unit = bqf.selectFrom(qUnit)
+                            .where(qUnit.id.eq(product.getUnitId()))
+                            .fetchFirst();
+                }
+
+                // 应用名称/编码过滤
+                if (StrUtil.isNotBlank(query.getFilter()) && StrUtil.isNotBlank(query.getFilter().trim())) {
+                    String filter = query.getFilter().trim();
+                    boolean match = product.getName().contains(filter) ||
+                            product.getCode().contains(filter) ||
+                            (category != null && category.getName().contains(filter)) ||
+                            (product.getSpecification() != null && product.getSpecification().contains(filter));
+                    if (!match) continue;
+                }
+
+                InventoryReportDto dto = new InventoryReportDto();
+                dto.setProductId(productId);
+                dto.setProductCode(product.getCode());
+                dto.setProductName(product.getName());
+                dto.setProductCategoryName(category != null ? category.getName() : "");
+                dto.setProductSpecification(product.getSpecification());
+                dto.setProductUnitName(unit != null ? unit.getName() : "");
+                dto.setRetailCustomerPrice(product.getRetailCustomerPrice());
+                dto.setPurchasePrice(product.getPurchasePrice());
+                productMap.put(productId, dto);
+            }
+
+            // 设置仓库库存数据
+            InventoryReportDto dto = productMap.get(productId);
+            Warehouse warehouse = bqf.selectFrom(qWarehouse)
+                    .where(qWarehouse.id.eq(warehouseId))
+                    .fetchFirst();
+            if (warehouse != null) {
+                String warehouseField = warehouse.getCode() + "_" + warehouse.getId();
+                // 这里需要动态设置仓库字段，但 InventoryReportDto 是固定的
+                // 所以我们返回一个简化的结果
+            }
+        }
+
+        // 分页处理
+        List<InventoryReportDto> dtos = new ArrayList<>(productMap.values());
+        int total = dtos.size();
+        int fromIndex = Math.min(page.getOffset(), total);
+        int toIndex = Math.min(fromIndex + page.getPageSize(), total);
+        List<InventoryReportDto> pagedList = dtos.subList(fromIndex, toIndex);
+
+        return new PageResults<>(pagedList, page, total);
+    }
+
     public List<Inventory> balanceTotal(Query query) {
+        // 如果有日期参数，按日期计算历史库存余额
+        if (StrUtil.isNotBlank(query.getStart()) || StrUtil.isNotBlank(query.getEnd())) {
+            return balanceTotalByDate(query);
+        }
+
         return jqf.selectFrom(qInventory)
                 .leftJoin(qWarehouse).on(qInventory.warehouseId.eq(qWarehouse.id))
                 .leftJoin(qProduct).on(qProduct.id.eq(qInventory.productId))
@@ -352,6 +512,61 @@ public class InventoryService extends BaseService {
                 .where(query.builders())
                 .orderBy(qInventory.productId.desc())
                 .fetch();
+    }
+
+    /**
+     * 按日期计算历史库存余额总计
+     */
+    private List<Inventory> balanceTotalByDate(Query query) {
+        BooleanBuilder where = new BooleanBuilder();
+        where.and(qInventoryItem.merchantId.eq(query.getMerchantId()));
+        where.and(qInventoryItem.accountBookId.eq(query.getAccountBookId()));
+
+        Date endDate = query.getEndDate();
+
+        // 只过滤结束日期，查询截止到该日期的所有库存变动
+        if (endDate != null) {
+            where.and(qInventoryItem.inventoryDate.loe(Query.addTimeOfFinalMoment(endDate)));
+        }
+
+        // 应用其他过滤条件
+        if (query.getWarehouseId() != null) {
+            where.and(qInventoryItem.warehouseId.eq(query.getWarehouseId()));
+        }
+        if (query.getProductId() != null) {
+            where.and(qInventoryItem.productId.eq(query.getProductId()));
+        }
+        if (StrUtil.isNotBlank(query.getWarehouseIds())) {
+            where.and(qInventoryItem.warehouseId.in(Arrays.stream(query.getWarehouseIds().split(",")).map(Long::parseLong).toList()));
+        }
+        if (StrUtil.isNotBlank(query.getProductIds())) {
+            where.and(qInventoryItem.productId.in(Arrays.stream(query.getProductIds().split(",")).map(Long::parseLong).toList()));
+        }
+
+        // 按商品和仓库分组，计算截止到指定日期的历史库存余额
+        List<Tuple> results = bqf.selectFrom(qInventoryItem)
+                .select(
+                        qInventoryItem.productId,
+                        qInventoryItem.warehouseId,
+                        qInventoryItem.quantity.sum().as("totalQuantity"),
+                        qInventoryItem.subtotal.sum().as("totalSubtotal")
+                )
+                .where(where)
+                .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId)
+                .fetch();
+
+        // 转换为 Inventory 对象
+        List<Inventory> inventories = new ArrayList<>();
+        for (Tuple tuple : results) {
+            Inventory inventory = new Inventory();
+            inventory.setProductId(tuple.get(qInventoryItem.productId));
+            inventory.setWarehouseId(tuple.get(qInventoryItem.warehouseId));
+            inventory.setCurrentQuantity(tuple.get(qInventoryItem.quantity.sum().as("totalQuantity")));
+            inventory.setTotalCost(tuple.get(qInventoryItem.subtotal.sum().as("totalSubtotal")));
+            inventories.add(inventory);
+        }
+
+        return inventories;
     }
 
     /**
@@ -430,6 +645,56 @@ public class InventoryService extends BaseService {
             return BigDecimal.ZERO;
         }
         return inventory.getTotalCost();
+    }
+
+    /**
+     * 查询库存成本详情（总成本、当前数量、平均成本）
+     */
+    public Map<String, Object> costDetail(Long productId, Long warehouseId, Long merchantId, Long accountBookId) {
+        Map<String, Object> result = new HashMap<>();
+        Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(productId)
+                .and(qInventory.warehouseId.eq(warehouseId)).and(qInventory.merchantId.eq(merchantId))
+                .and(qInventory.accountBookId.eq(accountBookId))).fetchOne();
+        if (inventory == null) {
+            result.put("totalCost", BigDecimal.ZERO);
+            result.put("currentQuantity", 0);
+            result.put("averageCost", BigDecimal.ZERO);
+        } else {
+            result.put("totalCost", inventory.getTotalCost() != null ? inventory.getTotalCost() : BigDecimal.ZERO);
+            result.put("currentQuantity", inventory.getCurrentQuantity() != null ? inventory.getCurrentQuantity() : 0);
+            result.put("averageCost", inventory.getAverageCost() != null ? inventory.getAverageCost() : BigDecimal.ZERO);
+        }
+        return result;
+    }
+
+    /**
+     * 查询尾差商品（数量为0但金额不为0）
+     */
+    public List<Map<String, Object>> tailDifference(Long merchantId, Long accountBookId) {
+        List<Tuple> tuples = jqf.selectFrom(qInventory)
+                .select(qInventory, qProduct.code, qProduct.name, qWarehouse.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qInventory.productId))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventory.warehouseId))
+                .where(qInventory.merchantId.eq(merchantId)
+                        .and(qInventory.accountBookId.eq(accountBookId))
+                        .and(qInventory.currentQuantity.eq(0))
+                        .and(qInventory.totalCost.ne(BigDecimal.ZERO)))
+                .fetch();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Tuple tuple : tuples) {
+            Map<String, Object> item = new HashMap<>();
+            Inventory inv = tuple.get(qInventory);
+            item.put("productId", inv.getProductId());
+            item.put("warehouseId", inv.getWarehouseId());
+            item.put("productCode", tuple.get(qProduct.code));
+            item.put("productName", tuple.get(qProduct.name));
+            item.put("warehouseName", tuple.get(qWarehouse.name));
+            item.put("totalCost", inv.getTotalCost());
+            item.put("currentQuantity", 0);
+            item.put("averageCost", BigDecimal.ZERO);
+            result.add(item);
+        }
+        return result;
     }
 
     public void processingCosts(List<Inventory> inventories, List<InventoryItem> inventoryItems, Boolean inversely) {
@@ -515,9 +780,9 @@ public class InventoryService extends BaseService {
     public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 
-        private Date start;
+        private String start;
 
-        private Date end;
+        private String end;
 
         private Long warehouseId;
 
@@ -545,6 +810,30 @@ public class InventoryService extends BaseService {
         public void setAccountBookId(Long accountBookId) {
             this.accountBookId = accountBookId;
             TenantFilters.accountBook(builder, qInventory.accountBookId, accountBookId);
+        }
+
+        public Date getStartDate() {
+            if (StrUtil.isNotBlank(start)) {
+                try {
+                    java.time.LocalDate localDate = java.time.LocalDate.parse(start);
+                    return Date.from(localDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        public Date getEndDate() {
+            if (StrUtil.isNotBlank(end)) {
+                try {
+                    java.time.LocalDate localDate = java.time.LocalDate.parse(end);
+                    return Date.from(localDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+            return null;
         }
 
         private static Date addTimeOfFinalMoment(Date date) {

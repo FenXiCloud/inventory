@@ -69,8 +69,13 @@
             </template>
             <template v-else-if="row.orderStatus === '已审核'">
               <t-link theme="primary" @click="detail(row.id)">详情</t-link>
+              <t-link theme="primary" @click="showQuickPayment(row)">便捷付款</t-link>
             </template>
           </t-space>
+        </template>
+        <template #sourceType="{ row }">
+          <t-tag v-if="row.sourceType === '以销定购'" theme="primary" variant="light" size="small">以销定购</t-tag>
+          <span v-else class="text-gray-400">普通</span>
         </template>
         <template #orderStatus="{ row }">
           <t-tag
@@ -105,6 +110,7 @@ import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
 import PurchaseInboundImportForm from "@views/purchase/PurchaseInboundImportForm.vue";
 import PurchaseInbound from "@js/api/purchase/PurchaseInbound";
+import QuickPaymentDialog from "@views/common/QuickPaymentDialog.vue";
 import {h} from "vue";
 import {openDialog, closeDialog} from '@common/dialog';
 import Supplier from "@js/api/basic/Supplier";
@@ -141,9 +147,10 @@ export default {
       ],
       columns: [
         {colKey: 'row-select', type: 'multiple', width: 46},
-        {colKey: 'ops', title: '操作', width: 110, fixed: 'left', align: 'center'},
+        {colKey: 'ops', title: '操作', width: 170, fixed: 'left', align: 'center'},
         {colKey: 'inboundDate', title: '入库日期', width: 120, align: 'center'},
         {colKey: 'orderNo', title: '订单编号', minWidth: 160, ellipsis: true},
+        {colKey: 'sourceType', title: '来源类型', width: 90, align: 'center'},
         {colKey: 'purchaseOrderNos', title: '关联采购单', minWidth: 140, ellipsis: true},
         {colKey: 'supplierName', title: '供货商', minWidth: 120, ellipsis: true},
         {colKey: 'totalAmount', title: '采购金额', width: 110, align: 'right'},
@@ -218,6 +225,22 @@ export default {
         key: 'PurchaseInboundDetail',
         title: '采购入库单',
         params: {orderId: orderId}
+      });
+    },
+    showQuickPayment(row) {
+      const dialogId = openDialog({
+        header: '便捷付款',
+        closeOnOverlayClick: false,
+        width: '500px',
+        body: h(QuickPaymentDialog, {
+          type: 'payment',
+          order: row,
+          onClose: () => closeDialog(dialogId),
+          onSuccess: () => {
+            this.loadList();
+            closeDialog(dialogId);
+          }
+        })
       });
     },
     batchDelete() {

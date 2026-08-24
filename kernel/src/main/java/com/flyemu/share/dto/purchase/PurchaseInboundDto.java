@@ -70,6 +70,11 @@ public class PurchaseInboundDto {
     private BigDecimal finalAmount;
 
     /**
+     * 已核销金额
+     */
+    private BigDecimal verifiedAmount;
+
+    /**
      * 备注
      */
     private String remarks;
@@ -127,4 +132,14 @@ public class PurchaseInboundDto {
      * 结算状态
      */
     private String settlementStatus;
+
+    /**
+     * 来源类型：以销定购/普通采购
+     */
+    private String sourceType;
+
+    /**
+     * 来源销售订单ID
+     */
+    private Long sourceSalesOrderId;
 }

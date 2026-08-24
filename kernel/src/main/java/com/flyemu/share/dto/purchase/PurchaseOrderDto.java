@@ -116,4 +116,19 @@ public class PurchaseOrderDto {
      * 审核人名称
      */
     private String approvedName;
+
+    /**
+     * 来源销售订单ID
+     */
+    private Long sourceSalesOrderId;
+
+    /**
+     * 来源类型
+     */
+    private String sourceType;
+
+    /**
+     * 来源销售订单编号
+     */
+    private String sourceSalesOrderNo;
 }

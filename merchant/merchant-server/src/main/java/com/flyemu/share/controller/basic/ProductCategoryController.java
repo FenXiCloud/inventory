@@ -28,15 +28,13 @@ public class ProductCategoryController {
     @PostMapping
     public JsonResult save(@RequestBody @Valid ProductCategory productCategory, @SaAccountVal AccountDto accountDto) {
         TenantScope.bind(productCategory, accountDto);
-        productCategoryService.save(productCategory);
-        return JsonResult.successful();
+        return JsonResult.successful(productCategoryService.save(productCategory));
     }
 
     @PutMapping
     public JsonResult update(@RequestBody @Valid ProductCategory productCategory, @SaAccountVal AccountDto accountDto) {
         TenantScope.bind(productCategory, accountDto);
-        productCategoryService.save(productCategory);
-        return JsonResult.successful();
+        return JsonResult.successful(productCategoryService.save(productCategory));
     }
 
     @DeleteMapping("/{productCategoryId}")

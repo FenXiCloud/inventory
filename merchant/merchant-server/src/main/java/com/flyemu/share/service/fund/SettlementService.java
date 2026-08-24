@@ -254,6 +254,7 @@ public class SettlementService extends BaseService {
                 .innerJoin(qSettlement).on(qSettlement.id.eq(qSettlementItem.settlementId))
                 .where(qSettlementItem.businessId.eq(businessId)
                         .and(qSettlementItem.businessCategory.eq("INVENTORY"))
+                        .and(qSettlementItem.businessType.eq(businessType))
                         .and(qSettlement.merchantId.eq(merchantId)))
                 .fetchOne();
         if (exists != null && exists > 0) {
@@ -297,12 +298,13 @@ public class SettlementService extends BaseService {
      * 收款/付款单保存时更新关联结算单的已核销金额
      */
     @Transactional
-    public void updateWriteOff(Long orderId, BigDecimal currentVerifyAmount, Long merchantId, Long accountBookId) {
+    public void updateWriteOff(Long orderId, BigDecimal currentVerifyAmount, Long merchantId, Long accountBookId, String businessType) {
         if (orderId == null || currentVerifyAmount == null) return;
         SettlementItem item = jqf.selectFrom(qSettlementItem)
                 .innerJoin(qSettlement).on(qSettlement.id.eq(qSettlementItem.settlementId))
                 .where(qSettlementItem.businessId.eq(orderId)
                         .and(qSettlementItem.businessCategory.eq("INVENTORY"))
+                        .and(qSettlementItem.businessType.eq(businessType))
                         .and(qSettlement.merchantId.eq(merchantId))
                         .and(qSettlement.accountBookId.eq(accountBookId)))
                 .fetchFirst();

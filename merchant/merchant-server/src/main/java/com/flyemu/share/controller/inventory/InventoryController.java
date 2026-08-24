@@ -73,6 +73,16 @@ public class InventoryController {
         return JsonResult.successful(inventoryService.totalCost(productId, warehouseId, accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
+    @GetMapping("/costDetail/{productId}/{warehouseId}")
+    public JsonResult costDetail(@PathVariable("productId") Long productId, @PathVariable("warehouseId") Long warehouseId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(inventoryService.costDetail(productId, warehouseId, accountDto.getMerchantId(), accountDto.getAccountBookId()));
+    }
+
+    @GetMapping("/tailDifference")
+    public JsonResult tailDifference(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(inventoryService.tailDifference(accountDto.getMerchantId(), accountDto.getAccountBookId()));
+    }
+
     @GetMapping("/balance")
     public JsonResult balance(Page page, InventoryService.Query query, @SaAccountVal AccountDto accountDto) {
         TenantScope.bind(query, accountDto);

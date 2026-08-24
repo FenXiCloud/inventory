@@ -62,6 +62,12 @@
           </t-col>
 
           <t-col :span="6">
+            <t-form-item label="税号" name="taxNo">
+              <t-input v-model.trim="model.taxNo" placeholder="税号" :maxlength="32"/>
+            </t-form-item>
+          </t-col>
+
+          <t-col :span="6">
             <t-form-item label="是否启用" name="enabled">
               <t-radio-group v-model="model.enabled">
                 <t-radio :value="true">启用</t-radio>
@@ -109,6 +115,7 @@ export default {
         name: null,
         contact: null,
         phone: null,
+        taxNo: null,
         supplierCategoryId: null,
         address: null,
         enabled: true

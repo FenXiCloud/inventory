@@ -368,7 +368,7 @@ export default {
   methods: {
     productImage(row) {
       const p = (this.productList || []).find(item => (item.productId || item.id) === row.productId);
-      return p?.imgPath || '-';
+      return p?.imgPath || '';
     },
     warehouseName(id) {
       return (this.warehouseList || []).find(w => w.id === id)?.name || '';

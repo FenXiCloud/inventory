@@ -222,6 +222,6 @@ export default {
   flex: 1 1 0;
   height: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 </style>

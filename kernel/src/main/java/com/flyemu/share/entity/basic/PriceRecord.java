@@ -51,7 +51,8 @@ public class PriceRecord implements TenantAware {
     private Long baseUnitId;
 
     @Comment("数量（以基本单位计）")
-    private Double quantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal quantity;
 
     @Comment("单价（以基本单位计）")
     private BigDecimal unitPrice;

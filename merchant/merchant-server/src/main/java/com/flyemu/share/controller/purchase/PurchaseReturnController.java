@@ -73,6 +73,7 @@ public class PurchaseReturnController {
      * @param accountDto
      * @return
      */
+    //审核
     @PostMapping("/approved/{state}")
     public JsonResult approved(@RequestBody List<Long> ids, @PathVariable OrderStatus state, @SaAccountVal AccountDto accountDto) {
         purchaseReturnService.approved(ids, state, accountDto.getAdminId(), accountDto.getMerchantId());

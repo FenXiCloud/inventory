@@ -5,7 +5,6 @@
         <div class="form-toolbar__left">
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
           <t-date-picker v-model="form.orderDate" :disabled="isLocked"
-                         :disable-date="{ before: accountBook.checkoutDate }"
                          :clearable="false"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">客户：</label>
           <t-select class="w-178px" filterable :options="customerList"
@@ -151,7 +150,8 @@ export default {
     stockTakeId: [String, Number],
     importOutbound: Array,
     type: String,
-    index: Number
+    index: Number,
+    outboundType: String
   },
   computed: {
     ...mapState(["user", "accountBook"]),
@@ -590,6 +590,8 @@ export default {
       if (this.stockTakeId) {
         this.form.outboundType = "盘亏出库";
         this.otherOutboundData = (JSON.parse(JSON.stringify(this.importOutbound)) || []).map((row) => newRow(row));
+      } else if (this.outboundType) {
+        this.form.outboundType = this.outboundType;
       }
     },
     approved() {

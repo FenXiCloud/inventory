@@ -49,6 +49,19 @@ public class AccountBookParameters implements Serializable {
      */
     private Integer priceDecimal;
     /**
+     * 以销定购默认单据状态：草稿/待审核/已审核
+     */
+    @Column(length = 20)
+    private String toOrderDefaultStatus = "待审核";
+    /**
+     * 以销定购是否自动审核：true/false
+     */
+    private Boolean toOrderAutoAudit = false;
+    /**
+     * 以销定购是否允许分批采购：true/false
+     */
+    private Boolean toOrderAllowPartial = true;
+    /**
      * 创建时间
      */
     private Date createTime;

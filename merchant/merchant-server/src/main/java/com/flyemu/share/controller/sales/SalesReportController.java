@@ -45,6 +45,12 @@ public class SalesReportController {
         return JsonResult.successful(salesReportService.ranking(page, salesReportForm));
     }
 
+    @PostMapping("/statistics")
+    public JsonResult statistics(@RequestBody(required = false) SalesReportForm salesReportForm, @SaAccountVal AccountDto accountDto) {
+        salesReportForm = ensureForm(salesReportForm, accountDto);
+        return JsonResult.successful(salesReportService.statistics(salesReportForm));
+    }
+
     private SalesReportForm ensureForm(SalesReportForm form, AccountDto accountDto) {
         if (form == null) {
             form = new SalesReportForm();

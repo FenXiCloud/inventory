@@ -22,7 +22,7 @@ public class ReceivableDetailReportVO {
     private BigDecimal receivableAmount;
     // 增加预收款金额
     private BigDecimal prepaymentAmount;
-    // 应收款余额 = 应核销金额 - 已核销金额
+    // 应收款余额 = 应核销金额 - 本次核销金额（本单剩余未核销部分）
     private BigDecimal balance;
     // 销售人员
     private String staffName;

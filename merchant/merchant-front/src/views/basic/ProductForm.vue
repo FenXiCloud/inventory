@@ -17,7 +17,7 @@
                   <t-input
                       v-model="model.code"
                       placeholder="请输入编码,不填自动生成"
-                      :maxlength="64"
+                      :maxlength="255"
                       :disabled="!!model.id"
                   />
                 </t-form-item>
@@ -26,8 +26,8 @@
                 <t-form-item label="产品名称" name="name">
                   <t-input
                       v-model="model.name"
-                      placeholder="长度 < 64"
-                      :maxlength="64"
+                      placeholder="请输入产品名称"
+                      :maxlength="255"
                   />
                 </t-form-item>
               </t-col>
@@ -53,6 +53,16 @@
                       v-model="model.specification"
                       placeholder="请输入规格"
                       :maxlength="120"
+                  />
+                </t-form-item>
+              </t-col>
+
+              <t-col :span="6">
+                <t-form-item label="品牌" name="brand">
+                  <t-input
+                      v-model="model.brand"
+                      placeholder="请输入品牌"
+                      :maxlength="64"
                   />
                 </t-form-item>
               </t-col>
@@ -90,6 +100,27 @@
                 </t-form-item>
               </t-col>
               <t-col :span="6">
+                <t-form-item label="可采购" name="purchasable">
+                  <t-radio-group v-model="model.purchasable">
+                    <t-radio :value="true">是</t-radio>
+                    <t-radio :value="false">否</t-radio>
+                  </t-radio-group>
+                </t-form-item>
+              </t-col>
+              <t-col :span="6">
+                <t-form-item label="默认供应商" name="defaultSupplierId">
+                  <t-select
+                    v-model="model.defaultSupplierId"
+                    :options="supplierList"
+                    :keys="{ value: 'id', label: 'name' }"
+                    filterable
+                    clearable
+                    placeholder="请选择默认供应商"
+                    style="width: 100%"
+                  />
+                </t-form-item>
+              </t-col>
+              <t-col :span="6">
                 <t-form-item label="进货价" name="purchasePrice">
                   <t-input-number
                       v-model="model.purchasePrice"
@@ -107,6 +138,148 @@
                   <t-checkbox v-model="model.enableMultiUnit" :disabled="!model.unitId">
                     启用多单位换算
                   </t-checkbox>
+                </t-form-item>
+              </t-col>
+
+              <t-col :span="12">
+                <t-form-item label="批次保质期">
+                  <t-checkbox v-model="model.enableBatch">
+                    启用批次/保质期管理
+                  </t-checkbox>
+                  <t-checkbox v-model="model.enableSerial" style="margin-left: 16px">
+                    启用序列号管理
+                  </t-checkbox>
+                </t-form-item>
+              </t-col>
+
+              <t-col :span="6">
+                <t-form-item label="预警库存">
+                  <t-input-number
+                      v-model="model.alertQuantity"
+                      theme="normal"
+                      :min="0"
+                      :decimal-places="0"
+                      placeholder="低于此值预警"
+                      style="width: 100%"
+                  />
+                </t-form-item>
+              </t-col>
+              <t-col :span="6">
+                <t-form-item label="库存上限">
+                  <t-input-number
+                      v-model="model.maxStockQuantity"
+                      theme="normal"
+                      :min="0"
+                      :decimal-places="0"
+                      placeholder="超过此值预警"
+                      style="width: 100%"
+                  />
+                </t-form-item>
+              </t-col>
+
+              <t-col :span="6">
+                <t-form-item label="整件数量">
+                  <t-input-number
+                      v-model="model.caseQuantity"
+                      theme="normal"
+                      :min="0"
+                      :decimal-places="0"
+                      placeholder="1整件=多少基本单位"
+                      style="width: 100%"
+                  />
+                </t-form-item>
+              </t-col>
+              <t-col :span="6">
+                <t-form-item label="整件单位">
+                  <t-select
+                      v-model="model.caseUnitId"
+                      :options="unitList"
+                      :keys="{ value: 'id', label: 'name' }"
+                      filterable
+                      clearable
+                      placeholder="请选择整件单位"
+                  />
+                </t-form-item>
+              </t-col>
+              <t-col :span="6">
+                <t-form-item label="默认整件货位">
+                  <t-select
+                      v-model="model.defaultWholeLocationId"
+                      :options="wholeLocationList"
+                      :keys="{ value: 'id', label: 'name' }"
+                      filterable
+                      clearable
+                      placeholder="请选择默认整件货位"
+                  />
+                </t-form-item>
+              </t-col>
+              <t-col :span="6">
+                <t-form-item label="默认零货货位">
+                  <t-select
+                      v-model="model.defaultZeroLocationId"
+                      :options="zeroLocationList"
+                      :keys="{ value: 'id', label: 'name' }"
+                      filterable
+                      clearable
+                      placeholder="请选择默认零货货位"
+                  />
+                </t-form-item>
+              </t-col>
+
+              <t-col :span="6">
+                <t-form-item label="税率">
+                  <t-input-number
+                      v-model="model.taxRate"
+                      theme="normal"
+                      :min="0"
+                      :max="1"
+                      :decimal-places="4"
+                      placeholder="如 0.13"
+                      style="width: 100%"
+                  />
+                </t-form-item>
+              </t-col>
+              <t-col :span="6">
+                <t-form-item label="税收分类编码" name="goodsCode">
+                  <t-input
+                      v-model="model.goodsCode"
+                      placeholder="开票税收分类编码"
+                      :maxlength="64"
+                  />
+                </t-form-item>
+              </t-col>
+
+              <t-col :span="12">
+                <t-form-item label="辅助属性">
+                  <div class="product-form__attrs">
+                    <div
+                        v-for="(attr, index) in model.productAttributes"
+                        :key="'attr-' + index"
+                        class="product-form__attr-row"
+                    >
+                      <t-select
+                          v-model="attr.name"
+                          :options="attributeList"
+                          :keys="{ value: 'name', label: 'name' }"
+                          filterable
+                          clearable
+                          placeholder="选择属性名"
+                          class="product-form__attr-name"
+                          @change="(val) => onAttrNameChange(index, val)"
+                      />
+                      <t-select
+                          v-model="attr.value"
+                          :options="attrValuesOptions(index)"
+                          filterable
+                          creatable
+                          clearable
+                          placeholder="填写属性值"
+                          class="product-form__attr-value"
+                      />
+                      <t-button variant="text" theme="danger" @click="removeAttr(index)">删除</t-button>
+                    </div>
+                    <t-button variant="dashed" theme="primary" block @click="addAttr">+ 添加属性</t-button>
+                  </div>
                 </t-form-item>
               </t-col>
 
@@ -228,8 +401,11 @@ import {MessagePlugin} from 'tdesign-vue-next';
 import {CopyObj} from '@common/utils';
 import Product from '@js/api/basic/Product';
 import ProductCategory from '@js/api/basic/ProductCategory';
+import ProductAttribute from '@js/api/basic/ProductAttribute';
+import Supplier from '@js/api/basic/Supplier';
 import CustomerLevel from '@js/api/basic/CustomerLevel';
 import Unit from '@js/api/basic/Unit';
+import WarehouseLocation from '@js/api/basic/WarehouseLocation';
 import {OssUpload} from '@js/api/App';
 import {toArrayTree} from '@common/utils';
 
@@ -244,7 +420,11 @@ export default {
       loading: false,
       categoryList: [],
       unitList: [],
+      supplierList: [],
       customerLevelPriceList: [],
+      attributeList: [],
+      wholeLocationList: [],
+      zeroLocationList: [],
       model: {
         id: null,
         code: null,
@@ -254,11 +434,25 @@ export default {
         imgPath: null,
         unitId: null,
         enableMultiUnit: false,
+        enableBatch: false,
+        enableSerial: false,
         auxiliaryUnitPrices: [],
         specification: null,
+        brand: null,
         sort: 0,
         remarks: null,
-        enabled: true
+        alertQuantity: null,
+        maxStockQuantity: null,
+        caseQuantity: null,
+        caseUnitId: null,
+        defaultWholeLocationId: null,
+        defaultZeroLocationId: null,
+        taxRate: null,
+        goodsCode: null,
+        productAttributes: [],
+        enabled: true,
+        purchasable: true,
+        defaultSupplierId: null
       },
       rules: {
         name: [{required: true, message: '请输入产品名称', type: 'error'}],
@@ -444,6 +638,22 @@ export default {
       if (!unitId || !this.unitList.length) return '';
       return this.unitList.find((val) => val.id === unitId)?.name || '';
     },
+    addAttr() {
+      this.model.productAttributes.push({name: null, value: null});
+    },
+    removeAttr(index) {
+      this.model.productAttributes.splice(index, 1);
+    },
+    onAttrNameChange(index, val) {
+      if (val == null) {
+        this.model.productAttributes[index].value = null;
+      }
+    },
+    attrValuesOptions(index) {
+      const name = this.model.productAttributes?.[index]?.name;
+      if (!name) return [];
+      return this.attributeList.find((a) => a.name === name)?.values || [];
+    },
     buildCustomerLevelPriceList(levels, priceMap) {
       return (levels || []).map((cl) => {
         const cp = {customerLeveId: cl.id, customerLeveName: cl.name, price: 0};
@@ -463,6 +673,7 @@ export default {
   created() {
     if (this.entity) {
       CopyObj(this.model, this.entity);
+      this.model.productAttributes = this.model.productAttributes || [];
       if (this.model.enableMultiUnit) {
         const list = this.model.auxiliaryUnitPrices || [];
         const next = [];
@@ -476,11 +687,19 @@ export default {
     Promise.all([
       ProductCategory.select(),
       Unit.select(),
-      CustomerLevel.select()
+      CustomerLevel.select(),
+      ProductAttribute.list(),
+      Supplier.select(),
+      WarehouseLocation.listByType('WHOLE'),
+      WarehouseLocation.listByType('ZERO')
     ]).then(async (results) => {
       this.categoryList = results[0].data || [];
       this.unitList = results[1].data || [];
       const levels = results[2].data || [];
+      this.attributeList = results[3].data || [];
+      this.supplierList = results[4].data || [];
+      this.wholeLocationList = results[5].data || [];
+      this.zeroLocationList = results[6].data || [];
 
       if (this.entity) {
         const {data} = await Product.customerLevelPrice(this.entity.id);
@@ -511,6 +730,28 @@ export default {
   align-items: center;
   gap: 8px;
   width: 100%;
+}
+
+.product-form__attrs {
+  width: 100%;
+}
+
+.product-form__attr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.product-form__attr-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-form__attr-value {
+  flex: 1;
+  min-width: 0;
 }
 
 .product-form__unit-select {

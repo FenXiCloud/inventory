@@ -87,4 +87,11 @@ public class SalesOutbound implements TenantAware {
 
     @Comment("销售退货单id")
     private Long returnOrderId;
+
+    @Comment("关联发票ID")
+    private Long invoiceId;
+
+    @Comment("开票状态: 未开票/已开票")
+    @Column(length = 16, columnDefinition = "varchar(16) default '未开票'")
+    private String invoiceStatus;
 }

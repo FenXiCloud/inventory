@@ -1,7 +1,6 @@
 /* eslint-disable */
 import {saveAs} from 'file-saver'
 import * as XLSX from 'xlsx'
-import * as XLSXStyle from 'xlsx-style'
 
 function generateArray(table) {
     var out = [];
@@ -225,12 +224,12 @@ export function export_json_to_excel({
     wb.SheetNames.push(ws_name);
     wb.Sheets[ws_name] = ws;
 
-    var wbout = XLSXStyle.write(wb, {
+    var wbout = XLSX.write(wb, {
         bookType: bookType,
         bookSST: false,
-        type: 'binary'
+        type: 'array'
     });
-    saveAs(new Blob([s2ab(wbout)], {
+    saveAs(new Blob([wbout], {
         type: "application/octet-stream"
     }), `${filename}.${bookType}`);
 }

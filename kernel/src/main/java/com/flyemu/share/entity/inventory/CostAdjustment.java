@@ -32,7 +32,6 @@ public class CostAdjustment implements TenantAware {
     private String orderNo;
 
     @Comment("调整日期")
-    @CreationTimestamp
     private Date djustmentDate;
 
     @Comment("调整金额")

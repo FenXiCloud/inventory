@@ -26,10 +26,11 @@
           <Suspense>
             <component
                 v-if="tab.keepAlive === false ? tab.key === currentTab : true"
-                :is="tab.key"
+                :is="tab.component || tab.key"
                 v-bind="tab.params"
                 :index="index"
                 :pro="tab.params"
+                :data-active="tab.key === currentTab"
             />
             <template #fallback>
               <t-loading text="页面加载中,请稍后..."/>

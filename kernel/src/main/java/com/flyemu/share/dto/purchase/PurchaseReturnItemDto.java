@@ -56,7 +56,7 @@ public class PurchaseReturnItemDto {
     /**
      * 基本数量
      */
-    private Double quantity;
+    private BigDecimal quantity;
 
     /**
      * 采购单位ID
@@ -71,12 +71,12 @@ public class PurchaseReturnItemDto {
     /**
      * 采购数量
      */
-    private Double secondaryQuantity;
+    private BigDecimal secondaryQuantity;
 
     /**
      * 采购单价
      */
-    private Double secondaryPrice;
+    private BigDecimal secondaryPrice;
 
     /**
      * 换算率
@@ -149,6 +149,6 @@ public class PurchaseReturnItemDto {
     /**
      * 可退数量
      */
-    private Double returnQuantity;
+    private BigDecimal returnQuantity;
 
 }

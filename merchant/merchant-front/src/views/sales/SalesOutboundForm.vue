@@ -19,7 +19,6 @@
             <label class="mr-20px ml-16px" style="font-size: 16px !important;">出库日期：</label>
             <t-date-picker
                 v-model="form.outboundDate"
-                :disable-date="{ before: accountBook.checkoutDate }"
                 :clearable="false"
                 :disabled="isAudited"
             />
@@ -30,6 +29,14 @@
                 style="margin-left: 20px"
             >
               选择源单
+            </t-button>
+            <t-button
+                v-if="!isAudited"
+                @click="openComboSelect"
+                variant="outline"
+                style="margin-left: 12px"
+            >
+              选套餐
             </t-button>
           </div>
           <Stamp v-if="isAudited"/>
@@ -94,6 +101,15 @@
               />
             </template>
             <span v-else-if="!row.isNew">{{ warehouseName(row.warehouseId) }}</span>
+          </template>
+          <template #batchNumber="{ row }">
+            <template v-if="!row.isNew && !isAudited">
+              <t-link v-if="isBatchProduct(row)" theme="primary" hover="color" @click="openBatchSelect(row)">
+                {{ row.batchNumber || '选批次' }}
+              </t-link>
+              <span v-else>-</span>
+            </template>
+            <span v-else-if="!row.isNew">{{ row.batchNumber || '-' }}</span>
           </template>
           <template #quantity="{ row, rowIndex }">
             <template v-if="!row.isNew && !isAudited">
@@ -193,6 +209,9 @@
             />
             <span v-else-if="!row.isNew">{{ row.subtotal }}</span>
           </template>
+          <template #taxRate="{ row }">
+            {{ taxRateText(row.taxRate) }}
+          </template>
           <template #remark="{ row, rowIndex }">
             <t-input
                 v-if="!row.isNew && !isAudited"
@@ -248,6 +267,22 @@
                 :decimal-places="2"
                 disabled
             />
+            <label class="ml-16px mr-16px w-80px">税额：</label>
+            <t-input-number
+                v-model="form.taxAmount"
+                theme="normal"
+                :min="0"
+                :decimal-places="2"
+                disabled
+            />
+            <label class="ml-16px mr-16px w-100px">价税合计：</label>
+            <t-input-number
+                v-model="form.totalWithTax"
+                theme="normal"
+                :min="0"
+                :decimal-places="2"
+                disabled
+            />
           </div>
         </div>
         <div class="filler-panel">
@@ -263,6 +298,7 @@
           <t-button theme="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
           <t-button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</t-button>
           <t-button @click="doPrint" :loading="loading">打印</t-button>
+          <t-button v-if="form.id && isAudited" theme="warning" @click="generatePickOrder()" :loading="loading">生成拣货单</t-button>
           <t-button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
           <t-button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
         </div>
@@ -273,6 +309,47 @@
         <img :src="previewImageUrl" class="preview-image" alt="产品图片预览">
       </div>
     </div>
+
+    <t-dialog v-model:visible="batchVisible" header="选择出库批次" width="560px" :footer="false">
+      <div class="batch-hint">选择本行商品的出库批次（按有效期先后排序，先到先出）：</div>
+      <t-table
+          row-key="batchNumber"
+          size="small"
+          bordered
+          hover
+          height="320px"
+          :data="batchList"
+          :columns="batchColumns"
+          :loading="batchLoading"
+          empty="该商品仓库暂无可用批次"
+      >
+        <template #ops="{ row }">
+          <t-link theme="primary" @click="pickBatch(row)">选用</t-link>
+        </template>
+      </t-table>
+    </t-dialog>
+
+    <t-dialog v-model:visible="comboVisible" header="选择商品套餐" :footer="false" width="460px">
+      <t-form label-width="90px">
+        <t-form-item label="套餐">
+          <t-select
+              v-model="selectedComboId"
+              :options="comboList"
+              :keys="{ value: 'id', label: 'customName' }"
+              filterable
+              placeholder="请选择套餐"
+              style="width: 100%"
+          />
+        </t-form-item>
+        <t-form-item label="套餐数量">
+          <t-input-number v-model="comboQuantity" :min="1" :decimal-places="0" style="width: 100%"/>
+        </t-form-item>
+      </t-form>
+      <div style="text-align: right">
+        <t-button variant="outline" @click="comboVisible = false">取消</t-button>
+        <t-button theme="primary" style="margin-left: 8px" @click="applyCombo">确定</t-button>
+      </div>
+    </t-dialog>
   </div>
 </template>
 <script>
@@ -284,6 +361,7 @@ import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapState} from "vuex";
 import Product from "@js/api/basic/Product";
+import ProductCombo from "@js/api/basic/ProductCombo";
 import {openDrawer, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import SalesOrderSelect from "@views/sales/SalesOrderSelect.vue";
@@ -291,6 +369,8 @@ import Unit from "@js/api/basic/Unit";
 import SalesOrder from "@js/api/sales/SalesOrder";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
 import Inventory from "@js/api/inventory/Inventory";
+import InventoryReport from "@js/api/inventory/InventoryReport";
+import PickOrder from "@js/api/inventory/PickOrder";
 import Stamp from "@views/common/Stamp.vue";
 import PriceRecord from "@js/api/basic/PriceRecord";
 
@@ -338,12 +418,14 @@ export default {
         { colKey: 'specification', title: '规格型号', align: 'center', width: 100 },
         { colKey: 'productCategoryName', title: '产品类别', align: 'center', width: 100 },
         { colKey: 'warehouse', title: '仓库', align: 'center', width: 180 },
+        { colKey: 'batchNumber', title: '批次号', align: 'center', width: 100 },
         { colKey: 'quantity', title: '数量', width: 90 },
         { colKey: 'unitName', title: '单位', align: 'center', width: 80 },
         { colKey: 'unitPrice', title: '单价', width: 100 },
         { colKey: 'discountRate', title: '折扣率(%)', width: 100 },
         { colKey: 'discountValue', title: '折扣额', width: 100 },
         { colKey: 'subtotal', title: '金额', width: 100 },
+        { colKey: 'taxRate', title: '税率', align: 'center', width: 80 },
         { colKey: 'remark', title: '备注', width: 100 },
         { colKey: 'salesOrderNo', title: '关联销售单号', width: 200 },
       ];
@@ -352,10 +434,12 @@ export default {
       let quantity = 0;
       let discountValue = 0;
       let subtotal = 0;
+      let taxAmount = 0;
       (this.productData || []).forEach((row) => {
         quantity += Number(row.quantity || 0);
         discountValue += Number(row.discountValue || 0);
         subtotal += Number(row.subtotal || 0);
+        taxAmount += Number(row.subtotal || 0) * Number(row.taxRate || 0);
       });
       this.form.orderQuantity = quantity.toFixed(2);
       this.form.totalAmount = subtotal.toFixed(2);
@@ -368,11 +452,14 @@ export default {
           this.form.finalAmount = this.form.totalAmount;
         }
       }
+      this.form.taxAmount = taxAmount.toFixed(2);
+      this.form.totalWithTax = (Number(this.form.finalAmount || 0) + taxAmount).toFixed(2);
       return [{
         ops: '合计',
         quantity: quantity.toFixed(2),
         discountValue: discountValue,
-        subtotal: subtotal
+        subtotal: subtotal,
+        taxAmount: taxAmount.toFixed(2)
       }];
     }
   },
@@ -393,6 +480,8 @@ export default {
         discountAmount: 0.00,
         discountRate: 0.00,
         finalAmount: 0.00,
+        taxAmount: 0.00,
+        totalWithTax: 0.00,
         remarks: null,
         orderStatus: null,
       },
@@ -400,16 +489,35 @@ export default {
       selectSalesOrderIdList: [],
       previewVisible: false,
       previewImageUrl: '',
+      batchVisible: false,
+      batchLoading: false,
+      batchList: [],
+      currentBatchRow: null,
+      batchColumns: [
+        { colKey: 'batchNumber', title: '批次号', width: 160, ellipsis: true },
+        { colKey: 'productionDate', title: '生产日期', width: 100, align: 'center' },
+        { colKey: 'expiryDate', title: '有效期至', width: 100, align: 'center' },
+        { colKey: 'availableQuantity', title: '可用数量', width: 100, align: 'right' },
+        { colKey: 'ops', title: '操作', width: 70, align: 'center' },
+      ],
       recentSales: [],
       customerLevel: null,
       customerLevelId: null,
       customerPrice: null,
+      comboVisible: false,
+      comboList: [],
+      selectedComboId: null,
+      comboQuantity: 1,
     }
   },
   methods: {
     productImage(row) {
       const p = (this.productList || []).find(item => item.id === row.productId);
-      return p?.imgPath || '-';
+      return p?.imgPath || '';
+    },
+    taxRateText(rate) {
+      const r = Number(rate || 0);
+      return r ? (r * 100).toFixed(0) + '%' : '-';
     },
     warehouseName(id) {
       return (this.warehouseList || []).find(w => w.id === id)?.name || '';
@@ -498,6 +606,7 @@ export default {
         productId: d.id,
         productCode: d.code,
         productName: d.name,
+        taxRate: d.taxRate,
         remark: "",
       });
       this.productData[index] = g;
@@ -517,8 +626,113 @@ export default {
       this.showStockQuantity(g);
       this.showPrice(g);
     },
+    openComboSelect() {
+      if (!this.form.customerId && !this.customerId) {
+        MessagePlugin.warning('请先选择客户');
+        return;
+      }
+      this.loadCombos();
+      this.comboVisible = true;
+    },
+    loadCombos() {
+      ProductCombo.list({ page: 1, pageSize: 1000 }).then(({ data }) => {
+        this.comboList = (data?.results || [])
+          .filter((c) => c.enabled !== false)
+          .map((c) => ({ ...c, customName: `${c.code || ''}--${c.name || ''}` }));
+      });
+    },
+    applyCombo() {
+      if (!this.selectedComboId) {
+        MessagePlugin.warning('请选择套餐');
+        return;
+      }
+      ProductCombo.load(this.selectedComboId).then(({ data }) => {
+        const items = data?.comboItemList || [];
+        if (!items.length) {
+          MessagePlugin.warning('该套餐没有组件');
+          return;
+        }
+        const qty = Number(this.comboQuantity) || 1;
+        this.expandComboItems(items, qty);
+        this.comboVisible = false;
+        this.selectedComboId = null;
+        this.comboQuantity = 1;
+      });
+    },
+    expandComboItems(comboItems, qty) {
+      const defaultWarehouseId = this.resolveDefaultWarehouseId();
+      const newRows = [];
+      comboItems.forEach((ci) => {
+        const p = (this.productList || []).find((i) => String(i.id) === String(ci.productId));
+        if (!p) return;
+        const row = newRow({
+          isNew: false,
+          quantity: (Number(ci.quantity) || 1) * qty,
+          unitPrice: p.lastSalePrice || 0,
+          warehouseId: defaultWarehouseId,
+          discountValue: 0.00,
+          discountRate: 0.00,
+          baseUnitId: p.unitId,
+          unitName: p.unitName,
+          taxRate: p.taxRate != null ? p.taxRate : null,
+          productId: p.id,
+          productCode: p.code,
+          productName: p.name,
+          remark: "",
+        });
+        row.subtotal = (row.quantity * row.unitPrice).toFixed(2);
+        newRows.push(row);
+      });
+      if (!newRows.length) {
+        MessagePlugin.warning('套餐组件在商品库中不存在');
+        return;
+      }
+      const firstEmpty = this.productData.findIndex((i) => i.isNew && !i.productId);
+      if (firstEmpty >= 0) {
+        this.productData.splice(firstEmpty, 1, ...newRows);
+      } else {
+        this.productData.push(...newRows);
+      }
+      if (!this.productData.some((i) => i.isNew && !i.productId)) {
+        this.productData.push(newRow({ isNew: true }));
+      }
+      newRows.forEach((r) => {
+        this.showStockQuantity(r);
+        this.showPrice(r);
+      });
+      MessagePlugin.success(`已展开套餐 ${newRows.length} 个组件`);
+    },
     handleWarehouseChange(row) {
       this.showStockQuantity(row);
+    },
+    isBatchProduct(row) {
+      const p = (this.productList || []).find(x => String(x.id) === String(row.productId));
+      return !!p && !!p.enableBatch;
+    },
+    openBatchSelect(row) {
+      if (!row.productId || !row.warehouseId) {
+        MessagePlugin.warning('请先选择产品和仓库~');
+        return;
+      }
+      this.currentBatchRow = row;
+      this.batchVisible = true;
+      this.loadBatches(row);
+    },
+    loadBatches(row) {
+      this.batchLoading = true;
+      InventoryReport.batchAvailable({ productId: row.productId, warehouseId: row.warehouseId })
+        .then(({ data }) => {
+          this.batchList = (data || []).map((b) => ({...b}));
+        })
+        .finally(() => (this.batchLoading = false));
+    },
+    pickBatch(batch) {
+      if (!this.currentBatchRow) return;
+      this.currentBatchRow.batchNumber = batch.batchNumber;
+      this.currentBatchRow.productionDate = batch.productionDate;
+      this.currentBatchRow.expiryDate = batch.expiryDate;
+      this.batchVisible = false;
+      MessagePlugin.success('已选择批次：' + batch.batchNumber);
     },
     showStockQuantity(row) {
       let productId = row.productId;
@@ -630,6 +844,8 @@ export default {
         discountAmount: 0.00,
         discountRate: 0.00,
         finalAmount: 0.00,
+        taxAmount: 0.00,
+        totalWithTax: 0.00,
         remarks: null,
         orderStatus: null,
       };
@@ -762,6 +978,26 @@ export default {
         }
       });
     },
+    generatePickOrder() {
+      if (!this.form.id) {
+        MessagePlugin.warning("请先保存出库单");
+        return;
+      }
+      DialogPlugin.confirm({
+        header: "生成拣货单",
+        body: `确认根据当前出库单生成拣货单？系统将按库区（整货/零货）自动拆分。`,
+        onConfirm: () => {
+          this.loading = true;
+          PickOrder.generate(this.form.id).then(({data}) => {
+            MessagePlugin.success(`成功生成 ${data.length} 张拣货单`);
+            // 跳转到拣货单列表
+            this.$store.commit('newTab', "PickOrderList");
+          }).finally(() => {
+            this.loading = false;
+          });
+        }
+      });
+    },
     closeWindow() {
       this.$store.commit('closeTabKey', this.$store.state.currentTab);
       this.$store.commit('newTab', "SalesOutboundList");
@@ -810,6 +1046,14 @@ export default {
           this.reloadProductList();
         });
       }
+      // 检查是否从销售订单转入
+      const tabData = this.$store.state.currentTabData;
+      if (tabData && tabData.fromSalesOrder && tabData.orderIds && tabData.orderIds.length > 0) {
+        this.customerId = tabData.customerId;
+        this.form.customerId = tabData.customerId;
+        this.loadToOutbound({ orderIds: tabData.orderIds });
+        this.$store.commit('SET_TAB_DATA', null);
+      }
     }).finally(() => LoadingPlugin(false));
   },
 }
@@ -819,6 +1063,16 @@ export default {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+.batch-hint {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: #f3f3f3;
+  color: #555;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .product-img {

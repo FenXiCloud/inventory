@@ -30,7 +30,8 @@ public class InventoryTransferItem implements TenantAware {
     private Long productId;
 
     @Comment("数量（以基本单位计）")
-    private Double quantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal quantity;
 
     @Comment("调出仓库ID")
     private Long fromWarehouseId;

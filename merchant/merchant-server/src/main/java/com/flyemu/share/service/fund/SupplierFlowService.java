@@ -14,10 +14,12 @@ import com.flyemu.share.entity.basic.QSupplier;
 import com.flyemu.share.entity.basic.Supplier;
 import com.flyemu.share.entity.fund.QSupplierFlow;
 import com.flyemu.share.entity.fund.SupplierFlow;
+import com.flyemu.share.entity.setting.QAccountBook;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.SupplierInitialForm;
 import com.flyemu.share.repository.fund.SupplierFlowRepository;
 import com.flyemu.share.repository.basic.SupplierRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -32,6 +34,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,9 +48,11 @@ public class SupplierFlowService extends BaseService {
 
     private final static QSupplierFlow qSupplierFlow = QSupplierFlow.supplierFlow;
     private final static QSupplier qSupplier = QSupplier.supplier;
+    private final static QAccountBook qAccountBook = QAccountBook.accountBook;
 
     private final SupplierFlowRepository supplierFlowRepository;
     private final SupplierRepository supplierRepository;
+    private final CheckoutService checkoutService;
 
     public List<SupplierFlow> query(Query query) {
         return bqf.selectFrom(qSupplierFlow).where(query.builder).orderBy(qSupplierFlow.id.desc()).fetch();
@@ -88,8 +93,26 @@ public class SupplierFlowService extends BaseService {
         return new PageResults<>(collect, page, fetchPage.getTotalSize());
     }
 
+    /**
+     * 校验账套是否已结账，结账后不允许设置/修改期初余额
+     */
+    private void assertNotCheckedOut(Long merchantId, Long accountBookId) {
+        LocalDate checkoutDate = jqf.select(qAccountBook.checkoutDate)
+                .from(qAccountBook)
+                .where(qAccountBook.merchantId.eq(merchantId).and(qAccountBook.id.eq(accountBookId)))
+                .fetchOne();
+        if (checkoutDate != null) {
+            throw new ServiceException("账套已结账，不允许设置或修改供应商期初余额");
+        }
+    }
+
     @Transactional
     public SupplierFlow save(SupplierFlow supplierFlow) {
+        // 结账后不允许设置/修改期初余额
+        if (SupplierFlow.SupplierFlowType.期初.equals(supplierFlow.getSupplierFlowType())) {
+            assertNotCheckedOut(supplierFlow.getMerchantId(), supplierFlow.getAccountBookId());
+        }
+
         if (supplierFlow.getId() != null) {
             //更新
             SupplierFlow original = supplierFlowRepository.getById(supplierFlow.getId());
@@ -101,6 +124,9 @@ public class SupplierFlowService extends BaseService {
 
     @Transactional
     public void delete(Long supplierFlowId, Long merchantId, Long accountBookId) {
+        // 结账后不允许删除期初余额
+        assertNotCheckedOut(merchantId, accountBookId);
+
         jqf.delete(qSupplierFlow).where(qSupplierFlow.id.eq(supplierFlowId).and(qSupplierFlow.merchantId.eq(merchantId)).and(qSupplierFlow.accountBookId.eq(accountBookId))).execute();
     }
 
@@ -130,6 +156,9 @@ public class SupplierFlowService extends BaseService {
 
     @Transactional
     public void batch(SupplierInitialForm form) {
+        // 结账后不允许设置/修改期初余额
+        assertNotCheckedOut(form.getMerchantId(), form.getAccountBookId());
+
         List<SupplierFlow> supplierFlowList = form.getSupplierFlowList();
         for (SupplierFlow item : supplierFlowList) {
             item.setAccountBookId(form.getAccountBookId());
@@ -187,6 +216,10 @@ public class SupplierFlowService extends BaseService {
         if (ids == null || ids.isEmpty()) {
             return;
         }
+
+        // 结账后不允许删除期初余额
+        assertNotCheckedOut(merchantId, accountBookId);
+
         jqf.delete(qSupplierFlow)
                 .where(qSupplierFlow.id.in(ids)
                         .and(qSupplierFlow.merchantId.eq(merchantId))

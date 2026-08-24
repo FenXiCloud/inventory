@@ -1,12 +1,14 @@
 package com.flyemu.share.service.basic;
 
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.enums.PolicySource;
 import com.flyemu.share.enums.PolicyType;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.repository.basic.PricingPolicyRepository;
 import com.flyemu.share.service.BaseService;
+import cn.hutool.core.collection.CollUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,7 +16,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 开单价格取数：按价格策略优先级链式回退
@@ -137,7 +141,34 @@ public class PriceResolveService extends BaseService {
                         .and(qPriceRecord.accountBookId.eq(accountBookId)))
                 .orderBy(qPriceRecord.id.desc())
                 .fetchFirst();
-        return record != null ? record.getUnitPrice() : null;
+        if (record == null) return null;
+        // PriceRecord.unitPrice 是基本单位单价；如果产品启用了辅助单位，需要换算为采购单位单价
+        return toPurchaseUnitPrice(productId, merchantId, accountBookId, record.getUnitPrice());
+    }
+
+    /**
+     * 将基本单位单价换算为采购单位单价（如果产品启用了辅助单位）。
+     * 换算逻辑：找到 conversionRate > 1 的辅助单位条目（即采购单位），用基本单价 × 换算率。
+     */
+    private BigDecimal toPurchaseUnitPrice(Long productId, Long merchantId, Long accountBookId, BigDecimal baseUnitPrice) {
+        Product product = jqf.selectFrom(qProduct)
+                .where(qProduct.id.eq(productId)
+                        .and(qProduct.merchantId.eq(merchantId))
+                        .and(qProduct.accountBookId.eq(accountBookId)))
+                .fetchFirst();
+        if (product == null || !Boolean.TRUE.equals(product.getEnableMultiUnit())
+                || CollUtil.isEmpty(product.getAuxiliaryUnitPrices())) {
+            return baseUnitPrice;
+        }
+        // 找 conversionRate > 1 的条目（采购单位），用最大换算率
+        Optional<AuxiliaryUnitPrice> purchaseUnit = product.getAuxiliaryUnitPrices().stream()
+                .filter(a -> a.getConversionRate() != null && a.getConversionRate() > 1)
+                .max((a, b) -> Double.compare(a.getConversionRate(), b.getConversionRate()));
+        if (purchaseUnit.isEmpty()) {
+            return baseUnitPrice;
+        }
+        BigDecimal rate = BigDecimal.valueOf(purchaseUnit.get().getConversionRate());
+        return baseUnitPrice.multiply(rate).setScale(6, RoundingMode.HALF_UP);
     }
 
     private BigDecimal findProductPurchasePrice(Long productId, Long merchantId, Long accountBookId) {
@@ -176,8 +207,8 @@ public class PriceResolveService extends BaseService {
                         .and(qPricingPolicy.policyType.eq(PolicyType.采购价格取数)))
                 .fetchCount();
         if (purchaseCount == 0) {
-            savePolicy(merchantId, accountBookId, PolicyType.采购价格取数, PolicySource.最近采购单价, 1, "优先取最近采购入库成交价");
-            savePolicy(merchantId, accountBookId, PolicyType.采购价格取数, PolicySource.预计采购价格, 2, "无成交价时取产品档案默认采购价");
+            savePolicy(merchantId, accountBookId, PolicyType.采购价格取数, PolicySource.预计采购价格, 1, "优先取产品档案默认采购价");
+            savePolicy(merchantId, accountBookId, PolicyType.采购价格取数, PolicySource.最近采购单价, 2, "无档案价时取最近采购入库成交价");
         }
     }
 

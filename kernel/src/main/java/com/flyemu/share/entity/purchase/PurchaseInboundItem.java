@@ -9,6 +9,7 @@ import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -32,20 +33,29 @@ public class PurchaseInboundItem implements TenantAware {
     @Comment("批次号")
     private String batchNumber;
 
+    @Comment("生产日期")
+    private LocalDate productionDate;
+
+    @Comment("有效期至")
+    private LocalDate expiryDate;
+
     @Comment("基本单位ID")
     private Long baseUnitId;
 
     @Comment("数量（以基本单位计）")
-    private Double quantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal quantity;
 
     @Comment("入库单位ID")
     private Long secondaryUnitId;
 
     @Comment("入库单位数量")
-    private Double secondaryQuantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal secondaryQuantity;
 
     @Comment("入库单价")
-    private Double secondaryPrice;
+    @Column(precision = 18, scale = 6)
+    private BigDecimal secondaryPrice;
 
     @Comment("换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)")
     private BigDecimal conversionRate;
@@ -65,6 +75,12 @@ public class PurchaseInboundItem implements TenantAware {
     @Comment("仓库ID")
     private Long warehouseId;
 
+    @Comment("货位ID")
+    private Long locationId;
+
+    @Comment("是否整件入库：1=整件，0=零货")
+    private Integer isCase;
+
     @Comment("创建人")
     private Long createdBy;
 
@@ -81,6 +97,7 @@ public class PurchaseInboundItem implements TenantAware {
     private Long merchantId;
 
     @Comment("可退货数量")
-    private Double returnQuantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal returnQuantity;
 
 }

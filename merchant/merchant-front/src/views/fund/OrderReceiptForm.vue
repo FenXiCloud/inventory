@@ -698,6 +698,7 @@ export default {
       }
       let params = {
         customerId: this.form.customerId,
+        type: 1,
         balance: this.form.totalAmountsOwed
       };
       let dialogId = openDialog({
@@ -707,14 +708,21 @@ export default {
         width: '900px',
         body: h(SourceForm, {
           params,
+          URL: 'Settlement',
           onClose: () => {
             closeDialog(dialogId);
           },
           onSuccess: (checkList) => {
+            // 结算单数据映射到收款单明细格式
+            const mappedList = checkList.map(item => ({
+              ...item,
+              salesOrderNo: item.businessNo,
+              salesOrderId: item.businessId,
+            }));
             const merged = new Map(
               this.tableData2.map((item) => [item.salesOrderNo, item])
             );
-            checkList.forEach((item) => {
+            mappedList.forEach((item) => {
               if (!merged.has(item.salesOrderNo)) {
                 merged.set(item.salesOrderNo, item);
               }

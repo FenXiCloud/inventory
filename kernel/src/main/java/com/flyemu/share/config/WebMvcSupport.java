@@ -78,6 +78,7 @@ public class WebMvcSupport extends WebMvcConfigurationSupport implements Initial
         list.add("/wallet/**");
         list.add("/product/**");
         list.add("/category/**");
+        list.add("/inventory/rebuildCostChain");
         interceptorRegistration.addPathPatterns("/**").excludePathPatterns(list);
     }
 

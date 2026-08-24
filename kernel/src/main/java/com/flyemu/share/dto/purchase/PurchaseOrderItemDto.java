@@ -45,7 +45,7 @@ public class PurchaseOrderItemDto {
     /**
      * 基本数量
      */
-    private Double quantity;
+    private BigDecimal quantity;
 
     /**
      * 采购单位ID
@@ -60,12 +60,12 @@ public class PurchaseOrderItemDto {
     /**
      * 采购数量
      */
-    private Double secondaryQuantity;
+    private BigDecimal secondaryQuantity;
 
     /**
      * 采购单价
      */
-    private Double secondaryPrice;
+    private BigDecimal secondaryPrice;
 
     /**
      * 换算率

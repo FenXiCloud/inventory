@@ -18,7 +18,6 @@
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">退货日期：</label>
           <t-date-picker
               v-model="form.returnDate"
-              :disable-date="{ before: accountBook.checkoutDate }"
               :clearable="false"
               :disabled="isAudited"
           />
@@ -377,7 +376,7 @@ export default {
   methods: {
     productImage(row) {
       const p = (this.productList || []).find(item => (item.productId || item.id) === row.productId);
-      return p?.imgPath || '-';
+      return p?.imgPath || '';
     },
     warehouseName(id) {
       return (this.warehouseList || []).find(w => w.id === id)?.name || '';

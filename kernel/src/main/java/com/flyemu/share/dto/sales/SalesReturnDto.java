@@ -91,5 +91,5 @@ public class SalesReturnDto {
     private String salesOutboundNos;
 
     @Comment("商品数量")
-    private AtomicReference<Double> totalQuantity;
+    private AtomicReference<BigDecimal> totalQuantity;
 }

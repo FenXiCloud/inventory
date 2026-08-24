@@ -3,6 +3,7 @@ package com.flyemu.share.service.basic;
 import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
@@ -11,8 +12,10 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.CustomerDto;
 import com.flyemu.share.dto.CustomerImportVo;
+import com.flyemu.share.dto.SelectProductDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.CustomerFlow;
 import com.flyemu.share.entity.setting.CodeRule;
@@ -48,10 +51,47 @@ public class CustomerService extends BaseService {
 
     private static final QCustomerLevel qCustomerLevel = QCustomerLevel.customerLevel;
 
+    private static final QProduct qProduct = QProduct.product;
+    private static final QUnit qUnit = QUnit.unit;
+    private static final QProductCategory qProductCategory = QProductCategory.productCategory;
+
     private final CustomerRepository customerRepository;
     private final CodeRuleService codeRuleService;
     private final CustomerFlowService customerFlowService;
     private final ProductExistenceChecker existenceChecker;
+    private final PriceResolveService priceResolveService;
+
+    public List<SelectProductDto> selectProducts(Long customerId, Long merchantId, Long accountBookId) {
+        priceResolveService.ensureDefaultPolicies(merchantId, accountBookId);
+        return bqf.selectFrom(qProduct)
+                .select(qProduct.name, qProduct.code, qProduct.specification, qProduct.purchasePrice, qProduct.id, qProductCategory.path, qProduct.imgPath, qProduct.enableMultiUnit,
+                        qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name, qProductCategory.name, qProduct.specification, qProduct.taxRate)
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .where(qProduct.merchantId.eq(merchantId).and(qProduct.enabled.isTrue()).and(qProduct.accountBookId.eq(accountBookId)))
+                .orderBy(qProduct.sort.desc(), qProduct.id.desc())
+                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
+                    SelectProductDto dto = new SelectProductDto();
+                    dto.setProductId(tuple.get(qProduct.id));
+                    dto.setImgPath(tuple.get(qProduct.imgPath));
+                    dto.setProductCode(tuple.get(qProduct.code));
+                    dto.setProductName(tuple.get(qProduct.name));
+                    dto.setPath(tuple.get(qProductCategory.path));
+                    dto.setCategoryName(tuple.get(qProductCategory.name));
+                    dto.setSpec(tuple.get(qProduct.specification));
+                    dto.setUnitName(tuple.get(qUnit.name));
+                    dto.setUnitId(tuple.get(qProduct.unitId));
+                    dto.setTaxRate(tuple.get(qProduct.taxRate));
+                    dto.setPrice(priceResolveService.resolveSalesPrice(tuple.get(qProduct.id), customerId, merchantId, accountBookId));
+                    List<AuxiliaryUnitPrice> units = tuple.get(qProduct.auxiliaryUnitPrices);
+                    if (CollUtil.isNotEmpty(units) && tuple.get(qProduct.enableMultiUnit)) {
+                        units.add(0, new AuxiliaryUnitPrice(dto.getUnitId(), dto.getUnitName(), 1d, dto.getPrice()));
+                        dto.setAuxiliaryUnitPrices(units);
+                    }
+                    dto.setTitle();
+                    list.add(dto);
+                }, List::addAll);
+    }
 
     public PageResults<CustomerDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qCustomer).select(qCustomer, qCustomerCategory.name, qCustomerLevel.name).leftJoin(qCustomerCategory).on(qCustomerCategory.id.eq(qCustomer.customerCategoryId)).leftJoin(qCustomerLevel).on(qCustomerLevel.id.eq(qCustomer.customerLevelId)).where(query.builder).orderBy(qCustomer.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -163,28 +203,19 @@ public class CustomerService extends BaseService {
     public void importData(List<CustomerImportVo> rows, Long merchantId, Long accountBookId) {
         for (int i = 0; i < rows.size(); i++) {
             if (StringUtils.isEmpty(rows.get(i).getName())){
-                throw new ServiceException("客户名称不能为空");
-            }
-            if (StringUtils.isEmpty(rows.get(i).getCode())){
-                throw new ServiceException("客户编码不能为空");
-            }
-            if (StringUtils.isEmpty(rows.get(i).getPhone())){
-                throw new ServiceException("手机号不能为空");
-            }
-            if (StringUtils.isEmpty(rows.get(i).getContact())){
-                throw new ServiceException("联系人不能为空");
+                throw new ServiceException("第" + (i + 2) + "行：客户名称不能为空");
             }
             if (rows.get(i).getCustomerCategoryName() == null){
-                throw new ServiceException("客户分类不能为空");
+                throw new ServiceException("第" + (i + 2) + "行：客户分类不能为空");
             }
             if (rows.get(i).getCustomerLevelName() == null){
-                throw new ServiceException("客户等级不能为空");
+                throw new ServiceException("第" + (i + 2) + "行：客户等级不能为空");
             }
         }
         Set<String> codeSet = new HashSet<>();
         List<String> duplicateCodes = rows.stream()
-                .filter(row -> !codeSet.add(row.getCode()))
                 .map(CustomerImportVo::getCode)
+                .filter(c -> StrUtil.isNotBlank(c) && !codeSet.add(c))
                 .distinct()
                 .toList();
 
@@ -197,14 +228,14 @@ public class CustomerService extends BaseService {
         Set<String> existingCodeSet = new HashSet<>(existingCodes);
         List<String> duplicatedInDb = rows.stream()
                 .map(CustomerImportVo::getCode)
-                .filter(existingCodeSet::contains)
+                .filter(c -> StrUtil.isNotBlank(c) && existingCodeSet.contains(c))
                 .distinct()
                 .toList();
 
         Assert.isTrue(duplicatedInDb.isEmpty(), "以下客户编码已在系统中存在，请修改后重新导入：" + String.join("、", duplicatedInDb));
 
         for (CustomerImportVo row : rows) {
-            if (row.getCode() != null && StringUtils.isNotBlank(row.getName())
+            if (StringUtils.isNotBlank(row.getName())
                     && StringUtils.isNotBlank(row.getCustomerLevelName()) &&
                     StringUtils.isNotBlank(row.getCustomerCategoryName())) {
                 Customer customer = new Customer();
@@ -222,8 +253,30 @@ public class CustomerService extends BaseService {
                 customer.setCustomerLevelId(level.getId());
                 customer.setMerchantId(merchantId);
                 customer.setAccountBookId(accountBookId);
-                customer.setCode(row.getCode());
-                customer.setName(row.getName());
+                if (StrUtil.isNotBlank(row.getCode())) {
+                    customer.setCode(row.getCode());
+                } else {
+                    CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
+                            CodeRule.DocumentType.客户, merchantId, accountBookId);
+                    if (codeRule != null) {
+                        StringBuilder codeBuilder = new StringBuilder();
+                        if (StrUtil.isNotBlank(codeRule.getPrefix())) codeBuilder.append(codeRule.getPrefix());
+                        if (StrUtil.isNotBlank(codeRule.getFormat())) codeBuilder.append(DateUtil.format(LocalDateTime.now(), codeRule.getFormat()));
+                        Integer serialLength = codeRule.getSerialNumberLength();
+                        if (serialLength != null && serialLength > 0) {
+                            Long count = jqf.select(qCustomer.id.count()).from(qCustomer).where(qCustomer.merchantId.eq(merchantId).and(qCustomer.accountBookId.eq(accountBookId))).fetchOne();
+                            codeBuilder.append(String.format("%0" + serialLength + "d", (count != null ? count : 0) + 1));
+                        }
+                        customer.setCode(codeBuilder.toString());
+                    } else {
+                        customer.setCode(CodeGenerator.generateCode());
+                    }
+                }
+                String name = row.getName();
+                if (name != null && name.length() > 32) {
+                    name = name.substring(0, 32);
+                }
+                customer.setName(name);
                 customer.setPhone(row.getPhone());
                 customer.setContact(row.getContact());
                 customer.setRemarks(row.getRemarks());
@@ -273,6 +326,20 @@ public class CustomerService extends BaseService {
 
     }
 
+    @Transactional
+    public void updateCreditLimit(Long customerId, BigDecimal creditLimit, Long merchantId, Long accountBookId) {
+        Customer customer = jqf.selectFrom(qCustomer)
+                .where(qCustomer.id.eq(customerId)
+                        .and(qCustomer.merchantId.eq(merchantId))
+                        .and(qCustomer.accountBookId.eq(accountBookId)))
+                .fetchOne();
+        if (customer == null) {
+            throw new ServiceException("客户不存在");
+        }
+        customer.setCreditLimit(creditLimit);
+        customerRepository.save(customer);
+    }
+
     public void updateTheBalance(Customer customer, CustomerFlow flow) {
         validateCustomerFlow(flow);
         jqf.update(qCustomer).set(qCustomer.balance, customer.getBalance()).where(qCustomer.id.eq(customer.getId())).execute();
@@ -303,6 +370,12 @@ public class CustomerService extends BaseService {
         public void setName(String name) {
             if (StrUtil.isNotEmpty(name)) {
                 builder.and(qCustomer.name.contains(name));
+            }
+        }
+
+        public void setTaxNo(String taxNo) {
+            if (StrUtil.isNotBlank(taxNo)) {
+                builder.and(qCustomer.taxNo.contains(taxNo.trim()));
             }
         }
 

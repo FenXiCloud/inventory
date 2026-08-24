@@ -45,9 +45,36 @@ export default createStore({
       state.currentTab = tab;
     },
     pushTab(state, tab) {
+      // 保存原始组件名用于渲染，key 用于 tab 去重和切换
+      const component = tab.component || tab.key;
+      const tabData = tab.params || state.currentTabData;
+      // 新增类型：每次创建独立 tab，不与已有 tab 冲突
+      if (tabData && tabData.type === 'add') {
+        const uniqueKey = tab.key + '_add_' + Date.now();
+        state.tabs.push({...tab, key: uniqueKey, component});
+        state.currentTab = uniqueKey;
+        return;
+      }
+      // 编辑类型：按 orderId 去重，同一订单复用同一 tab
+      if (tabData && tabData.type === 'edit' && tabData.orderId) {
+        const editKey = tab.key + '_edit_' + tabData.orderId;
+        if (!state.tabs.some(val => String(val.key) === String(editKey))) {
+          state.tabs.push({...tab, key: editKey, component});
+        }
+        state.currentTab = editKey;
+        return;
+      }
+      // 其他类型：按 key 去重
       const key = tab.key;
-      if (!state.tabs.some(val => String(val.key) === String(key))) {
-        state.tabs.push({...tab, key});
+      const existing = state.tabs.find(val => String(val.key) === String(key));
+      if (!existing) {
+        state.tabs.push({...tab, key, component});
+      } else {
+        // 同一组件可被多个菜单复用（占位页、红字发票/发票查询等）：
+        // 复用已有 tab，并刷新标题/图标/menuId，保证菜单高亮跟随最后点击的菜单项
+        if (tab.title != null) existing.title = tab.title;
+        if (tab.icon != null) existing.icon = tab.icon;
+        if (tab.menuId != null) existing.menuId = tab.menuId;
       }
       state.currentTab = key;
     },

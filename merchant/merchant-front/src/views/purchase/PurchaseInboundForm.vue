@@ -18,7 +18,6 @@
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">入库日期：</label>
           <t-date-picker
               v-model="form.inboundDate"
-              :disable-date="{ before: accountBook.checkoutDate }"
               :clearable="false"
               :disabled="isAudited"
           />
@@ -65,9 +64,11 @@
             <t-select
                 ref="ms"
                 @change="selectProduct($event, rowIndex)"
+                @create="createProduct($event, rowIndex)"
                 v-model="row.productId"
                 :options="productList"
                 filterable
+                creatable
                 placeholder="输入编码/名称"
                 :keys="{ value: 'productId', label: 'productName' }"
             />
@@ -216,6 +217,15 @@
         </template>
       </t-table>
       <div class="mt-10px"></div>
+      <!-- 来源销售订单信息 -->
+      <div v-if="form.sourceSalesOrderId" class="filler-panel">
+        <div class="filler-item">
+          <label class="mr-16px w-100px">来源类型：</label>
+          <t-tag theme="primary" variant="light">{{ form.sourceType || '以销定购' }}</t-tag>
+          <label class="ml-16px mr-16px w-100px">来源销售订单：</label>
+          <t-link theme="primary" hover="color" @click="goSourceSalesOrder">{{ form.sourceSalesOrderNo || ('订单#' + form.sourceSalesOrderId) }}</t-link>
+        </div>
+      </div>
       <div class="filler-panel">
         <div class="filler-item">
           <label class="mr-16px w-80px">备注说明：</label>
@@ -253,7 +263,8 @@ import manba from "manba";
 import {CopyObj} from "@common/utils";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
-import {mapState} from "vuex";
+import Product from "@js/api/basic/Product";
+import {mapState, mapMutations} from "vuex";
 import {openDrawer, closeDialog} from '@common/dialog';
 import {h} from "vue";
 import PurchaseOrderSelect from "@views/purchase/PurchaseOrderSelect.vue";
@@ -357,6 +368,9 @@ export default {
         finalAmount: 0.00,
         remarks: null,
         orderStatus: null,
+        sourceType: '普通采购',
+        sourceSalesOrderId: null,
+        sourceSalesOrderNo: null,
       },
       productData: [newRow({ isNew: true })],
       recentSales: [],
@@ -369,9 +383,10 @@ export default {
     }
   },
   methods: {
+    ...mapMutations(['pushTab']),
     productImage(row) {
       const p = (this.productList || []).find(item => (item.productId || item.id) === row.productId);
-      return p?.imgPath || '-';
+      return p?.imgPath || '';
     },
     warehouseName(id) {
       return (this.warehouseList || []).find(w => w.id === id)?.name || '';
@@ -487,6 +502,16 @@ export default {
         }
       });
     },
+    createProduct(value, index) {
+      const name = (typeof value === 'string' ? value : (value?.label || value?.productName || '')).trim();
+      if (!name) return;
+      Product.quickCreate({name}).then(({data}) => {
+        if (data && data.productId) {
+          this.productList.push(data);
+          this.selectProduct(data.productId, index);
+        }
+      });
+    },
     selectProduct(value, index) {
       const d = (this.productList || []).find((item) => String(item.productId) === String(value));
       if (!d) return;
@@ -581,6 +606,9 @@ export default {
         discountRate: 0.00,
         finalAmount: 0.00,
         orderStatus: null,
+        sourceType: '普通采购',
+        sourceSalesOrderId: null,
+        sourceSalesOrderNo: null,
       };
       this.allFinalAmount = 0;
       this.productData = [newRow({ isNew: true })];
@@ -701,6 +729,15 @@ export default {
           });
         }
       });
+    },
+    goSourceSalesOrder() {
+      if (this.form.sourceSalesOrderId) {
+        this.pushTab({
+          key: 'SalesOrderForm',
+          title: '销售订单详情',
+          params: { orderId: this.form.sourceSalesOrderId, type: 'edit' }
+        });
+      }
     },
     closeWindow() {
       this.$store.commit('closeTabKey', this.$store.state.currentTab);

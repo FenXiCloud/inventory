@@ -20,8 +20,10 @@ import com.flyemu.share.entity.purchase.*;
 import com.flyemu.share.entity.setting.QMerchantUser;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.enums.PriceSource;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.form.PurchaseOrderForm;
+import com.flyemu.share.dto.PurchaseOrderImportVo;
 import com.flyemu.share.repository.purchase.PurchaseOrderItemRepository;
 import com.flyemu.share.repository.purchase.PurchaseOrderRepository;
 import com.flyemu.share.service.setting.CheckoutService;
@@ -36,11 +38,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -102,12 +108,16 @@ public class PurchaseOrderService extends BaseService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-    public BigDecimal queryTotal(Query query) {
-        return bqf.selectFrom(qPurchaseOrder)
-                .select(qPurchaseOrder.finalAmount.sum())
+    public Map<String, BigDecimal> queryTotal(Query query) {
+        Tuple tuple = bqf.selectFrom(qPurchaseOrder)
+                .select(qPurchaseOrder.finalAmount.sum(), qPurchaseOrder.secondarySum.sum())
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseOrder.supplierId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseOrder.createdBy))
-                .where(query.builder).fetchFirst();
+                .where(query.builder).fetchOne();
+        Map<String, BigDecimal> result = new HashMap<>();
+        result.put("amount", tuple.get(0, BigDecimal.class));
+        result.put("quantity", java.util.Objects.requireNonNullElse(tuple.get(1, BigDecimal.class), BigDecimal.ZERO));
+        return result;
     }
 
     public List<PurchaseInboundItemDto> loadToInbound(List<Long> orderIds, Long merchantId, Long supplierId) {
@@ -149,10 +159,11 @@ public class PurchaseOrderService extends BaseService {
             BeanUtil.copyProperties(order, original, CopyOptions.create().ignoreNullValue());
 
             Set<Long> ids = new HashSet<>();
-            Double secondarySum = 0.0;
+            BigDecimal secondarySum = BigDecimal.ZERO;
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
-                //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
+                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
+                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
+                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
                 if (d.getId() != null) {
                     ids.add(d.getId());
                 }
@@ -160,7 +171,7 @@ public class PurchaseOrderService extends BaseService {
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);
                 //保存更新购货商品价格
-                secondarySum += d.getSecondaryQuantity();
+                secondarySum = secondarySum.add(d.getSecondaryQuantity());
                 savePrice(d, order);
             }
             original.setSecondarySum(secondarySum);
@@ -169,16 +180,17 @@ public class PurchaseOrderService extends BaseService {
         } else {
             order.setOrderNo(codeSeedService.generateCode(order.getMerchantId(), order.getAccountBookId(), "采购订单"));
 
-            Double secondarySum = purchaseOrderForm.getPurchaseOrderItemList()
+            BigDecimal secondarySum = purchaseOrderForm.getPurchaseOrderItemList()
                     .stream()
                     .map(PurchaseOrderItem::getSecondaryQuantity)
-                    .reduce(0.0, Double::sum);
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             order.setSecondarySum(secondarySum);
 
             purchaseOrderRepository.save(order);
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
-                //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
+                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
+                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
+                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);
@@ -219,7 +231,7 @@ public class PurchaseOrderService extends BaseService {
     public List<PurchaseOrder> select(Long merchantId, Long accountBookId) {
         return bqf.selectFrom(qPurchaseOrder).where(qPurchaseOrder.merchantId.eq(merchantId).and(qPurchaseOrder.accountBookId.eq(accountBookId))).fetch();
     }
-
+    //反审核
     @Transactional
     public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
         List<PurchaseOrder> orders = bqf.selectFrom(qPurchaseOrder).where(qPurchaseOrder.merchantId.eq(merchantId).and(qPurchaseOrder.id.in(ids))).fetch();
@@ -325,6 +337,102 @@ public class PurchaseOrderService extends BaseService {
 
         public void setAccountBookId(Long accountBookId) {
             TenantFilters.accountBook(builder, qPurchaseOrder.accountBookId, accountBookId);
+        }
+    }
+
+    @Transactional
+    public void importData(List<PurchaseOrderImportVo> rows, Long merchantId, Long accountBookId, Long adminId) {
+        for (int i = 0; i < rows.size(); i++) {
+            PurchaseOrderImportVo row = rows.get(i);
+            int excelRow = i + 2;
+            if (StrUtil.isEmpty(row.getSupplierName())) {
+                throw new ServiceException("第" + excelRow + "行：供应商名称不能为空");
+            }
+            if (StrUtil.isEmpty(row.getProductCode()) && StrUtil.isEmpty(row.getProductName())) {
+                throw new ServiceException("第" + excelRow + "行：产品编码或产品名称不能为空");
+            }
+            if (row.getQuantity() == null || row.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new ServiceException("第" + excelRow + "行：数量必须大于0");
+            }
+            if (row.getUnitPrice() == null) {
+                throw new ServiceException("第" + excelRow + "行：单价不能为空");
+            }
+        }
+
+        // 按单据编号分组（空编号 = 每行独立订单）
+        Map<String, List<PurchaseOrderImportVo>> groups = new LinkedHashMap<>();
+        for (PurchaseOrderImportVo row : rows) {
+            String key = StrUtil.isNotEmpty(row.getOrderNo()) ? row.getOrderNo() : "ROW_" + System.nanoTime();
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
+        }
+
+        for (Map.Entry<String, List<PurchaseOrderImportVo>> entry : groups.entrySet()) {
+            List<PurchaseOrderImportVo> group = entry.getValue();
+            PurchaseOrderImportVo first = group.get(0);
+
+            Supplier supplier;
+            if (StrUtil.isNotEmpty(first.getSupplierCode())) {
+                supplier = bqf.selectFrom(qSupplier).where(qSupplier.code.eq(first.getSupplierCode()).and(qSupplier.merchantId.eq(merchantId))).fetchFirst();
+            } else {
+                supplier = bqf.selectFrom(qSupplier).where(qSupplier.name.eq(first.getSupplierName()).and(qSupplier.merchantId.eq(merchantId))).fetchFirst();
+            }
+            if (supplier == null) throw new ServiceException("供应商「" + (StrUtil.isNotEmpty(first.getSupplierCode()) ? first.getSupplierCode() : first.getSupplierName()) + "」不存在");
+
+            LocalDate orderDate;
+            try { orderDate = LocalDate.parse(first.getOrderDate()); } catch (Exception e) { throw new ServiceException("单据日期格式错误：" + first.getOrderDate()); }
+
+            BigDecimal totalSubtotal = BigDecimal.ZERO;
+            BigDecimal totalDiscountRate = first.getDiscountRate() != null ? first.getDiscountRate() : BigDecimal.ZERO;
+            List<PurchaseOrderItem> items = new ArrayList<>();
+
+            for (PurchaseOrderImportVo row : group) {
+                Product product = null;
+                if (StrUtil.isNotEmpty(row.getProductCode())) {
+                    product = bqf.selectFrom(qProduct).where(qProduct.code.eq(row.getProductCode()).and(qProduct.merchantId.eq(merchantId))).fetchFirst();
+                }
+                if (product == null && StrUtil.isNotEmpty(row.getProductName())) {
+                    product = bqf.selectFrom(qProduct).where(qProduct.name.eq(row.getProductName()).and(qProduct.merchantId.eq(merchantId))).fetchFirst();
+                }
+                if (product == null) throw new ServiceException("产品「" + (StrUtil.isNotEmpty(row.getProductCode()) ? row.getProductCode() : row.getProductName()) + "」不存在");
+
+                Warehouse warehouse = null;
+                if (StrUtil.isNotEmpty(row.getWarehouseName())) {
+                    warehouse = bqf.selectFrom(qWarehouse).where(qWarehouse.name.eq(row.getWarehouseName()).and(qWarehouse.merchantId.eq(merchantId))).fetchFirst();
+                }
+                if (warehouse == null) warehouse = bqf.selectFrom(qWarehouse).where(qWarehouse.merchantId.eq(merchantId).and(qWarehouse.systemDefault.isTrue())).fetchFirst();
+
+                BigDecimal qty = row.getQuantity(); BigDecimal price = row.getUnitPrice();
+                BigDecimal dr = row.getDiscountRate() != null ? row.getDiscountRate() : BigDecimal.ZERO;
+                BigDecimal st = qty.multiply(price);
+                BigDecimal da = st.multiply(dr).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+
+                PurchaseOrderItem item = new PurchaseOrderItem();
+                item.setProductId(product.getId()); item.setBaseUnitId(product.getUnitId());
+                item.setQuantity(qty); item.setSecondaryQuantity(qty);
+                item.setSecondaryUnitId(product.getUnitId()); item.setConversionRate(BigDecimal.ONE);
+                item.setUnitPrice(price); item.setDiscountRate(dr); item.setDiscountAmount(da);
+                item.setSubtotal(st.subtract(da)); item.setWarehouseId(warehouse != null ? warehouse.getId() : null);
+                item.setCreatedBy(adminId); item.setCreatedAt(LocalDateTime.now());
+                item.setMerchantId(merchantId); item.setAccountBookId(accountBookId);
+                item.setRemark(row.getRemarks()); items.add(item);
+                totalSubtotal = totalSubtotal.add(st);
+            }
+
+            BigDecimal totalDiscountAmount = totalSubtotal.multiply(totalDiscountRate).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            PurchaseOrder order = new PurchaseOrder();
+            order.setOrderNo(codeSeedService.generateCode(merchantId, accountBookId, "采购订单"));
+            order.setSupplierId(supplier.getId()); order.setOrderDate(orderDate);
+            order.setTotalAmount(totalSubtotal); order.setDiscountRate(totalDiscountRate);
+            order.setDiscountAmount(totalDiscountAmount); order.setFinalAmount(totalSubtotal.subtract(totalDiscountAmount));
+            order.setRemarks(first.getRemarks()); order.setOrderStatus(OrderStatus.已保存);
+            order.setCreatedBy(adminId); order.setCreatedAt(LocalDateTime.now());
+            order.setMerchantId(merchantId); order.setAccountBookId(accountBookId);
+            PurchaseOrder saved = purchaseOrderRepository.save(order);
+
+            for (PurchaseOrderItem item : items) {
+                item.setPurchaseOrderId(saved.getId());
+                purchaseOrderItemRepository.save(item);
+            }
         }
     }
 }

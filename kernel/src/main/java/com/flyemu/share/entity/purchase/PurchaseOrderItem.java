@@ -35,16 +35,19 @@ public class PurchaseOrderItem implements TenantAware {
     private Long baseUnitId;
 
     @Comment("数量（以基本单位计）")
-    private Double quantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal quantity;
 
     @Comment("采购单位ID)")
     private Long secondaryUnitId;
 
     @Comment("采购单位数量")
-    private Double secondaryQuantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal secondaryQuantity;
 
     @Comment("采购单价")
-    private Double secondaryPrice;
+    @Column(precision = 18, scale = 6)
+    private BigDecimal secondaryPrice;
 
     @Comment("换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)")
     private BigDecimal conversionRate;

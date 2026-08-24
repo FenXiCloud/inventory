@@ -123,7 +123,6 @@
     </div>
 
     <div class="simple-page__pager">
-      <span class="simple-page__total">合计金额：{{ amountTotal }}元</span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -149,6 +148,9 @@ const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
 export default {
   name: "OrderReceiptList",
+  props: {
+    presetType: [String, Number]
+  },
   data() {
     return {
       dataList: [],
@@ -157,6 +159,7 @@ export default {
       selectedRows: [],
       loading: false,
       amountTotal: 0,
+      totalQuantity: 0,
       pagination: {
         page: 1,
         pageSize: 20,
@@ -225,12 +228,9 @@ export default {
       return [{
         ops: '合计',
         discountAmount: sum('discountAmount'),
-        collectionAmount: sum('collectionAmount'),
         shouldVerificationAmount: sum('shouldVerificationAmount'),
-        hasVerificationAmount: sum('hasVerificationAmount'),
-        notVerificationAmount: sum('notVerificationAmount'),
       }];
-    }
+    },
   },
   methods: {
     ...mapMutations(['pushTab', 'closeTabKey']),
@@ -256,13 +256,8 @@ export default {
         keepAlive: false,
         key: 'OrderReceiptForm',
         params: {type: type, orderId: orderId},
-        title: '收款单'
+        title: this.presetType == 2 ? '预收款单' : '收款单'
       });
-    },
-    loadTotal() {
-      OrderReceipt.total(this.queryParams).then(({data}) => {
-        this.amountTotal = data || 0;
-      })
     },
     loadList() {
       this.loading = true;
@@ -272,6 +267,12 @@ export default {
             this.pagination.total = total;
           })
           .finally(() => this.loading = false);
+    },
+    loadTotal() {
+      OrderReceipt.total(this.queryParams).then(({data}) => {
+        this.amountTotal = data?.amount || 0;
+        this.totalQuantity = data?.quantity || 0;
+      })
     },
     loadCustomer() {
       Customer.select().then(({data}) => {
@@ -342,12 +343,11 @@ export default {
       this.pagination.page = 1;
       this.clearSelection();
       this.loadList();
-      this.loadTotal();
     },
   },
   created() {
+    if (this.presetType != null) this.params.orderType = this.presetType;
     this.loadCustomer();
-    this.loadTotal();
     this.loadList();
   }
 }

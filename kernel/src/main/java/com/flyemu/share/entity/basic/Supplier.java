@@ -17,7 +17,8 @@ import java.math.BigDecimal;
 @Entity
 @NoArgsConstructor
 @Table(uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"merchantId", "accountBookId", "name"})
+        @UniqueConstraint(columnNames = {"merchantId", "accountBookId", "name"}),
+        @UniqueConstraint(columnNames = {"merchantId", "accountBookId", "code"})
 })
 public class Supplier implements TenantAware {
 
@@ -25,6 +26,8 @@ public class Supplier implements TenantAware {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Comment("编码")
+    @Column(length = 64, nullable = false)
     private String code;
 
     @Column(length = 32, nullable = false)
@@ -35,6 +38,10 @@ public class Supplier implements TenantAware {
 
     @Comment("电话")
     private String phone;
+
+    @Comment("税号")
+    @Column(length = 32)
+    private String taxNo;
 
     @Comment("货商分类ID")
     private Long supplierCategoryId;

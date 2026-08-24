@@ -214,7 +214,7 @@ public class OtherInboundService extends BaseService {
             CostingService.ReceiptRequest req = new CostingService.ReceiptRequest();
             req.setProductId(item.getProductId());
             req.setWarehouseId(item.getWarehouseId());
-            int qty = item.getQuantity() == null ? 0 : (int) Double.parseDouble(item.getQuantity().toString());
+            int qty = item.getQuantity() == null ? 0 : item.getQuantity().intValue();
             req.setQty(qty);
             req.setUnitCost(item.getUnitPrice());
             req.setInboundDate(CostingService.toLocalDate(otherInbound.getInboundDate()));
@@ -243,7 +243,7 @@ public class OtherInboundService extends BaseService {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         otherInboundItems.forEach(otherInboundItem -> {
             BigDecimal subtotal = otherInboundItem.getSubtotal();
-            Double quantity = otherInboundItem.getQuantity();
+            BigDecimal quantity = otherInboundItem.getQuantity();
             inventories.stream()
                     .filter(item -> item.getProductId().equals(otherInboundItem.getProductId())
                             && item.getWarehouseId().equals(otherInboundItem.getWarehouseId()))
@@ -254,16 +254,16 @@ public class OtherInboundService extends BaseService {
                                 Integer currentQuantity = item.getCurrentQuantity();
                                 BigDecimal added = totalCost.add(subtotal)
                                         .setScale(2, RoundingMode.HALF_EVEN);
-                                double parsed = Double.parseDouble(quantity.toString());
-                                currentQuantity += (int) parsed;
+                                int parsed = quantity.intValue();
+                                currentQuantity += parsed;
                                 item.setCurrentQuantity(currentQuantity);
                                 item.setTotalCost(added);
                             }, () -> {
                                 Inventory inventory = new Inventory();
                                 inventory.setWarehouseId(otherInboundItem.getWarehouseId());
                                 inventory.setProductId(otherInboundItem.getProductId());
-                                double parsed = Double.parseDouble(otherInboundItem.getQuantity().toString());
-                                inventory.setCurrentQuantity((int) parsed);
+                                int parsed = otherInboundItem.getQuantity().intValue();
+                                inventory.setCurrentQuantity(parsed);
                                 inventory.setTotalCost(otherInboundItem.getSubtotal());
                                 inventory.setMerchantId(otherInboundItem.getMerchantId());
                                 inventory.setAccountBookId(otherInboundItem.getAccountBookId());
@@ -288,8 +288,8 @@ public class OtherInboundService extends BaseService {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setWarehouseId(otherInboundItem.getWarehouseId());
         inventoryItem.setProductId(otherInboundItem.getProductId());
-        double parsed = Double.parseDouble(otherInboundItem.getQuantity().toString());
-        inventoryItem.setQuantity((int) parsed);
+        int parsed = otherInboundItem.getQuantity().intValue();
+        inventoryItem.setQuantity(parsed);
         inventoryItem.setBaseUnitId(otherInboundItem.getBaseUnitId());
         inventoryItem.setSupplierId(otherInbound.getSupplierId());
         inventoryItem.setInventoryDate(otherInbound.getInboundDate());

@@ -30,9 +30,9 @@ import java.util.Set;
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ProductCategoryService extends BaseService {
-
+// 查询条件
     private static final QProductCategory qProductCategory = QProductCategory.productCategory;
-
+    // 数据源
     private final ProductCategoryRepository productCategoryRepository;
     private final CategoryTreeRepository categoryTreeRepository;
 
@@ -41,15 +41,15 @@ public class ProductCategoryService extends BaseService {
     public List<ProductCategory> query(Query query) {
         return bqf.selectFrom(qProductCategory).where(query.builder).orderBy(qProductCategory.sort.desc(), qProductCategory.code.asc(), qProductCategory.id.asc()).fetch();
     }
-
+    // 保存
     @Transactional
     public ProductCategory save(ProductCategory productCategory) {
-
+        // 校验
         try {
             if (productCategory.getPid() != null) {
                 assertCanAddChild(productCategory.getPid(), productCategory.getMerchantId(), productCategory.getAccountBookId());
             }
-
+            //
             if (productCategory.getId() != null) {
                 ProductCategory original = productCategoryRepository.getById(productCategory.getId());
                 // 编码已隐藏，更新时保留原编码
@@ -92,7 +92,7 @@ public class ProductCategoryService extends BaseService {
             throw new ServiceException(e.getMessage());
         }
     }
-
+//删除
     @Transactional
     public void delete(Long merchantId, Long productsCategoryId, Long accountBookId) {
 
@@ -119,7 +119,7 @@ public class ProductCategoryService extends BaseService {
                         .and(qProductCategory.accountBookId.eq(accountBookId)))
                 .execute();
     }
-
+    //通过id加载数据
     public ProductCategory loadById(Long merchantId, Long orgId) {
         return bqf.selectFrom(qProductCategory).where(qProductCategory.merchantId.eq(merchantId).and(qProductCategory.id.eq(orgId))).fetchFirst();
     }
@@ -142,7 +142,7 @@ public class ProductCategoryService extends BaseService {
         list.forEach(c -> c.setLeaf(withProducts.contains(c.getId())));
         return list;
     }
-
+        //判断分类下是否有产品
     public boolean hasProducts(Long categoryId, Long merchantId, Long accountBookId) {
         if (categoryId == null) {
             return false;
@@ -153,7 +153,7 @@ public class ProductCategoryService extends BaseService {
                         .and(qProduct.accountBookId.eq(accountBookId)))
                 .fetchCount() > 0;
     }
-
+    //判断分类下是否有子分类
     public boolean hasChildren(Long categoryId, Long merchantId, Long accountBookId) {
         if (categoryId == null) {
             return false;
@@ -176,7 +176,7 @@ public class ProductCategoryService extends BaseService {
         Assert.notNull(categoryId, "请选择产品分类");
         Assert.isFalse(hasChildren(categoryId, merchantId, accountBookId), "有下级的分类不能选择，请选择末级分类");
     }
-
+    //刷新分类 leaf 状态
     @Transactional
     public void refreshLeafByProducts(Long categoryId, Long merchantId, Long accountBookId) {
         if (categoryId == null) {
@@ -190,7 +190,7 @@ public class ProductCategoryService extends BaseService {
                         .and(qProductCategory.accountBookId.eq(accountBookId)))
                 .execute();
     }
-
+    //封装前端查询参数,组装查询条件
     public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
 

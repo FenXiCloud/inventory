@@ -100,6 +100,11 @@ configure(subprojects.findAll { it.name.endsWith("-server") || it.name.equals("k
         implementation("com.aliyun:alibabacloud-dysmsapi20170525:2.0.24")
         implementation("com.aliyun.oss:aliyun-sdk-oss:3.4.0")
 
+        // 纷析云数电发票开放平台 SDK
+        implementation 'com.fenxi365:fenxi365-open-sdk:1.0.67'
+        implementation 'com.google.zxing:core:3.5.3'
+        implementation 'com.google.zxing:javase:3.5.3'
+
 
     }
 }

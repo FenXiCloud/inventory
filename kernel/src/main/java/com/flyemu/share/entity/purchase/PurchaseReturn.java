@@ -79,7 +79,8 @@ public class PurchaseReturn implements TenantAware {
     private LocalDateTime createdAt;
 
     @Comment("基本数量和")
-    private Double secondarySum;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal secondarySum;
 
     @Comment("审核人")
     private Long approvedBy;

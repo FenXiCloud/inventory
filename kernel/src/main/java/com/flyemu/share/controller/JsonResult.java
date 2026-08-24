@@ -5,6 +5,7 @@ import lombok.Data;
 import java.util.TreeMap;
 
 @Data
+// 统一接口返回结果
 public class JsonResult {
 
     private boolean success = true;
@@ -14,7 +15,7 @@ public class JsonResult {
     private String msg = "";
 
     private Object data;
-
+//这个构造方法，用于返回成功结果
     public static JsonResult instance(boolean success) {
         JsonResult result = new JsonResult();
         result.setSuccess(success);
@@ -44,7 +45,7 @@ public class JsonResult {
         result.setCode(code);
         return result;
     }
-
+    //返回失败结果
     public static JsonResult failure() {
         JsonResult result = new JsonResult();
         result.setSuccess(false);
@@ -67,22 +68,22 @@ public class JsonResult {
         result.setCode(code);
         return result;
     }
-
+    //设置返回结果
     public JsonResult setMsg(String msg) {
         this.msg = msg;
         return this;
     }
-
+    //设置返回数据
     public JsonResult setData(Object data) {
         this.data = data;
         return this;
     }
-
+    //设置返回码
     public JsonResult setCode(Integer code) {
         this.code = code;
         return this;
     }
-
+    //添加数据
     public JsonResult data(String key, Object value) {
         if (this.data == null) {
             this.data = new TreeMap<String, Object>();

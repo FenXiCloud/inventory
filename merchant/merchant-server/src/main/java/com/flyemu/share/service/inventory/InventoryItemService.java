@@ -13,16 +13,23 @@ import com.flyemu.share.dto.InventoryItemDTO;
 import com.flyemu.share.dto.InventoryItemReportDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.Inventory;
+import com.flyemu.share.entity.inventory.InventoryCostBatch;
+import com.flyemu.share.entity.inventory.InventoryCostConsume;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
 import com.flyemu.share.entity.inventory.QInventoryItem;
 import com.flyemu.share.entity.setting.FinanceVoucher;
+import com.flyemu.share.entity.setting.QAccountBook;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.entity.setting.QFinanceVoucher;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.form.InventoryInitialForm;
+import com.flyemu.share.repository.inventory.InventoryCostBatchRepository;
 import com.flyemu.share.repository.inventory.InventoryItemRepository;
+import com.flyemu.share.repository.inventory.InventoryRepository;
 import com.flyemu.share.repository.basic.ProductRepository;
 import com.flyemu.share.repository.basic.WarehouseRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -31,6 +38,8 @@ import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.Predicate;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +65,8 @@ public class InventoryItemService extends BaseService {
 
     private final static QInventoryItem qInventoryItem = QInventoryItem.inventoryItem;
 
+    private final static QAccountBook qAccountBook = QAccountBook.accountBook;
+
     private final static QProduct qProduct = QProduct.product;
 
     private final static QProductCategory qProductCategory = QProductCategory.productCategory;
@@ -74,9 +85,18 @@ public class InventoryItemService extends BaseService {
 
     private final InventoryItemRepository inventoryItemRepository;
 
+    private final InventoryRepository inventoryRepository;
+
+    private final InventoryCostBatchRepository inventoryCostBatchRepository;
+
     private final ProductRepository productRepository;
 
     private final WarehouseRepository warehouseRepository;
+
+    private final CheckoutService checkoutService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public List<InventoryItem> query(Query query) {
         return bqf.selectFrom(qInventoryItem)
@@ -110,6 +130,9 @@ public class InventoryItemService extends BaseService {
 
     @Transactional
     public InventoryItem save(InventoryItem inventoryItem) {
+        // 结账后不允许设置/修改期初余额
+        assertNotCheckedOut(inventoryItem.getMerchantId(), inventoryItem.getAccountBookId());
+
         inventoryItem.setFirstSort(false);
         if (inventoryItem.getId() != null) {
             //更新
@@ -126,8 +149,24 @@ public class InventoryItemService extends BaseService {
         return inventoryItemRepository.save(inventoryItem);
     }
 
+    /**
+     * 校验账套是否已结账，结账后不允许设置/修改期初余额
+     */
+    private void assertNotCheckedOut(Long merchantId, Long accountBookId) {
+        LocalDate checkoutDate = jqf.select(qAccountBook.checkoutDate)
+                .from(qAccountBook)
+                .where(qAccountBook.merchantId.eq(merchantId).and(qAccountBook.id.eq(accountBookId)))
+                .fetchOne();
+        if (checkoutDate != null) {
+            throw new ServiceException("账套已结账，不允许设置或修改期初余额");
+        }
+    }
+
     @Transactional
     public void delete(Long inventoryItemId, Long merchantId, Long accountBookId) {
+        // 结账后不允许删除期初余额
+        assertNotCheckedOut(merchantId, accountBookId);
+
         jqf.delete(qInventoryItem)
                 .where(qInventoryItem.id.eq(inventoryItemId).and(qInventoryItem.merchantId.eq(merchantId)).and(qInventoryItem.accountBookId.eq(accountBookId)))
                 .execute();
@@ -166,6 +205,9 @@ public class InventoryItemService extends BaseService {
             add(OperationType.盘盈入库);
             add(OperationType.调拨入库);
             add(OperationType.采购入库);
+            add(OperationType.销售退货);
+            add(OperationType.组装入库);
+            add(OperationType.拆卸入库);
         }};
     }
 
@@ -228,7 +270,10 @@ public class InventoryItemService extends BaseService {
             for (InventoryItem inventoryItem : goeFetch) {
                 boolean contains = increaseTypeList.contains(inventoryItem.getOperationType());
                 boolean equalsCb = OperationType.成本调整.equals(inventoryItem.getOperationType());
-                if (contains || (equalsCb && inventoryItem.getSubtotal().compareTo(BigDecimal.ZERO) > 0)) {
+                if (equalsCb) {
+                    // 成本调整：数量不变，成本按 subtotal（正或负）直接调整
+                    totalCost = totalCost.add(inventoryItem.getSubtotal());
+                } else if (contains) {
                     currentQuantity = currentQuantity + inventoryItem.getQuantity();
                     totalCost = totalCost.add(inventoryItem.getSubtotal());
                 } else {
@@ -292,7 +337,11 @@ public class InventoryItemService extends BaseService {
             }
             for (InventoryItem inventoryItem : goeFetch) {
                 boolean contains = increaseTypeList.contains(inventoryItem.getOperationType());
-                if (contains) {
+                boolean equalsCb = OperationType.成本调整.equals(inventoryItem.getOperationType());
+                if (equalsCb) {
+                    // 成本调整：数量不变，成本按 subtotal（正或负）直接调整
+                    summaryCost = summaryCost.add(inventoryItem.getSubtotal());
+                } else if (contains) {
                     summaryQuantity = summaryQuantity + inventoryItem.getQuantity();
                     summaryCost = summaryCost.add(inventoryItem.getSubtotal());
                 } else {
@@ -472,6 +521,9 @@ public class InventoryItemService extends BaseService {
 
     @Transactional
     public void batch(InventoryInitialForm inventoryInitialForm) {
+        // 结账后不允许设置/修改期初余额
+        assertNotCheckedOut(inventoryInitialForm.getMerchantId(), inventoryInitialForm.getAccountBookId());
+
         List<InventoryItem> inventoryItemList = inventoryInitialForm.getInventoryItemList();
         for (InventoryItem inventoryItem : inventoryItemList) {
             inventoryItem.setAccountBookId(inventoryInitialForm.getAccountBookId());
@@ -508,6 +560,39 @@ public class InventoryItemService extends BaseService {
                 //新增
                 inventoryItemRepository.save(inventoryItem);
             }
+        }
+
+        // 同步更新库存余额表（jxc_inventory）
+        for (InventoryItem item : inventoryItemList) {
+            Inventory inventory = jqf.selectFrom(qInventory)
+                    .where(qInventory.productId.eq(item.getProductId())
+                            .and(qInventory.warehouseId.eq(item.getWarehouseId()))
+                            .and(qInventory.merchantId.eq(item.getMerchantId()))
+                            .and(qInventory.accountBookId.eq(item.getAccountBookId())))
+                    .fetchFirst();
+            if (inventory == null) {
+                inventory = new Inventory();
+                inventory.setProductId(item.getProductId());
+                inventory.setWarehouseId(item.getWarehouseId());
+                inventory.setBaseUnitId(item.getBaseUnitId());
+                inventory.setMerchantId(item.getMerchantId());
+                inventory.setAccountBookId(item.getAccountBookId());
+                inventory.setCurrentQuantity(0);
+                inventory.setTotalCost(BigDecimal.ZERO);
+                inventory.setAverageCost(BigDecimal.ZERO);
+                inventory.setUpdatedAt(LocalDateTime.now());
+            }
+            Integer qty = item.getQuantity() != null ? item.getQuantity() : 0;
+            BigDecimal cost = item.getTotalCost() != null ? item.getTotalCost() :
+                          (item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO);
+            inventory.setCurrentQuantity(inventory.getCurrentQuantity() + qty);
+            inventory.setTotalCost(inventory.getTotalCost().add(cost));
+            if (inventory.getCurrentQuantity() != 0) {
+                inventory.setAverageCost(inventory.getTotalCost().divide(
+                        new BigDecimal(inventory.getCurrentQuantity()), 2, RoundingMode.HALF_UP));
+            }
+            inventory.setUpdatedAt(LocalDateTime.now());
+            inventoryRepository.save(inventory);
         }
     }
 
@@ -615,6 +700,220 @@ public class InventoryItemService extends BaseService {
         Date start = query.getStart();
         map.put("initDate", Objects.requireNonNullElseGet(start, Date::new));
         return lazyDao.findBySql("inventoryItemSummaryInitList", map, InventoryItemReportDto.class);
+    }
+
+    /**
+     * 全量修复并重建库存成本链：
+     * 1. 修正批次成本表（jxc_inventory_cost_batch）的 unitCost / totalCostRemain
+     * 2. 修正出库耗用表（jxc_inventory_cost_consume）的 unitCostUsed / costAmount
+     * 3. 修正出库库存明细（jxc_inventory_item）的 subtotal
+     * 4. 重算全部库存明细的 currentQuantity / totalCost / averageCost
+     * 5. 同步更新库存主表（jxc_inventory）
+     */
+    @Transactional
+    public void rebuildCostChain(Long merchantId, Long accountBookId) {
+        log.info("=== 开始库存成本链全量修复 ===");
+
+        // === Step 1: 修正批次单位成本（从采购入库明细获取正确的 unitPrice）===
+        int batchFixed = entityManager.createNativeQuery("""
+            UPDATE jxc_inventory_cost_batch icb
+            JOIN jxc_purchase_inbound_item pii ON icb.inbound_item_id = pii.id
+            SET icb.unit_cost = ROUND(pii.secondary_price / COALESCE(NULLIF(pii.conversion_rate, 0), 1), 2),
+                icb.total_cost_remain = ROUND(icb.qty_remain * ROUND(pii.secondary_price / COALESCE(NULLIF(pii.conversion_rate, 0), 1), 2), 2)
+            WHERE icb.merchant_id = :merchantId
+              AND icb.inbound_order_type = '采购入库'
+              AND ABS(icb.unit_cost - ROUND(pii.secondary_price / COALESCE(NULLIF(pii.conversion_rate, 0), 1), 2)) > 0.01
+        """)
+            .setParameter("merchantId", merchantId)
+            .executeUpdate();
+        log.info("Step 1: 修正批次成本 {} 条", batchFixed);
+
+        // === Step 2: 修正出库耗用记录 ===
+        int consumeFixed = entityManager.createNativeQuery("""
+            UPDATE jxc_inventory_cost_consume icc
+            JOIN jxc_inventory_cost_batch icb ON icc.batch_id = icb.id
+            SET icc.unit_cost_used = icb.unit_cost,
+                icc.cost_amount = ROUND(icc.qty * icb.unit_cost, 2)
+            WHERE icc.merchant_id = :merchantId
+              AND ABS(icc.unit_cost_used - icb.unit_cost) > 0.01
+        """)
+            .setParameter("merchantId", merchantId)
+            .executeUpdate();
+        log.info("Step 2: 修正出库耗用 {} 条", consumeFixed);
+
+        // === Step 3: 修正出库类库存明细的 subtotal ===
+        int itemFixed = entityManager.createNativeQuery("""
+            UPDATE jxc_inventory_item ii
+            JOIN jxc_inventory_cost_consume icc ON ii.order_id = icc.outbound_order_id
+                AND ii.product_id = icc.product_id
+                AND ii.operation_type = icc.outbound_order_type
+            SET ii.subtotal = ROUND(icc.qty * icc.unit_cost_used, 2),
+                ii.unit_price = icc.unit_cost_used
+            WHERE ii.merchant_id = :merchantId
+              AND ii.operation_type IN ('销售出库','采购退货','调拨出库','盘亏出库','其他出库')
+        """)
+            .setParameter("merchantId", merchantId)
+            .executeUpdate();
+        log.info("Step 3: 修正出库明细 subtotal {} 条", itemFixed);
+
+        // === Step 4: 获取所有 (productId, warehouseId) 组合，重算成本链 ===
+        List<Tuple> pairs = jqf.selectFrom(qInventoryItem)
+                .select(qInventoryItem.productId, qInventoryItem.warehouseId)
+                .where(qInventoryItem.merchantId.eq(merchantId)
+                        .and(qInventoryItem.accountBookId.eq(accountBookId))
+                        .and(qInventoryItem.warehouseId.isNotNull()))
+                .groupBy(qInventoryItem.productId, qInventoryItem.warehouseId)
+                .fetch();
+
+        List<OperationType> increaseTypeList = getIncreaseTypeList();
+        int total = pairs.size();
+        int processed = 0;
+
+        for (Tuple pair : pairs) {
+            Long productId = pair.get(qInventoryItem.productId);
+            Long warehouseId = pair.get(qInventoryItem.warehouseId);
+            if (productId == null || warehouseId == null) continue;
+
+            List<InventoryItem> items = jqf.selectFrom(qInventoryItem)
+                    .where(qInventoryItem.productId.eq(productId)
+                            .and(qInventoryItem.warehouseId.eq(warehouseId))
+                            .and(qInventoryItem.operationType.notIn(OperationType.期初余额)))
+                    .orderBy(qInventoryItem.inventoryDate.asc(), qInventoryItem.id.asc())
+                    .fetch();
+
+            Integer currentQuantity = 0;
+            BigDecimal totalCost = BigDecimal.ZERO;
+
+            for (InventoryItem item : items) {
+                if (OperationType.期初库存.equals(item.getOperationType())) {
+                    currentQuantity = item.getQuantity() != null ? item.getQuantity() : 0;
+                    totalCost = item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO;
+                } else {
+                    boolean isIncrease = increaseTypeList.contains(item.getOperationType());
+                    boolean isCostAdj = OperationType.成本调整.equals(item.getOperationType());
+
+                    if (isCostAdj) {
+                        totalCost = totalCost.add(item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO);
+                    } else if (isIncrease) {
+                        currentQuantity += (item.getQuantity() != null ? item.getQuantity() : 0);
+                        totalCost = totalCost.add(item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO);
+                    } else {
+                        // 出库类：用当前加权平均成本重算 subtotal，不依赖已存数据（已存 subtotal 可能是售价等错误值）
+                        int outQty = (item.getQuantity() != null ? item.getQuantity() : 0);
+                        BigDecimal outCost;
+                        if (currentQuantity > 0 && outQty > 0) {
+                            BigDecimal currentAvg = totalCost.divide(new BigDecimal(currentQuantity), 10, RoundingMode.HALF_UP);
+                            outCost = currentAvg.multiply(new BigDecimal(outQty)).setScale(2, RoundingMode.HALF_UP);
+                        } else {
+                            outCost = item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO;
+                        }
+                        item.setUnitPrice(outCost);
+                        item.setSubtotal(outCost);
+                        currentQuantity -= outQty;
+                        totalCost = totalCost.subtract(outCost);
+                    }
+                }
+
+                if (currentQuantity < 0) currentQuantity = 0;
+                if (totalCost.compareTo(BigDecimal.ZERO) < 0) totalCost = BigDecimal.ZERO;
+
+                item.setCurrentQuantity(currentQuantity);
+                item.setTotalCost(totalCost);
+
+                if (!OperationType.成本调整.equals(item.getOperationType())
+                        && !OperationType.期初库存.equals(item.getOperationType())) {
+                    if (currentQuantity == 0) {
+                        item.setAverageCost(BigDecimal.ZERO);
+                    } else {
+                        item.setAverageCost(totalCost.divide(new BigDecimal(currentQuantity), 2, RoundingMode.HALF_UP));
+                    }
+                }
+            }
+
+            inventoryItemRepository.saveAll(items);
+
+            // 同步库存主表
+            Inventory inventory = jqf.selectFrom(qInventory)
+                    .where(qInventory.productId.eq(productId).and(qInventory.warehouseId.eq(warehouseId)))
+                    .fetchFirst();
+            if (inventory != null) {
+                inventory.setCurrentQuantity(currentQuantity);
+                inventory.setTotalCost(totalCost.setScale(2, RoundingMode.HALF_EVEN));
+                inventory.setAverageCost(currentQuantity == 0 ? BigDecimal.ZERO
+                        : totalCost.divide(new BigDecimal(currentQuantity), 2, RoundingMode.HALF_UP));
+                inventory.setUpdatedAt(LocalDateTime.now());
+                inventoryRepository.save(inventory);
+            }
+
+            processed++;
+            if (processed % 50 == 0) {
+                log.info("成本链重建进度: {}/{}", processed, total);
+            }
+        }
+
+        // === Step 5: 重建汇总成本链 ===
+        rebuildSummaryChainForAll(merchantId, accountBookId, increaseTypeList);
+
+        log.info("=== 库存成本链全量修复完成，共处理 {} 个产品-仓库组合 ===", total);
+    }
+
+    /**
+     * 重建所有产品的汇总成本链（跨仓库）
+     */
+    private void rebuildSummaryChainForAll(Long merchantId, Long accountBookId, List<OperationType> increaseTypeList) {
+        List<Long> productIds = jqf.selectFrom(qInventoryItem)
+                .select(qInventoryItem.productId)
+                .where(qInventoryItem.merchantId.eq(merchantId)
+                        .and(qInventoryItem.accountBookId.eq(accountBookId))
+                        .and(qInventoryItem.productId.isNotNull()))
+                .groupBy(qInventoryItem.productId)
+                .fetch();
+
+        for (Long productId : productIds) {
+            if (productId == null) continue;
+
+            List<InventoryItem> items = jqf.selectFrom(qInventoryItem)
+                    .where(qInventoryItem.productId.eq(productId)
+                            .and(qInventoryItem.operationType.notIn(OperationType.期初库存, OperationType.期初余额)))
+                    .orderBy(qInventoryItem.inventoryDate.asc(), qInventoryItem.id.asc())
+                    .fetch();
+
+            Integer summaryQuantity = 0;
+            BigDecimal summaryCost = BigDecimal.ZERO;
+
+            for (InventoryItem item : items) {
+                boolean isIncrease = increaseTypeList.contains(item.getOperationType());
+                boolean isCostAdj = OperationType.成本调整.equals(item.getOperationType());
+
+                if (isCostAdj) {
+                    summaryCost = summaryCost.add(item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO);
+                } else if (isIncrease) {
+                    summaryQuantity += (item.getQuantity() != null ? item.getQuantity() : 0);
+                    summaryCost = summaryCost.add(item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO);
+                } else {
+                    summaryQuantity -= (item.getQuantity() != null ? item.getQuantity() : 0);
+                    summaryCost = summaryCost.subtract(item.getSubtotal() != null ? item.getSubtotal() : BigDecimal.ZERO);
+                }
+
+                if (summaryQuantity < 0) summaryQuantity = 0;
+                if (summaryCost.compareTo(BigDecimal.ZERO) < 0) summaryCost = BigDecimal.ZERO;
+
+                item.setSummaryQuantity(summaryQuantity);
+                item.setSummaryCost(summaryCost);
+
+                if (!OperationType.成本调整.equals(item.getOperationType())) {
+                    if (summaryQuantity == 0) {
+                        item.setSummaryAverage(BigDecimal.ZERO);
+                    } else {
+                        item.setSummaryAverage(summaryCost.divide(new BigDecimal(summaryQuantity), 2, RoundingMode.HALF_UP));
+                    }
+                } else {
+                    item.setSummaryAverage(item.getAverageCost());
+                }
+            }
+
+            inventoryItemRepository.saveAll(items);
+        }
     }
 
     public Object detailTotal(Query query) {

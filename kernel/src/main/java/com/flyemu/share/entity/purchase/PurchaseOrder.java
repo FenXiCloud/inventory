@@ -70,7 +70,8 @@ public class PurchaseOrder implements TenantAware {
     private Long approvedBy;
 
     @Comment("基本数量和")
-    private Double secondarySum;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal secondarySum;
 
     @Comment("审核时间")
     private LocalDateTime approvedAt;

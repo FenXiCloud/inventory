@@ -9,6 +9,7 @@ import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -29,17 +30,28 @@ public class SalesOutboundItem implements TenantAware {
     @Comment("产品ID")
     private Long productId;
 
+    @Comment("批次号")
+    private String batchNumber;
+
+    @Comment("生产日期")
+    private LocalDate productionDate;
+
+    @Comment("有效期至")
+    private LocalDate expiryDate;
+
     @Comment("基本单位ID")
     private Long baseUnitId;
 
     @Comment("数量（以基本单位计）")
-    private Double quantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal quantity;
 
     @Comment("辅助单位ID(可为空)")
     private Long secondaryUnitId;
 
     @Comment("辅助单位数量 (可为空")
-    private Double secondaryQuantity;
+    @Column(precision = 18, scale = 4)
+    private BigDecimal secondaryQuantity;
 
     @Comment("换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)")
     private BigDecimal conversionRate;
@@ -55,6 +67,9 @@ public class SalesOutboundItem implements TenantAware {
 
     @Comment("小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)")
     private BigDecimal subtotal;
+
+    @Comment("税率")
+    private BigDecimal taxRate;
 
     @Comment("出库单位成本（审核时按成本法写入）")
     private BigDecimal costPrice;

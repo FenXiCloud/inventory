@@ -3,7 +3,9 @@
     <div class="simple-page__toolbar">
       <t-space break-line>
         <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button style="border-radius: 4px" @click="showImportForm()">导 入</t-button>
         <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="batchDelete()">批量删除</t-button>
         <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
         <t-select
             v-model="params.state"
@@ -60,9 +62,23 @@
           @select-change="onSelectChange"
       >
         <template #ops="{ row }">
-          <t-space v-if="row.orderStatus === '已保存'" size="small">
-            <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
-            <t-link theme="primary" @click="doRemove(row)">删除</t-link>
+          <t-space size="small">
+            <template v-if="row.orderStatus === '已保存'">
+              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link theme="primary" @click="doRemove(row)">删除</t-link>
+            </template>
+            <t-dropdown :min-column-width="110" @click="(item) => onMore(item, row)">
+              <t-link theme="primary">更多</t-link>
+              <template #dropdown>
+                <t-dropdown-menu>
+                  <t-dropdown-item v-if="row.orderStatus === '已保存'" value="approve">审核</t-dropdown-item>
+                  <t-dropdown-item v-if="row.orderStatus === '已保存'" value="cancel">取消</t-dropdown-item>
+                  <t-dropdown-item v-if="row.orderStatus === '已审核' && row.status !== 2" value="toOutbound">转出库单</t-dropdown-item>
+                  <t-dropdown-item value="detail">详情</t-dropdown-item>
+                  <t-dropdown-item value="print">打印</t-dropdown-item>
+                </t-dropdown-menu>
+              </template>
+            </t-dropdown>
           </t-space>
         </template>
         <template #status="{ row }">
@@ -71,19 +87,21 @@
           <span v-else-if="row.status === 2">全部出库</span>
           <span v-else>{{ row.status }}</span>
         </template>
+        <template #purchaseStatusText="{ row }">
+          <t-tag v-if="row.purchaseStatus === 2" theme="success" variant="light" size="small">已采购</t-tag>
+          <t-tag v-else-if="row.purchaseStatus === 1" theme="warning" variant="light" size="small">部分采购</t-tag>
+          <span v-else class="text-gray-400">—</span>
+        </template>
         <template #orderStatus="{ row }">
-          <t-tag
-              :theme="row.orderStatus === '已审核' ? 'success' : 'warning'"
-              variant="light"
-          >
-            {{ row.orderStatus === '已保存' ? '未审核' : row.orderStatus }}
+          <t-tag :theme="orderStatusTheme(row)" variant="light">
+            {{ orderStatusLabel(row) }}
           </t-tag>
         </template>
       </t-table>
     </div>
 
     <div class="simple-page__pager">
-      <span class="simple-page__total">合计金额：{{ amountTotal }}元</span>
+      <span class="simple-page__total">合计金额：{{ amountTotal }}元&nbsp;&nbsp;合计数量：{{ totalQuantity }}&nbsp;&nbsp;</span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -100,9 +118,13 @@
 <script>
 import manba from "manba";
 import SalesOrder from "@js/api/sales/SalesOrder";
+import SalesOrderImportForm from "@views/sales/SalesOrderImportForm.vue";
 import {mapMutations} from "vuex";
-import {MessagePlugin} from "tdesign-vue-next";
+import {h} from "vue";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
+import {openDialog, closeDialog} from '@common/dialog';
+import {openPrint} from '@common/print';
 import Customer from "@js/api/basic/Customer";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
@@ -129,6 +151,7 @@ export default {
       selectedRows: [],
       loading: false,
       amountTotal: 0,
+      totalQuantity: 0,
       pagination: {
         page: 1,
         pageSize: 20,
@@ -143,8 +166,9 @@ export default {
       },
       dateRangeValue: [startTime, endTime],
       stateOptions: [
-        {label: '未审核', value: '已保存'},
+        {label: '待审核', value: '已保存'},
         {label: '已审核', value: '已审核'},
+        {label: '已取消', value: '已取消'},
       ],
       columns: [
         {colKey: 'row-select', type: 'multiple', width: 46},
@@ -152,6 +176,8 @@ export default {
         {colKey: 'orderDate', title: '订单日期', width: 120, align: 'center'},
         {colKey: 'orderNo', title: '订单编号', minWidth: 160, ellipsis: true},
         {colKey: 'status', title: '出库状态', width: 100, align: 'center'},
+        {colKey: 'purchaseStatusText', title: '采购状态', width: 100, align: 'center'},
+        {colKey: 'purchaseInOrderNos', title: '关联采购入库单', minWidth: 140, ellipsis: true},
         {colKey: 'outOrderNo', title: '关联销售出库单', minWidth: 140, ellipsis: true},
         {colKey: 'customerName', title: '客户', minWidth: 120, ellipsis: true},
         {colKey: 'totalAmount', title: '销售金额', width: 110, align: 'right'},
@@ -187,7 +213,7 @@ export default {
         finalAmount: sum('finalAmount'),
         totalQuantity: sum('totalQuantity'),
       }];
-    }
+    },
   },
   methods: {
     ...mapMutations(['pushTab']),
@@ -201,10 +227,42 @@ export default {
       this.loadList();
     },
     addForm(type = 'add', orderId = null) {
+      sessionStorage.setItem('SalesOrderList_filters', JSON.stringify({
+        params: this.params, dateRangeValue: this.dateRangeValue
+      }));
       this.$store.commit('SET_TAB_DATA', {type, orderId});
       this.pushTab({
         key: 'SalesOrderForm',
         title: type === 'edit' ? '编辑销售订单' : '新增销售订单',
+      });
+    },
+    showImportForm() {
+      const dialogId = openDialog({
+        header: '导入销售订单',
+        closeOnOverlayClick: false,
+        width: '50vw',
+        body: h(SalesOrderImportForm, {
+          onClose: () => closeDialog(dialogId),
+          onSuccess: () => {
+            this.loadList();
+            closeDialog(dialogId);
+          }
+        })
+      });
+    },
+    batchDelete() {
+      if (!this.selectedRows.length) return MessagePlugin.warning('请先选择要删除的单据');
+      const ids = this.selectedRows.map(r => r.id);
+      DialogPlugin.confirm({
+        header: "批量删除",
+        body: `确认删除选中的 ${ids.length} 张单据？`,
+        onConfirm: () => {
+          LoadingPlugin(true);
+          Promise.all(ids.map(id => SalesOrder.remove(id))).then(() => {
+            MessagePlugin.success(`成功删除 ${ids.length} 张单据`);
+            this.clearSelection(); this.loadList();
+          }).finally(() => LoadingPlugin(false));
+        }
       });
     },
     clearSelection() {
@@ -273,6 +331,81 @@ export default {
         }
       })
     },
+    orderStatusTheme(row) {
+      if (row.status === 2) return 'primary';
+      if (row.orderStatus === '已审核') return 'success';
+      if (row.orderStatus === '已取消') return 'danger';
+      return 'warning';
+    },
+    orderStatusLabel(row) {
+      if (row.status === 2) return '已完成';
+      if (row.orderStatus === '已审核') return '已审核';
+      if (row.orderStatus === '已取消') return '已取消';
+      return '待审核';
+    },
+    onMore(item, row) {
+      const value = item && item.value;
+      if (value === 'approve') return this.doApprove(row);
+      if (value === 'cancel') return this.doCancel(row);
+      if (value === 'toOutbound') return this.doToOutbound(row);
+      if (value === 'detail') return this.addForm('edit', row.id);
+      if (value === 'print') return this.doPrintRow(row);
+    },
+    doApprove(row) {
+      DialogPlugin.confirm({
+        header: "审核提示",
+        body: `确认审核：${row.orderNo}?`,
+        onConfirm: () => {
+          return SalesOrder.approved('已审核', [row.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.loadList();
+          })
+        }
+      })
+    },
+    doCancel(row) {
+      DialogPlugin.confirm({
+        header: "取消提示",
+        body: `确认取消：${row.orderNo}?`,
+        onConfirm: () => {
+          return SalesOrder.approved('已取消', [row.id]).then(() => {
+            MessagePlugin.success("操作成功~");
+            this.loadList();
+          })
+        }
+      })
+    },
+    doPrintRow(row) {
+      SalesOrder.load(row.id).then(({data}) => {
+        const order = data || {};
+        const items = (order.salesOrderItemList || []).map((i) => ({
+          productName: i.productName || i.productCode || '',
+          quantity: i.quantity,
+          price: i.unitPrice,
+          amount: i.subtotal
+        }));
+        openPrint('销售订单', {
+          header: {
+            ...order,
+            partner: row.customerName || '',
+            amount: order.finalAmount ?? order.totalAmount
+          },
+          items
+        });
+      });
+    },
+    doToOutbound(row) {
+      this.$store.commit('SET_TAB_DATA', {
+        type: 'add',
+        fromSalesOrder: true,
+        customerId: row.customerId,
+        orderIds: [row.id]
+      });
+      this.pushTab({
+        key: 'SalesOutboundForm',
+        title: '新增销售出库单',
+      });
+    },
     doSearch() {
       this.pagination.page = 1;
       this.clearSelection();
@@ -284,11 +417,6 @@ export default {
         this.customerList = data || [];
       });
     },
-    loadTotal() {
-      SalesOrder.total(this.queryParams).then(({data}) => {
-        this.amountTotal = data || 0;
-      })
-    },
     loadList() {
       this.loading = true;
       SalesOrder.list(this.queryParams).then(({data: {results, total}}) => {
@@ -296,11 +424,19 @@ export default {
         this.pagination.total = total;
       }).finally(() => this.loading = false);
     },
+    loadTotal() {
+      SalesOrder.total(this.queryParams).then(({data}) => {
+        this.amountTotal = data?.amount || 0;
+        this.totalQuantity = data?.quantity || 0;
+      })
+    },
   },
   created() {
+    const saved = sessionStorage.getItem('SalesOrderList_filters');
+    if (saved) { try { const f = JSON.parse(saved); if (f.params) Object.assign(this.params, f.params); if (f.dateRangeValue) this.dateRangeValue = f.dateRangeValue; } catch(e) {} }
     this.loadCustomer();
-    this.loadTotal();
     this.loadList();
+    this.loadTotal();
   }
 }
 </script>

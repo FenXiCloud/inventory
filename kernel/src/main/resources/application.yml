@@ -1,14 +1,15 @@
-﻿spring:
+spring:
   lifecycle:
     timeout-per-shutdown-phase: 120s
   profiles:
     include: app,dev
   datasource:
-    url: jdbc:mysql://localhost:3306/jxc?characterEncoding=UTF-8&useUnicode=true&useSSL=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    url: ${DB_URL:jdbc:mysql://localhost:3306/jxc?characterEncoding=UTF-8&useUnicode=true&useSSL=false&serverTimezone=GMT%2B8&allowMultiQueries=true&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
 
     hikari:
+
       keepalive-time: 60000
       max-lifetime: 1500000
       maximum-pool-size: 200
@@ -30,7 +31,7 @@
     redis:
       repositories:
         enabled: false
-      url: "redis://127.0.0.1:6379"
+      url: ${REDIS_URL:redis://127.0.0.1:6379}
       database: 5
       lettuce:
         pool:
@@ -65,11 +66,33 @@ app:
   upload-root:
   #  阿里短信服务
   aliyun:
-    accessKeyId:
-    accessKeySecret:
+    accessKeyId: ${ALIYUN_ACCESS_KEY_ID:}
+    accessKeySecret: ${ALIYUN_ACCESS_KEY_SECRET:}
     sms:
-      signature: 纷析云
+      signature: ${ALIYUN_SMS_SIGNATURE:纷析云}
       template-code:
-        verification: SMS_175580136
-        register: SMS_217436843
+        verification: ${ALIYUN_SMS_VERIFICATION_TEMPLATE:}
+        register: ${ALIYUN_SMS_REGISTER_TEMPLATE:}
 
+# ============ 纷析云数电发票开放平台 SDK ============
+fenxi:
+  app-id: ${FENXI_APP_ID:}
+  key: ${FENXI_KEY:}
+  endpoint: ${FENXI_ENDPOINT:https://open.fenxi365.com/v1}
+
+# ============ 发票平台本地配置 ============
+invoice:
+  platform:
+    mock-enabled: ${INVOICE_MOCK_ENABLED:true}
+    account:
+      username: ${INVOICE_USERNAME:}
+      password: ${INVOICE_PASSWORD:}
+      phone: ${INVOICE_PHONE:}
+      real-name: ${INVOICE_REAL_NAME:}
+      role-name: ${INVOICE_ROLE_NAME:开票员}
+    seller:
+      name: ${SELLER_NAME:}
+      phone: ${SELLER_PHONE:}
+      invoice-type: ${SELLER_INVOICE_TYPE:030}
+      bank: ${SELLER_BANK:}
+      bank-account: ${SELLER_BANK_ACCOUNT:}

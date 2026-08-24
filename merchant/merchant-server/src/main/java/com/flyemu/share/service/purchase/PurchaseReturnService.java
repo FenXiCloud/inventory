@@ -106,12 +106,16 @@ public class PurchaseReturnService extends BaseService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
-    public BigDecimal queryTotal(Query query) {
-        return bqf.selectFrom(qPurchaseReturn)
-                .select(qPurchaseReturn.refundAmount.sum())
+    public Map<String, BigDecimal> queryTotal(Query query) {
+        Tuple tuple = bqf.selectFrom(qPurchaseReturn)
+                .select(qPurchaseReturn.refundAmount.sum(), qPurchaseReturn.secondarySum.sum())
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseReturn.supplierId))
                 .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qPurchaseReturn.createdBy))
-                .where(query.builder).fetchFirst();
+                .where(query.builder).fetchOne();
+        Map<String, BigDecimal> result = new HashMap<>();
+        result.put("amount", tuple.get(0, BigDecimal.class));
+        result.put("quantity", java.util.Objects.requireNonNullElse(tuple.get(1, BigDecimal.class), BigDecimal.ZERO));
+        return result;
     }
 
     @Transactional
@@ -124,12 +128,12 @@ public class PurchaseReturnService extends BaseService {
             Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能更新~");
             BeanUtil.copyProperties(order, original, CopyOptions.create().ignoreNullValue());
 
-            final Double[] secondarySum = {0.0};
+            final BigDecimal[] secondarySum = {BigDecimal.ZERO};
             Set<Long> inboundIds = new HashSet<>();
             Set<Long> upInboundIds = new HashSet<>();
 
             purchaseReturnForm.getPurchaseReturnItemList().forEach(item -> {
-                secondarySum[0] = secondarySum[0] + item.getSecondaryQuantity();
+                secondarySum[0] = secondarySum[0].add(item.getSecondaryQuantity());
                 inboundIds.add(item.getPurchaseInboundId());
                 upInboundIds.add(item.getPurchaseInboundId());
             });
@@ -142,7 +146,7 @@ public class PurchaseReturnService extends BaseService {
                     .fetch();
 
             tuples.forEach(tuple -> {
-                double v = NumberUtil.add(tuple.get(qPurchaseReturnItem.secondaryQuantity), tuple.get(qPurchaseInboundItem.returnQuantity));
+                BigDecimal v = tuple.get(qPurchaseReturnItem.secondaryQuantity).add(tuple.get(qPurchaseInboundItem.returnQuantity));
                 upInboundIds.add(tuple.get(qPurchaseReturnItem.purchaseInboundId));
                 jqf.update(qPurchaseInboundItem)
                         .set(qPurchaseInboundItem.returnQuantity, v)
@@ -172,8 +176,9 @@ public class PurchaseReturnService extends BaseService {
             for (PurchaseReturnItem d : purchaseReturnForm.getPurchaseReturnItemList()) {
                 PurchaseInboundItem purchaseInboundItem = inboundItemMap.get(d.getPurchaseInboundItemId());
 
-                //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
+                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
+                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
+                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
 
                 if (d.getId() != null) {
                     ids.add(d.getId());
@@ -182,8 +187,8 @@ public class PurchaseReturnService extends BaseService {
                 /**
                  * 更新对应入库单明细
                  */
-                double v = NumberUtil.sub(purchaseInboundItem.getReturnQuantity(), d.getSecondaryQuantity());
-                if (v < 0) {
+                BigDecimal v = purchaseInboundItem.getReturnQuantity().subtract(d.getSecondaryQuantity());
+                if (v.compareTo(BigDecimal.ZERO) < 0) {
                     throw new ServiceException("可退数量不能小于0,请刷新重试");
                 }
                 jqf.update(qPurchaseInboundItem)
@@ -226,10 +231,10 @@ public class PurchaseReturnService extends BaseService {
             order.setOrderNo(codeSeedService.generateCode(order.getMerchantId(), order.getAccountBookId(), "采购退货单"));
             order.setOrderStatus(OrderStatus.已保存);
 
-            final Double[] secondarySum = {0.0};
+            final BigDecimal[] secondarySum = {BigDecimal.ZERO};
             Set<Long> inboundIds = new HashSet<>();
             purchaseReturnForm.getPurchaseReturnItemList().forEach(item -> {
-                secondarySum[0] = secondarySum[0] + item.getSecondaryQuantity();
+                secondarySum[0] = secondarySum[0].add(item.getSecondaryQuantity());
                 inboundIds.add(item.getPurchaseInboundId());
             });
             order.setSecondarySum(secondarySum[0]);
@@ -252,15 +257,16 @@ public class PurchaseReturnService extends BaseService {
                 /**
                  * 更新对应入库单明细
                  */
-                double v = NumberUtil.sub(purchaseInboundItem.getReturnQuantity(), d.getSecondaryQuantity());
-                if (v < 0) {
+                BigDecimal v = purchaseInboundItem.getReturnQuantity().subtract(d.getSecondaryQuantity());
+                if (v.compareTo(BigDecimal.ZERO) < 0) {
                     throw new RuntimeException("可退数量不能小于0,请刷新重试");
                 }
                 jqf.update(qPurchaseInboundItem)
                         .set(qPurchaseInboundItem.returnQuantity, v)
                         .where(qPurchaseInboundItem.id.eq(purchaseInboundItem.getId())).execute();
-                //计算基本单价
-                d.setUnitPrice(BigDecimal.valueOf(NumberUtil.div(d.getSecondaryPrice(), d.getQuantity(), 2)));
+                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
+                BigDecimal conversionRate2 = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
+                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate2, 2, RoundingMode.HALF_UP));
 
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseReturnId(order.getId());
@@ -324,7 +330,7 @@ public class PurchaseReturnService extends BaseService {
                 .fetch();
 
         tuples.forEach(tuple -> {
-            double v = NumberUtil.add(tuple.get(qPurchaseReturnItem.secondaryQuantity), tuple.get(qPurchaseInboundItem.returnQuantity));
+            BigDecimal v = tuple.get(qPurchaseReturnItem.secondaryQuantity).add(tuple.get(qPurchaseInboundItem.returnQuantity));
             upInboundIds.add(tuple.get(qPurchaseReturnItem.purchaseInboundId));
             jqf.update(qPurchaseInboundItem)
                     .set(qPurchaseInboundItem.returnQuantity, v)
@@ -361,6 +367,7 @@ public class PurchaseReturnService extends BaseService {
     }
 
     @Transactional
+    //批量审核
     public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
         List<PurchaseReturn> orders = bqf.selectFrom(qPurchaseReturn)
                 .where(qPurchaseReturn.merchantId.eq(merchantId).and(qPurchaseReturn.id.in(ids)))
@@ -422,7 +429,7 @@ public class PurchaseReturnService extends BaseService {
             this.purchaseReturnToInventory(state, setIds);
         }
     }
-
+    //采购退货单审核之后,自动扣减供应商应付账款的余额,并生成供应商资金流水记录
     private void outboundSupplierFlows(Long adminId, PurchaseReturn order) {
         Supplier supplier = supplierService.selectByPrimaryKey(order.getSupplierId());
         BigDecimal refundAmount = order.getRefundAmount();
@@ -474,7 +481,7 @@ public class PurchaseReturnService extends BaseService {
 
     private void applyIssueCost(PurchaseReturn purchaseReturn, List<PurchaseReturnItem> returnItems) {
         for (PurchaseReturnItem line : returnItems) {
-            int qty = line.getQuantity() == null ? 0 : (int) Double.parseDouble(line.getQuantity().toString());
+            int qty = line.getQuantity() == null ? 0 : line.getQuantity().intValue();
             CostingService.IssueRequest req = new CostingService.IssueRequest();
             req.setProductId(line.getProductId());
             req.setWarehouseId(line.getWarehouseId());
@@ -509,7 +516,7 @@ public class PurchaseReturnService extends BaseService {
                 subtotal = purchaseReturnItem.getSubtotal() == null ? BigDecimal.ZERO : purchaseReturnItem.getSubtotal();
             }
             BigDecimal finalSubtotal = subtotal;
-            Double quantity = purchaseReturnItem.getQuantity();
+            BigDecimal quantity = purchaseReturnItem.getQuantity();
             inventories.stream()
                     .filter(item -> item.getProductId().equals(purchaseReturnItem.getProductId())
                             && item.getWarehouseId().equals(purchaseReturnItem.getWarehouseId()))
@@ -520,16 +527,15 @@ public class PurchaseReturnService extends BaseService {
                                 Integer currentQuantity = item.getCurrentQuantity();
                                 BigDecimal added = totalCost.add(finalSubtotal)
                                         .setScale(2, RoundingMode.HALF_EVEN);
-                                double parsed = Double.parseDouble(quantity.toString());
-                                currentQuantity += (int) parsed;
+                                currentQuantity += quantity.intValue();
                                 item.setCurrentQuantity(currentQuantity);
                                 item.setTotalCost(added);
                             }, () -> {
                                 Inventory inventory = new Inventory();
                                 inventory.setWarehouseId(purchaseReturnItem.getWarehouseId());
                                 inventory.setProductId(purchaseReturnItem.getProductId());
-                                double parsed = Double.parseDouble(purchaseReturnItem.getQuantity().toString());
-                                inventory.setCurrentQuantity((int) parsed);
+                                int parsed = purchaseReturnItem.getQuantity().intValue();
+                                inventory.setCurrentQuantity(parsed);
                                 inventory.setTotalCost(finalSubtotal);
                                 inventory.setMerchantId(purchaseReturnItem.getMerchantId());
                                 inventory.setAccountBookId(purchaseReturnItem.getAccountBookId());
@@ -554,8 +560,8 @@ public class PurchaseReturnService extends BaseService {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setWarehouseId(purchaseReturnItem.getWarehouseId());
         inventoryItem.setProductId(purchaseReturnItem.getProductId());
-        double parsed = Double.parseDouble(purchaseReturnItem.getQuantity().toString());
-        inventoryItem.setQuantity((int) parsed);
+        int parsed = purchaseReturnItem.getQuantity().intValue();
+        inventoryItem.setQuantity(parsed);
         inventoryItem.setBaseUnitId(purchaseReturnItem.getBaseUnitId());
         inventoryItem.setSupplierId(purchaseReturn.getSupplierId());
         inventoryItem.setOperationType(OperationType.采购退货);
@@ -605,7 +611,7 @@ public class PurchaseReturnService extends BaseService {
                     dto.setCategoryName(tuple.get(qProductCategory.name));
                     dto.setWarehouseName(tuple.get(qWarehouse.name));
                     dto.setSecondaryUnitName(tuple.get(qUnit1.name));
-                    dto.setReturnQuantity(tuple.get(qPurchaseInboundItem.returnQuantity) + dto.getSecondaryQuantity());
+                    dto.setReturnQuantity(tuple.get(qPurchaseInboundItem.returnQuantity).add(dto.getSecondaryQuantity()));
                     list.add(dto);
                 }, List::addAll);
         return Dict.create().set("purchaseReturn", orderDto).set("purchaseReturnItemList", collect);

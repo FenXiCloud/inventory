@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-column">
     <div class="page-column-full-body">
       <div class="form-toolbar">
@@ -18,12 +18,22 @@
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">单据日期：</label>
           <t-date-picker
               v-model="form.orderDate"
-              :disable-date="orderDateDisable"
               :clearable="false"
               :disabled="isAudited"
           />
+          <t-button
+              v-if="!isAudited"
+              @click="openComboSelect"
+              variant="outline"
+              style="margin-left: 20px"
+          >
+            选套餐
+          </t-button>
         </div>
         <Stamp v-if="isAudited"/>
+        <t-tag v-if="form.purchaseStatusText" :theme="purchaseStatusTheme" variant="light" size="large" class="ml-12px">
+          {{ form.purchaseStatusText }}
+        </t-tag>
       </div>
       <t-table
           ref="xTable"
@@ -53,13 +63,24 @@
           >
         </template>
         <template #productInfo="{ row, rowIndex }">
-          <div class="input-group goodsSelect" @keyup.stop="void(0)" v-if="!isAudited">
+          <!-- 新商品：显示商品名称输入框 -->
+          <div v-if="row.isNewProduct && !isAudited" class="input-group">
+            <t-input
+              v-model="row.newProductName"
+              placeholder="输入商品名称"
+              size="small"
+            />
+          </div>
+          <!-- 已有商品选择 -->
+          <div class="input-group goodsSelect" @keyup.stop="void(0)" v-else-if="!isAudited">
             <t-select
                 ref="ms"
                 @change="selectProduct($event, rowIndex)"
+                @create="createProduct($event, rowIndex)"
                 :options="productList"
                 v-model="row.productId"
                 filterable
+                creatable
                 placeholder="输入编码/名称"
                 :clearable="false"
                 :keys="{ value: 'id', label: 'customName' }"
@@ -71,7 +92,29 @@
           {{ productSpec(row) }}
         </template>
         <template #productCategoryName="{ row }">
-          {{ productCategory(row) }}
+          <!-- 新商品：显示商品类别选择 -->
+          <t-select
+            v-if="row.isNewProduct && !isAudited"
+            v-model="row.newProductCategoryId"
+            :options="productCategoryList"
+            placeholder="选择类别"
+            size="small"
+            filterable
+            creatable
+            :keys="{ value: 'id', label: 'name' }"
+            @create="createProductCategory($event, row)"
+          />
+          <span v-else>{{ productCategory(row) }}</span>
+        </template>
+        <template #unitName="{ row }">
+          <!-- 新商品：显示单位输入框 -->
+          <t-input
+            v-if="row.isNewProduct && !isAudited"
+            v-model="row.unitName"
+            placeholder="输入单位"
+            size="small"
+          />
+          <span v-else>{{ row.unitName }}</span>
         </template>
         <template #warehouse="{ row }">
           <template v-if="!row.isNew && !isAudited">
@@ -244,6 +287,7 @@
         <t-button theme="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
         <t-button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</t-button>
         <t-button @click="doPrint" :loading="loading">打印</t-button>
+        <t-button theme="success" v-if="form.id && isAudited && form.purchaseStatus !== 2" @click="openTransferDialog()" :loading="loading">转采购</t-button>
         <t-button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
         <t-button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
       </div>
@@ -253,26 +297,133 @@
         <img :src="previewImageUrl" class="preview-image" alt="产品图片预览">
       </div>
     </div>
+
+    <!-- 以销定购对话框 -->
+    <t-dialog
+      v-model:visible="showTransferDialog"
+      header="以销定购 - 转采购入库"
+      width="1000px"
+      :confirm-loading="transferLoading"
+      @confirm="doTransfer"
+    >
+      <div class="p-16px">
+        <div class="mb-16px flex items-center gap-16px">
+          <div>
+            <label class="mr-8px" style="font-weight: 600;">统一供应商：</label>
+            <t-select
+              v-model="transferForm.supplierId"
+              :options="supplierList"
+              filterable
+              clearable
+              placeholder="可统一设置（可选）"
+              :keys="{ value: 'id', label: 'name' }"
+              style="width: 260px"
+              @change="onTransferSupplierChange"
+            />
+          </div>
+          <div>
+            <label class="mr-8px" style="font-weight: 600;">预计到货日：</label>
+            <t-date-picker v-model="transferForm.expectedDate" clearable style="width: 180px" />
+          </div>
+        </div>
+        <t-table
+          :data="transferItems"
+          :columns="transferColumns"
+          size="small"
+          bordered
+          stripe
+          table-layout="fixed"
+          row-key="_rowKey"
+          :selected-row-keys="transferSelectedKeys"
+          @select-change="onTransferSelectChange"
+        >
+          <template #supplierId="{ row }">
+            <t-select
+              v-model="row.supplierId"
+              :options="supplierList"
+              filterable
+              placeholder="选择供应商"
+              :keys="{ value: 'id', label: 'name' }"
+              size="small"
+              style="width: 140px"
+            />
+          </template>
+          <template #purchaseQuantity="{ row }">
+            <t-input-number
+              v-model="row.purchaseQuantity"
+              theme="normal"
+              :min="0"
+              :decimal-places="2"
+              style="width: 100%"
+            />
+          </template>
+          <template #purchasePrice="{ row }">
+            <t-input-number
+              v-model="row.purchasePrice"
+              theme="normal"
+              :min="0"
+              :decimal-places="2"
+              style="width: 100%"
+            />
+          </template>
+          <template #purchaseSubtotal="{ row }">
+            {{ (row.purchaseQuantity * row.purchasePrice).toFixed(2) }}
+          </template>
+        </t-table>
+      </div>
+    </t-dialog>
+
+    <t-dialog v-model:visible="comboVisible" header="选择商品套餐" :footer="false" width="460px">
+      <t-form label-width="90px">
+        <t-form-item label="套餐">
+          <t-select
+              v-model="selectedComboId"
+              :options="comboList"
+              :keys="{ value: 'id', label: 'customName' }"
+              filterable
+              placeholder="请选择套餐"
+              style="width: 100%"
+          />
+        </t-form-item>
+        <t-form-item label="套餐数量">
+          <t-input-number v-model="comboQuantity" :min="1" :decimal-places="0" style="width: 100%"/>
+        </t-form-item>
+      </t-form>
+      <div style="text-align: right">
+        <t-button variant="outline" @click="comboVisible = false">取消</t-button>
+        <t-button theme="primary" style="margin-left: 8px" @click="applyCombo">确定</t-button>
+      </div>
+    </t-dialog>
   </div>
 </template>
 <script>
 import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
 import {openPrint} from '@common/print';
-import {buildOrderDateDisable} from '@common/order-date';
 import manba from "manba";
 import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
 import {mapMutations, mapState} from "vuex";
 import SalesOrder from "@js/api/sales/SalesOrder";
 import Product from "@js/api/basic/Product";
+import ProductCombo from "@js/api/basic/ProductCombo";
+import ProductCategory from "@js/api/basic/ProductCategory";
+import Supplier from "@js/api/basic/Supplier";
 import Inventory from "@js/api/inventory/Inventory";
 import Stamp from "@views/common/Stamp.vue";
 import PriceRecord from "@js/api/basic/PriceRecord";
 
 let rowSeq = 0;
 function newRow(extra = {}) {
-  return { _rowKey: `r-${++rowSeq}`, productId: null, isNew: true, ...extra };
+  return {
+    _rowKey: `r-${++rowSeq}`,
+    productId: null,
+    isNew: true,
+    isNewProduct: false,
+    newProductName: '',
+    newProductCategoryId: null,
+    ...extra
+  };
 }
 
 export default {
@@ -280,11 +431,14 @@ export default {
   components: {Stamp},
   computed: {
     ...mapState(['accountBook']),
-    orderDateDisable() {
-      return buildOrderDateDisable(this.accountBook);
-    },
     isAudited() {
       return this.form.orderStatus === '已审核';
+    },
+    purchaseStatusTheme() {
+      const s = this.form.purchaseStatus;
+      if (s === 2) return 'success';
+      if (s === 1) return 'warning';
+      return 'default';
     },
     isDeleting() {
       return this.productData.length > 1;
@@ -348,12 +502,26 @@ export default {
         discountValue: discountValue,
         subtotal: subtotal
       }];
+    },
+    transferColumns() {
+      return [
+        { colKey: 'row-select', type: 'multiple', width: 46 },
+        { colKey: 'productCode', title: '商品编码', width: 100 },
+        { colKey: 'productName', title: '商品名称', minWidth: 120 },
+        { colKey: 'unitName', title: '单位', width: 60, align: 'center' },
+        { colKey: 'orderQuantity', title: '订单数量', width: 80, align: 'right' },
+        { colKey: 'supplierId', title: '供应商', width: 160 },
+        { colKey: 'purchaseQuantity', title: '采购数量', width: 110 },
+        { colKey: 'purchasePrice', title: '采购单价', width: 110 },
+        { colKey: 'purchaseSubtotal', title: '采购金额', width: 90, align: 'right' },
+      ];
     }
   },
   data() {
     return {
       loading: false,
       productList: [],
+      productCategoryList: [],
       product: null,
       warehouseList: [],
       customerList: [],
@@ -374,17 +542,27 @@ export default {
       type: null,
       previewVisible: false,
       previewImageUrl: '',
+      showTransferDialog: false,
+      transferLoading: false,
+      transferForm: { supplierId: null, expectedDate: null },
+      transferItems: [],
+      transferSelectedKeys: [],
+      supplierList: [],
       recentSales: [],
       customerLevel: null,
       customerLevelId: null,
       customerPrice: null,
+      comboVisible: false,
+      comboList: [],
+      selectedComboId: null,
+      comboQuantity: 1,
     };
   },
   methods: {
     ...mapMutations(['newTab']),
     productImage(row) {
       const p = (this.productList || []).find(item => (item.productId || item.id) === row.productId);
-      return p?.imgPath || '-';
+      return p?.imgPath || '';
     },
     productSpec(row) {
       const p = (this.productList || []).find(item => (item.productId || item.id) === row.productId);
@@ -423,6 +601,36 @@ export default {
         items,
       });
     },
+    createProduct(value, index) {
+      const name = (typeof value === 'string' ? value : (value?.label || value?.productName || '')).trim();
+      if (!name) return;
+      // 标记为新商品，不立即创建
+      this.productData[index] = {
+        ...this.productData[index],
+        isNewProduct: true,
+        newProductName: name,
+        productId: null,
+        isNew: false,
+        quantity: 1,
+        unitPrice: 0,
+        discountRate: 0,
+        discountValue: 0,
+        subtotal: 0,
+        unitName: '个', // 默认单位
+      };
+    },
+    createProductCategory(value, row) {
+      const name = (typeof value === 'string' ? value : (value?.label || value?.name || '')).trim();
+      if (!name) return;
+      // 先清空，避免把输入的名称字符串留在 newProductCategoryId 上
+      row.newProductCategoryId = null;
+      ProductCategory.save({ name }).then(({ data }) => {
+        if (data && data.id) {
+          this.productCategoryList.push(data);
+          row.newProductCategoryId = data.id;
+        }
+      });
+    },
     selectProduct(value, index) {
       const d = (this.productList || []).find((item) => String(item.id) === String(value));
       if (!d) return;
@@ -459,6 +667,82 @@ export default {
       });
       this.showStockQuantity(g);
       this.showPrice(g);
+    },
+    openComboSelect() {
+      if (!this.form.customerId && !this.customerId) {
+        MessagePlugin.warning('请先选择客户');
+        return;
+      }
+      this.loadCombos();
+      this.comboVisible = true;
+    },
+    loadCombos() {
+      ProductCombo.list({ page: 1, pageSize: 1000 }).then(({ data }) => {
+        this.comboList = (data?.results || [])
+          .filter((c) => c.enabled !== false)
+          .map((c) => ({ ...c, customName: `${c.code || ''}--${c.name || ''}` }));
+      });
+    },
+    applyCombo() {
+      if (!this.selectedComboId) {
+        MessagePlugin.warning('请选择套餐');
+        return;
+      }
+      ProductCombo.load(this.selectedComboId).then(({ data }) => {
+        const items = data?.comboItemList || [];
+        if (!items.length) {
+          MessagePlugin.warning('该套餐没有组件');
+          return;
+        }
+        const qty = Number(this.comboQuantity) || 1;
+        this.expandComboItems(items, qty);
+        this.comboVisible = false;
+        this.selectedComboId = null;
+        this.comboQuantity = 1;
+      });
+    },
+    expandComboItems(comboItems, qty) {
+      const defaultWarehouseId = this.resolveDefaultWarehouseId();
+      const newRows = [];
+      comboItems.forEach((ci) => {
+        const p = (this.productList || []).find((i) => String(i.id) === String(ci.productId));
+        if (!p) return;
+        const row = newRow({
+          isNew: false,
+          quantity: (Number(ci.quantity) || 1) * qty,
+          unitPrice: p.lastSalePrice || 0,
+          warehouseId: defaultWarehouseId,
+          discountValue: 0.00,
+          discountRate: 0.00,
+          baseUnitId: p.unitId,
+          unitName: p.unitName,
+          taxRate: p.taxRate != null ? p.taxRate : null,
+          productId: p.id,
+          productCode: p.code,
+          productName: p.name,
+          remark: "",
+        });
+        row.subtotal = (row.quantity * row.unitPrice).toFixed(2);
+        newRows.push(row);
+      });
+      if (!newRows.length) {
+        MessagePlugin.warning('套餐组件在商品库中不存在');
+        return;
+      }
+      const firstEmpty = this.productData.findIndex((i) => i.isNew && !i.productId);
+      if (firstEmpty >= 0) {
+        this.productData.splice(firstEmpty, 1, ...newRows);
+      } else {
+        this.productData.push(...newRows);
+      }
+      if (!this.productData.some((i) => i.isNew && !i.productId)) {
+        this.productData.push(newRow({ isNew: true }));
+      }
+      newRows.forEach((r) => {
+        this.showStockQuantity(r);
+        this.showPrice(r);
+      });
+      MessagePlugin.success(`已展开套餐 ${newRows.length} 个组件`);
     },
     checkHttp() {
       if (this.productData.length === 0) {
@@ -523,23 +807,77 @@ export default {
         return;
       }
       if (!this.checkHttp()) {
+        LoadingPlugin(false);
         return;
       }
-      let productData = this.productData
-        .filter(c => !c.isNew && c.quantity > 0)
-        .map(({ _rowKey, ...rest }) => rest);
-      SalesOrder.save({
-        salesOrder: Object.assign(this.form),
-        salesOrderItemList: productData
-      }).then((success) => {
-        if (success) {
-          MessagePlugin.success("保存成功~");
-          this.clearForm();
-          if (type === 'save') {
-            this.closeWindow();
+
+      // 收集新商品
+      const newProducts = this.productData
+        .filter(c => c.isNewProduct && c.newProductName && c.quantity > 0)
+        .map(c => ({
+          name: c.newProductName,
+          productCategoryId: c.newProductCategoryId,
+          unitName: c.unitName
+        }));
+
+      // 创建新商品的函数
+      const createNewProducts = async () => {
+        const createdProducts = [];
+        for (const newProduct of newProducts) {
+          const { data } = await Product.quickCreate(newProduct);
+          if (data && data.productId) {
+            createdProducts.push({...data, inputName: newProduct.name});
+            this.productList.push(data);
           }
         }
-      }).finally(() => LoadingPlugin(false));
+        return createdProducts;
+      };
+
+      // 保存订单的函数
+      const saveOrderData = (createdProducts) => {
+        // 更新新商品行的完整信息
+        this.productData.forEach(row => {
+          if (row.isNewProduct && row.newProductName) {
+            const createdProduct = createdProducts.find(p => p.inputName === row.newProductName);
+            if (createdProduct) {
+              row.productId = createdProduct.productId;
+              row.productCode = createdProduct.productCode || '';
+              row.productName = createdProduct.productName || row.newProductName;
+              row.baseUnitId = createdProduct.unitId;
+              row.unitName = createdProduct.unitName || row.unitName || '个';
+            }
+          }
+        });
+
+        let productData = this.productData
+          .filter(c => !c.isNew && c.quantity > 0 && c.productId)
+          .map(({ _rowKey, isNewProduct, newProductName, newProductCategoryId, ...rest }) => rest);
+
+        SalesOrder.save({
+          salesOrder: Object.assign(this.form),
+          salesOrderItemList: productData
+        }).then((success) => {
+          if (success) {
+            MessagePlugin.success("保存成功~");
+            this.clearForm();
+            if (type === 'save') {
+              this.closeWindow();
+            }
+          }
+        }).finally(() => LoadingPlugin(false));
+      };
+
+      // 如果有新商品，先创建新商品，再保存订单
+      if (newProducts.length > 0) {
+        createNewProducts().then((createdProducts) => {
+          saveOrderData(createdProducts);
+        }).catch((error) => {
+          MessagePlugin.error("创建商品失败~");
+          LoadingPlugin(false);
+        });
+      } else {
+        saveOrderData([]);
+      }
     },
     clearForm() {
       this.form = {
@@ -637,13 +975,15 @@ export default {
       row.subtotal = (row.quantity * row.unitPrice).toFixed(2);
     },
     updateQuantity(item) {
-      if (!item.productId) return;
+      // 新商品也需要计算
+      if (!item.productId && !item.isNewProduct) return;
       item.quantity = item.quantity || 1;
       item.subtotal = ((item.quantity * item.unitPrice * (100 - item.discountRate)) / 100).toFixed(2);
       item.discountValue = (((item.quantity * item.unitPrice) * item.discountRate) / 100).toFixed(2);
     },
     updatePrice(item) {
-      if (!item.productId) return;
+      // 新商品也需要计算
+      if (!item.productId && !item.isNewProduct) return;
       item.unitPrice = item.unitPrice || 0.00;
       item.discountValue = (item.unitPrice * item.quantity * item.discountRate / 100).toFixed(2);
       item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);
@@ -710,6 +1050,108 @@ export default {
         this.$store.commit('SET_TAB_DATA', {refresh: true});
       });
     },
+    onTransferSelectChange(selectedRowKeys, { selectedRowData }) {
+      this.transferSelectedKeys = selectedRowKeys;
+    },
+    openTransferDialog() {
+      // 准备转采购数据：带入销售订单的商品明细
+      this.transferForm.supplierId = null;
+      this.transferForm.expectedDate = null;
+      this.transferItems = (this.productData || [])
+        .filter(r => !r.isNew && r.productId && r.quantity > 0)
+        .map(r => {
+          // 查找商品的默认供应商和最近采购价
+          const product = (this.productList || []).find(p => (p.productId || p.id) === r.productId) || {};
+          return {
+            _rowKey: r._rowKey,
+            productId: r.productId,
+            productCode: r.productCode || product.productCode || '',
+            productName: r.productName || product.productName || '',
+            unitName: r.unitName || product.unitName || '',
+            baseUnitId: r.baseUnitId || product.unitId,
+            warehouseId: r.warehouseId,
+            orderQuantity: r.quantity,
+            purchaseQuantity: r.quantity,
+            purchasePrice: product.lastPurchasePrice || r.unitPrice || 0,
+            supplierId: product.defaultSupplierId || null,
+            secondaryUnitId: r.baseUnitId || product.unitId,
+            conversionRate: 1,
+          };
+        });
+      if (!this.transferItems.length) {
+        MessagePlugin.warning('订单中没有商品明细');
+        return;
+      }
+      // 默认选中所有行
+      this.transferSelectedKeys = this.transferItems.map(r => r._rowKey);
+      this.showTransferDialog = true;
+    },
+    onTransferSupplierChange(val) {
+      // 统一设置所有行的供应商
+      if (val) {
+        this.transferItems.forEach(r => { r.supplierId = val; });
+      }
+    },
+    doTransfer() {
+      // 只处理选中的行
+      const selectedItems = this.transferItems.filter(r => this.transferSelectedKeys.includes(r._rowKey));
+      if (!selectedItems.length) {
+        MessagePlugin.warning('请至少选择一个商品');
+        return;
+      }
+      // 校验：每行必须有供应商
+      const noSupplier = selectedItems.find(r => r.purchaseQuantity > 0 && !r.supplierId);
+      if (noSupplier) {
+        MessagePlugin.warning(`商品「${noSupplier.productName}」未选择供应商`);
+        return;
+      }
+      const validItems = selectedItems.filter(r => r.purchaseQuantity > 0);
+      if (!validItems.length) {
+        MessagePlugin.warning('请填写采购数量');
+        return;
+      }
+
+      // 按供应商分组，不同供应商需要分别生成采购入库单
+      const bySupplier = new Map();
+      for (const r of validItems) {
+        const key = r.supplierId;
+        if (!bySupplier.has(key)) bySupplier.set(key, []);
+        bySupplier.get(key).push(r);
+      }
+
+      this.transferLoading = true;
+      const promises = [];
+      for (const [supplierId, items] of bySupplier) {
+        const payload = {
+          supplierId,
+          items: items.map(r => ({
+            productId: r.productId,
+            warehouseId: r.warehouseId,
+            secondaryQuantity: r.purchaseQuantity,
+            secondaryPrice: r.purchasePrice,
+            secondaryUnitId: r.secondaryUnitId || r.baseUnitId,
+            baseUnitId: r.baseUnitId,
+            conversionRate: r.conversionRate || 1,
+          })),
+        };
+        promises.push(SalesOrder.transferToPurchaseInbound(this.form.id, payload));
+      }
+
+      Promise.all(promises).then(results => {
+        const ids = results.map(r => r.data).filter(Boolean);
+        MessagePlugin.success(`已生成 ${ids.length} 张采购入库单`);
+        this.showTransferDialog = false;
+        // 跳转到最后一个采购入库单详情
+        const lastId = ids[ids.length - 1];
+        if (lastId) {
+          this.$store.commit('pushTab', {
+            key: 'PurchaseInboundForm',
+            title: '采购入库单详情',
+            params: { orderId: lastId, type: 'edit' }
+          });
+        }
+      }).finally(() => this.transferLoading = false);
+    },
     discountRateComputeFinalAmount() {
       this.form.finalAmount = (this.form.totalAmount * (100 - this.form.discountRate) / 100).toFixed(2);
       this.form.discountAmount = (this.form.totalAmount - this.form.finalAmount).toFixed(2);
@@ -724,16 +1166,39 @@ export default {
       this.previewVisible = true;
     },
   },
+  watch: {
+    'productData': {
+      handler(newVal) {
+        // 监听数量和单价变化，自动计算小计
+        newVal.forEach(row => {
+          if (!row.isNew || row.isNewProduct) {
+            const quantity = Number(row.quantity) || 0;
+            const unitPrice = Number(row.unitPrice) || 0;
+            const discountRate = Number(row.discountRate) || 0;
+            const subtotal = (quantity * unitPrice * (100 - discountRate) / 100).toFixed(2);
+            const discountValue = (quantity * unitPrice * discountRate / 100).toFixed(2);
+            row.subtotal = subtotal;
+            row.discountValue = discountValue;
+          }
+        });
+      },
+      deep: true
+    }
+  },
   created() {
     LoadingPlugin(true);
     Promise.all([
       Customer.select(),
       Warehouse.select(),
-      Product.select()
+      Product.select(),
+      Supplier.select(),
+      ProductCategory.select()
     ]).then((results) => {
       this.customerList = results[0].data || [];
       this.warehouseList = results[1].data || [];
       this.productList = results[2].data || [];
+      this.supplierList = results[3].data || [];
+      this.productCategoryList = results[4].data || [];
       this.productList.forEach(item => {
         item.customName = `${item.code}--${item.name}`;
       });
@@ -751,6 +1216,9 @@ export default {
           if ('copy' === this.type) {
             this.form.id = null;
             this.form.orderStatus = null;
+            this.form.purchaseStatus = 0;
+            this.form.purchaseStatusText = null;
+            this.form.purchaseInIds = null;
           }
           const customer = this.customerList.find(c => c.id === this.customerId);
           if (customer) {

@@ -44,13 +44,17 @@ public class CodeRuleService extends BaseService {
             CodeRule.DocumentType.收款单,
             CodeRule.DocumentType.付款单,
             CodeRule.DocumentType.核销单,
+            CodeRule.DocumentType.结算单,
             CodeRule.DocumentType.其他收款单,
             CodeRule.DocumentType.其他付款单,
             CodeRule.DocumentType.转帐单,
             CodeRule.DocumentType.商品,
             CodeRule.DocumentType.仓库,
             CodeRule.DocumentType.客户,
-            CodeRule.DocumentType.供货商
+            CodeRule.DocumentType.供货商,
+            CodeRule.DocumentType.组装拆卸单,
+            CodeRule.DocumentType.销售预订,
+            CodeRule.DocumentType.进货预订
     );
 
     /**
@@ -112,6 +116,7 @@ public class CodeRuleService extends BaseService {
             case 收款单 -> "RC";
             case 付款单 -> "PY";
             case 核销单 -> "RV";
+            case 结算单 -> "ST";
             case 其他收款单 -> "OR";
             case 其他付款单 -> "OP";
             case 转帐单 -> "TF";
@@ -119,6 +124,9 @@ public class CodeRuleService extends BaseService {
             case 仓库 -> "WH";
             case 客户 -> "CU";
             case 供货商 -> "SU";
+            case 组装拆卸单 -> "AS";
+            case 销售预订 -> "XS";
+            case 进货预订 -> "JH";
         };
     }
 

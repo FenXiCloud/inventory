@@ -97,6 +97,18 @@ public class AccountService extends BaseService {
 
     @Transactional
     public Account save(Account account) {
+        // 检查账户名称是否重复
+        long count = jqf.select(qAccount.count())
+                .from(qAccount)
+                .where(qAccount.merchantId.eq(account.getMerchantId())
+                        .and(qAccount.accountBookId.eq(account.getAccountBookId()))
+                        .and(qAccount.name.eq(account.getName()))
+                        .and(account.getId() != null ? qAccount.id.ne(account.getId()) : qAccount.id.isNotNull()))
+                .fetchFirst();
+        if (count > 0) {
+            throw new ServiceException("账户名称已存在");
+        }
+
         if (account.getId() != null) {
             //更新
             Account original = accountRepository.getById(account.getId());

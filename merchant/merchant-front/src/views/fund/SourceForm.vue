@@ -40,6 +40,7 @@
 import { MessagePlugin } from 'tdesign-vue-next';
 import OrderReceipt from '@js/api/fund/OrderReceipt';
 import OrderPayment from '@js/api/fund/OrderPayment';
+import Settlement from '@js/api/fund/Settlement';
 
 export default {
   name: 'SourceForm',
@@ -91,15 +92,19 @@ export default {
     tableData() {
       return (this.dataList || []).map((row, index) => {
         let businessTypeText = '-';
+        let orderNo = row.salesOrderNo || row.businessNo;
         if (this.URL === 'OrderReceipt') {
           businessTypeText = row.businessType == 2 ? '期初余额' : '销售出库单';
         } else if (this.URL === 'OrderPayment') {
           businessTypeText = row.businessType == 2 ? '期初余额' : '采购入库单';
+        } else if (this.URL === 'Settlement') {
+          businessTypeText = row.businessTypeLabel || '结算单';
         }
         return {
           ...row,
+          salesOrderNo: orderNo,
           businessTypeText,
-          rowKey: `${row.salesOrderNo || row.salesOrderId || 'row'}_${index}`
+          rowKey: `${orderNo || 'row'}_${index}`
         };
       });
     },
@@ -127,19 +132,23 @@ export default {
       this.loadList();
     },
     loadList() {
-      const apiMap = { OrderReceipt, OrderPayment };
+      const apiMap = { OrderReceipt, OrderPayment, Settlement };
       const apiModule = apiMap[this.URL];
       this.loading = true;
       this.selectedRowKeys = [];
       this.selectedRows = [];
-      this.openingBalance.documentAmount = this.params.balance;
-      this.openingBalance.unverifiedAmount = this.params.balance;
+      const balance = Number(this.params.balance) || 0;
+      this.openingBalance.documentAmount = balance;
+      this.openingBalance.unverifiedAmount = balance;
 
       const params = {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize
       };
-      if (this.URL === 'OrderReceipt') {
+      if (this.URL === 'Settlement') {
+        params.personnelId = this.params.customerId || this.params.supplierId;
+        params.type = this.params.type;
+      } else if (this.URL === 'OrderReceipt') {
         params.customerId = this.params.customerId;
       } else if (this.URL === 'OrderPayment') {
         params.supplierId = this.params.supplierId;
@@ -148,8 +157,12 @@ export default {
       apiModule
         .writeOff(params)
         .then(({ data: { results, total } }) => {
-          this.dataList = [this.openingBalance, ...(results || [])];
-          this.pagination.total = (total || 0) + 1;
+          const list = results || [];
+          if (balance > 0) {
+            list.unshift(this.openingBalance);
+          }
+          this.dataList = list;
+          this.pagination.total = (total || 0) + (balance > 0 ? 1 : 0);
         })
         .finally(() => (this.loading = false));
     },

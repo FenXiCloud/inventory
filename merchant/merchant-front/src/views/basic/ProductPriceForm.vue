@@ -7,7 +7,7 @@
             <t-input placeholder="产品编码" v-model="model.code" disabled/>
           </t-form-item>
           <t-form-item label="产品名称" name="name">
-            <t-input placeholder="产品名称" v-model="model.name" :maxlength="64" disabled/>
+            <t-input placeholder="产品名称" v-model="model.name" :maxlength="255" disabled/>
           </t-form-item>
           <t-form-item label="产品分类" name="productCategoryName">
             <t-input placeholder="产品分类" v-model="model.productCategoryName" :maxlength="64" disabled/>

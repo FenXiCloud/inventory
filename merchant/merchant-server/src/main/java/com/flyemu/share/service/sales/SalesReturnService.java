@@ -49,7 +49,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -110,12 +112,12 @@ public class SalesReturnService extends BaseService {
                     .where(qsalesReturnItem.salesReturnId.eq(salesReturnDTO.getId()))
                     .fetch();
             List<SalesReturnItemDto> itemDTOs = new ArrayList<>();
-            AtomicReference<Double> totalQuantity = new AtomicReference<>((double) 0L);
+            AtomicReference<BigDecimal> totalQuantity = new AtomicReference<>(BigDecimal.ZERO);
             salesReturnItemList.forEach(item -> {
                 SalesReturnItemDto itemDTO = BeanUtil.toBean(item, SalesReturnItemDto.class);
                 itemDTOs.add(itemDTO);
-                Double quantity = itemDTO.getQuantity();
-                totalQuantity.updateAndGet(v -> v + quantity);
+                BigDecimal quantity = itemDTO.getQuantity();
+                totalQuantity.updateAndGet(v -> v.add(quantity));
             });
             salesReturnDTO.setSalesReturnItemList(itemDTOs);
             salesReturnDTO.setTotalQuantity(totalQuantity);
@@ -154,6 +156,9 @@ public class SalesReturnService extends BaseService {
 
             BeanUtil.copyProperties(salesReturn, original, CopyOptions.create().ignoreNullValue());
             SalesReturn update = salesReturnRepository.save(original);
+            jqf.delete(qsalesReturnItem)
+                    .where(qsalesReturnItem.salesReturnId.eq(id))
+                    .execute();
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
                     checkQuantity(item);
@@ -223,10 +228,10 @@ public class SalesReturnService extends BaseService {
         if (outItemId != null) {
             SalesOutboundItem salesOutboundItem = salesOutboundItemRepository.getById(outItemId);
             //出库单数量
-            Double quantity = salesOutboundItem.getQuantity();
+            BigDecimal quantity = salesOutboundItem.getQuantity();
             //退货单数量
-            Double quantity1 = item.getQuantity();
-            if (quantity1 > quantity) {
+            BigDecimal quantity1 = item.getQuantity();
+            if (quantity1.compareTo(quantity) > 0) {
                 throw new InvalidContextException("退货数量不能大于出库数量");
             }
         }
@@ -421,7 +426,7 @@ public class SalesReturnService extends BaseService {
                 Inventory inv = inventoryService.findByWarehouseIdAndProductId(line.getWarehouseId(), line.getProductId());
                 costPrice = inv != null && inv.getAverageCost() != null ? inv.getAverageCost() : BigDecimal.ZERO;
             }
-            int qty = line.getQuantity() == null ? 0 : (int) Double.parseDouble(line.getQuantity().toString());
+            int qty = line.getQuantity() == null ? 0 : line.getQuantity().intValue();
             line.setCostPrice(costPrice);
             line.setCostAmount(costPrice.multiply(BigDecimal.valueOf(qty)).setScale(2, RoundingMode.HALF_EVEN));
         }
@@ -433,7 +438,7 @@ public class SalesReturnService extends BaseService {
             CostingService.ReceiptRequest req = new CostingService.ReceiptRequest();
             req.setProductId(item.getProductId());
             req.setWarehouseId(item.getWarehouseId());
-            int qty = item.getQuantity() == null ? 0 : (int) Double.parseDouble(item.getQuantity().toString());
+            int qty = item.getQuantity() == null ? 0 : item.getQuantity().intValue();
             req.setQty(qty);
             req.setUnitCost(item.getCostPrice());
             req.setInboundDate(original.getReturnDate());
@@ -459,7 +464,7 @@ public class SalesReturnService extends BaseService {
         AtomicReference<Inventory> inventoryAtomicReference = new AtomicReference<>();
         AtomicReference<InventoryItem> inventoryItemAtomicReference = new AtomicReference<>();
         returnItems.forEach(returnItem -> {
-            Double quantity = returnItem.getQuantity();
+            BigDecimal quantity = returnItem.getQuantity();
             BigDecimal subtotal = returnItem.getCostAmount();
             if (subtotal == null) {
                 subtotal = returnItem.getSubtotal() == null ? BigDecimal.ZERO : returnItem.getSubtotal();
@@ -475,16 +480,16 @@ public class SalesReturnService extends BaseService {
                                 BigDecimal totalCost = item.getTotalCost();
                                 BigDecimal added = totalCost.add(finalSubtotal)
                                         .setScale(2, RoundingMode.HALF_EVEN);
-                                double parsed = Double.parseDouble(quantity.toString());
-                                currentQuantity += (int) parsed;
+                                int parsed = quantity.intValue();
+                                currentQuantity += parsed;
                                 item.setCurrentQuantity(currentQuantity);
                                 item.setTotalCost(added);
                             }, () -> {
                                 Inventory inventory = new Inventory();
                                 inventory.setProductId(returnItem.getProductId());
                                 inventory.setWarehouseId(returnItem.getWarehouseId());
-                                double parsed = Double.parseDouble(returnItem.getQuantity().toString());
-                                inventory.setCurrentQuantity((int) parsed);
+                                int parsed = returnItem.getQuantity().intValue();
+                                inventory.setCurrentQuantity(parsed);
                                 inventory.setTotalCost(finalSubtotal);
                                 inventory.setMerchantId(returnItem.getMerchantId());
                                 inventory.setBaseUnitId(returnItem.getBaseUnitId());
@@ -503,8 +508,8 @@ public class SalesReturnService extends BaseService {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setProductId(returnItem.getProductId());
         inventoryItem.setWarehouseId(returnItem.getWarehouseId());
-        double parsed = Double.parseDouble(returnItem.getQuantity().toString());
-        inventoryItem.setQuantity((int) parsed);
+        int parsed = returnItem.getQuantity().intValue();
+        inventoryItem.setQuantity(parsed);
         inventoryItem.setBaseUnitId(returnItem.getBaseUnitId());
         inventoryItem.setOperationType(OperationType.销售退货);
         inventoryItem.setOrderId(returnItem.getSalesReturnId());
@@ -520,10 +525,19 @@ public class SalesReturnService extends BaseService {
         return inventoryItem;
     }
 
-    public BigDecimal queryTotal(Query query) {
-        return bqf.selectFrom(qSalesReturn)
-                .select(qSalesReturn.finalAmount.sum())
+    public Map<String, BigDecimal> queryTotal(Query query) {
+        BigDecimal amount = bqf.selectFrom(qSalesReturn)
+                .select(qSalesReturn.refundAmount.sum())
                 .where(query.builder).fetchFirst();
+        BigDecimal quantity = bqf.selectFrom(qsalesReturnItem)
+                .select(qsalesReturnItem.quantity.sum())
+                .where(qsalesReturnItem.salesReturnId.in(
+                        bqf.selectFrom(qSalesReturn).select(qSalesReturn.id).where(query.builder)
+                )).fetchFirst();
+        Map<String, BigDecimal> result = new HashMap<>();
+        result.put("amount", amount);
+        result.put("quantity", java.util.Objects.requireNonNullElse(quantity, BigDecimal.ZERO));
+        return result;
     }
 
     public static class Query implements TenantAware {

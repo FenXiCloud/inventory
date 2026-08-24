@@ -46,7 +46,7 @@ public class AccountFlow implements Serializable, TenantAware{
     private AccountFlowType accountFlowType;
 
     @Comment("金额")
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "decimal(18,2) default 0")
     private BigDecimal amount;
     @Comment("收入")
     private BigDecimal income;

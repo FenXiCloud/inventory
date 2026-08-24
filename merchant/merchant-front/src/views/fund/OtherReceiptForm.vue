@@ -212,11 +212,6 @@ function newRow(extra = {}) {
 export default {
   name: 'OtherReceiptForm',
   components: { Stamp },
-  props: {
-    orderId: [String, Number],
-    type: String,
-    index: Number
-  },
   data() {
     return {
       logContent: null,
@@ -306,9 +301,11 @@ export default {
   methods: {
     ...mapMutations(['pushTab', 'closeSelfTab']),
     closeWindow() {
-      this.closeSelfTab(this.index);
+      const currentIndex = this.$store.state.tabs.findIndex(tab => tab.key === this.$store.state.currentTab);
+      if (currentIndex !== -1) {
+        this.closeSelfTab(currentIndex);
+      }
       this.pushTab({
-        keepAlive: false,
         key: 'OtherReceiptList',
         title: '其他收入单'
       });
@@ -389,11 +386,12 @@ export default {
     },
 
     updatePage(type = 'add', orderId = null) {
-      this.closeSelfTab(this.index);
+      const currentIndex = this.$store.state.tabs.findIndex(tab => tab.key === this.$store.state.currentTab);
+      if (currentIndex !== -1) {
+        this.closeSelfTab(currentIndex);
+      }
       this.pushTab({
-        keepAlive: false,
         key: 'OtherReceiptList',
-        params: { type: type, orderId: orderId },
         title: '其他收入单'
       });
     },
@@ -575,6 +573,10 @@ export default {
     }
   },
   created() {
+    const tabData = this.$store.state.currentTabData;
+    this.$store.commit('SET_TAB_DATA', null);
+    this.type = tabData?.type;
+    this.orderId = tabData?.orderId;
     if (this.orderId) {
       this.loadList();
     }

@@ -62,7 +62,7 @@ public class PricingPolicyService extends BaseService {
         priceResolveService.ensureDefaultPolicies(merchantId, accountBookId);
         return bqf.selectFrom(qPricingPolicy).where(qPricingPolicy.merchantId.eq(merchantId).and(qPricingPolicy.accountBookId.eq(accountBookId))).fetch();
     }
-
+    //重新排好顺序
     @Transactional
     public void sort(PricingPolicyForm pricingPolicyForm, Long merchantId, Long accountBookId) {
         List<PricingPolicyDto> dataList = pricingPolicyForm.getDataList();

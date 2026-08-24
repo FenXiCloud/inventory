@@ -7,6 +7,7 @@ import com.flyemu.share.repository.fund.OrderReceiptRepository;
 import com.flyemu.share.repository.fund.VerificationCollectionRepository;
 import com.flyemu.share.repository.fund.VerificationItemRepository;
 import com.flyemu.share.repository.fund.VerificationRepository;
+import com.flyemu.share.entity.fund.*;
 import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateUtil;
@@ -62,6 +63,7 @@ public class VerificationService extends BaseService {
     private final OrderReceiptRepository orderReceiptRepository;
     private final OrderPaymentRepository orderPaymentRepository;
     private final CodeRuleService codeRuleService;
+    private final SettlementService settlementService;
 
     @Transactional
     public Verification save(VerificationForm dto) {
@@ -128,11 +130,23 @@ public class VerificationService extends BaseService {
         subtableProcessing(items, verification, collections);
 
         if (OrderStatus.已审核.equals(verification.getOrderStatus())) {
-//            updateBalance(verification, items,1);
-//            int direction = OrderStatus.已审核.equals(verification.getOrderStatus()) ? 1 : -1;
             int direction = 1;
             // 处理预收款单
             handleOrderReceiptOrPayment(verification, direction);
+            // 同步更新结算单
+            if (items != null) {
+                String businessType = verification.getType() != null && verification.getType() == 2 ? "采购入库单" : "销售出库单";
+                for (VerificationItem item : items) {
+                    if (item.getBusinessId() != null && item.getCurrentVerifyAmount() != null) {
+                        settlementService.updateWriteOff(
+                                item.getBusinessId().longValue(),
+                                item.getCurrentVerifyAmount(),
+                                verification.getMerchantId(),
+                                verification.getAccountBookId(),
+                                businessType);
+                    }
+                }
+            }
         }
 
         return verification;
@@ -240,14 +254,27 @@ public class VerificationService extends BaseService {
         BigDecimal verifiedFromVerifications = BigDecimal.ZERO;
 
         if (businessType == 1) {
-            OrderReceipt receipt = orderReceiptRepository.findById(businessId.longValue())
-                    .orElseThrow(() -> new ServiceException("收款单不存在：" + businessId));
-            verifiedFromOriginal = receipt.getHasVerificationAmount() != null ? receipt.getHasVerificationAmount() : BigDecimal.ZERO;
-
+            // 查询收款单明细中对该订单的核销总额
+            QOrderReceiptItem qItem = QOrderReceiptItem.orderReceiptItem;
+            QOrderReceipt qR = QOrderReceipt.orderReceipt;
+            BigDecimal sum = jqf.select(qItem.currentVerifyAmount.sum())
+                    .from(qItem)
+                    .join(qR).on(qR.id.eq(qItem.receiptId))
+                    .where(qItem.salesOrderId.eq(businessId.longValue())
+                            .and(qR.orderStatus.eq(OrderStatus.已审核)))
+                    .fetchOne();
+            verifiedFromOriginal = sum != null ? sum : BigDecimal.ZERO;
         } else if (businessType == 2) {
-            OrderPayment payment = orderPaymentRepository.findById(businessId.longValue())
-                    .orElseThrow(() -> new ServiceException("付款单不存在：" + businessId));
-            verifiedFromOriginal = payment.getHasVerificationAmount() != null ? payment.getHasVerificationAmount() : BigDecimal.ZERO;
+            // 查询付款单明细中对该订单的核销总额
+            QOrderPaymentItem qPi = QOrderPaymentItem.orderPaymentItem;
+            QOrderPayment qP = QOrderPayment.orderPayment;
+            BigDecimal sum = jqf.select(qPi.currentVerifyAmount.sum())
+                    .from(qPi)
+                    .join(qP).on(qP.id.eq(qPi.paymentId))
+                    .where(qPi.businessId.eq(businessId.longValue())
+                            .and(qP.orderStatus.eq(OrderStatus.已审核)))
+                    .fetchOne();
+            verifiedFromOriginal = sum != null ? sum : BigDecimal.ZERO;
         }
         verifiedFromVerifications = jqf.select(qVerificationItem.currentVerifyAmount.sum())
                 .from(qVerificationItem)
@@ -455,8 +482,21 @@ public class VerificationService extends BaseService {
             if (items == null || items.isEmpty()) {
                 throw new ServiceException("核销明细不能为空");
             }
-//            updateBalance(verification, items,direction);
             handleOrderReceiptOrPayment(verification, direction);
+            // 审核时同步更新结算单
+            if (isAudit) {
+                String businessType = verification.getType() != null && verification.getType() == 2 ? "采购入库单" : "销售出库单";
+                for (VerificationItem item : items) {
+                    if (item.getBusinessId() != null && item.getCurrentVerifyAmount() != null) {
+                        settlementService.updateWriteOff(
+                                item.getBusinessId().longValue(),
+                                item.getCurrentVerifyAmount(),
+                                verification.getMerchantId(),
+                                verification.getAccountBookId(),
+                                businessType);
+                    }
+                }
+            }
         }
     }
 
@@ -504,12 +544,16 @@ public class VerificationService extends BaseService {
             throw new ServiceException("收款单【" + receipt.getOrderNo() + "】本单已核销金额不能为负数");
         }
 
-        if (newVerifiedAmount.compareTo(receipt.getShouldVerificationAmount()) > 0) {
-            throw new ServiceException("收款单【" + receipt.getOrderNo() + "】本单已核销金额不能超过应核销金额");
+        if (newVerifiedAmount.compareTo(receipt.getCollectionAmount() != null ? receipt.getCollectionAmount() : receipt.getShouldVerificationAmount()) > 0) {
+            throw new ServiceException("收款单【" + receipt.getOrderNo() + "】本单已核销金额不能超过收款金额");
         }
 
         receipt.setHasVerificationAmount(newVerifiedAmount);
         receipt.setNotVerificationAmount(receipt.getShouldVerificationAmount().subtract(newVerifiedAmount));
+        // 同步扣减预收款余额
+        receipt.setAdvanceCollectionsAmount(
+                (receipt.getCollectionAmount() != null ? receipt.getCollectionAmount() : BigDecimal.ZERO)
+                        .subtract(newVerifiedAmount));
         if (newVerifiedAmount.compareTo(BigDecimal.ZERO) <= 0) {
             receipt.setWriteOffStatus(0); // 未核销
         } else if (newVerifiedAmount.compareTo(receipt.getShouldVerificationAmount()) >= 0) {
@@ -532,11 +576,15 @@ public class VerificationService extends BaseService {
             throw new ServiceException("付款单【" + payment.getOrderNo() + "】本单已核销金额不能为负数");
         }
 
-        if (newVerifiedAmount.compareTo(payment.getShouldVerificationAmount()) > 0) {
-            throw new ServiceException("付款单【" + payment.getOrderNo() + "】本单已核销金额不能超过应核销金额");
+        if (newVerifiedAmount.compareTo(payment.getCollectionAmount() != null ? payment.getCollectionAmount() : payment.getShouldVerificationAmount()) > 0) {
+            throw new ServiceException("付款单【" + payment.getOrderNo() + "】本单已核销金额不能超过付款金额");
         }
         payment.setHasVerificationAmount(newVerifiedAmount);
         payment.setNotVerificationAmount(payment.getShouldVerificationAmount().subtract(newVerifiedAmount));
+        // 同步扣减预付款余额
+        payment.setAdvanceCollectionsAmount(
+                (payment.getCollectionAmount() != null ? payment.getCollectionAmount() : BigDecimal.ZERO)
+                        .subtract(newVerifiedAmount));
 
         if (newVerifiedAmount.compareTo(BigDecimal.ZERO) <= 0) {
             payment.setWriteOffStatus(0); // 未核销

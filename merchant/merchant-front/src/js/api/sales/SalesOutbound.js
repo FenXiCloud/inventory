@@ -19,7 +19,16 @@ export default {
     load(id) {
         return Ajax.get('/salesOutbound/load/' + id);
     },
+    prefillInvoice(id) {
+        return Ajax.get('/salesOutbound/prefillInvoice/' + id);
+    },
     approved(state, ids) {
         return Ajax.post('/salesOutbound/approved/' + state, ids);
+    },
+    importData(formData) {
+        return Ajax.post('/salesOutbound/importData', formData, {'Content-Type': 'multipart/form-data', repeatable: true});
+    },
+    exportToExcel(params) {
+        return Ajax.get('/salesOutbound/exportToExcel', params, {responseType: 'blob'})
     },
 }

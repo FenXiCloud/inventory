@@ -28,4 +28,7 @@ export default {
   toInbound(supplierId, ids) {
     return Ajax.post('/purchaseOrder/toInbound/' + supplierId, ids);
   },
+  importData(formData) {
+    return Ajax.post('/purchaseOrder/importData', formData, {'Content-Type': 'multipart/form-data', repeatable: true});
+  },
 }

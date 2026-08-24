@@ -64,6 +64,12 @@ public class CustomerController {
         return JsonResult.successful();
     }
 
+    @PutMapping("/credit-limit")
+    public JsonResult updateCreditLimit(@RequestBody Customer customer, @SaAccountVal AccountDto accountDto) {
+        customerService.updateCreditLimit(customer.getId(), customer.getCreditLimit(), accountDto.getMerchantId(), accountDto.getAccountBookId());
+        return JsonResult.successful();
+    }
+
     @DeleteMapping("/{customerId}")
     public JsonResult delete(@PathVariable Long customerId, @SaAccountVal AccountDto accountDto) {
         customerService.delete(customerId, accountDto.getMerchantId(), accountDto.getAccountBookId());
@@ -73,6 +79,11 @@ public class CustomerController {
     @GetMapping("/select")
     public JsonResult select(@SaAccountVal AccountDto accountDto) {
         return JsonResult.successful(customerService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
+    }
+
+    @GetMapping("/product/select/{customerId}")
+    public JsonResult selectProduct(@PathVariable Long customerId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(customerService.selectProducts(customerId, accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     // 导入

@@ -83,5 +83,11 @@ public class SalesOutboundDto {
     private String salesOrderNos;
 
     @Comment("商品数量")
-    private AtomicReference<Double> totalQuantity;
+    private AtomicReference<BigDecimal> totalQuantity;
+
+    /** 结算状态 */
+    private String settlementStatus;
+
+    /** 开票状态 */
+    private String invoiceStatus;
 }

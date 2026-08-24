@@ -28,4 +28,7 @@ export default {
   approved(state, ids) {
     return Ajax.post('/purchaseInbound/approved/' + state, ids);
   },
+  importData(formData) {
+    return Ajax.post('/purchaseInbound/importData', formData, {'Content-Type': 'multipart/form-data', repeatable: true});
+  },
 }

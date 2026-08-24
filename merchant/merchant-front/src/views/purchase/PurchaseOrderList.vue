@@ -3,7 +3,9 @@
     <div class="simple-page__toolbar">
       <t-space break-line>
         <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button style="border-radius: 4px" @click="showImportForm()">导 入</t-button>
         <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" @click="batchDelete()">批量删除</t-button>
         <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
         <t-select
             v-model="params.state"
@@ -82,7 +84,7 @@
     </div>
 
     <div class="simple-page__pager">
-      <span class="simple-page__total">合计金额：{{ amountTotal }}元</span>
+      <span class="simple-page__total">合计金额：{{ amountTotal }}元&nbsp;&nbsp;合计数量：{{ totalQuantity }}&nbsp;&nbsp;</span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -99,9 +101,12 @@
 <script>
 import manba from "manba";
 import PurchaseOrder from "@js/api/purchase/PurchaseOrder";
+import PurchaseOrderImportForm from "@views/purchase/PurchaseOrderImportForm.vue";
 import {mapMutations} from "vuex";
-import {MessagePlugin} from "tdesign-vue-next";
+import {h} from "vue";
+import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
+import {openDialog, closeDialog} from '@common/dialog';
 import Supplier from "@js/api/basic/Supplier";
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
@@ -116,6 +121,7 @@ export default {
       selectedRows: [],
       loading: false,
       amountTotal: 0,
+      totalQuantity: 0,
       pagination: {
         page: 1,
         pageSize: 20,
@@ -172,7 +178,7 @@ export default {
         finalAmount: sum('finalAmount'),
         secondarySum: sum('secondarySum', 0),
       }];
-    }
+    },
   },
   methods: {
     ...mapMutations(['pushTab']),
@@ -186,10 +192,24 @@ export default {
       this.loadList();
     },
     addForm(type = 'add', orderId = null) {
+      sessionStorage.setItem('PurchaseOrderList_filters', JSON.stringify({
+        params: this.params, dateRangeValue: this.dateRangeValue
+      }));
       this.pushTab({
         key: 'PurchaseOrderForm',
         title: type == 'edit' ? '编辑采购订单' : '新增采购订单',
         params: {type: type, orderId: orderId}
+      });
+    },
+    showImportForm() {
+      const dialogId = openDialog({
+        header: '导入采购订单',
+        closeOnOverlayClick: false,
+        width: '50vw',
+        body: h(PurchaseOrderImportForm, {
+          onClose: () => closeDialog(dialogId),
+          onSuccess: () => { this.loadList(); closeDialog(dialogId); }
+        })
       });
     },
     detail(orderId = null) {
@@ -197,6 +217,21 @@ export default {
         key: 'PurchaseOrderDetail',
         title: '采购订单',
         params: {orderId: orderId}
+      });
+    },
+    batchDelete() {
+      if (!this.selectedRows.length) return MessagePlugin.warning('请先选择要删除的单据');
+      const ids = this.selectedRows.map(r => r.id);
+      DialogPlugin.confirm({
+        header: "批量删除",
+        body: `确认删除选中的 ${ids.length} 张单据？`,
+        onConfirm: () => {
+          LoadingPlugin(true);
+          Promise.all(ids.map(id => PurchaseOrder.remove(id))).then(() => {
+            MessagePlugin.success(`成功删除 ${ids.length} 张单据`);
+            this.clearSelection(); this.loadList();
+          }).finally(() => LoadingPlugin(false));
+        }
       });
     },
     clearSelection() {
@@ -264,7 +299,8 @@ export default {
     },
     loadTotal() {
       PurchaseOrder.total(this.queryParams).then(({data}) => {
-        this.amountTotal = data || 0;
+        this.amountTotal = data?.amount || 0;
+        this.totalQuantity = data?.quantity || 0;
       })
     },
     loadSupplier() {
@@ -286,9 +322,11 @@ export default {
     },
   },
   created() {
+    const saved = sessionStorage.getItem('PurchaseOrderList_filters');
+    if (saved) { try { const f = JSON.parse(saved); if (f.params) Object.assign(this.params, f.params); if (f.dateRangeValue) this.dateRangeValue = f.dateRangeValue; } catch(e) {} }
     this.loadSupplier();
-    this.loadTotal();
     this.loadList();
+    this.loadTotal();
   }
 }
 </script>

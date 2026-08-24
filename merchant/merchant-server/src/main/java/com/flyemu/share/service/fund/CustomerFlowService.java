@@ -18,11 +18,14 @@ import com.flyemu.share.entity.basic.Warehouse;
 import com.flyemu.share.entity.fund.CustomerFlow;
 import com.flyemu.share.entity.fund.QCustomerFlow;
 import com.flyemu.share.entity.inventory.InventoryItem;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.form.CustomerInitialForm;
 import com.flyemu.share.form.InventoryInitialForm;
 import com.flyemu.share.repository.fund.CustomerFlowRepository;
 import com.flyemu.share.repository.basic.CustomerRepository;
+import com.flyemu.share.entity.setting.QAccountBook;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -38,6 +41,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,9 +55,11 @@ public class CustomerFlowService extends BaseService {
 
     private final static QCustomerFlow qCustomerFlow = QCustomerFlow.customerFlow;
     private final static QCustomer qCustomer = QCustomer.customer;
+    private final static QAccountBook qAccountBook = QAccountBook.accountBook;
 
     private final CustomerFlowRepository customerFlowRepository;
     private final CustomerRepository customerRepository;
+    private final CheckoutService checkoutService;
 
     public PageResults<CustomerFlow> statement(Page page, CustomerBillQueryDTO queryDTO) {
         BooleanBuilder builder = new BooleanBuilder();
@@ -68,6 +74,19 @@ public class CustomerFlowService extends BaseService {
                 .fetchPage(page.getOffset(), page.getPageSize());
 
         return new PageResults<>(fetchPage, page);
+    }
+
+    /**
+     * 校验账套是否已结账，结账后不允许设置/修改期初余额
+     */
+    private void assertNotCheckedOut(Long merchantId, Long accountBookId) {
+        LocalDate checkoutDate = jqf.select(qAccountBook.checkoutDate)
+                .from(qAccountBook)
+                .where(qAccountBook.merchantId.eq(merchantId).and(qAccountBook.id.eq(accountBookId)))
+                .fetchOne();
+        if (checkoutDate != null) {
+            throw new ServiceException("账套已结账，不允许设置或修改客户期初余额");
+        }
     }
 
     @Data
@@ -104,6 +123,11 @@ public class CustomerFlowService extends BaseService {
 
     @Transactional
     public CustomerFlow save(CustomerFlow customerFlow) {
+        // 结账后不允许设置/修改期初余额
+        if (CustomerFlow.CustomerFlowType.期初.equals(customerFlow.getCustomerFlowType())) {
+            assertNotCheckedOut(customerFlow.getMerchantId(), customerFlow.getAccountBookId());
+        }
+
         if (customerFlow.getId() != null) {
             //更新
             CustomerFlow original = customerFlowRepository.getById(customerFlow.getId());
@@ -115,6 +139,9 @@ public class CustomerFlowService extends BaseService {
 
     @Transactional
     public void delete(Long customerFlowId, Long merchantId, Long accountBookId) {
+        // 结账后不允许删除期初余额
+        assertNotCheckedOut(merchantId, accountBookId);
+
         jqf.delete(qCustomerFlow)
                 .where(qCustomerFlow.id.eq(customerFlowId).and(qCustomerFlow.merchantId.eq(merchantId)).and(qCustomerFlow.accountBookId.eq(accountBookId)))
                 .execute();
@@ -149,6 +176,9 @@ public class CustomerFlowService extends BaseService {
 
     @Transactional
     public void batch(CustomerInitialForm form) {
+        // 结账后不允许设置/修改期初余额
+        assertNotCheckedOut(form.getMerchantId(), form.getAccountBookId());
+
         List<CustomerFlow> customerFlowList = form.getCustomerFlowList();
         for (CustomerFlow item : customerFlowList) {
             item.setAccountBookId(form.getAccountBookId());
@@ -206,6 +236,10 @@ public class CustomerFlowService extends BaseService {
         if (ids == null || ids.isEmpty()) {
             return;
         }
+
+        // 结账后不允许删除期初余额
+        assertNotCheckedOut(merchantId, accountBookId);
+
         jqf.delete(qCustomerFlow)
                 .where(qCustomerFlow.id.in(ids)
                         .and(qCustomerFlow.merchantId.eq(merchantId))

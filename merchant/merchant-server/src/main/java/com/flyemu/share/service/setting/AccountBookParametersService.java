@@ -49,6 +49,9 @@ public class AccountBookParametersService extends BaseService {
             params.setAvailableInventory(2);
             params.setQuantityDecimal(2);
             params.setPriceDecimal(2);
+            params.setToOrderDefaultStatus("草稿");
+            params.setToOrderAutoAudit(false);
+            params.setToOrderAllowPartial(true);
             params.setCreateTime(new Date());
             params.setUpdateTime(new Date());
             accountBookParametersRepository.save(params);
@@ -80,6 +83,16 @@ public class AccountBookParametersService extends BaseService {
         existing.setAvailableInventory(accountBookParameters.getAvailableInventory());
         existing.setQuantityDecimal(newQuantityDecimal);
         existing.setPriceDecimal(newPriceDecimal);
+        // 以销定购参数
+        if (accountBookParameters.getToOrderDefaultStatus() != null) {
+            existing.setToOrderDefaultStatus(accountBookParameters.getToOrderDefaultStatus());
+        }
+        if (accountBookParameters.getToOrderAutoAudit() != null) {
+            existing.setToOrderAutoAudit(accountBookParameters.getToOrderAutoAudit());
+        }
+        if (accountBookParameters.getToOrderAllowPartial() != null) {
+            existing.setToOrderAllowPartial(accountBookParameters.getToOrderAllowPartial());
+        }
         existing.setUpdateTime(new Date());
         accountBookParametersRepository.save(existing);
     }

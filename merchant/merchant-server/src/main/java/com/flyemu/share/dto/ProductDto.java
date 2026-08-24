@@ -21,11 +21,15 @@ public class ProductDto {
 
     private BigDecimal purchasePrice;
 
+    private BigDecimal retailCustomerPrice;
+
     private Integer productCategoryId;
 
     private String productCategoryName;
 
     private String specification;
+
+    private String brand;
 
     private String imgPath;
 
@@ -37,6 +41,10 @@ public class ProductDto {
 
     private Boolean enabled;
 
+    private Boolean enableBatch;
+
+    private Boolean enableSerial;
+
     private Date createDate;
 
     private List<AuxiliaryUnitPrice> auxiliaryUnitPrices;
@@ -47,9 +55,15 @@ public class ProductDto {
     
     private String pinyin;
 
+    private String barcode;
+
+    private List<ProductAttributeValue> productAttributes;
+
     private Integer stockQuantity;
 
     private Integer alertQuantity;
+
+    private Integer maxStockQuantity;
 
     private LocalDateTime createdAt;
 
@@ -58,4 +72,8 @@ public class ProductDto {
     List<CustomerLevelPrice> customerLevelPriceList;
 
     private BigDecimal lastSalePrice;
+
+    private BigDecimal taxRate;
+
+    private String goodsCode;
 }

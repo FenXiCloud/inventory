@@ -122,8 +122,9 @@ export default {
       this.loading = true;
       this.selectedRowKeys = [];
       this.selectedRows = [];
-      this.openingBalance.documentAmount = this.params.balance;
-      this.openingBalance.unverifiedAmount = this.params.balance;
+      const balance = Number(this.params.balance) || 0;
+      this.openingBalance.documentAmount = balance;
+      this.openingBalance.unverifiedAmount = balance;
       if (this.params.sourceType == '预收') {
         this.getAdvanceReceipt();
       } else if (this.params.sourceType == '应收') {
@@ -144,13 +145,12 @@ export default {
         { title: '单据日期', field: 'orderDate', toField: 'businessDate', width: 130 },
         { title: '单据金额', field: 'shouldVerificationAmount', toField: 'documentAmount', width: 120 },
         { title: '已核销金额', field: 'hasVerificationAmount', toField: 'verifiedAmount', width: 120 },
-        { title: '未核销金额', field: 'notVerificationAmount', toField: 'unverifiedAmount', width: 120 },
+        { title: '预付余额', field: 'advanceCollectionsAmount', toField: 'unverifiedAmount', width: 120 },
         { title: '备注', field: 'remarks', toField: 'businessRemarks' },
       ];
       OrderReceipt.list({
-        writeOff: 1,
+        advance: 1,
         customerId: this.params.personnelId,
-        orderType: 2,
         page: this.pagination.page,
         pageSize: this.pagination.pageSize
       })
@@ -170,6 +170,7 @@ export default {
         { title: '已核销金额', field: 'verifiedAmount', toField: 'verifiedAmount', width: 120 },
         { title: '未核销金额', field: 'unverifiedAmount', toField: 'unverifiedAmount' },
       ];
+      const balance = Number(this.params.balance) || 0;
       OrderReceipt.writeOff({
         customerId: this.params.personnelId,
         orderType: this.params.type,
@@ -177,8 +178,12 @@ export default {
         pageSize: this.pagination.pageSize
       })
         .then(({ data: { results, total } }) => {
-          this.dataList = [this.openingBalance, ...(results || [])];
-          this.pagination.total = (total || 0) + 1;
+          const list = results || [];
+          if (balance > 0) {
+            list.unshift(this.openingBalance);
+          }
+          this.dataList = list;
+          this.pagination.total = (total || 0) + (balance > 0 ? 1 : 0);
         })
         .finally(() => (this.loading = false));
     },
@@ -190,12 +195,11 @@ export default {
         { title: '单据日期', field: 'orderDate', toField: 'businessDate', width: 130 },
         { title: '单据金额', field: 'shouldVerificationAmount', toField: 'documentAmount', width: 120 },
         { title: '已核销金额', field: 'hasVerificationAmount', toField: 'verifiedAmount', width: 120 },
-        { title: '未核销金额', field: 'notVerificationAmount', toField: 'unverifiedAmount', width: 120 },
+        { title: '预付余额', field: 'advanceCollectionsAmount', toField: 'unverifiedAmount', width: 120 },
         { title: '备注', field: 'remarks', toField: 'businessRemarks' },
       ];
       OrderPayment.list({
-        writeOff: 1,
-        orderType: 2,
+        advance: 1,
         supplierId: this.params.personnelId,
         page: this.pagination.page,
         pageSize: this.pagination.pageSize
@@ -216,14 +220,19 @@ export default {
         { title: '已核销金额', field: 'verifiedAmount', toField: 'verifiedAmount', width: 120 },
         { title: '未核销金额', field: 'unverifiedAmount', toField: 'unverifiedAmount' },
       ];
+      const balance = Number(this.params.balance) || 0;
       OrderPayment.writeOff({
         supplierId: this.params.personnelId,
         page: this.pagination.page,
         pageSize: this.pagination.pageSize
       })
         .then(({ data: { results, total } }) => {
-          this.dataList = [this.openingBalance, ...(results || [])];
-          this.pagination.total = (total || 0) + 1;
+          const list = results || [];
+          if (balance > 0) {
+            list.unshift(this.openingBalance);
+          }
+          this.dataList = list;
+          this.pagination.total = (total || 0) + (balance > 0 ? 1 : 0);
         })
         .finally(() => (this.loading = false));
     },

@@ -47,7 +47,7 @@ public class PurchaseInboundDto {
     /**
      * 采购数量合计
      */
-    private Double secondarySum;
+    private BigDecimal secondarySum;
 
     /**
      * 订单金额
@@ -122,4 +122,19 @@ public class PurchaseInboundDto {
      * 关联采购单号
      */
     private String purchaseOrderNos;
+
+    /**
+     * 结算状态
+     */
+    private String settlementStatus;
+
+    /**
+     * 来源类型：以销定购/普通采购
+     */
+    private String sourceType;
+
+    /**
+     * 来源销售订单ID
+     */
+    private Long sourceSalesOrderId;
 }

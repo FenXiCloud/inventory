@@ -74,8 +74,20 @@ public class SalesOrderDto {
     private List<String> outOrderNoList;
 
     @Comment("商品数量")
-    private AtomicReference<Double> totalQuantity;
+    private AtomicReference<BigDecimal> totalQuantity;
 
     @Comment("出库单状态 0初始化 1部分出库 2全部出库")
     private Integer status;
+
+    @Comment("采购状态 0未采购 1部分采购 2已全部采购")
+    private Integer purchaseStatus;
+
+    @Comment("采购状态文本")
+    private String purchaseStatusText;
+
+    @Comment("关联的采购入库单ID列表")
+    private String purchaseInIds;
+
+    @Comment("关联的采购入库单编号")
+    private String purchaseInOrderNos;
 }

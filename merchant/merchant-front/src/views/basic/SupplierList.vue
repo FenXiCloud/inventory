@@ -51,6 +51,17 @@
               <t-icon name="search" style="cursor:pointer" @click="searchSupplier"/>
             </template>
           </t-input>
+          <t-input
+              v-model="params.taxNo"
+              clearable
+              placeholder="请输入税号"
+              style="width: 200px; background: #fff; border-radius: 4px"
+              @enter="searchSupplier"
+          >
+            <template #suffixIcon>
+              <t-icon name="search" style="cursor:pointer" @click="searchSupplier"/>
+            </template>
+          </t-input>
           <t-button theme="primary" variant="outline" style="border-radius: 4px" :loading="loading" @click="searchSupplier">查询</t-button>
         </t-space>
       </div>
@@ -114,6 +125,7 @@ export default {
       loading: false,
       params: {
         filter: null,
+        taxNo: null,
         supplierCategoryId: null
       },
       supplierCategoryDataList: [],
@@ -131,6 +143,7 @@ export default {
         {colKey: 'categoryName', title: '分类', width: 100},
         {colKey: 'contact', title: '联系人', width: 100},
         {colKey: 'phone', title: '电话', width: 120},
+        {colKey: 'taxNo', title: '税号', width: 160},
         {colKey: 'balance', title: '应付余额', width: 110, align: 'right'},
         {colKey: 'enabled', title: '状态', width: 90, align: 'center', fixed: 'right'}
       ]

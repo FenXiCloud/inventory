@@ -62,6 +62,12 @@
           </t-col>
 
           <t-col :span="6">
+            <t-form-item label="税号" name="taxNo">
+              <t-input v-model.trim="model.taxNo" placeholder="税号" :maxlength="32"/>
+            </t-form-item>
+          </t-col>
+
+          <t-col :span="6">
             <t-form-item label="应收余额" name="balance" tips="正数=客户欠款，负数=预收；由单据/期初维护">
               <t-input-number
                   v-model="model.balance"
@@ -120,6 +126,7 @@ export default {
         name: null,
         contact: null,
         phone: null,
+        taxNo: null,
         customerCategoryId: null,
         customerLevelId: null,
         remarks: null

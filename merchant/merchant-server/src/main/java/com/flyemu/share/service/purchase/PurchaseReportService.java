@@ -21,7 +21,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -305,6 +308,57 @@ public class PurchaseReportService extends BaseService {
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
+    /**
+     * 采购统计表：按天/月/仓库/供应商聚合已审核入库明细的采购金额与数量（内存聚合）。
+     * query.dimension 传 day / month / warehouse / supplier，缺省按天。
+     */
+    public List<Map<String, Object>> statistics(Query query) {
+        String dimension = StrUtil.blankToDefault(query.dimension, "day");
+
+        List<Tuple> rows = bqf.selectFrom(qPurchaseInboundItem)
+                .select(qPurchaseInbound.inboundDate, qSupplier.id, qSupplier.name,
+                        qPurchaseInboundItem.warehouseId, qWarehouse.name,
+                        qPurchaseInboundItem.quantity, qPurchaseInboundItem.subtotal)
+                .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qPurchaseInboundItem.warehouseId))
+                .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseInboundItem.productId))
+                .where(query.inboundBuilder.and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核)))
+                .fetch();
+
+        Map<String, BigDecimal[]> agg = new TreeMap<>();
+        for (Tuple t : rows) {
+            LocalDate date = t.get(qPurchaseInbound.inboundDate);
+            String name = null;
+            if ("warehouse".equalsIgnoreCase(dimension)) {
+                name = t.get(qWarehouse.name);
+            } else if ("supplier".equalsIgnoreCase(dimension)) {
+                name = t.get(qSupplier.name);
+            } else if ("month".equalsIgnoreCase(dimension)) {
+                name = date == null ? "未登记" : date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            } else {
+                name = date == null ? "未登记" : date.toString();
+            }
+            if (name == null) {
+                name = "未指定";
+            }
+            BigDecimal[] v = agg.computeIfAbsent(name, k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            v[0] = v[0].add(t.get(qPurchaseInboundItem.quantity) == null ? BigDecimal.ZERO : t.get(qPurchaseInboundItem.quantity));
+            v[1] = v[1].add(t.get(qPurchaseInboundItem.subtotal) == null ? BigDecimal.ZERO : t.get(qPurchaseInboundItem.subtotal));
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, BigDecimal[]> e : agg.entrySet()) {
+            BigDecimal[] v = e.getValue();
+            Map<String, Object> m = new HashMap<>();
+            m.put("name", e.getKey());
+            m.put("quantity", v[0].setScale(2, RoundingMode.HALF_UP));
+            m.put("amount", v[1].setScale(2, RoundingMode.HALF_UP));
+            result.add(m);
+        }
+        return result;
+    }
+
     public static class Query implements TenantAware {
         public final BooleanBuilder builder = new BooleanBuilder();
         public final BooleanBuilder inboundBuilder = new BooleanBuilder();
@@ -321,6 +375,7 @@ public class PurchaseReportService extends BaseService {
         public LocalDate end;
         public LocalDate start;
         public List<String> groupValues;
+        public String dimension;
 
         public void setGroupValues(List<String> groupValues) {
             if (CollUtil.isEmpty(groupValues)) {
@@ -420,6 +475,12 @@ public class PurchaseReportService extends BaseService {
         public void setOrderType(String orderType) {
             if (StrUtil.isNotEmpty(orderType)) {
                 this.orderType = orderType;
+            }
+        }
+
+        public void setDimension(String dimension) {
+            if (StrUtil.isNotEmpty(dimension)) {
+                this.dimension = dimension;
             }
         }
 

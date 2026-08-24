@@ -35,4 +35,10 @@ public class PurchaseReportController {
         TenantScope.bind(query, accountDto);
         return JsonResult.successful(purchaseReportService.summary(page, query, groupValuesSet));
     }
+
+    @GetMapping("/statistics")
+    public JsonResult statistics(PurchaseReportService.Query query, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(query, accountDto);
+        return JsonResult.successful(purchaseReportService.statistics(query));
+    }
 }

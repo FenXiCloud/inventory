@@ -25,6 +25,8 @@ public class FinanceRel implements TenantAware {
     private String account;
 
     @Comment("财务软件密码")
+    @Convert(converter = com.flyemu.share.crypto.EncryptedStringConverter.class)
+    @Column(length = 256)
     private String password;
 
     @Comment("财务软件URL")

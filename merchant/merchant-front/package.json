@@ -16,14 +16,14 @@
     "decimal.js": "^10.5.0",
     "dingtalk-jsapi": "^3.1.0",
     "download.js": "^1.0.0",
+    "echarts": "^5.5.0",
     "file-saver": "^2.0.5",
     "font-awesome": "^4.7.0",
     "tdesign-vue-next": "^1.10.5",
     "vue": "^3.2.31",
     "vue-router": "^4.0.13",
     "vuex": "^4.0.2",
-    "xlsx": "^0.17.5",
-    "xlsx-style": "0.8.13"
+    "xlsx": "^0.17.5"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~5.0.1",

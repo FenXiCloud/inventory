@@ -25,9 +25,6 @@ public class CheckoutController {
 
     /**
      * 分页查询
-     *
-     * @param page
-     * @return
      */
     @GetMapping
     public JsonResult list(Page page, CheckoutService.Query query, @SaAccountVal AccountDto accountDto) {
@@ -38,10 +35,16 @@ public class CheckoutController {
     }
 
     /**
+     * 结账前检查
+     */
+    @GetMapping("/preCheck")
+    public JsonResult preCheck(@RequestParam LocalDate checkDate, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(checkoutService.preCheck(
+                accountDto.getMerchantId(), accountDto.getAccountBookId(), checkDate));
+    }
+
+    /**
      * 新增结账
-     *
-     * @param checkout
-     * @return
      */
     @PostMapping
     public JsonResult save(@RequestBody @Valid Checkout checkout, @SaAccountVal AccountDto accountDto) {
@@ -56,9 +59,6 @@ public class CheckoutController {
 
     /**
      * 反结账
-     *
-     * @param accountDto
-     * @return
      */
     @PutMapping
     public JsonResult cancelCheckout(@SaAccountVal AccountDto accountDto) {
@@ -69,4 +69,21 @@ public class CheckoutController {
         return JsonResult.successful(checkDate);
     }
 
+    /**
+     * 查询月结库存表
+     */
+    @GetMapping("/monthlySummary")
+    public JsonResult monthlySummary(@RequestParam LocalDate period, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(checkoutService.queryMonthlySummary(
+                accountDto.getMerchantId(), accountDto.getAccountBookId(), period));
+    }
+
+    /**
+     * 查询结账历史
+     */
+    @GetMapping("/history")
+    public JsonResult history(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(checkoutService.queryCloseHistory(
+                accountDto.getMerchantId(), accountDto.getAccountBookId()));
+    }
 }

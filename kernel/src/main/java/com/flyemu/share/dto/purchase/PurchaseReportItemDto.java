@@ -75,12 +75,12 @@ public class PurchaseReportItemDto {
     /**
      * 采购数量
      */
-    private Double secondaryQuantity;
+    private BigDecimal secondaryQuantity;
 
     /**
      * 采购单价
      */
-    private Double secondaryPrice;
+    private BigDecimal secondaryPrice;
 
     /**
      * 采购金额

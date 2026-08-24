@@ -17,7 +17,7 @@
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
           <t-date-picker
             v-model="form.orderDate"
-            :disable-date="{ before: accountBook.checkoutDate }"
+            :disable-date="orderDateDisable"
             :clearable="false"
           />
         </div>
@@ -238,6 +238,7 @@
 import {LoadingPlugin, MessagePlugin} from 'tdesign-vue-next';
 import {DialogPlugin} from '@common/dialog-plugin';
 import {openPrint} from '@common/print';
+import {buildOrderDateDisable} from '@common/order-date';
 import manba from 'manba';
 import {CopyObj} from '@common/utils';
 import PurchaseOrder from '@js/api/purchase/PurchaseOrder';
@@ -260,6 +261,9 @@ export default {
   },
   computed: {
     ...mapState(['accountBook']),
+    orderDateDisable() {
+      return buildOrderDateDisable(this.accountBook);
+    },
     totalAmount() {
       let total = 0;
       this.productData.forEach((val) => {

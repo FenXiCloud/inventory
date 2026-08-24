@@ -26,8 +26,9 @@
                 <t-form-item label="产品名称" name="name">
                   <t-input
                       v-model="model.name"
-                      placeholder="长度 < 64"
-                      :maxlength="64"
+                      placeholder="长度 ≤ 256"
+                      :maxlength="256"
+                      show-limit
                   />
                 </t-form-item>
               </t-col>
@@ -230,7 +231,7 @@ import Product from '@js/api/basic/Product';
 import ProductCategory from '@js/api/basic/ProductCategory';
 import CustomerLevel from '@js/api/basic/CustomerLevel';
 import Unit from '@js/api/basic/Unit';
-import {OssUpload} from '@js/api/App';
+import {Upload} from '@js/api/App';
 import {toArrayTree} from '@common/utils';
 
 export default {
@@ -261,7 +262,10 @@ export default {
         enabled: true
       },
       rules: {
-        name: [{required: true, message: '请输入产品名称', type: 'error'}],
+        name: [
+          {required: true, message: '请输入产品名称', type: 'error'},
+          {max: 256, message: '产品名称不能超过256个字符', type: 'error'}
+        ],
         productCategoryId: [{required: true, message: '请选择产品分类', type: 'error'}],
         sort: [{required: true, message: '请输入排序号', type: 'error'}],
         unitId: [{required: true, message: '请选择计量单位', type: 'error'}]
@@ -391,8 +395,8 @@ export default {
 
       const params = new FormData();
       params.append('file', file);
-      OssUpload('goods', params).then(({data}) => {
-        if (data) this.model.imgPath = data;
+      Upload('goods', params).then(({data}) => {
+        if (data) this.model.imgPath = data.path;
       });
     },
     save() {

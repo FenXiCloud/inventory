@@ -1,0 +1,109 @@
+[Thu 07/23/2026 13:12:32.97] START 
+============================================================
+CHUNKED DEPLOY
+============================================================
+
+[1/5] Preparing remote dirs...
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+
+[2/5] Uploading JARs...
+  jxc-0.1.jar: 121.4 MB, 13 chunks of 10 MB
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+  computing hash...
+  local sha256: 040cab9711518395...
+  [8%] chunk 1/13 (10.0 MB) OK  speed:3.9 MB/s
+  [15%] chunk 2/13 (10.0 MB) OK  speed:3.5 MB/s
+  [23%] chunk 3/13 (10.0 MB) OK  speed:3.4 MB/s
+  [31%] chunk 4/13 (10.0 MB) OK  speed:3.5 MB/s
+  [38%] chunk 5/13 (10.0 MB) OK  speed:3.6 MB/s
+  [46%] chunk 6/13 (10.0 MB) OK  speed:3.5 MB/s
+  [54%] chunk 7/13 (10.0 MB) OK  speed:3.5 MB/s
+  [62%] chunk 8/13 (10.0 MB) OK  speed:3.5 MB/s
+  [69%] chunk 9/13 (10.0 MB) OK  speed:3.5 MB/s
+  [77%] chunk 10/13 (10.0 MB) OK  speed:3.5 MB/s
+  [85%] chunk 11/13 (10.0 MB) OK  speed:3.5 MB/s
+  [92%] chunk 12/13 (10.0 MB) OK  speed:3.5 MB/s
+  [100%] chunk 13/13 (1.4 MB) OK  speed:3.7 MB/s
+  reassembling...
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+040cab9711518395bdc9a5ebe84941ff04139c0629a5080fa52dcd0c0bd833dc  /data/jxc/tmp/jxc-0.1.jar
+  jxc-0.1.jar done! 35.8s total
+  jadmin-0.1.jar: 107.6 MB, 11 chunks of 10 MB
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+  computing hash...
+  local sha256: 3a88cfc82b084487...
+  [9%] chunk 1/11 (10.0 MB) OK  speed:3.6 MB/s
+  [18%] chunk 2/11 (10.0 MB) OK  speed:3.6 MB/s
+  [27%] chunk 3/11 (10.0 MB) OK  speed:3.6 MB/s
+  [36%] chunk 4/11 (10.0 MB) OK  speed:3.7 MB/s
+  [45%] chunk 5/11 (10.0 MB) OK  speed:3.7 MB/s
+  [55%] chunk 6/11 (10.0 MB) OK  speed:3.7 MB/s
+  [64%] chunk 7/11 (10.0 MB) OK  speed:3.7 MB/s
+  [73%] chunk 8/11 (10.0 MB) OK  speed:3.7 MB/s
+  [82%] chunk 9/11 (10.0 MB) OK  speed:3.6 MB/s
+  [91%] chunk 10/11 (10.0 MB) OK  speed:3.7 MB/s
+  [100%] chunk 11/11 (7.6 MB) OK  speed:3.7 MB/s
+  reassembling...
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+3a88cfc82b084487ff3cbdd0a5330518d9b69f45472fe1914fe37b33e33cf01a  /data/jxc/tmp/jadmin-0.1.jar
+  jadmin-0.1.jar done! 30.3s total
+
+[3/5] Moving JARs to server dir...
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+-rw-r--r-- 1 root root 108M Jul 23 13:13 /data/jxc/server/jadmin-0.1.jar
+-rw-r--r-- 1 root root 122M Jul 23 13:13 /data/jxc/server/jxc-0.1.jar
+
+[4/5] Deploying frontends...
+
+  Packaging D:\Works\inventory\merchant\merchant-front\dist...
+  merchant-front.tar.gz: 2.3 MB, 1 chunks of 10 MB
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+  computing hash...
+  local sha256: fb746823b533e519...
+  [100%] chunk 1/1 (2.3 MB) OK  speed:13.0 MB/s
+  reassembling...
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+fb746823b533e519f63f20a7789fc8b9f393719e39f409e981e7d1a0ab2b5b8f  /data/jxc/tmp/merchant-front.tar.gz
+  merchant-front.tar.gz done! 1.2s total
+  deploying frontend...
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -... [web]
+css
+favicon.ico
+fonts
+img
+import
+index.html
+js
+
+  Packaging D:\Works\inventory\admin\admin-front\dist...
+  admin-front.tar.gz: 0.5 MB, 1 chunks of 10 MB
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+  computing hash...
+  local sha256: fb57d28ce15dd426...
+  [100%] chunk 1/1 (0.5 MB) OK  speed:8.5 MB/s
+  reassembling...
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+fb57d28ce15dd426d2375563c7640dac7af15c587e4898a72e2b66886e7a8717  /data/jxc/tmp/admin-front.tar.gz
+  admin-front.tar.gz done! 1.8s total
+  deploying frontend...
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -... [web]
+css
+favicon.ico
+img
+index.html
+js
+
+[5/5] Restarting services...
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ServerAliveInterval=30 -...
+unknown shorthand flag: 'd' in -d
+
+Usage:  docker [OPTIONS] COMMAND [ARG...]
+
+Run 'docker --help' for more information
+SSH failed (125): unknown shorthand flag: 'd' in -d
+
+Usage:  docker [OPTIONS] COMMAND [ARG...]
+
+Run 'docker --help' for more information
+
+[Thu 07/23/2026 13:13:48.95] EXIT=1 

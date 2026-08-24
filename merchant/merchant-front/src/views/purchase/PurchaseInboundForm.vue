@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-column">
     <div class="page-column-full-body">
       <div class="form-toolbar">
@@ -18,7 +18,7 @@
           <label class="mr-20px ml-16px" style="font-size: 16px !important;">入库日期：</label>
           <t-date-picker
               v-model="form.inboundDate"
-              :disable-date="{ before: accountBook.checkoutDate }"
+              :disable-date="orderDateDisable"
               :clearable="false"
               :disabled="isAudited"
           />
@@ -249,6 +249,7 @@
 import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
 import {openPrint} from '@common/print';
+import {buildOrderDateDisable} from '@common/order-date';
 import manba from "manba";
 import {CopyObj} from "@common/utils";
 import Supplier from "@js/api/basic/Supplier";
@@ -277,6 +278,9 @@ export default {
   },
   computed: {
     ...mapState(['accountBook']),
+    orderDateDisable() {
+      return buildOrderDateDisable(this.accountBook);
+    },
     isAudited() {
       return this.form.orderStatus === '已审核';
     },

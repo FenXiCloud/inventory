@@ -1,11 +1,11 @@
-<template>
+﻿<template>
   <div class="page-column">
     <div class="page-column-full-body">
       <div class="form-toolbar">
         <div class="form-toolbar__left">
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
           <t-date-picker v-model="form.transferDate" :disabled="isLocked"
-                         :disable-date="{ before: accountBook.checkoutDate }"
+                         :disable-date="orderDateDisable"
                          :clearable="false"/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">调出仓库：</label>
           <t-select class="w-178px" filterable :options="warehouseList"
@@ -102,6 +102,7 @@
 import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
 import {openPrint} from '@common/print';
+import {buildOrderDateDisable} from '@common/order-date';
 import manba from "manba";
 import Product from "@js/api/basic/Product";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -125,6 +126,9 @@ export default {
   },
   computed: {
     ...mapState(["user", "accountBook"]),
+    orderDateDisable() {
+      return buildOrderDateDisable(this.accountBook);
+    },
     isAudited() {
       return this.form.orderStatus === '已审核';
     },

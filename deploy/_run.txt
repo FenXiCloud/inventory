@@ -1,0 +1,12 @@
+[Thu 07/23/2026 12:50:35.63] DEPLOY START 
+[OK] merchant jar: D:\Works\inventory\merchant\merchant-server\build\libs\jxc-0.1.jar
+[OK] admin jar: D:\Works\inventory\admin\admin-server\build\libs\jadmin-0.1.jar
+[OK] merchant dist: D:\Works\inventory\merchant\merchant-front\dist
+[OK] admin dist: D:\Works\inventory\admin\admin-front\dist
+
+=== Connecting to root@112.124.55.97 ===
+  connected.
+$ mkdir -p /data/jxc/server /data/jxc/tmp
+
+=== Uploading jars ===
+  uploading jxc-0.1.jar (121.4 MB) -> /data/jxc/tmp/jxc-0.1.jar ...[Thu 07/23/2026 12:58:25.93] DEPLOY END (exit=1) 

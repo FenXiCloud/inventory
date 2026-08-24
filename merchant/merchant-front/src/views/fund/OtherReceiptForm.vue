@@ -39,6 +39,7 @@
             v-model="form.orderDate"
             :clearable="false"
             :disabled="isAudited"
+            :disable-date="orderDateDisable"
           />
           <label class="mr-20px ml-16px" style="font-size: 16px !important">收款到期日：</label>
           <t-date-picker
@@ -187,6 +188,7 @@
 </template>
 <script>
 import manba from 'manba';
+import {buildOrderDateDisable} from '@common/order-date';
 import {LoadingPlugin, MessagePlugin} from 'tdesign-vue-next';
 import {DialogPlugin} from '@common/dialog-plugin';
 import {openDialog, closeDialog} from '@common/dialog';
@@ -254,7 +256,10 @@ export default {
     };
   },
   computed: {
-    ...mapState(['user']),
+    ...mapState(['user', 'accountBook']),
+    orderDateDisable() {
+      return buildOrderDateDisable(this.accountBook);
+    },
     isAudited() {
       return this.form.orderStatus === '已审核';
     },

@@ -22,13 +22,17 @@ export default createStore({
     updateAccountBooks(state, {accountBooks}) {
       state.accountBooks = accountBooks;
       let accountBook = accountBooks.find(val=>val.current===true)
-      accountBook.checkoutSDate = manba(accountBook.checkoutDate).add(1,manba.DAY).format("YYYY-MM-dd")
+      if (accountBook?.checkoutDate) {
+        accountBook.checkoutSDate = manba(accountBook.checkoutDate).add(1, manba.DAY).format("YYYY-MM-DD")
+      } else if (accountBook) {
+        accountBook.checkoutSDate = null
+      }
       state.accountBook = accountBook
     },
     updateAccountBook(state, checkoutDate) {
       if(checkoutDate){
         state.accountBook.checkoutDate = checkoutDate
-        state.accountBook.checkoutSDate = manba(checkoutDate).add(1,manba.DAY).format("YYYY-MM-dd")
+        state.accountBook.checkoutSDate = manba(checkoutDate).add(1,manba.DAY).format("YYYY-MM-DD")
       }
     },
     updateAccount(state, { account}) {

@@ -39,6 +39,7 @@
             v-model="form.orderDate"
             :clearable="false"
             :disabled="isAudited"
+            :disable-date="orderDateDisable"
           />
         </div>
         <Stamp v-if="isAudited" />
@@ -179,6 +180,7 @@
 </template>
 <script>
 import manba from 'manba';
+import {buildOrderDateDisable} from '@common/order-date';
 import {LoadingPlugin, MessagePlugin} from 'tdesign-vue-next';
 import {DialogPlugin} from '@common/dialog-plugin';
 import { openDialog, closeDialog } from '@common/dialog';
@@ -241,7 +243,10 @@ export default {
     };
   },
   computed: {
-    ...mapState(['user']),
+    ...mapState(['user', 'accountBook']),
+    orderDateDisable() {
+      return buildOrderDateDisable(this.accountBook);
+    },
     isAudited() {
       return this.form.orderStatus === '已审核';
     },

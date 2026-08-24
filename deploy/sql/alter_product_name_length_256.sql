@@ -1,0 +1,2 @@
+-- 产品名称长度扩至 256
+ALTER TABLE jxc_product MODIFY COLUMN name VARCHAR(256) NOT NULL COMMENT '名称';

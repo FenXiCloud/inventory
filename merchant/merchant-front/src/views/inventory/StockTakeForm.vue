@@ -10,6 +10,7 @@
               format="YYYY-MM-DD"
               value-type="YYYY-MM-DD"
               :disabled="isLocked"
+              :disable-date="orderDateDisable"
               style="width: 160px"
           />
           <label class="stock-take-form__label">仓库</label>
@@ -205,6 +206,7 @@ import {LoadingPlugin, MessagePlugin} from 'tdesign-vue-next';
 import {DialogPlugin} from '@common/dialog-plugin';
 import {openPrint} from '@common/print';
 import manba from 'manba';
+import {buildOrderDateDisable} from '@common/order-date';
 import Product from '@js/api/basic/Product';
 import Warehouse from '@js/api/basic/Warehouse';
 import Inventory from '@js/api/inventory/Inventory';
@@ -256,6 +258,9 @@ export default {
   },
   computed: {
     ...mapState(['user', 'accountBook']),
+    orderDateDisable() {
+      return buildOrderDateDisable(this.accountBook);
+    },
     isAudited() {
       return this.form.orderStatus === '已审核';
     },

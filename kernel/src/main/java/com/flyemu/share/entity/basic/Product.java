@@ -35,11 +35,11 @@ public class Product implements TenantAware {
     private String code;
 
     @Comment("名称")
-    @Column(length = 64, nullable = false)
+    @Column(length = 256, nullable = false)
     private String name;
 
     @Comment("拼音")
-    @Column(length = 32)
+    @Column(length = 2048)
     private String pinyin;
 
     @Comment("条码")

@@ -70,6 +70,7 @@
             v-model="form.orderDate"
             :clearable="false"
             :disabled="isAudited"
+            :disable-date="orderDateDisable"
           />
         </div>
         <div class="form-toolbar__right">
@@ -241,6 +242,7 @@ import { mapState, mapMutations } from 'vuex';
 import Stamp from '../common/Stamp.vue';
 const Big = require('big.js');
 import manba from 'manba';
+import {buildOrderDateDisable} from '@common/order-date';
 
 let rowSeq = 0;
 function newRow(extra = {}) {
@@ -295,7 +297,10 @@ export default {
     };
   },
   computed: {
-    ...mapState(['user']),
+    ...mapState(['user', 'accountBook']),
+    orderDateDisable() {
+      return buildOrderDateDisable(this.accountBook);
+    },
     isAudited() {
       return this.form.orderStatus === '已审核';
     },

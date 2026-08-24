@@ -1,0 +1,9 @@
+=== Preparing remote dirs ===
+$ C:\Windows\System32\OpenSSH\ssh.exe -o StrictHostKeyChecking=no -o PasswordAuthentication=no root@112.124.55.97 "mkdir -...
+
+=== Uploading JARs via scp ===
+  uploading jxc-0.1.jar (121.4 MB) -> /data/jxc/tmp/jxc-0.1.jar
+  ERROR: client_loop: send disconnect: Connection reset
+C:\Windows\System32\OpenSSH\scp.exe: Couldn't send packet: Broken pipe
+
+scp failed

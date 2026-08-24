@@ -9,6 +9,7 @@ import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -31,6 +32,12 @@ public class PurchaseInboundItem implements TenantAware {
 
     @Comment("批次号")
     private String batchNumber;
+
+    @Comment("生产日期")
+    private LocalDate productionDate;
+
+    @Comment("有效期至")
+    private LocalDate expiryDate;
 
     @Comment("基本单位ID")
     private Long baseUnitId;
@@ -67,6 +74,12 @@ public class PurchaseInboundItem implements TenantAware {
 
     @Comment("仓库ID")
     private Long warehouseId;
+
+    @Comment("货位ID")
+    private Long locationId;
+
+    @Comment("是否整件入库：1=整件，0=零货")
+    private Integer isCase;
 
     @Comment("创建人")
     private Long createdBy;

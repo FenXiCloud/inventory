@@ -66,8 +66,15 @@ export default createStore({
       }
       // 其他类型：按 key 去重
       const key = tab.key;
-      if (!state.tabs.some(val => String(val.key) === String(key))) {
+      const existing = state.tabs.find(val => String(val.key) === String(key));
+      if (!existing) {
         state.tabs.push({...tab, key, component});
+      } else {
+        // 同一组件可被多个菜单复用（占位页、红字发票/发票查询等）：
+        // 复用已有 tab，并刷新标题/图标/menuId，保证菜单高亮跟随最后点击的菜单项
+        if (tab.title != null) existing.title = tab.title;
+        if (tab.icon != null) existing.icon = tab.icon;
+        if (tab.menuId != null) existing.menuId = tab.menuId;
       }
       state.currentTab = key;
     },

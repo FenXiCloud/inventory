@@ -805,7 +805,7 @@ public class OrderReceiptService extends BaseService {
                 // 审核时同步更新结算单
                 if (OrderStatus.已审核.equals(orderReceipt.getOrderStatus())) {
                     settlementService.updateWriteOff(item.getSalesOrderId(), item.getCurrentVerifyAmount(),
-                            orderReceipt.getMerchantId(), orderReceipt.getAccountBookId());
+                            orderReceipt.getMerchantId(), orderReceipt.getAccountBookId(), "销售出库单");
                 }
             }
         }
@@ -968,7 +968,7 @@ public class OrderReceiptService extends BaseService {
                         .from(qOrderReceiptItem).where(qOrderReceiptItem.receiptId.eq(receipt.getId())).fetch();
                 for (OrderReceiptItem item : items) {
                     settlementService.updateWriteOff(item.getSalesOrderId(), item.getCurrentVerifyAmount(),
-                            receipt.getMerchantId(), receipt.getAccountBookId());
+                            receipt.getMerchantId(), receipt.getAccountBookId(), "销售出库单");
                 }
             }
         }

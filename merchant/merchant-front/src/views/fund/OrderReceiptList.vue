@@ -148,6 +148,9 @@ const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
 export default {
   name: "OrderReceiptList",
+  props: {
+    presetType: [String, Number]
+  },
   data() {
     return {
       dataList: [],
@@ -253,7 +256,7 @@ export default {
         keepAlive: false,
         key: 'OrderReceiptForm',
         params: {type: type, orderId: orderId},
-        title: '收款单'
+        title: this.presetType == 2 ? '预收款单' : '收款单'
       });
     },
     loadList() {
@@ -343,6 +346,7 @@ export default {
     },
   },
   created() {
+    if (this.presetType != null) this.params.orderType = this.presetType;
     this.loadCustomer();
     this.loadList();
   }

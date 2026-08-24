@@ -19,6 +19,8 @@ import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
 import com.flyemu.share.entity.inventory.QInventoryItem;
 import com.flyemu.share.entity.setting.FinanceVoucher;
+import com.flyemu.share.entity.setting.QAccountBook;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.entity.setting.QFinanceVoucher;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.form.InventoryInitialForm;
@@ -27,6 +29,7 @@ import com.flyemu.share.repository.inventory.InventoryItemRepository;
 import com.flyemu.share.repository.inventory.InventoryRepository;
 import com.flyemu.share.repository.basic.ProductRepository;
 import com.flyemu.share.repository.basic.WarehouseRepository;
+import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -62,6 +65,8 @@ public class InventoryItemService extends BaseService {
 
     private final static QInventoryItem qInventoryItem = QInventoryItem.inventoryItem;
 
+    private final static QAccountBook qAccountBook = QAccountBook.accountBook;
+
     private final static QProduct qProduct = QProduct.product;
 
     private final static QProductCategory qProductCategory = QProductCategory.productCategory;
@@ -87,6 +92,8 @@ public class InventoryItemService extends BaseService {
     private final ProductRepository productRepository;
 
     private final WarehouseRepository warehouseRepository;
+
+    private final CheckoutService checkoutService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -123,6 +130,9 @@ public class InventoryItemService extends BaseService {
 
     @Transactional
     public InventoryItem save(InventoryItem inventoryItem) {
+        // 结账后不允许设置/修改期初余额
+        assertNotCheckedOut(inventoryItem.getMerchantId(), inventoryItem.getAccountBookId());
+
         inventoryItem.setFirstSort(false);
         if (inventoryItem.getId() != null) {
             //更新
@@ -139,8 +149,24 @@ public class InventoryItemService extends BaseService {
         return inventoryItemRepository.save(inventoryItem);
     }
 
+    /**
+     * 校验账套是否已结账，结账后不允许设置/修改期初余额
+     */
+    private void assertNotCheckedOut(Long merchantId, Long accountBookId) {
+        LocalDate checkoutDate = jqf.select(qAccountBook.checkoutDate)
+                .from(qAccountBook)
+                .where(qAccountBook.merchantId.eq(merchantId).and(qAccountBook.id.eq(accountBookId)))
+                .fetchOne();
+        if (checkoutDate != null) {
+            throw new ServiceException("账套已结账，不允许设置或修改期初余额");
+        }
+    }
+
     @Transactional
     public void delete(Long inventoryItemId, Long merchantId, Long accountBookId) {
+        // 结账后不允许删除期初余额
+        assertNotCheckedOut(merchantId, accountBookId);
+
         jqf.delete(qInventoryItem)
                 .where(qInventoryItem.id.eq(inventoryItemId).and(qInventoryItem.merchantId.eq(merchantId)).and(qInventoryItem.accountBookId.eq(accountBookId)))
                 .execute();
@@ -180,6 +206,8 @@ public class InventoryItemService extends BaseService {
             add(OperationType.调拨入库);
             add(OperationType.采购入库);
             add(OperationType.销售退货);
+            add(OperationType.组装入库);
+            add(OperationType.拆卸入库);
         }};
     }
 
@@ -493,6 +521,9 @@ public class InventoryItemService extends BaseService {
 
     @Transactional
     public void batch(InventoryInitialForm inventoryInitialForm) {
+        // 结账后不允许设置/修改期初余额
+        assertNotCheckedOut(inventoryInitialForm.getMerchantId(), inventoryInitialForm.getAccountBookId());
+
         List<InventoryItem> inventoryItemList = inventoryInitialForm.getInventoryItemList();
         for (InventoryItem inventoryItem : inventoryItemList) {
             inventoryItem.setAccountBookId(inventoryInitialForm.getAccountBookId());

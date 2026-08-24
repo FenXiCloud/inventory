@@ -4,6 +4,7 @@
       <t-space break-line>
         <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
         <t-button style="border-radius: 4px" @click="showImportForm()">导 入</t-button>
+        <t-button style="border-radius: 4px" @click="exportToExcel()">导 出</t-button>
         <t-button variant="outline" style="border-radius: 4px" @click="batchDelete()">批量删除</t-button>
         <t-button variant="outline" style="border-radius: 4px"           @click="approved()">审 核</t-button>
         <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
@@ -62,9 +63,15 @@
           @select-change="onSelectChange"
       >
         <template #ops="{ row }">
-          <t-space v-if="row.orderStatus === '已保存'" size="small">
-            <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
-            <t-link theme="primary" @click="doRemove(row)">删除</t-link>
+          <t-space size="small">
+            <t-link theme="primary" @click="viewDetail(row)">详情</t-link>
+            <template v-if="row.orderStatus === '已保存'">
+              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link theme="primary" @click="doRemove(row)">删除</t-link>
+            </template>
+            <template v-if="row.orderStatus === '已审核'">
+              <t-link theme="primary" @click="generateInvoice(row)">生成发票</t-link>
+            </template>
           </t-space>
         </template>
         <template #orderStatus="{ row }">
@@ -103,6 +110,7 @@ import {openDialog, closeDialog} from '@common/dialog';
 import Customer from "@js/api/basic/Customer";
 import SalesOutboundImportForm from "@views/sales/SalesOutboundImportForm.vue";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
+import {downloadBlob} from 'download.js';
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
@@ -148,7 +156,7 @@ export default {
       ],
       columns: [
         {colKey: 'row-select', type: 'multiple', width: 46},
-        {colKey: 'ops', title: '操作', width: 110, fixed: 'left', align: 'center'},
+        {colKey: 'ops', title: '操作', width: 150, fixed: 'left', align: 'center'},
         {colKey: 'outboundDate', title: '出库日期', width: 120, align: 'center'},
         {colKey: 'orderNo', title: '订单编号', minWidth: 160, ellipsis: true},
         {colKey: 'salesOrderNos', title: '关联销售订单', minWidth: 140, ellipsis: true},
@@ -160,6 +168,7 @@ export default {
         {colKey: 'createdName', title: '制单人', width: 90, align: 'center'},
         {colKey: 'createdAt', title: '制单时间', width: 160, align: 'center', ellipsis: true},
         {colKey: 'settlementStatus', title: '结算状态', width: 100, align: 'center', fixed: 'right'},
+        {colKey: 'invoiceStatus', title: '开票状态', width: 100, align: 'center', fixed: 'right'},
         {colKey: 'orderStatus', title: '状态', width: 100, align: 'center', fixed: 'right'},
       ]
     }
@@ -210,6 +219,20 @@ export default {
         params: {type, orderId},
       });
     },
+    viewDetail(row) {
+      this.pushTab({
+        key: 'SalesOutboundForm',
+        title: '销售出库详情',
+        params: { type: 'edit', orderId: row.id },
+      });
+    },
+    generateInvoice(row) {
+      this.pushTab({
+        key: 'InvoiceIssue',
+        title: '开票 - ' + row.orderNo,
+        params: { sourceType: 'SALES_OUTBOUND', sourceId: row.id },
+      });
+    },
     showImportForm() {
       const dialogId = openDialog({
         header: '导入销售出库单',
@@ -223,6 +246,16 @@ export default {
           }
         })
       });
+    },
+    exportToExcel() {
+      this.loading = true;
+      SalesOutbound.exportToExcel(this.queryParams)
+        .then((blob) => {
+          downloadBlob('销售出库单.xlsx', blob);
+        })
+        .finally(() => {
+          this.loading = false;
+        });
     },
     batchDelete() {
       if (!this.selectedRows.length) return MessagePlugin.warning('请先选择要删除的单据');

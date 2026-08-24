@@ -139,6 +139,11 @@ const groupRoutes = [
   },
 
   {
+    name: 'WarehouseLocationList',
+    component: defineAsyncComponent(() => import('@views/basic/WarehouseLocationList'))
+  },
+
+  {
     name: 'UnitList',
     component: defineAsyncComponent(() => import('@views/basic/UnitList'))
   },
@@ -146,6 +151,16 @@ const groupRoutes = [
   {
     name: 'ProductList',
     component: defineAsyncComponent(() => import('@views/basic/ProductList'))
+  },
+  {
+    name: 'BrandList',
+    component: defineAsyncComponent(() => import('@views/basic/BrandList'))
+  },
+  {
+    name: 'ProductComboList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/ProductComboList')
+    )
   },
 
   {
@@ -225,6 +240,12 @@ const groupRoutes = [
     )
   },
   {
+    name: 'QuickOrder',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/QuickOrder.vue')
+    )
+  },
+  {
     name: 'SalesOrderForm',
     component: defineAsyncComponent(() =>
       import('@views/sales/SalesOrderForm.vue')
@@ -276,6 +297,18 @@ const groupRoutes = [
     name: 'SalesRankingReport',
     component: defineAsyncComponent(() =>
       import('@views/sales/SalesRankingReport.vue')
+    )
+  },
+  {
+    name: 'SalesReservationList',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesReservationList.vue')
+    )
+  },
+  {
+    name: 'SalesReservationForm',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesReservationForm.vue')
     )
   },
   {
@@ -345,6 +378,18 @@ const groupRoutes = [
     )
   },
   {
+    name: 'PurchaseReservationList',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseReservationList.vue')
+    )
+  },
+  {
+    name: 'PurchaseReservationForm',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseReservationForm.vue')
+    )
+  },
+  {
     name: 'CostAdjustmentList',
     component: defineAsyncComponent(() =>
       import('@views/inventory/CostAdjustmentList.vue')
@@ -393,6 +438,18 @@ const groupRoutes = [
     )
   },
   {
+    name: 'LocationTransferList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/LocationTransferList.vue')
+    )
+  },
+  {
+    name: 'PickOrderList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/PickOrderList.vue')
+    )
+  },
+  {
     name: 'StockTakeList',
     component: defineAsyncComponent(() =>
       import('@views/inventory/StockTakeList.vue')
@@ -426,6 +483,18 @@ const groupRoutes = [
     name: 'OtherOutboundForm',
     component: defineAsyncComponent(() =>
       import('@views/inventory/OtherOutboundForm.vue')
+    )
+  },
+  {
+    name: 'AssemblyOrderList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/AssemblyOrderList.vue')
+    )
+  },
+  {
+    name: 'AssemblyOrderForm',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/AssemblyOrderForm.vue')
     )
   },
   // 资金单据：列表走 *List，录入走 *Form
@@ -558,6 +627,234 @@ const groupRoutes = [
   {
     name: 'DDLogin',
     component: defineAsyncComponent(() => import('@/DDLogin.vue'))
+  },
+
+  // ===== 发票管理 =====
+  {
+    name: 'InvoiceIssue',
+    component: defineAsyncComponent(() =>
+      import('@views/invoice/InvoiceIssue.vue')
+    )
+  },
+  {
+    name: 'InvoiceManagement',
+    component: defineAsyncComponent(() =>
+      import('@views/invoice/InvoiceManagement.vue')
+    )
+  },
+  {
+    name: 'DigitalAccount',
+    component: defineAsyncComponent(() =>
+      import('@views/invoice/DigitalAccount.vue')
+    )
+  },
+  {
+    name: 'ServiceItems',
+    component: defineAsyncComponent(() =>
+      import('@views/invoice/ServiceItems.vue')
+    )
+  },
+  {
+    name: 'ComingSoon',
+    component: defineAsyncComponent(() =>
+      import('@views/common/ComingSoon.vue')
+    )
+  },
+  {
+    name: 'TaxConfig',
+    component: defineAsyncComponent(() =>
+      import('@views/invoice/TaxConfig.vue')
+    )
+  },
+  {
+    name: 'InvoiceAggregation',
+    component: defineAsyncComponent(() =>
+      import('@views/invoice/InvoiceAggregation.vue')
+    )
+  },
+
+  // ===== 库存报表（通用 ReportGrid 包装）=====
+  {
+    name: 'InventoryWarning',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/InventoryWarning.vue')
+    )
+  },
+  {
+    name: 'InventoryOverstock',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/InventoryOverstock.vue')
+    )
+  },
+  {
+    name: 'InventoryOverview',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/InventoryOverview.vue')
+    )
+  },
+  {
+    name: 'InventoryDistribution',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/InventoryDistribution.vue')
+    )
+  },
+  {
+    name: 'VirtualStock',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/VirtualStock.vue')
+    )
+  },
+  {
+    name: 'TransferReport',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/TransferReport.vue')
+    )
+  },
+  {
+    name: 'BatchTracking',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/BatchTracking.vue')
+    )
+  },
+  {
+    name: 'LossGainReport',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/LossGainReport.vue')
+    )
+  },
+  {
+    name: 'ExpiryWarning',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/ExpiryWarning.vue')
+    )
+  },
+  {
+    name: 'ShelfLifeList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/ShelfLifeList.vue')
+    )
+  },
+  {
+    name: 'SerialManagement',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/SerialManagement.vue')
+    )
+  },
+  {
+    name: 'LossOrderList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/LossOrderList.vue')
+    )
+  },
+  {
+    name: 'GainOrderList',
+    component: defineAsyncComponent(() =>
+      import('@views/inventory/GainOrderList.vue')
+    )
+  },
+  {
+    name: 'AdvanceReceiptList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/AdvanceReceiptList.vue')
+    )
+  },
+  {
+    name: 'AdvancePaymentList',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/AdvancePaymentList.vue')
+    )
+  },
+  {
+    name: 'ProfitReport',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/ProfitReport.vue')
+    )
+  },
+  {
+    name: 'AdvanceBalanceReport',
+    component: defineAsyncComponent(() =>
+      import('@views/fund/AdvanceBalanceReport.vue')
+    )
+  },
+
+  // ===== 完善「开发中」占位菜单 =====
+  {
+    name: 'ProductAttributeList',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/ProductAttributeList.vue')
+    )
+  },
+  {
+    name: 'CreditLimit',
+    component: defineAsyncComponent(() =>
+      import('@views/basic/CreditLimit.vue')
+    )
+  },
+  {
+    name: 'PurchaseInboundImport',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseInboundImport.vue')
+    )
+  },
+  {
+    name: 'PurchaseStatisticsReport',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/PurchaseStatisticsReport.vue')
+    )
+  },
+  {
+    name: 'SalesDrivenPurchase',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/SalesDrivenPurchase.vue')
+    )
+  },
+  {
+    name: 'SalesDrivenDashboard',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/SalesDrivenDashboard.vue')
+    )
+  },
+  {
+    name: 'SmartReplenishment',
+    component: defineAsyncComponent(() =>
+      import('@views/purchase/SmartReplenishment.vue')
+    )
+  },
+  {
+    name: 'ScanOrder',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/ScanOrder.vue')
+    )
+  },
+  {
+    name: 'SalesStatisticsReport',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesStatisticsReport.vue')
+    )
+  },
+  {
+    name: 'OrderTracking',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/OrderTracking.vue')
+    )
+  },
+  {
+    name: 'BatchInvoice',
+    component: defineAsyncComponent(() =>
+      import('@views/invoice/BatchInvoice.vue')
+    )
+  },
+  {
+    name: 'InvoiceStatistics',
+    component: defineAsyncComponent(() =>
+      import('@views/invoice/InvoiceStatistics.vue')
+    )
+  },
+  {
+    name: 'InvoiceQuota',
+    component: defineAsyncComponent(() =>
+      import('@views/invoice/InvoiceQuota.vue')
+    )
   },
 ];
 

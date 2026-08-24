@@ -172,12 +172,10 @@ export default {
       return (this.selectedRowKeys || []).join(',');
     },
     addForm(type = 'add', orderId = null) {
-      this.closeTabKey('OtherReceiptList');
+      this.$store.commit('SET_TAB_DATA', {type, orderId});
       this.pushTab({
-        keepAlive: false,
-        key: 'OtherReceiptList',
-        params: {type: type, orderId: orderId},
-        title: '其他收入单'
+        key: 'OtherReceiptForm',
+        title: type === 'edit' ? '编辑其他收入单' : '新增其他收入单',
       });
     },
     loadList() {

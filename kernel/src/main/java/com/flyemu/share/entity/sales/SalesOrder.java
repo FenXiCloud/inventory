@@ -74,4 +74,16 @@ public class SalesOrder implements TenantAware {
 
     @Comment("出库单状态 0初始化 1部分出库 2全部出库")
     private Integer status;
+
+    @Comment("采购状态 0未采购 1部分采购 2已全部采购")
+    @Column(nullable = false)
+    private Integer purchaseStatus = 0;
+
+    @Comment("关联的采购入库单ID列表（JSON数组）")
+    @Column(columnDefinition = "TEXT")
+    private String purchaseInIds;
+
+    @Comment("是否已关闭")
+    @Column(nullable = false)
+    private Boolean closed = false;
 }

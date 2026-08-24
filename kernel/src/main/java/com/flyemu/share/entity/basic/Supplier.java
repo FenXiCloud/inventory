@@ -39,6 +39,10 @@ public class Supplier implements TenantAware {
     @Comment("电话")
     private String phone;
 
+    @Comment("税号")
+    @Column(length = 32)
+    private String taxNo;
+
     @Comment("货商分类ID")
     private Long supplierCategoryId;
 

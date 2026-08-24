@@ -21,5 +21,8 @@ export default {
   },
   ranking(param) {
     return postWithPage('/salesReport/ranking', param || {});
+  },
+  statistics(param) {
+    return Ajax.post('/salesReport/statistics', param || {});
   }
 };

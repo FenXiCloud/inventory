@@ -48,6 +48,31 @@
               style="width: 100%"
           />
         </t-form-item>
+        <t-divider>以销定购</t-divider>
+        <t-form-item label="默认单据状态" name="toOrderDefaultStatus">
+          <t-select
+              v-model="model.toOrderDefaultStatus"
+              :options="toOrderDefaultStatusOptions"
+              placeholder="请选择"
+              style="width: 100%; border-radius: 4px"
+          />
+        </t-form-item>
+        <t-form-item label="是否自动审核" name="toOrderAutoAudit">
+          <t-select
+              v-model="model.toOrderAutoAudit"
+              :options="booleanOptions"
+              placeholder="请选择"
+              style="width: 100%; border-radius: 4px"
+          />
+        </t-form-item>
+        <t-form-item label="是否允许分批采购" name="toOrderAllowPartial">
+          <t-select
+              v-model="model.toOrderAllowPartial"
+              :options="booleanOptions"
+              placeholder="请选择"
+              style="width: 100%; border-radius: 4px"
+          />
+        </t-form-item>
       </t-form>
     </div>
     <div class="modal-column-between">
@@ -78,13 +103,24 @@ export default {
         { value: 1, label: '是' },
         { value: 2, label: '否' }
       ],
+      toOrderDefaultStatusOptions: [
+        { value: '草稿', label: '草稿（未审核，可编辑）' },
+        { value: '已审核', label: '已审核（自动审核）' }
+      ],
+      booleanOptions: [
+        { value: true, label: '是' },
+        { value: false, label: '否' }
+      ],
       model: {
         id: null,
         accountBookId: null,
         costAccounting: 1,
         availableInventory: 2,
         quantityDecimal: 2,
-        priceDecimal: 2
+        priceDecimal: 2,
+        toOrderDefaultStatus: '草稿',
+        toOrderAutoAudit: false,
+        toOrderAllowPartial: true
       },
       rules: {
         costAccounting: [{ required: true, message: '请选择成本核算方法' }],
@@ -131,7 +167,10 @@ export default {
               costAccounting: data.costAccounting ?? 1,
               availableInventory: data.availableInventory ?? 2,
               quantityDecimal: data.quantityDecimal ?? 2,
-              priceDecimal: data.priceDecimal ?? 2
+              priceDecimal: data.priceDecimal ?? 2,
+              toOrderDefaultStatus: data.toOrderDefaultStatus ?? '草稿',
+              toOrderAutoAudit: data.toOrderAutoAudit ?? false,
+              toOrderAllowPartial: data.toOrderAllowPartial ?? true
             };
           } else {
             this.model.accountBookId = this.accountBook.id;

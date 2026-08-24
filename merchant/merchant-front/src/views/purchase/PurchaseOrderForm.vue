@@ -51,20 +51,38 @@
           />
         </template>
         <template #productInfo="{ row, rowIndex }">
-          <div class="input-group goodsSelect" @keyup.stop="void 0">
+          <!-- 新商品：显示商品名称输入框 -->
+          <div v-if="row.isNewProduct" class="input-group">
+            <t-input
+              v-model="row.newProductName"
+              placeholder="输入商品名称"
+              size="small"
+            />
+          </div>
+          <!-- 已有商品选择 -->
+          <div class="input-group goodsSelect" @keyup.stop="void 0" v-else>
             <t-select
               ref="ms"
               @change="selectProduct($event, rowIndex)"
+              @create="createProduct($event, rowIndex)"
               v-model="row.productId"
               :options="productList"
               filterable
+              creatable
               placeholder="输入编码/名称"
               :keys="{ value: 'productId', label: 'productName' }"
             />
           </div>
         </template>
         <template #secondaryUnitName="{ row }">
-          <template v-if="!row.isNew">
+          <!-- 新商品：显示单位输入框 -->
+          <t-input
+            v-if="row.isNewProduct"
+            v-model="row.secondaryUnitName"
+            placeholder="输入单位"
+            size="small"
+          />
+          <template v-else-if="!row.isNew">
             <t-select
               v-if="row.auxiliaryUnitPrices"
               :clearable="false"
@@ -77,6 +95,21 @@
             />
             <span v-else>{{ row.secondaryUnitName }}</span>
           </template>
+        </template>
+        <template #categoryName="{ row }">
+          <!-- 新商品：显示商品类别选择 -->
+          <t-select
+            v-if="row.isNewProduct"
+            v-model="row.newProductCategoryId"
+            :options="productCategoryList"
+            placeholder="选择类别"
+            size="small"
+            filterable
+            creatable
+            :keys="{ value: 'id', label: 'name' }"
+            @create="createProductCategory($event, row)"
+          />
+          <span v-else>{{ row.categoryName }}</span>
         </template>
         <template #warehouse="{ row }">
           <template v-if="!row.isNew">
@@ -241,6 +274,8 @@ import manba from 'manba';
 import {CopyObj} from '@common/utils';
 import PurchaseOrder from '@js/api/purchase/PurchaseOrder';
 import Supplier from '@js/api/basic/Supplier';
+import Product from '@js/api/basic/Product';
+import ProductCategory from '@js/api/basic/ProductCategory';
 import Warehouse from '@js/api/basic/Warehouse';
 import {mapState} from 'vuex';
 import PriceRecord from '@js/api/basic/PriceRecord';
@@ -248,7 +283,15 @@ import Inventory from '@js/api/inventory/Inventory';
 
 let rowSeq = 0;
 function newRow(extra = {}) {
-  return { _rowKey: `r-${++rowSeq}`, productId: null, isNew: true, ...extra };
+  return {
+    _rowKey: `r-${++rowSeq}`,
+    productId: null,
+    isNew: true,
+    isNewProduct: false,
+    newProductName: '',
+    newProductCategoryId: null,
+    ...extra
+  };
 }
 
 export default {
@@ -329,6 +372,7 @@ export default {
     return {
       loading: false,
       productList: [],
+      productCategoryList: [],
       product: null,
       allFinalAmount: 0,
       warehouseList: [],
@@ -355,12 +399,29 @@ export default {
         2
       );
       this.form.finalAmount = (val - this.form.discountAmount).toFixed(2);
+    },
+    'productData': {
+      handler(newVal) {
+        // 监听数量和单价变化，自动计算小计
+        newVal.forEach(row => {
+          if (!row.isNew || row.isNewProduct) {
+            const quantity = Number(row.secondaryQuantity) || 0;
+            const price = Number(row.secondaryPrice) || 0;
+            const discountRate = Number(row.discountRate) || 0;
+            const subtotal = (quantity * price * (100 - discountRate) / 100).toFixed(2);
+            const discountAmount = (quantity * price * discountRate / 100).toFixed(2);
+            row.subtotal = subtotal;
+            row.discountAmount = discountAmount;
+          }
+        });
+      },
+      deep: true
     }
   },
   methods: {
     productImage(row) {
       const p = (this.productList || []).find((item) => item.productId === row.productId);
-      return p?.imgPath || '-';
+      return p?.imgPath || '';
     },
     previewImage(url) {
       if (!url || url === '-') return;
@@ -456,6 +517,38 @@ export default {
       });
     },
 
+    createProduct(value, index) {
+      const name = (typeof value === 'string' ? value : (value?.label || value?.productName || '')).trim();
+      if (!name) return;
+      // 标记为新商品，不立即创建
+      this.productData[index] = {
+        ...this.productData[index],
+        isNewProduct: true,
+        newProductName: name,
+        productId: null,
+        isNew: false,
+        quantity: 1,
+        secondaryQuantity: 1,
+        secondaryPrice: 0,
+        price: 0,
+        subtotal: 0,
+        secondaryUnitName: '个', // 默认单位
+        baseUnitName: '个',
+      };
+    },
+    createProductCategory(value, row) {
+      const name = (typeof value === 'string' ? value : (value?.label || value?.name || '')).trim();
+      if (!name) return;
+      // 先清空，避免把输入的名称字符串留在 newProductCategoryId 上
+      row.newProductCategoryId = null;
+      ProductCategory.save({ name }).then(({ data }) => {
+        if (data && data.id) {
+          this.productCategoryList.push(data);
+          row.newProductCategoryId = data.id;
+        }
+      });
+    },
+
     selectProduct(value, index) {
       const d = (this.productList || []).find((item) => String(item.productId) === String(value));
       if (d) {
@@ -534,37 +627,94 @@ export default {
         LoadingPlugin(false);
         return;
       }
-      let productData = this.productData
-        .filter((c) => c.quantity > 0)
-        .map(({ _rowKey, ...rest }) => rest);
-      if (productData.length <= 0) {
-        MessagePlugin.error('请选择产品~');
-        LoadingPlugin(false);
-        return;
-      }
-      let warehouse = productData.filter((c) => c.warehouseId === null);
-      if (warehouse.length > 0) {
-        MessagePlugin.error('请选择仓库~');
-        LoadingPlugin(false);
-        return;
-      }
-      PurchaseOrder.save({
-        purchaseOrder: Object.assign(this.form, {
-          totalAmount: this.allFinalAmount
-        }),
-        type: this.type,
-        purchaseOrderItemList: productData
-      })
-        .then((success) => {
-          if (success) {
-            MessagePlugin.success('保存成功~');
-            this.clearForm();
-            if (type === 'save') {
-              this.closeWindow();
+
+      // 收集新商品
+      const newProducts = this.productData
+        .filter(c => c.isNewProduct && c.newProductName && c.quantity > 0)
+        .map(c => ({
+          name: c.newProductName,
+          productCategoryId: c.newProductCategoryId,
+          unitName: c.secondaryUnitName || c.baseUnitName
+        }));
+
+      // 创建新商品的函数
+      const createNewProducts = async () => {
+        const createdProducts = [];
+        for (const newProduct of newProducts) {
+          const { data } = await Product.quickCreate(newProduct);
+          if (data && data.productId) {
+            createdProducts.push({...data, inputName: newProduct.name});
+            this.productList.push(data);
+          }
+        }
+        return createdProducts;
+      };
+
+      // 保存订单的函数
+      const saveOrderData = (createdProducts) => {
+        // 更新新商品行的完整信息
+        this.productData.forEach(row => {
+          if (row.isNewProduct && row.newProductName) {
+            const createdProduct = createdProducts.find(p => p.inputName === row.newProductName);
+            if (createdProduct) {
+              row.productId = createdProduct.productId;
+              row.productCode = createdProduct.productCode || '';
+              row.productName = createdProduct.productName || row.newProductName;
+              row.baseUnitId = createdProduct.unitId;
+              row.secondaryUnitId = createdProduct.unitId;
+              row.baseUnitName = createdProduct.unitName || row.secondaryUnitName || '个';
+              row.secondaryUnitName = createdProduct.unitName || row.secondaryUnitName || '个';
             }
           }
+        });
+
+        let productData = this.productData
+          .filter((c) => c.quantity > 0 && c.productId)
+          .map(({ _rowKey, isNewProduct, newProductName, newProductCategoryId, ...rest }) => rest);
+
+        if (productData.length <= 0) {
+          MessagePlugin.error('请选择产品~');
+          LoadingPlugin(false);
+          return;
+        }
+
+        let warehouse = productData.filter((c) => c.warehouseId === null);
+        if (warehouse.length > 0) {
+          MessagePlugin.error('请选择仓库~');
+          LoadingPlugin(false);
+          return;
+        }
+
+        PurchaseOrder.save({
+          purchaseOrder: Object.assign(this.form, {
+            totalAmount: this.allFinalAmount
+          }),
+          type: this.type,
+          purchaseOrderItemList: productData
         })
-        .finally(() => LoadingPlugin(false));
+          .then((success) => {
+            if (success) {
+              MessagePlugin.success('保存成功~');
+              this.clearForm();
+              if (type === 'save') {
+                this.closeWindow();
+              }
+            }
+          })
+          .finally(() => LoadingPlugin(false));
+      };
+
+      // 如果有新商品，先创建新商品，再保存订单
+      if (newProducts.length > 0) {
+        createNewProducts().then((createdProducts) => {
+          saveOrderData(createdProducts);
+        }).catch((error) => {
+          MessagePlugin.error("创建商品失败~");
+          LoadingPlugin(false);
+        });
+      } else {
+        saveOrderData([]);
+      }
     },
 
     clearForm() {
@@ -771,10 +921,11 @@ export default {
   },
   created() {
     LoadingPlugin(true);
-    Promise.all([Supplier.select(), Warehouse.select()])
+    Promise.all([Supplier.select(), Warehouse.select(), ProductCategory.select()])
       .then((results) => {
         this.supplierList = results[0].data || [];
         this.warehouseList = results[1].data || [];
+        this.productCategoryList = results[2].data || [];
         if (this.warehouseList != null) {
           this.warehouseId = this.warehouseList.find(
             (val) => val.systemDefault || val.isDefault

@@ -210,7 +210,7 @@ public class SupplierService extends BaseService {
         priceResolveService.ensureDefaultPolicies(merchantId, accountBookId);
         return bqf.selectFrom(qProduct)
                 .select(qProduct.name, qProduct.code, qProduct.specification, qProduct.purchasePrice, qProduct.id, qProductCategory.path, qProduct.imgPath, qProduct.enableMultiUnit,
-                        qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name, qProductCategory.name, qProduct.specification)
+                        qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name, qProductCategory.name, qProduct.specification, qProduct.taxRate)
                 .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
                 .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .where(qProduct.merchantId.eq(merchantId).and(qProduct.enabled.isTrue()).and(qProduct.accountBookId.eq(accountBookId)))
@@ -226,6 +226,7 @@ public class SupplierService extends BaseService {
                     dto.setSpec(tuple.get(qProduct.specification));
                     dto.setUnitName(tuple.get(qUnit.name));
                     dto.setUnitId(tuple.get(qProduct.unitId));
+                    dto.setTaxRate(tuple.get(qProduct.taxRate));
                     dto.setPrice(priceResolveService.resolvePurchasePrice(tuple.get(qProduct.id), merchantId, accountBookId));
                     List<AuxiliaryUnitPrice> units = tuple.get(qProduct.auxiliaryUnitPrices);
 
@@ -294,6 +295,12 @@ public class SupplierService extends BaseService {
         public void setFilter(String filter) {
             if (StrUtil.isNotBlank(filter)) {
                 builder.and(qSupplier.code.contains(filter).or(qSupplier.contact.contains(filter)).or(qSupplier.phone.contains(filter)).or(qSupplier.name.contains(filter)));
+            }
+        }
+
+        public void setTaxNo(String taxNo) {
+            if (StrUtil.isNotBlank(taxNo)) {
+                builder.and(qSupplier.taxNo.contains(taxNo.trim()));
             }
         }
     }

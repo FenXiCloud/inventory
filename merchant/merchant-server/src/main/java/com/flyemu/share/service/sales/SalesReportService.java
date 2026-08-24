@@ -37,6 +37,7 @@ import org.springframework.util.CollectionUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -613,6 +614,86 @@ public class SalesReportService extends BaseService {
             dto.setRankNo(rank++);
         }
         return getSalesReportItemDtoPageResults(page, list);
+    }
+
+    /**
+     * 销售统计表：按天/月聚合已审核出库明细的销售额、成本、毛利（内存聚合）。
+     * form.salesGroup 传 DAY / MONTH，缺省按天。
+     */
+    public List<Map<String, Object>> statistics(SalesReportForm form) {
+        Long accountBookId = form.getAccountBookId();
+        Long merchantId = form.getMerchantId();
+        String group = StrUtil.blankToDefault(form.getSalesGroup(), "DAY");
+
+        List<SalesOutbound> outboundList = salesOutboundRepository.findAll((root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("orderStatus"), OrderStatus.已审核));
+            predicates.add(cb.equal(root.get("accountBookId"), accountBookId));
+            predicates.add(cb.equal(root.get("merchantId"), merchantId));
+            if (form.getStartDate() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("outboundDate"), form.getStartDate()));
+            }
+            if (form.getEndDate() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("outboundDate"), form.getEndDate()));
+            }
+            if (!CollectionUtils.isEmpty(form.getCustomerIds())) {
+                predicates.add(root.get("customerId").in(form.getCustomerIds()));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        });
+
+        if (CollectionUtils.isEmpty(outboundList)) {
+            return new ArrayList<>();
+        }
+
+        List<Long> outboundIds = outboundList.stream().map(SalesOutbound::getId).toList();
+        List<SalesOutboundItem> itemList = salesOutboundItemRepository.findAll((root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(root.get("salesOutboundId").in(outboundIds));
+            if (!CollectionUtils.isEmpty(form.getWarehouseIds())) {
+                predicates.add(root.get("warehouseId").in(form.getWarehouseIds()));
+            }
+            if (!CollectionUtils.isEmpty(form.getProductIds())) {
+                predicates.add(root.get("productId").in(form.getProductIds()));
+            }
+            if (!CollectionUtils.isEmpty(form.getProductCategoryIds())) {
+                List<Product> catProducts = productRepository.findAll((r, q, c) ->
+                        r.get("productCategoryId").in(form.getProductCategoryIds()));
+                predicates.add(root.get("productId").in(catProducts.stream().map(Product::getId).toList()));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        });
+
+        Map<Long, LocalDate> dateMap = outboundList.stream()
+                .collect(Collectors.toMap(SalesOutbound::getId, SalesOutbound::getOutboundDate, (a, b) -> a));
+
+        Map<String, BigDecimal[]> agg = new TreeMap<>();
+        for (SalesOutboundItem item : itemList) {
+            LocalDate date = dateMap.get(item.getSalesOutboundId());
+            String key;
+            if ("MONTH".equalsIgnoreCase(group)) {
+                key = date == null ? "未登记" : date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            } else {
+                key = date == null ? "未登记" : date.toString();
+            }
+            BigDecimal[] v = agg.computeIfAbsent(key, k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            BigDecimal sales = item.getSubtotal() == null ? BigDecimal.ZERO : item.getSubtotal();
+            BigDecimal cost = item.getCostAmount() == null ? BigDecimal.ZERO : item.getCostAmount();
+            v[0] = v[0].add(sales);
+            v[1] = v[1].add(cost);
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, BigDecimal[]> e : agg.entrySet()) {
+            BigDecimal[] v = e.getValue();
+            Map<String, Object> m = new HashMap<>();
+            m.put("date", e.getKey());
+            m.put("salesAmount", v[0].setScale(2, RoundingMode.HALF_UP));
+            m.put("costAmount", v[1].setScale(2, RoundingMode.HALF_UP));
+            m.put("profitAmount", v[0].subtract(v[1]).setScale(2, RoundingMode.HALF_UP));
+            result.add(m);
+        }
+        return result;
     }
 
     private void fillProfitFields(SalesReportItemDto dto, Product product) {

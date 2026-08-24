@@ -149,6 +149,9 @@ const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
 export default {
   name: "OtherInboundList",
+  props: {
+    presetType: [String, Number]
+  },
   data() {
     return {
       dataList: [],
@@ -237,10 +240,11 @@ export default {
       this.loadList();
     },
     addForm(type = 'add', otherInboundId = null) {
+      const docName = this.presetType === '盘盈入库' ? '报溢单' : '其他入库单';
       this.pushTab({
         key: 'OtherInboundForm',
-        title: type === 'edit' ? '编辑其他入库单' : type === 'look' ? '查看其他入库单' : '新增其他入库单',
-        params: {type: type, otherInboundId: otherInboundId}
+        title: type === 'edit' ? `编辑${docName}` : type === 'look' ? `查看${docName}` : `新增${docName}`,
+        params: {type: type, otherInboundId: otherInboundId, inboundType: this.presetType}
       });
     },
     clearSelection() {
@@ -339,6 +343,7 @@ export default {
     },
   },
   created() {
+    if (this.presetType) this.params.inboundType = this.presetType;
     this.loadDict();
     this.loadList();
   }

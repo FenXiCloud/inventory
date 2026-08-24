@@ -51,7 +51,10 @@ public class CodeRuleService extends BaseService {
             CodeRule.DocumentType.商品,
             CodeRule.DocumentType.仓库,
             CodeRule.DocumentType.客户,
-            CodeRule.DocumentType.供货商
+            CodeRule.DocumentType.供货商,
+            CodeRule.DocumentType.组装拆卸单,
+            CodeRule.DocumentType.销售预订,
+            CodeRule.DocumentType.进货预订
     );
 
     /**
@@ -121,6 +124,9 @@ public class CodeRuleService extends BaseService {
             case 仓库 -> "WH";
             case 客户 -> "CU";
             case 供货商 -> "SU";
+            case 组装拆卸单 -> "AS";
+            case 销售预订 -> "XS";
+            case 进货预订 -> "JH";
         };
     }
 

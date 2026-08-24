@@ -560,7 +560,7 @@ public class OrderPaymentService extends BaseService {
                 // 审核时同步更新结算单
                 if (OrderStatus.已审核.equals(orderPayment.getOrderStatus())) {
                     settlementService.updateWriteOff(item.getBusinessId(), item.getCurrentVerifyAmount(),
-                            orderPayment.getMerchantId(), orderPayment.getAccountBookId());
+                            orderPayment.getMerchantId(), orderPayment.getAccountBookId(), "采购入库单");
                 }
             }
         }
@@ -846,7 +846,7 @@ public class OrderPaymentService extends BaseService {
                         .where(qItem.paymentId.eq(payment.getId())).fetch();
                 for (OrderPaymentItem item : items) {
                     settlementService.updateWriteOff(item.getBusinessId(), item.getCurrentVerifyAmount(),
-                            payment.getMerchantId(), payment.getAccountBookId());
+                            payment.getMerchantId(), payment.getAccountBookId(), "采购入库单");
                 }
             }
         }

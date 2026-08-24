@@ -254,8 +254,14 @@ public class CostAdjustmentService extends BaseService {
                 adjustmentAmount = adjustmentAmount.negate();
             }
             BigDecimal totalCost = beforeTotalCost.add(adjustmentAmount).setScale(2, RoundingMode.HALF_EVEN);
-            BigDecimal averageCost = inventory.getAverageCost();
+            // 成本调整只改成本不改数量：按移动加权法重算均价 = 调整后总成本 / 当前库存数量
+            Integer currentQuantity = inventory.getCurrentQuantity();
+            BigDecimal averageCost = BigDecimal.ZERO;
+            if (currentQuantity != null && currentQuantity != 0) {
+                averageCost = totalCost.divide(BigDecimal.valueOf(currentQuantity), 2, RoundingMode.HALF_EVEN);
+            }
             inventory.setTotalCost(totalCost);
+            inventory.setAverageCost(averageCost);
             inventories.add(inventory);
             InventoryItem inventoryItem = getInventoryItem(costAdjustmentItem, costAdjustment, inventory, averageCost);
             inventoryItems.add(inventoryItem);

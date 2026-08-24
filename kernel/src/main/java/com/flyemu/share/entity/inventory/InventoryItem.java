@@ -37,6 +37,12 @@ public class InventoryItem implements TenantAware {
     @Column(nullable = false)
     private Long warehouseId;
 
+    @Comment("货位ID")
+    private Long locationId;
+
+    @Comment("是否整件：1=整件，0=零货")
+    private Integer isCase;
+
     @Comment("操作类型：期初、入库、出库、调拨")
     @Column(nullable = false, length = 32, columnDefinition = "varchar(20)")
     @Enumerated(EnumType.STRING)

@@ -8,6 +8,7 @@ import com.flyemu.share.repository.sales.SalesOutboundItemRepository;
 import com.flyemu.share.repository.sales.SalesOutboundRepository;
 import com.flyemu.share.repository.sales.SalesReturnRepository;
 import com.flyemu.share.common.TenantAware;
+import com.alibaba.fastjson.JSONObject;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
@@ -162,7 +163,9 @@ public class SalesOutboundService extends BaseService {
             String status = jqf.select(qS.orderStatus.stringValue())
                     .from(qSI)
                     .innerJoin(qS).on(qS.id.eq(qSI.settlementId))
-                    .where(qSI.businessId.eq(salesOutboundDTO.getId()).and(qSI.businessCategory.eq("INVENTORY")))
+                    .where(qSI.businessId.eq(salesOutboundDTO.getId())
+                            .and(qSI.businessCategory.eq("INVENTORY"))
+                            .and(qSI.businessType.eq("销售出库单")))
                     .fetchFirst();
             salesOutboundDTO.setSettlementStatus(status);
             dtos.add(salesOutboundDTO);
@@ -391,6 +394,10 @@ public class SalesOutboundService extends BaseService {
     public void delete(Long salesOutboundId, Long merchantId, Long accountBookId) {
 
         SalesOutbound original = salesOutboundRepository.getById(salesOutboundId);
+
+        // 结账日期校验：已结账的单据不能删除
+        checkoutService.assertEditable(original.getMerchantId(), original.getAccountBookId(), original.getOutboundDate());
+
         //已审核单据不能删除
         OrderStatus orderStatus = original.getOrderStatus();
         if (orderStatus.equals(OrderStatus.已审核)) {
@@ -466,6 +473,29 @@ public class SalesOutboundService extends BaseService {
         dto.setSalesOutboundItemList(salesOutboundItemDTOList);
         return dto;
     }
+    //销售出库单开票预填：返回购买方名称/税号 + 开票明细（商品名/数量/单价/税率），供开票页自动带出
+    public Map<String, Object> prefillInvoice(Long merchantId, Long outboundId) {
+        SalesOutboundDto dto = load(merchantId, outboundId);
+        Customer customer = dto.getCustomerId() != null ? customerService.findById(dto.getCustomerId()) : null;
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        if (dto.getSalesOutboundItemList() != null) {
+            for (SalesOutboundItemDto it : dto.getSalesOutboundItemList()) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("goodsName", it.getProductName() != null ? it.getProductName() : "");
+                m.put("quantity", it.getQuantity());
+                m.put("unitPrice", it.getUnitPrice());
+                m.put("taxRate", it.getTaxRate() != null ? it.getTaxRate() : new BigDecimal("0.06"));
+                items.add(m);
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("buyerName", customer != null ? customer.getName() : "");
+        result.put("buyerTaxNo", customer != null ? customer.getTaxNo() : "");
+        result.put("items", items);
+        return result;
+    }
     //销售出库单审核
     @Transactional
     public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
@@ -478,6 +508,12 @@ public class SalesOutboundService extends BaseService {
         if (salesOutboundList.isEmpty()) {
             throw new ServiceException("未找到数据~");
         }
+
+        // 结账日期校验：已结账的单据不能审核/反审核
+        for (SalesOutbound order : salesOutboundList) {
+            checkoutService.assertEditable(order.getMerchantId(), order.getAccountBookId(), order.getOutboundDate());
+        }
+
         salesOutboundList.forEach(order -> {
             if (OrderStatus.已保存.equals(state)) {
                 boolean hasPaymentOrVerification = checkHasPaymentOrVerification(order.getId());
@@ -496,7 +532,8 @@ public class SalesOutboundService extends BaseService {
                 // 删除关联的结算单
                 jqf.delete(QSettlementItem.settlementItem)
                         .where(QSettlementItem.settlementItem.businessId.eq(order.getId())
-                                .and(QSettlementItem.settlementItem.businessCategory.eq("INVENTORY")))
+                                .and(QSettlementItem.settlementItem.businessCategory.eq("INVENTORY"))
+                                .and(QSettlementItem.settlementItem.businessType.eq("销售出库单")))
                         .execute();
             } else if (OrderStatus.已审核.equals(state)) {
                 if (OrderStatus.已保存.equals(order.getOrderStatus())) {
@@ -715,7 +752,8 @@ public class SalesOutboundService extends BaseService {
         inventoryItem.setOperationType(OperationType.销售出库);
         inventoryItem.setOrderId(outboundItem.getSalesOutboundId());
         inventoryItem.setMerchantId(outboundItem.getMerchantId());
-        inventoryItem.setBatchNumber(salesOutbound.getOrderNo());
+        inventoryItem.setBatchNumber(outboundItem.getBatchNumber() != null && !outboundItem.getBatchNumber().isBlank()
+                ? outboundItem.getBatchNumber() : salesOutbound.getOrderNo());
         inventoryItem.setAccountBookId(outboundItem.getAccountBookId());
         inventoryItem.setCustomerId(salesOutbound.getCustomerId());
         inventoryItem.setInventoryDate(Date.from(salesOutbound.getOutboundDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
@@ -742,6 +780,50 @@ public class SalesOutboundService extends BaseService {
         result.put("amount", amount);
         result.put("quantity", java.util.Objects.requireNonNullElse(quantity, BigDecimal.ZERO));
         return result;
+    }
+
+    // 导出销售出库单（表头级，一单一列）
+    public List<JSONObject> exportList(Query query) {
+        BooleanBuilder builder = query != null ? query.builder : new BooleanBuilder();
+        List<Tuple> tuples = bqf.selectFrom(qSalesOutbound)
+                .select(qSalesOutbound, qCustomer.name, qMerchantUser.name)
+                .leftJoin(qCustomer).on(qCustomer.id.eq(qSalesOutbound.customerId))
+                .leftJoin(qMerchantUser).on(qMerchantUser.id.eq(qSalesOutbound.createdBy))
+                .where(builder)
+                .orderBy(qSalesOutbound.id.desc())
+                .fetch();
+
+        List<Long> ids = tuples.stream().map(t -> t.get(qSalesOutbound).getId()).collect(Collectors.toList());
+        Map<Long, BigDecimal> qtyMap = new HashMap<>();
+        if (!ids.isEmpty()) {
+            bqf.selectFrom(qSalesOutboundItem)
+                    .select(qSalesOutboundItem.salesOutboundId, qSalesOutboundItem.quantity)
+                    .where(qSalesOutboundItem.salesOutboundId.in(ids))
+                    .fetch()
+                    .forEach(t -> {
+                        Long oid = t.get(qSalesOutboundItem.salesOutboundId);
+                        BigDecimal qty = t.get(qSalesOutboundItem.quantity);
+                        qtyMap.merge(oid, qty != null ? qty : BigDecimal.ZERO, BigDecimal::add);
+                    });
+        }
+
+        List<JSONObject> list = new ArrayList<>();
+        for (Tuple tuple : tuples) {
+            SalesOutbound o = tuple.get(qSalesOutbound);
+            JSONObject json = new JSONObject();
+            json.put("出库日期", o.getOutboundDate() != null ? o.getOutboundDate().toString() : "");
+            json.put("订单编号", o.getOrderNo() != null ? o.getOrderNo() : "");
+            json.put("客户", tuple.get(qCustomer.name) != null ? tuple.get(qCustomer.name) : "");
+            json.put("销售金额", o.getTotalAmount() != null ? o.getTotalAmount().toString() : "");
+            json.put("折扣金额", o.getDiscountAmount() != null ? o.getDiscountAmount().toString() : "");
+            json.put("折后金额", o.getFinalAmount() != null ? o.getFinalAmount().toString() : "");
+            json.put("数量", qtyMap.getOrDefault(o.getId(), BigDecimal.ZERO).toString());
+            json.put("制单人", tuple.get(qMerchantUser.name) != null ? tuple.get(qMerchantUser.name) : "");
+            json.put("状态", o.getOrderStatus() != null ? o.getOrderStatus().name() : "");
+            json.put("备注", o.getRemarks() != null ? o.getRemarks() : "");
+            list.add(json);
+        }
+        return list;
     }
 
     public static class Query implements TenantAware {

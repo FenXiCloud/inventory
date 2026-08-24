@@ -72,6 +72,10 @@
             </template>
           </t-space>
         </template>
+        <template #sourceType="{ row }">
+          <t-tag v-if="row.sourceType === '以销定购'" theme="primary" variant="light" size="small">以销定购</t-tag>
+          <span v-else class="text-gray-400">普通</span>
+        </template>
         <template #orderStatus="{ row }">
           <t-tag
               :theme="row.orderStatus === '已审核' ? 'success' : 'warning'"
@@ -144,6 +148,7 @@ export default {
         {colKey: 'ops', title: '操作', width: 110, fixed: 'left', align: 'center'},
         {colKey: 'inboundDate', title: '入库日期', width: 120, align: 'center'},
         {colKey: 'orderNo', title: '订单编号', minWidth: 160, ellipsis: true},
+        {colKey: 'sourceType', title: '来源类型', width: 90, align: 'center'},
         {colKey: 'purchaseOrderNos', title: '关联采购单', minWidth: 140, ellipsis: true},
         {colKey: 'supplierName', title: '供货商', minWidth: 120, ellipsis: true},
         {colKey: 'totalAmount', title: '采购金额', width: 110, align: 'right'},

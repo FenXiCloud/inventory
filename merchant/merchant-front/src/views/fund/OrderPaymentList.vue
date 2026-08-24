@@ -149,6 +149,9 @@ const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
 const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
 export default {
   name: "OrderPaymentList",
+  props: {
+    presetType: [String, Number]
+  },
   data() {
     return {
       dataList: [],
@@ -257,7 +260,7 @@ export default {
         keepAlive: false,
         key: 'OrderPaymentForm',
         params: {type: type, orderId: orderId},
-        title: '付款单'
+        title: this.presetType == 2 ? '预付款单' : '付款单'
       });
     },
     loadList() {
@@ -348,6 +351,7 @@ export default {
     },
   },
   created() {
+    if (this.presetType != null) this.params.orderType = this.presetType;
     this.loadSupplier();
     this.loadList();
     this.loadTotal();

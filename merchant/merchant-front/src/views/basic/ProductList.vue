@@ -49,11 +49,23 @@
       <div class="product-main__toolbar">
         <t-space break-line>
           <t-button theme="primary" style="border-radius: 4px" @click="showProductForm()">新 增</t-button>
+          <t-button style="border-radius: 4px" @click="showProductImportForm()">导 入</t-button>
           <t-input
               v-model="params.filter"
               clearable
-              placeholder="请输入产品名称"
+              placeholder="请输入名称/编码/拼音"
               style="width: 240px; background: #fff; border-radius: 4px"
+              @enter="searchProduct"
+          >
+            <template #suffixIcon>
+              <t-icon name="search" style="cursor:pointer" @click="searchProduct"/>
+            </template>
+          </t-input>
+          <t-input
+              v-model="params.brand"
+              clearable
+              placeholder="请输入品牌"
+              style="width: 160px; background: #fff; border-radius: 4px"
               @enter="searchProduct"
           >
             <template #suffixIcon>
@@ -80,6 +92,7 @@
           <template #ops="{ row }">
             <t-space size="small">
               <t-link theme="primary" @click="showProductForm(row)"><t-icon name="edit"/></t-link>
+              <t-link theme="primary" @click="copyProduct(row)">复制</t-link>
               <t-link theme="primary" @click="deleteProduct(row)"><t-icon name="delete"/></t-link>
             </t-space>
           </template>
@@ -113,6 +126,7 @@
 
 <script>
 import ProductForm from "./ProductForm.vue";
+import ProductImportForm from "./ProductImportForm.vue";
 import Product from "@js/api/basic/Product";
 import {MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
@@ -129,6 +143,7 @@ export default {
       loading: false,
       params: {
         filter: null,
+        brand: null,
         productCategoryId: null
       },
       productDataList: [],
@@ -140,11 +155,12 @@ export default {
         total: 0
       },
       productColumns: [
-        {colKey: 'ops', title: '操作', width: 90, fixed: 'left', align: 'center'},
+        {colKey: 'ops', title: '操作', width: 110, fixed: 'left', align: 'center'},
         {colKey: 'code', title: '编码', width: 80},
         {colKey: 'name', title: '产品名称', minWidth: 160, ellipsis: true},
         {colKey: 'productCategoryName', title: '分类', width: 100},
         {colKey: 'specification', title: '规格', width: 100},
+        {colKey: 'brand', title: '品牌', width: 90},
         {colKey: 'unitName', title: '单位', width: 80},
         {colKey: 'purchasePrice', title: '参考进价', width: 90},
         {colKey: 'stockQuantity', title: '当前库存', width: 90},
@@ -269,6 +285,29 @@ export default {
           entity,
           onClose: () => closeDialog(dialogId),
           onSuccess: () => {
+            this.searchProduct();
+            closeDialog(dialogId);
+          }
+        })
+      });
+    },
+    copyProduct(row) {
+      this.showProductForm({
+        ...row,
+        id: null,
+        code: '',
+        name: row.name + '（副本）',
+      });
+    },
+    showProductImportForm() {
+      let dialogId = openDialog({
+        header: "商品导入",
+        closeOnOverlayClick: false,
+        width: '50vw',
+        body: h(ProductImportForm, {
+          onClose: () => closeDialog(dialogId),
+          onSuccess: () => {
+            this.loadProductCategory();
             this.searchProduct();
             closeDialog(dialogId);
           }

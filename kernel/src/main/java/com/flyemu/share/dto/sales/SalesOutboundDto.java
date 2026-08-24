@@ -87,4 +87,7 @@ public class SalesOutboundDto {
 
     /** 结算状态 */
     private String settlementStatus;
+
+    /** 开票状态 */
+    private String invoiceStatus;
 }

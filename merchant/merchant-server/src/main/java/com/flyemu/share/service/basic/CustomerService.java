@@ -3,6 +3,7 @@ package com.flyemu.share.service.basic;
 import com.flyemu.share.common.TenantAware;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
@@ -11,8 +12,10 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.CustomerDto;
 import com.flyemu.share.dto.CustomerImportVo;
+import com.flyemu.share.dto.SelectProductDto;
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.fund.CustomerFlow;
 import com.flyemu.share.entity.setting.CodeRule;
@@ -48,10 +51,47 @@ public class CustomerService extends BaseService {
 
     private static final QCustomerLevel qCustomerLevel = QCustomerLevel.customerLevel;
 
+    private static final QProduct qProduct = QProduct.product;
+    private static final QUnit qUnit = QUnit.unit;
+    private static final QProductCategory qProductCategory = QProductCategory.productCategory;
+
     private final CustomerRepository customerRepository;
     private final CodeRuleService codeRuleService;
     private final CustomerFlowService customerFlowService;
     private final ProductExistenceChecker existenceChecker;
+    private final PriceResolveService priceResolveService;
+
+    public List<SelectProductDto> selectProducts(Long customerId, Long merchantId, Long accountBookId) {
+        priceResolveService.ensureDefaultPolicies(merchantId, accountBookId);
+        return bqf.selectFrom(qProduct)
+                .select(qProduct.name, qProduct.code, qProduct.specification, qProduct.purchasePrice, qProduct.id, qProductCategory.path, qProduct.imgPath, qProduct.enableMultiUnit,
+                        qProduct.auxiliaryUnitPrices, qProduct.unitId, qUnit.name, qProductCategory.name, qProduct.specification, qProduct.taxRate)
+                .leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId))
+                .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
+                .where(qProduct.merchantId.eq(merchantId).and(qProduct.enabled.isTrue()).and(qProduct.accountBookId.eq(accountBookId)))
+                .orderBy(qProduct.sort.desc(), qProduct.id.desc())
+                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
+                    SelectProductDto dto = new SelectProductDto();
+                    dto.setProductId(tuple.get(qProduct.id));
+                    dto.setImgPath(tuple.get(qProduct.imgPath));
+                    dto.setProductCode(tuple.get(qProduct.code));
+                    dto.setProductName(tuple.get(qProduct.name));
+                    dto.setPath(tuple.get(qProductCategory.path));
+                    dto.setCategoryName(tuple.get(qProductCategory.name));
+                    dto.setSpec(tuple.get(qProduct.specification));
+                    dto.setUnitName(tuple.get(qUnit.name));
+                    dto.setUnitId(tuple.get(qProduct.unitId));
+                    dto.setTaxRate(tuple.get(qProduct.taxRate));
+                    dto.setPrice(priceResolveService.resolveSalesPrice(tuple.get(qProduct.id), customerId, merchantId, accountBookId));
+                    List<AuxiliaryUnitPrice> units = tuple.get(qProduct.auxiliaryUnitPrices);
+                    if (CollUtil.isNotEmpty(units) && tuple.get(qProduct.enableMultiUnit)) {
+                        units.add(0, new AuxiliaryUnitPrice(dto.getUnitId(), dto.getUnitName(), 1d, dto.getPrice()));
+                        dto.setAuxiliaryUnitPrices(units);
+                    }
+                    dto.setTitle();
+                    list.add(dto);
+                }, List::addAll);
+    }
 
     public PageResults<CustomerDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qCustomer).select(qCustomer, qCustomerCategory.name, qCustomerLevel.name).leftJoin(qCustomerCategory).on(qCustomerCategory.id.eq(qCustomer.customerCategoryId)).leftJoin(qCustomerLevel).on(qCustomerLevel.id.eq(qCustomer.customerLevelId)).where(query.builder).orderBy(qCustomer.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
@@ -286,6 +326,20 @@ public class CustomerService extends BaseService {
 
     }
 
+    @Transactional
+    public void updateCreditLimit(Long customerId, BigDecimal creditLimit, Long merchantId, Long accountBookId) {
+        Customer customer = jqf.selectFrom(qCustomer)
+                .where(qCustomer.id.eq(customerId)
+                        .and(qCustomer.merchantId.eq(merchantId))
+                        .and(qCustomer.accountBookId.eq(accountBookId)))
+                .fetchOne();
+        if (customer == null) {
+            throw new ServiceException("客户不存在");
+        }
+        customer.setCreditLimit(creditLimit);
+        customerRepository.save(customer);
+    }
+
     public void updateTheBalance(Customer customer, CustomerFlow flow) {
         validateCustomerFlow(flow);
         jqf.update(qCustomer).set(qCustomer.balance, customer.getBalance()).where(qCustomer.id.eq(customer.getId())).execute();
@@ -316,6 +370,12 @@ public class CustomerService extends BaseService {
         public void setName(String name) {
             if (StrUtil.isNotEmpty(name)) {
                 builder.and(qCustomer.name.contains(name));
+            }
+        }
+
+        public void setTaxNo(String taxNo) {
+            if (StrUtil.isNotBlank(taxNo)) {
+                builder.and(qCustomer.taxNo.contains(taxNo.trim()));
             }
         }
 

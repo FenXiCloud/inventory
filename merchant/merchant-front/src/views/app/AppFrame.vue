@@ -30,6 +30,7 @@
                 v-bind="tab.params"
                 :index="index"
                 :pro="tab.params"
+                :data-active="tab.key === currentTab"
             />
             <template #fallback>
               <t-loading text="页面加载中,请稍后..."/>

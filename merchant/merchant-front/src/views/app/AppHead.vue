@@ -14,7 +14,7 @@
     </div>
     <div class="flex app-header-info flex items-center" v-if="user.admin">
       <t-icon name="user" class="mr-10px"></t-icon>
-      <t-dropdown trigger="hover" :minColumnWidth="120" placement="bottom-end" @click="trigger">
+      <t-dropdown trigger="hover" :minColumnWidth="120" placement="bottom-right" @click="trigger">
         <span>{{ user.admin.name }}</span>
         <template #dropdown>
           <t-dropdown-menu>

@@ -536,6 +536,24 @@ public class OrderPaymentService extends BaseService {
             orderPayment = orderPaymentRepository.save(orderPayment);
             saveItems(orderPayment, items);
             saveCollections(orderPayment, collections);
+            // 直接保存为已审核时，同步更新采购入库单核销金额、供应商余额、结算单
+            if (OrderStatus.已审核.equals(orderPayment.getOrderStatus()) && items != null) {
+                updateSupplierAndAccountBalances(orderPayment, OrderStatus.已审核);
+                for (OrderPaymentItem item : items) {
+                    settlementService.updateWriteOff(item.getBusinessId(), item.getCurrentVerifyAmount(),
+                            orderPayment.getMerchantId(), orderPayment.getAccountBookId(), "采购入库单");
+                    if (item.getBusinessId() != null && item.getCurrentVerifyAmount() != null) {
+                        jqf.update(qPurchaseOrderInbound)
+                                .set(qPurchaseOrderInbound.verifiedAmount,
+                                        Expressions.numberTemplate(BigDecimal.class,
+                                                "COALESCE({0}, 0) + {1}",
+                                                qPurchaseOrderInbound.verifiedAmount,
+                                                item.getCurrentVerifyAmount()))
+                                .where(qPurchaseOrderInbound.id.eq(item.getBusinessId()))
+                                .execute();
+                    }
+                }
+            }
             return orderPayment;
         } else {
             OrderPayment original = orderPaymentRepository.getById(orderPayment.getId());
@@ -557,11 +575,6 @@ public class OrderPaymentService extends BaseService {
                 item.setMerchantId(orderPayment.getMerchantId());
                 item.setAccountBookId(orderPayment.getAccountBookId());
                 orderPaymentItemRepository.save(item);
-                // 审核时同步更新结算单
-                if (OrderStatus.已审核.equals(orderPayment.getOrderStatus())) {
-                    settlementService.updateWriteOff(item.getBusinessId(), item.getCurrentVerifyAmount(),
-                            orderPayment.getMerchantId(), orderPayment.getAccountBookId(), "采购入库单");
-                }
             }
         }
     }
@@ -847,6 +860,33 @@ public class OrderPaymentService extends BaseService {
                 for (OrderPaymentItem item : items) {
                     settlementService.updateWriteOff(item.getBusinessId(), item.getCurrentVerifyAmount(),
                             payment.getMerchantId(), payment.getAccountBookId(), "采购入库单");
+                    // 同步更新采购入库单的已核销金额
+                    if (item.getBusinessId() != null && item.getCurrentVerifyAmount() != null) {
+                        jqf.update(qPurchaseOrderInbound)
+                                .set(qPurchaseOrderInbound.verifiedAmount,
+                                        Expressions.numberTemplate(BigDecimal.class,
+                                                "COALESCE({0}, 0) + {1}",
+                                                qPurchaseOrderInbound.verifiedAmount,
+                                                item.getCurrentVerifyAmount()))
+                                .where(qPurchaseOrderInbound.id.eq(item.getBusinessId()))
+                                .execute();
+                    }
+                }
+            } else if (targetStatus == OrderStatus.已保存) {
+                // 反审核时还原已核销金额
+                List<OrderPaymentItem> items = jqf.select(qItem).from(qItem)
+                        .where(qItem.paymentId.eq(payment.getId())).fetch();
+                for (OrderPaymentItem item : items) {
+                    if (item.getBusinessId() != null && item.getCurrentVerifyAmount() != null) {
+                        jqf.update(qPurchaseOrderInbound)
+                                .set(qPurchaseOrderInbound.verifiedAmount,
+                                        Expressions.numberTemplate(BigDecimal.class,
+                                                "COALESCE({0}, 0) - {1}",
+                                                qPurchaseOrderInbound.verifiedAmount,
+                                                item.getCurrentVerifyAmount()))
+                                .where(qPurchaseOrderInbound.id.eq(item.getBusinessId()))
+                                .execute();
+                    }
                 }
             }
         }

@@ -79,6 +79,7 @@
         :footer="false"
     >
       <pick-order-detail
+          v-if="currentOrder"
           :data="currentOrder"
           @close="showDetail = false"
       />

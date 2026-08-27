@@ -42,7 +42,7 @@ public class WarehouseLocationService extends BaseService {
     public PageResults<WarehouseLocation> query(Page page, Query query) {
         PagedList<WarehouseLocation> fetchPage = bqf.selectFrom(qWarehouseLocation)
                 .where(query.builder)
-                .orderBy(qWarehouseLocation.warehouseId.asc(), qWarehouseLocation.code.asc())
+                .orderBy(qWarehouseLocation.warehouseId.asc(), qWarehouseLocation.code.asc(), qWarehouseLocation.id.asc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
         return new PageResults<>(fetchPage, page, fetchPage.getTotalSize());
     }

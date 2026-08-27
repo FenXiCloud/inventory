@@ -4,7 +4,7 @@ const path = require('path');
 module.exports = {
     pages: {
         index: {
-            title: "纷析云",
+            title: "菜鸟进销存",
             entry: 'src/main.js',
             chunks: ['chunk-vendors', 'chunk-common', 'index']
         }

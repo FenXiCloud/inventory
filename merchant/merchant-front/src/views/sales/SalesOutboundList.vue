@@ -70,6 +70,7 @@
               <t-link theme="primary" @click="doRemove(row)">删除</t-link>
             </template>
             <template v-if="row.orderStatus === '已审核'">
+              <t-link theme="primary" @click="showQuickReceipt(row)">便捷收款</t-link>
               <t-link theme="primary" @click="generateInvoice(row)">生成发票</t-link>
             </template>
           </t-space>
@@ -110,6 +111,7 @@ import {openDialog, closeDialog} from '@common/dialog';
 import Customer from "@js/api/basic/Customer";
 import SalesOutboundImportForm from "@views/sales/SalesOutboundImportForm.vue";
 import SalesOutbound from "@js/api/sales/SalesOutbound";
+import QuickPaymentDialog from "@views/common/QuickPaymentDialog.vue";
 import {downloadBlob} from 'download.js';
 
 const startTime = manba().startOf(manba.MONTH).format("YYYY-MM-DD");
@@ -156,7 +158,7 @@ export default {
       ],
       columns: [
         {colKey: 'row-select', type: 'multiple', width: 46},
-        {colKey: 'ops', title: '操作', width: 150, fixed: 'left', align: 'center'},
+        {colKey: 'ops', title: '操作', width: 200, fixed: 'left', align: 'center'},
         {colKey: 'outboundDate', title: '出库日期', width: 120, align: 'center'},
         {colKey: 'orderNo', title: '订单编号', minWidth: 160, ellipsis: true},
         {colKey: 'salesOrderNos', title: '关联销售订单', minWidth: 140, ellipsis: true},
@@ -231,6 +233,22 @@ export default {
         key: 'InvoiceIssue',
         title: '开票 - ' + row.orderNo,
         params: { sourceType: 'SALES_OUTBOUND', sourceId: row.id },
+      });
+    },
+    showQuickReceipt(row) {
+      const dialogId = openDialog({
+        header: '便捷收款',
+        closeOnOverlayClick: false,
+        width: '500px',
+        body: h(QuickPaymentDialog, {
+          type: 'receipt',
+          order: row,
+          onClose: () => closeDialog(dialogId),
+          onSuccess: () => {
+            this.loadList();
+            closeDialog(dialogId);
+          }
+        })
       });
     },
     showImportForm() {

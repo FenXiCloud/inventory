@@ -70,6 +70,11 @@ public class PurchaseInboundDto {
     private BigDecimal finalAmount;
 
     /**
+     * 已核销金额
+     */
+    private BigDecimal verifiedAmount;
+
+    /**
      * 备注
      */
     private String remarks;

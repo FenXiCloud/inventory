@@ -30,4 +30,10 @@ export default {
     totalCost(productId, warehouseId) {
         return Ajax.get(`/inventory/totalCost/${productId}/${warehouseId}`);
     },
+    costDetail(productId, warehouseId) {
+        return Ajax.get(`/inventory/costDetail/${productId}/${warehouseId}`);
+    },
+    tailDifference() {
+        return Ajax.get('/inventory/tailDifference');
+    },
 }

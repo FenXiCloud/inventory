@@ -290,7 +290,7 @@ public class MerchantService extends BaseService {
         menus.add(menu(61L, "SalesOutboundList", "销售出库单", null, 58L, 0));
         menus.add(menu(60L, "SalesOrderList", "销售订单", null, 58L, 1));
         menus.add(menu(62L, "SalesReturnList", "销售退货单", null, 58L, 2));
-        menus.add(menu(257L, "SalesReservationList", "销售预订", null, 58L, 3));
+        menus.add(disabledMenu(257L, "SalesReservationList", "销售预订", null, 58L, 3));
         menus.add(menu(203L, "ScanOrder", "扫码开单", null, 58L, 4));
         // 销售报表
         menus.add(menu(59L, null, "销售报表", null, 26L, 1));
@@ -308,7 +308,7 @@ public class MerchantService extends BaseService {
         menus.add(menu(53L, "PurchaseInboundList", "采购入库单", null, 51L, 0));
         menus.add(menu(52L, "PurchaseOrderList", "采购订单", null, 51L, 1));
         menus.add(menu(54L, "PurchaseReturnList", "采购退货单", null, 51L, 2));
-        menus.add(menu(258L, "PurchaseReservationList", "进货预订", null, 51L, 3));
+        menus.add(disabledMenu(258L, "PurchaseReservationList", "进货预订", null, 51L, 3));
         menus.add(menu(206L, "PurchaseInboundImport", "进货单导入", null, 51L, 4));
         menus.add(menu(209L, "SmartReplenishment", "智能补货", null, 51L, 5));
         // 采购报表
@@ -327,8 +327,8 @@ public class MerchantService extends BaseService {
         menus.add(menu(77L, "OtherOutboundList", "其他出库单", null, 67L, 3));
         menus.add(menu(86L, "CostAdjustmentList", "成本调整单", null, 67L, 4));
         menus.add(menu(211L, "AssemblyOrderList", "组装拆卸单", null, 67L, 5));
-        menus.add(menu(246L, "LossOrderList", "报损单", null, 67L, 6));
-        menus.add(menu(247L, "GainOrderList", "报溢单", null, 67L, 7));
+        menus.add(disabledMenu(246L, "LossOrderList", "报损单", null, 67L, 6));
+        menus.add(disabledMenu(247L, "GainOrderList", "报溢单", null, 67L, 7));
         // 库存增强
         menus.add(menu(212L, null, "库存增强", null, 27L, 1));
         menus.add(menu(213L, "ComingSoon", "批次管理", null, 212L, 0));
@@ -365,8 +365,8 @@ public class MerchantService extends BaseService {
         menus.add(menu(35L, "OtherExpenseList", "其他支出单", null, 29L, 8));
         // 资金报表
         menus.add(menu(36L, null, "资金报表", null, 28L, 1));
-        menus.add(menu(38L, "CustomerStatements", "客户对账单", null, 36L, 0));
-        menus.add(menu(39L, "VendorStatements", "供货商对账单", null, 36L, 1));
+        menus.add(disabledMenu(38L, "CustomerStatements", "客户对账单", null, 36L, 0));
+        menus.add(disabledMenu(39L, "VendorStatements", "供货商对账单", null, 36L, 1));
         menus.add(menu(40L, "CustomerFlowReport", "应收账款明细表", null, 36L, 2));
         menus.add(menu(41L, "SupplierFlowReport", "应付账款明细表", null, 36L, 3));
         menus.add(menu(37L, "CounterpartDebt", "往来单位欠款表", null, 36L, 4));
@@ -408,7 +408,7 @@ public class MerchantService extends BaseService {
         menus.add(menu(81L, "PricingPolicyList", "价格取数规则", null, 6L, 5));
         menus.add(menu(237L, "ProductComboList", "商品套餐", null, 6L, 6));
         menus.add(menu(238L, "BrandList", "品牌管理", null, 6L, 7));
-        menus.add(menu(239L, "ComingSoon", "辅助属性", null, 6L, 8));
+        menus.add(menu(239L, "ProductAttributeList", "辅助属性", null, 6L, 8));
         // 往来单位
         menus.add(menu(10L, null, "往来单位", null, 1L, 1));
         menus.add(menu(7L, "CustomerList", "客户档案", null, 10L, 0));

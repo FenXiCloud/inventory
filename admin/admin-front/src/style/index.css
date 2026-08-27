@@ -67,6 +67,11 @@ body,
   cursor: pointer;
 }
 
+/* 列表页表格滚动 */
+.simple-page__table {
+  overflow: auto !important;
+}
+
 /* 自定义菜单滚动 */
 .app-menu .t-menu::-webkit-scrollbar {
   width: 4px;

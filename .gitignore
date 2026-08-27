@@ -46,3 +46,11 @@ application-dev.yml
 admin/admin-front/pnpm-lock.yaml
 merchant/merchant-front/yarn.lock
 merchant/merchant-front/pnpm-lock.yaml
+
+### Claude & CodeBuddy ###
+.claude/
+.codebuddy/
+
+### Build artifacts ###
+*.tar.gz
+*.zip

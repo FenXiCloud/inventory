@@ -31,6 +31,7 @@
 
     <div class="pick-table">
       <t-table
+          row-key="id"
           :data="data.items || []"
           :columns="columns"
           bordered

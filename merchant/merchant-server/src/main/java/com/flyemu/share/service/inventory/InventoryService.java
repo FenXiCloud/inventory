@@ -376,22 +376,33 @@ public class InventoryService extends BaseService {
      * 按日期计算历史库存余额
      */
     private PageResults<InventoryReportDto> balanceByDate(Page page, Query query) {
-        // 查询指定日期范围内的库存明细，按商品和仓库分组计算历史库存
+        // 查询截止到指定日期的所有库存明细，计算历史库存余额
         BooleanBuilder where = new BooleanBuilder();
         where.and(qInventoryItem.merchantId.eq(query.getMerchantId()));
         where.and(qInventoryItem.accountBookId.eq(query.getAccountBookId()));
 
-        Date startDate = query.getStartDate();
         Date endDate = query.getEndDate();
 
-        if (startDate != null) {
-            where.and(qInventoryItem.inventoryDate.goe(startDate));
-        }
+        // 只过滤结束日期，查询截止到该日期的所有库存变动
         if (endDate != null) {
             where.and(qInventoryItem.inventoryDate.loe(Query.addTimeOfFinalMoment(endDate)));
         }
 
-        // 按商品和仓库分组，计算历史库存余额
+        // 应用其他过滤条件（仓库、产品、类别等）
+        if (query.getWarehouseId() != null) {
+            where.and(qInventoryItem.warehouseId.eq(query.getWarehouseId()));
+        }
+        if (query.getProductId() != null) {
+            where.and(qInventoryItem.productId.eq(query.getProductId()));
+        }
+        if (StrUtil.isNotBlank(query.getWarehouseIds())) {
+            where.and(qInventoryItem.warehouseId.in(Arrays.stream(query.getWarehouseIds().split(",")).map(Long::parseLong).toList()));
+        }
+        if (StrUtil.isNotBlank(query.getProductIds())) {
+            where.and(qInventoryItem.productId.in(Arrays.stream(query.getProductIds().split(",")).map(Long::parseLong).toList()));
+        }
+
+        // 按商品和仓库分组，计算截止到指定日期的历史库存余额
         List<Tuple> results = bqf.selectFrom(qInventoryItem)
                 .select(
                         qInventoryItem.productId,
@@ -418,6 +429,18 @@ public class InventoryService extends BaseService {
                         .fetchFirst();
                 if (product == null) continue;
 
+                // 应用产品类别过滤
+                if (query.getProductCategoryId() != null && (product.getProductCategoryId() == null ||
+                        !product.getProductCategoryId().equals(query.getProductCategoryId()))) {
+                    continue;
+                }
+                if (StrUtil.isNotBlank(query.getProductCategoryIds())) {
+                    List<Long> categoryIds = Arrays.stream(query.getProductCategoryIds().split(",")).map(Long::parseLong).toList();
+                    if (product.getProductCategoryId() == null || !categoryIds.contains(product.getProductCategoryId())) {
+                        continue;
+                    }
+                }
+
                 ProductCategory category = null;
                 if (product.getProductCategoryId() != null) {
                     category = bqf.selectFrom(qProductCategory)
@@ -430,6 +453,16 @@ public class InventoryService extends BaseService {
                     unit = bqf.selectFrom(qUnit)
                             .where(qUnit.id.eq(product.getUnitId()))
                             .fetchFirst();
+                }
+
+                // 应用名称/编码过滤
+                if (StrUtil.isNotBlank(query.getFilter()) && StrUtil.isNotBlank(query.getFilter().trim())) {
+                    String filter = query.getFilter().trim();
+                    boolean match = product.getName().contains(filter) ||
+                            product.getCode().contains(filter) ||
+                            (category != null && category.getName().contains(filter)) ||
+                            (product.getSpecification() != null && product.getSpecification().contains(filter));
+                    if (!match) continue;
                 }
 
                 InventoryReportDto dto = new InventoryReportDto();
@@ -489,17 +522,28 @@ public class InventoryService extends BaseService {
         where.and(qInventoryItem.merchantId.eq(query.getMerchantId()));
         where.and(qInventoryItem.accountBookId.eq(query.getAccountBookId()));
 
-        Date startDate = query.getStartDate();
         Date endDate = query.getEndDate();
 
-        if (startDate != null) {
-            where.and(qInventoryItem.inventoryDate.goe(startDate));
-        }
+        // 只过滤结束日期，查询截止到该日期的所有库存变动
         if (endDate != null) {
             where.and(qInventoryItem.inventoryDate.loe(Query.addTimeOfFinalMoment(endDate)));
         }
 
-        // 按商品和仓库分组，计算历史库存余额
+        // 应用其他过滤条件
+        if (query.getWarehouseId() != null) {
+            where.and(qInventoryItem.warehouseId.eq(query.getWarehouseId()));
+        }
+        if (query.getProductId() != null) {
+            where.and(qInventoryItem.productId.eq(query.getProductId()));
+        }
+        if (StrUtil.isNotBlank(query.getWarehouseIds())) {
+            where.and(qInventoryItem.warehouseId.in(Arrays.stream(query.getWarehouseIds().split(",")).map(Long::parseLong).toList()));
+        }
+        if (StrUtil.isNotBlank(query.getProductIds())) {
+            where.and(qInventoryItem.productId.in(Arrays.stream(query.getProductIds().split(",")).map(Long::parseLong).toList()));
+        }
+
+        // 按商品和仓库分组，计算截止到指定日期的历史库存余额
         List<Tuple> results = bqf.selectFrom(qInventoryItem)
                 .select(
                         qInventoryItem.productId,
@@ -601,6 +645,56 @@ public class InventoryService extends BaseService {
             return BigDecimal.ZERO;
         }
         return inventory.getTotalCost();
+    }
+
+    /**
+     * 查询库存成本详情（总成本、当前数量、平均成本）
+     */
+    public Map<String, Object> costDetail(Long productId, Long warehouseId, Long merchantId, Long accountBookId) {
+        Map<String, Object> result = new HashMap<>();
+        Inventory inventory = jqf.selectFrom(qInventory).where(qInventory.productId.eq(productId)
+                .and(qInventory.warehouseId.eq(warehouseId)).and(qInventory.merchantId.eq(merchantId))
+                .and(qInventory.accountBookId.eq(accountBookId))).fetchOne();
+        if (inventory == null) {
+            result.put("totalCost", BigDecimal.ZERO);
+            result.put("currentQuantity", 0);
+            result.put("averageCost", BigDecimal.ZERO);
+        } else {
+            result.put("totalCost", inventory.getTotalCost() != null ? inventory.getTotalCost() : BigDecimal.ZERO);
+            result.put("currentQuantity", inventory.getCurrentQuantity() != null ? inventory.getCurrentQuantity() : 0);
+            result.put("averageCost", inventory.getAverageCost() != null ? inventory.getAverageCost() : BigDecimal.ZERO);
+        }
+        return result;
+    }
+
+    /**
+     * 查询尾差商品（数量为0但金额不为0）
+     */
+    public List<Map<String, Object>> tailDifference(Long merchantId, Long accountBookId) {
+        List<Tuple> tuples = jqf.selectFrom(qInventory)
+                .select(qInventory, qProduct.code, qProduct.name, qWarehouse.name)
+                .leftJoin(qProduct).on(qProduct.id.eq(qInventory.productId))
+                .leftJoin(qWarehouse).on(qWarehouse.id.eq(qInventory.warehouseId))
+                .where(qInventory.merchantId.eq(merchantId)
+                        .and(qInventory.accountBookId.eq(accountBookId))
+                        .and(qInventory.currentQuantity.eq(0))
+                        .and(qInventory.totalCost.ne(BigDecimal.ZERO)))
+                .fetch();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Tuple tuple : tuples) {
+            Map<String, Object> item = new HashMap<>();
+            Inventory inv = tuple.get(qInventory);
+            item.put("productId", inv.getProductId());
+            item.put("warehouseId", inv.getWarehouseId());
+            item.put("productCode", tuple.get(qProduct.code));
+            item.put("productName", tuple.get(qProduct.name));
+            item.put("warehouseName", tuple.get(qWarehouse.name));
+            item.put("totalCost", inv.getTotalCost());
+            item.put("currentQuantity", 0);
+            item.put("averageCost", BigDecimal.ZERO);
+            result.add(item);
+        }
+        return result;
     }
 
     public void processingCosts(List<Inventory> inventories, List<InventoryItem> inventoryItems, Boolean inversely) {

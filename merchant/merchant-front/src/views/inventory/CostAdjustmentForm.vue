@@ -6,6 +6,17 @@
           <label class="mr-20px ml-16px" style="font-size: 16px !important">单据日期：</label>
           <t-date-picker v-model="form.orderDate" :disabled="isAudited || looked"
                          :clearable="false"/>
+          <label class="mr-20px ml-16px" style="font-size: 16px !important">调整类型：</label>
+          <t-select
+              v-model="form.adjustmentType"
+              :options="adjustmentTypeOptions"
+              :disabled="isAudited || looked"
+              style="width: 140px"
+          />
+          <t-button v-if="!isAudited && !looked" variant="outline" theme="warning" size="small" class="ml-16px"
+                    :loading="loading" @click="loadTailDifference">
+            尾差调整
+          </t-button>
         </div>
         <Stamp v-if="isAudited"/>
       </div>
@@ -57,25 +68,30 @@
             </div>
           </div>
         </template>
+        <template #currentPrice="{ row }">
+          <span v-if="row.currentPrice != null">{{ row.currentPrice }}</span>
+          <span v-else class="text-gray-400">-</span>
+        </template>
         <template #adjustmentAmount="{ row, rowIndex }">
-          <t-tooltip v-if="!isAudited && !looked" theme="light">
-            <template #content>
-              <div style="white-space: pre-line">{{ row.quantityTips }}</div>
-            </template>
-            <t-input-number
-                v-model="row.adjustmentAmount"
-                theme="normal"
-                :min="0"
-                :decimal-places="2"
-                style="width: 100%"
-                @focus="getTotalCost({ rowIndex })"
-            />
-          </t-tooltip>
+          <t-input-number
+              v-if="!isAudited && !looked"
+              v-model="row.adjustmentAmount"
+              theme="normal"
+              :decimal-places="2"
+              style="width: 100%"
+              @change="() => calcAdjustedPrice(row)"
+          />
           <div v-else class="flex">
             <div class="flex1 ml-8px">
               <div>{{ row.adjustmentAmount }}</div>
             </div>
           </div>
+        </template>
+        <template #adjustedPrice="{ row }">
+          <span v-if="row.adjustedPrice != null" :class="row.adjustedPrice < 0 ? 'text-red' : ''">
+            {{ row.adjustedPrice }}
+          </span>
+          <span v-else class="text-gray-400">-</span>
         </template>
         <template #remarks="{ row }">
           <t-input v-if="!isAudited && !looked" v-model="row.remarks"/>
@@ -163,7 +179,9 @@ export default {
         { colKey: 'productCategoryName', title: '产品类别', align: 'center', width: 120 },
         { colKey: 'productUnitName', title: '单位', width: 90 },
         { colKey: 'warehouseName', title: '仓库', width: 300 },
-        { colKey: 'adjustmentAmount', title: '调整金额', width: 100 },
+        { colKey: 'currentPrice', title: '当前单价', width: 100, align: 'right' },
+        { colKey: 'adjustmentAmount', title: '调整金额', width: 120 },
+        { colKey: 'adjustedPrice', title: '调整后单价', width: 100, align: 'right' },
         { colKey: 'remarks', title: '备注', width: 100 },
       ];
     },
@@ -198,6 +216,10 @@ export default {
       increase: true,
       customerList: [],
       supplierList: [],
+      adjustmentTypeOptions: [
+        {label: '入库调整', value: '入库调整'},
+        {label: '出库调整', value: '出库调整'},
+      ],
     };
   },
   methods: {
@@ -261,6 +283,7 @@ export default {
                 row.warehouseName = find.name;
               }
             }
+            this.loadCostDetail(row);
             this.$forceUpdate();
           };
           if (selectedProduct) {
@@ -292,6 +315,7 @@ export default {
           if (selectedWarehouse) {
             row.warehouseName = selectedWarehouse.name;
             row.warehouseId = selectedWarehouse.id;
+            this.loadCostDetail(row);
             this.$forceUpdate();
           } else {
             Warehouse.list({id: value}).then(res => {
@@ -322,6 +346,52 @@ export default {
         item.totalCost = totalCost;
         item.quantityTips = `总成本：${totalCost}`;
       });
+    },
+    loadCostDetail(row) {
+      if (!row.productId || !row.warehouseId) return;
+      Inventory.costDetail(row.productId, row.warehouseId).then(res => {
+        const data = res?.data || {};
+        row.totalCost = data.totalCost || 0;
+        const qty = data.currentQuantity || 0;
+        row.currentQuantity = qty;
+        row.currentPrice = qty !== 0 ? (data.totalCost / qty).toFixed(2) : '0.00';
+        this.calcAdjustedPrice(row);
+        this.$forceUpdate();
+      });
+    },
+    calcAdjustedPrice(row) {
+      const qty = row.currentQuantity || 0;
+      const totalCost = Number(row.totalCost || 0);
+      const adjustment = Number(row.adjustmentAmount || 0);
+      if (qty !== 0) {
+        row.adjustedPrice = ((totalCost + adjustment) / qty).toFixed(2);
+      } else {
+        row.adjustedPrice = '0.00';
+      }
+    },
+    loadTailDifference() {
+      this.loading = true;
+      Inventory.tailDifference().then(res => {
+        const list = res?.data || [];
+        if (list.length === 0) {
+          MessagePlugin.info('没有发现尾差记录');
+          return;
+        }
+        this.costAdjustmentData = list.map(item => newRow({
+          productId: item.productId,
+          productCode: item.productCode,
+          productName: item.productName,
+          warehouseId: item.warehouseId,
+          warehouseName: item.warehouseName,
+          totalCost: item.totalCost,
+          currentQuantity: 0,
+          currentPrice: '0.00',
+          adjustmentAmount: -item.totalCost,
+          adjustedPrice: '0.00',
+        }));
+        this.form.adjustmentType = '出库调整';
+        MessagePlugin.success(`已加载 ${list.length} 条尾差记录`);
+      }).finally(() => this.loading = false);
     },
     isEmpty(value) {
       return (value !== 0 && !value) || value === '';
@@ -383,8 +453,8 @@ export default {
         MessagePlugin.error("请填写调整金额~");
         return false;
       }
-      if (filterCostAdjustmentData.some((c) => (Number(c.totalCost || 0) + Number(c.adjustmentAmount || 0)) <= 0)) {
-        MessagePlugin.error("调整后金额不能小于等于零~");
+      if (filterCostAdjustmentData.some((c) => (Number(c.totalCost || 0) + Number(c.adjustmentAmount || 0)) < 0)) {
+        MessagePlugin.error("调整后总成本不能为负数~");
         return false;
       }
       return true;
@@ -455,7 +525,7 @@ export default {
               let totalAdjustmentAmount = 0;
               data.forEach(item => {
                 totalAdjustmentAmount += parseFloat(item.adjustmentAmount || 0);
-                this.costAdjustmentData.push(newRow({
+                const row = newRow({
                   productUrl: '',
                   productCode: item.productCode,
                   productName: item.productName,
@@ -469,7 +539,9 @@ export default {
                   remarks: item.remarks,
                   totalCost: item.totalCost,
                   adjustmentAmount: item.adjustmentAmount
-                }));
+                });
+                this.costAdjustmentData.push(row);
+                this.loadCostDetail(row);
               });
               this.form.totalAdjustmentAmount = totalAdjustmentAmount;
             }

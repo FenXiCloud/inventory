@@ -1,6 +1,6 @@
 <template>
   <div class="app-header">
-    <div class="flex items-center">
+    <div class="flex">
       <div class="account">
         <t-select
             v-model="selectAccountBookId"
@@ -11,11 +11,10 @@
             @change="changeCurrent"
         />
       </div>
-      <span class="settlement-date" v-if="user.admin">结账日期：{{ currentMonth }}</span>
     </div>
     <div class="flex app-header-info flex items-center" v-if="user.admin">
       <t-icon name="user" class="mr-10px"></t-icon>
-      <t-dropdown trigger="hover" :minColumnWidth="120" placement="bottom-right" @click="trigger">
+      <t-dropdown trigger="hover" :minColumnWidth="120" placement="bottom-end" @click="trigger">
         <span>{{ user.admin.name }}</span>
         <template #dropdown>
           <t-dropdown-menu>
@@ -45,12 +44,6 @@ export default {
   },
   computed: {
     ...mapState(['user', 'checkout', 'accountBooks', 'accountBook']),
-    currentMonth() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      return `${year}-${month}`;
-    }
   },
   methods: {
     ...mapMutations(['pushTab']),
@@ -113,12 +106,5 @@ export default {
 
 .app-header-info:hover {
   background: #f8f8f8;
-}
-
-.settlement-date {
-  color: rgba(49, 58, 70, 0.8);
-  font-size: 14px;
-  margin-left: 20px;
-  white-space: nowrap;
 }
 </style>

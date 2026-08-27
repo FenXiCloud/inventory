@@ -2,10 +2,10 @@
   <div class="login">
     <div class="login__main">
       <div class="login__header">
-        <div class="login__logo">菜鸟进销存</div>
+        <div class="login__logo"></div>
         <div class="login__title-wrap">
-          <div class="login__title">菜鸟进销存管理系统</div>
-          <div class="login__title-en">CaiNiao MART Management System</div>
+          <div class="login__title">纷析云进销存管理系统</div>
+          <div class="login__title-en">FinXi MART Management System</div>
         </div>
       </div>
 
@@ -151,13 +151,11 @@ export default {
 }
 
 .login__logo {
+  width: 110px;
   height: 38px;
+  background: url(@/assets/logo_login.png) no-repeat;
+  background-size: contain;
   flex-shrink: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: #3d74ff;
-  line-height: 38px;
-  letter-spacing: 2px;
 }
 
 .login__title-wrap {

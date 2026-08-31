@@ -1,7 +1,7 @@
 <template>
   <div class="app-header">
     <div class="app-header-info" v-if="user">
-      <t-dropdown trigger="hover" :min-column-width="150" placement="bottom-end">
+      <t-dropdown trigger="hover" :min-column-width="150" placement="bottom-right">
         <span class="cursor-pointer" style="color: #fff">{{ user.name }}</span>
         <template #dropdown>
           <t-dropdown-menu>

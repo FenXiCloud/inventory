@@ -2,7 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="openAdd">新 增</t-button>
+        <t-button v-auth="'productAttribute:edit'" theme="primary" style="border-radius: 4px" @click="openAdd">新 增</t-button>
         <t-button variant="outline" style="border-radius: 4px" :loading="loading" @click="loadList">刷新</t-button>
       </t-space>
     </div>
@@ -28,8 +28,8 @@
         </template>
         <template #ops="{ row }">
           <t-space size="small">
-            <t-link theme="primary" @click="openEdit(row)">编辑</t-link>
-            <t-link theme="danger" @click="doRemove(row)">删除</t-link>
+            <t-link v-auth="'productAttribute:edit'" theme="primary" @click="openEdit(row)">编辑</t-link>
+            <t-link v-auth="'productAttribute:delete'" theme="danger" @click="doRemove(row)">删除</t-link>
           </t-space>
         </template>
       </t-table>
@@ -38,8 +38,6 @@
     <t-dialog
         v-model:visible="dialogVisible"
         :header="form.id ? '编辑辅助属性' : '新增辅助属性'"
-        :confirm-loading="saving"
-        @confirm="save"
     >
       <t-form label-width="80px" :colon="false">
         <t-form-item label="属性名">
@@ -53,6 +51,10 @@
           />
         </t-form-item>
       </t-form>
+      <template #footer>
+        <t-button variant="outline" @click="dialogVisible = false">取消</t-button>
+        <t-button v-auth="'productAttribute:edit'" theme="primary" :loading="saving" @click="save">保存</t-button>
+      </template>
     </t-dialog>
   </div>
 </template>

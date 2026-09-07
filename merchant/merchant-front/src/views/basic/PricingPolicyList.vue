@@ -27,7 +27,7 @@
           </t-space>
         </template>
         <template #enabled="{ row }">
-          <t-switch v-model="row.enabled" :disabled="saving" @change="() => persist()"/>
+          <t-switch v-auth="'pricingPolicy:edit'" v-model="row.enabled" :disabled="saving" @change="() => persist()"/>
         </template>
       </t-table>
     </div>

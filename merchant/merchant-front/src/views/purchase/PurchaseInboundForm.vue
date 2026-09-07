@@ -45,8 +45,11 @@
           :foot-data="footData"
           :loading="loading"
       >
-        <template #ops="{ rowIndex }">
+        <template #ops="{ row, rowIndex }">
           <template v-if="!isAudited">
+            <div class="fa fa-files-o text-hover mr-5px" title="拆行：同源订单行可拆成多行，按不同单位入库（如整箱+零头）"
+                 v-if="!row.isNew && row.purchaseOrderItemId"
+                 @click="splitRow(rowIndex)"></div>
             <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
             <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete', rowIndex)"></div>
           </template>
@@ -116,7 +119,7 @@
                   v-model="row.secondaryQuantity"
                   theme="normal"
                   :min="0"
-                  :decimal-places="2"
+                  :decimal-places="qtyDp"
                   style="width: 100%"
                   @blur="updateQuantity(row)"
                   @focus="showStockQuantity(row)"
@@ -153,7 +156,7 @@
                   v-model="row.secondaryPrice"
                   theme="normal"
                   :min="0"
-                  :decimal-places="2"
+                  :decimal-places="priceDp"
                   style="width: 100%"
                   @keyup="handleEnter($event, rowIndex, 4)"
                   @blur="updatePrice(row)"
@@ -246,11 +249,11 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading">取消</t-button>
       <div>
-        <t-button theme="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
-        <t-button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</t-button>
+        <t-button theme="primary" v-if="!isAudited" v-auth="'purchaseInbound:edit'" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
+        <t-button v-if="!isAudited" v-auth="'purchaseInbound:edit'" @click="saveOrder('save')" :loading="loading">保存</t-button>
         <t-button @click="doPrint" :loading="loading">打印</t-button>
-        <t-button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
-        <t-button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
+        <t-button v-if="$can('purchaseInbound:audit') && form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
+        <t-button v-if="$can('purchaseInbound:audit') && isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
       </div>
     </div>
   </div>
@@ -261,6 +264,7 @@ import {DialogPlugin} from '@common/dialog-plugin';
 import {openPrint} from '@common/print';
 import manba from "manba";
 import {CopyObj} from "@common/utils";
+import {switchUnit} from "@common/unit";
 import Supplier from "@js/api/basic/Supplier";
 import Warehouse from "@js/api/basic/Warehouse";
 import Product from "@js/api/basic/Product";
@@ -307,7 +311,7 @@ export default {
         {
           colKey: 'ops',
           title: '操作',
-          width: 70,
+          width: 100,
           align: 'center',
           fixed: 'left',
           foot: () => '合计'
@@ -622,6 +626,22 @@ export default {
         this.productData.splice(index, 1);
       }
     },
+    splitRow(index) {
+      const row = this.productData[index];
+      if (!row || row.isNew || !row.purchaseOrderItemId) return;
+      const copy = {
+        ...row,
+        _rowKey: `r-${++rowSeq}`,
+        id: null,
+        purchaseInboundItemId: null,
+        secondaryQuantity: 0,
+        quantity: 0,
+        discountAmount: 0,
+        subtotal: 0,
+        isNew: false,
+      };
+      this.productData.splice(index + 1, 0, copy);
+    },
     changeSupplier(value) {
       if (value == null || value === '') {
         this.form.supplierId = null;
@@ -674,12 +694,9 @@ export default {
     },
     changeProductUnit(value, row) {
       const item = (row.auxiliaryUnitPrices || []).find((u) => String(u.unitId) === String(value));
-      if (!item) return;
-      row.secondaryUnitName = item.unitName;
-      row.secondaryPrice = (item.unitPrice || item.price || 0).toFixed(2) || 0;
-      row.conversionRate = item.conversionRate || 1;
-      row.quantity = (row.secondaryQuantity * row.conversionRate).toFixed(2);
-      row.subtotal = (row.secondaryQuantity * row.secondaryPrice).toFixed(2);
+      if (item) {
+        switchUnit(row, item);
+      }
     },
     updateQuantity(item) {
       item.secondaryQuantity = item.secondaryQuantity || 1;

@@ -28,6 +28,7 @@ import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.form.ProductForm;
+import com.flyemu.share.repository.basic.CategoryTreeRepository;
 import com.flyemu.share.repository.basic.CustomerLevelPriceRepository;
 import com.flyemu.share.repository.basic.CustomerLevelRepository;
 import com.flyemu.share.repository.basic.UnitRepository;
@@ -78,6 +79,7 @@ public class ProductService extends BaseService {
     private final QCustomerLevelPrice qCustomerLevelPrice = QCustomerLevelPrice.customerLevelPrice;
 
     private final ProductRepository productRepository;
+    private final CategoryTreeRepository categoryTreeRepository;
     private final UnitRepository unitRepository;
     private final CustomerLevelPriceRepository customerLevelPriceRepository;
     private final CustomerLevelRepository customerLevelRepository;
@@ -89,7 +91,19 @@ public class ProductService extends BaseService {
     private final ProductExistenceChecker existenceChecker;
     //连表分页查询
     public PageResults<ProductDto> query(Page page, Query query) {
-        PagedList<Tuple> pagedList = bqf.selectFrom(qProduct).select(qProduct, qUnit.name, qProductCategory.name).leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId)).where(query.builders()).orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+        // 选中某个分类时，展示该分类及其下所有下级分类的产品（商品挂末级，父分类需聚合子分类）
+        Long categoryId = query.productCategoryId;
+        if (categoryId != null) {
+            query.productCategoryId = null; // 让 builders() 不再按“直属分类”精确过滤
+        }
+        BooleanBuilder where = query.builders();
+        if (categoryId != null) {
+            List<Long> subCategoryIds = categoryTreeRepository.getAllSubCategoryIds(categoryId);
+            if (CollUtil.isNotEmpty(subCategoryIds)) {
+                where.and(qProduct.productCategoryId.in(subCategoryIds));
+            }
+        }
+        PagedList<Tuple> pagedList = bqf.selectFrom(qProduct).select(qProduct, qUnit.name, qProductCategory.name).leftJoin(qUnit).on(qUnit.id.eq(qProduct.unitId)).leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId)).where(where).orderBy(qProduct.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
         ArrayList<ProductDto> collect = pagedList.stream().collect(ArrayList::new, (list, tuple) -> {
             ProductDto dto = BeanUtil.toBean(tuple.get(qProduct), ProductDto.class);
             dto.setProductCategoryName(tuple.get(qProductCategory.name));
@@ -615,6 +629,12 @@ public class ProductService extends BaseService {
                     .fetch();
             dto.setCustomerLevelPriceList(customerLevelPrices);
             dto.setLastSalePrice(priceResolveService.resolveSalesPrice(dto.getId(), customerId, merchantId, accountBookId));
+            // 多单位商品补基座单位(rate=1)到单位下拉，供销售订单/销售出库等表单行内切换单位（防御性拷贝，不改写持久化 JSON）
+            List<AuxiliaryUnitPrice> aux = dto.getAuxiliaryUnitPrices();
+            if (Boolean.TRUE.equals(dto.getEnableMultiUnit()) && dto.getUnitId() != null && CollUtil.isNotEmpty(aux)) {
+                dto.setAuxiliaryUnitPrices(ProductAuxiliaryUnitService.withBase(
+                        Long.valueOf(dto.getUnitId()), dto.getUnitName(), dto.getLastSalePrice(), aux));
+            }
             list.add(dto);
         }, List::addAll);
         return result;

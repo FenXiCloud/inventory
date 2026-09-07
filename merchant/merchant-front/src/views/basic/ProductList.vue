@@ -48,8 +48,14 @@
     <section class="product-main">
       <div class="product-main__toolbar">
         <t-space break-line>
-          <t-button theme="primary" style="border-radius: 4px" @click="showProductForm()">新 增</t-button>
-          <t-button style="border-radius: 4px" @click="showProductImportForm()">导 入</t-button>
+          <t-button
+              v-auth="'product:edit'"
+              theme="primary"
+              style="border-radius: 4px"
+              :disabled="!canAddProduct"
+              :title="canAddProduct ? '' : '请先在最左侧选中最末级（无下级）分类，再新增产品'"
+              @click="showProductForm()">新 增</t-button>
+          <t-button v-auth="'product:edit'" style="border-radius: 4px" @click="showProductImportForm()">导 入</t-button>
           <t-input
               v-model="params.filter"
               clearable
@@ -91,13 +97,14 @@
         >
           <template #ops="{ row }">
             <t-space size="small">
-              <t-link theme="primary" @click="showProductForm(row)"><t-icon name="edit"/></t-link>
-              <t-link theme="primary" @click="copyProduct(row)">复制</t-link>
-              <t-link theme="primary" @click="deleteProduct(row)"><t-icon name="delete"/></t-link>
+              <t-link v-auth="'product:edit'" theme="primary" @click="showProductForm(row)"><t-icon name="edit"/></t-link>
+              <t-link v-auth="'product:edit'" theme="primary" @click="copyProduct(row)">复制</t-link>
+              <t-link v-auth="'product:delete'" theme="primary" @click="deleteProduct(row)"><t-icon name="delete"/></t-link>
             </t-space>
           </template>
           <template #enabled="{ row }">
             <t-tag
+                v-auth="'product:edit'"
                 :theme="row.enabled ? 'primary' : 'danger'"
                 variant="light"
                 style="cursor:pointer"
@@ -203,6 +210,18 @@ export default {
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
       })
+    },
+    /** 仅当左侧选中了最末级(无下级)分类时，才允许新增产品 */
+    canAddProduct() {
+      const cid = this.params.productCategoryId;
+      if (cid == null || cid === '') return false; // 全部分类/未选中
+      const rawPid = (item) => {
+        const p = item.pid ?? item.parentId;
+        return (p == null || p === '' || p === 0 || p === '0') ? null : String(p);
+      };
+      const key = String(cid);
+      // 该分类被其它分类当作父级 => 有下级，非末级
+      return !(this.productCategoryDataList || []).some((item) => rawPid(item) === key);
     }
   },
   methods: {
@@ -276,6 +295,10 @@ export default {
       this.loadProduct();
     },
     showProductForm(entity) {
+      // 新增且已选中末级分类时，自动把该分类带进产品表单
+      if (!entity && this.params.productCategoryId != null) {
+        entity = {productCategoryId: this.params.productCategoryId};
+      }
       let dialogId = openDialog({
         header: "产品信息",
         closeOnOverlayClick: false,

@@ -38,7 +38,7 @@
               v-model="editValue"
               theme="normal"
               :min="0"
-              :decimal-places="2"
+              :decimal-places="priceDp"
               style="width: 100%"
               @blur="commitEdit(row)"
           />
@@ -55,7 +55,7 @@
               v-model="editValue"
               theme="normal"
               :min="0"
-              :decimal-places="2"
+              :decimal-places="priceDp"
               style="width: 100%"
               @blur="commitEdit(row)"
           />
@@ -164,6 +164,7 @@ export default {
       this.startEdit(row, colKey);
     },
     startEdit(row, colKey) {
+      if (!this.$can('priceRecord:edit')) return;
       if (!colKey || !row?.id) return;
       if (colKey !== 'purchasePrice' && !colKey.startsWith('level_')) return;
       if (this.saving) return;

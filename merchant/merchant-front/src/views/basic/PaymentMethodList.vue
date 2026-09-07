@@ -2,7 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="showPaymentMethodForm()">新 增</t-button>
+        <t-button v-auth="'paymentMethod:edit'" theme="primary" style="border-radius: 4px" @click="showPaymentMethodForm()">新 增</t-button>
         <t-input
             v-model="params.name"
             clearable
@@ -33,12 +33,13 @@
       >
         <template #ops="{ row }">
           <t-space size="small">
-            <t-link theme="primary" @click="showPaymentMethodForm(row)"><t-icon name="edit"/></t-link>
-            <t-link theme="primary" @click="deletePaymentMethod(row)"><t-icon name="delete"/></t-link>
+            <t-link v-auth="'paymentMethod:edit'" theme="primary" @click="showPaymentMethodForm(row)"><t-icon name="edit"/></t-link>
+            <t-link v-auth="'paymentMethod:delete'" theme="primary" @click="deletePaymentMethod(row)"><t-icon name="delete"/></t-link>
           </t-space>
         </template>
         <template #enabled="{ row }">
           <t-tag
+              v-auth="'paymentMethod:edit'"
               :theme="row.enabled ? 'primary' : 'danger'"
               variant="light"
               style="cursor:pointer"

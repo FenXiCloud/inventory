@@ -22,8 +22,11 @@ public class PrintTemplateController {
     private final SystemLogService systemLogService;
 
     @GetMapping
-    public JsonResult list(PrintTemplateService.Query query, @SaAccountVal AccountDto accountDto) {
+    public JsonResult list(PrintTemplateService.Query query, @RequestParam(required = false) String documentType,
+                           @SaAccountVal AccountDto accountDto) {
         TenantScope.bind(query, accountDto);
+        // 保证每个单据类型至少有一个打印模板：该类型还没有模板时自动预置一个默认模板
+        printTemplateService.ensureDefaultIfMissing(documentType, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful(printTemplateService.query(query));
     }
 
@@ -67,11 +70,13 @@ public class PrintTemplateController {
 
     @GetMapping("/byType")
     public JsonResult byType(String documentType, @SaAccountVal AccountDto accountDto) {
+        printTemplateService.ensureDefaultIfMissing(documentType, accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful(printTemplateService.byType(documentType, accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 
     @GetMapping("/select")
     public JsonResult select(@SaAccountVal AccountDto accountDto) {
+        printTemplateService.ensureDefaultsForAll(accountDto.getMerchantId(), accountDto.getAccountBookId());
         return JsonResult.successful(printTemplateService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
     }
 }

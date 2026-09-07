@@ -125,13 +125,17 @@ public class Product implements TenantAware {
     private BigDecimal maxPurchasePrice ;
 
     @Comment("零售客户价")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal retailCustomerPrice;
     @Comment("批发客户价")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal wholesaleCustomerPrice;
     @Comment("VIP客户价")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal vipCustomerPrice;
 
     @Comment("最低销售价")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal minSalesPrice;
 
     @Comment("税率")

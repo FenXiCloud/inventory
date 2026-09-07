@@ -48,7 +48,7 @@
               v-if="data.status === 1"
               :value="row.actualQuantity"
               :min="0"
-              :decimal-places="2"
+              :decimal-places="qtyDp"
               size="small"
               style="width: 100px"
               @change="(val) => updateActual(row.id, val)"

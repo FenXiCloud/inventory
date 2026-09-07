@@ -2,7 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
+        <t-button v-auth="'productCombo:edit'" theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
         <t-input
             v-model="filter"
             clearable
@@ -42,8 +42,8 @@
         <template #ops="{ row }">
           <t-space size="small">
             <t-link theme="primary" @click="viewComponents(row)">组件</t-link>
-            <t-link theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
-            <t-link theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
+            <t-link v-auth="'productCombo:edit'" theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
+            <t-link v-auth="'productCombo:delete'" theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
           </t-space>
         </template>
       </t-table>

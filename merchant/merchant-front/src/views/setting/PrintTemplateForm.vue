@@ -1,41 +1,58 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <t-form
-          ref="form"
-          :data="model"
-          :rules="rules"
-          layout="vertical"
-          label-align="top"
-      >
-        <t-form-item label="模板名称" name="name">
-          <t-input v-model="model.name" placeholder="请输入模板名称" :maxlength="32" />
-        </t-form-item>
-        <t-form-item label="单据类型" name="documentType">
-          <t-select
-              v-model="model.documentType"
-              :options="documentTypeOptions"
-              :disabled="!!model.id"
-              placeholder="请选择单据类型"
-              @change="resetFieldsByType"
-          />
-        </t-form-item>
-        <t-form-item label="默认模板" name="systemDefault">
-          <t-switch v-model="model.systemDefault" />
-        </t-form-item>
-        <t-form-item label="打印字段" name="content">
-          <div class="field-designer">
-            <div class="field-designer__group">
-              <div class="field-designer__title">表头字段</div>
-              <t-checkbox-group v-model="headerChecked" :options="headerOptions" />
-            </div>
-            <div class="field-designer__group">
-              <div class="field-designer__title">明细列</div>
-              <t-checkbox-group v-model="itemChecked" :options="itemOptions" />
-            </div>
+      <div class="print-form-layout">
+        <div class="print-form-layout__form">
+          <t-form
+              ref="form"
+              :data="model"
+              :rules="rules"
+              layout="vertical"
+              label-align="top"
+          >
+            <t-form-item label="模板名称" name="name">
+              <t-input v-model="model.name" placeholder="请输入模板名称" :maxlength="32" />
+            </t-form-item>
+            <t-form-item label="单据类型" name="documentType">
+              <t-select
+                  v-model="model.documentType"
+                  :options="documentTypeOptions"
+                  :disabled="!!model.id"
+                  placeholder="请选择单据类型"
+                  @change="resetFieldsByType"
+              />
+            </t-form-item>
+            <t-form-item label="默认模板" name="systemDefault">
+              <t-switch v-model="model.systemDefault" />
+            </t-form-item>
+            <t-form-item label="打印字段" name="content">
+              <div class="field-designer">
+                <div class="field-designer__group">
+                  <div class="field-designer__title">表头字段</div>
+                  <t-checkbox-group v-model="headerChecked" :options="headerOptions" />
+                </div>
+                <div class="field-designer__group">
+                  <div class="field-designer__title">明细列</div>
+                  <t-checkbox-group v-model="itemChecked" :options="itemOptions" />
+                </div>
+              </div>
+            </t-form-item>
+          </t-form>
+        </div>
+        <div class="print-form-layout__preview">
+          <div class="print-form-layout__preview-title">
+            <t-icon name="info-circle" size="14px" />
+            <span>打印效果预览 · 示例数据，勾选字段实时刷新</span>
           </div>
-        </t-form-item>
-      </t-form>
+          <div class="print-form-layout__paper">
+            <PrintSheet
+                :document-type="model.documentType || '单据'"
+                :content="previewContent"
+                :data="sampleData"
+            />
+          </div>
+        </div>
+      </div>
     </div>
     <div class="modal-column-between">
       <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
@@ -48,12 +65,14 @@
 import PrintTemplate from '@js/api/setting/PrintTemplate';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { CopyObj } from '@common/utils';
+import PrintSheet from '@/views/common/PrintSheet.vue';
+import { buildSamplePrintData } from '@common/print-sample';
 
 const DOCUMENT_TYPES = [
   '采购订单', '采购入库单', '采购退货单',
   '销售订单', '销售出库单', '销售退货单',
   '调拨单', '盘点单', '其他入库单', '其他出库单', '成本调整单',
-  '收款单', '付款单', '核销单', '其他收款单', '其他付款单', '转账单'
+  '收款单', '付款单', '核销单', '其他收款单', '其他付款单', '转帐单'
 ];
 
 const HEADER_FIELDS = [
@@ -78,9 +97,10 @@ function buildDefaultContent() {
     ...ITEM_FIELDS.map(f => ({...f, enabled: true, section: 'item'})),
   ];
 }
-/** 打印模板表单（字段勾选设计器） */
+/** 打印模板表单（字段勾选设计器 + 实时效果预览） */
 export default {
   name: 'PrintTemplateForm',
+  components: { PrintSheet },
   emits: { close: null, success: null },
   props: {
     printTemplate: Object
@@ -105,6 +125,15 @@ export default {
         documentType: [{ required: true, message: '请选择单据类型', type: 'error' }]
       }
     };
+  },
+  computed: {
+    // 勾选变化即时驱动右侧预览，预览内容与保存的 content 结构一致
+    previewContent() {
+      return this.buildContent();
+    },
+    sampleData() {
+      return buildSamplePrintData(this.model.documentType);
+    }
   },
   methods: {
     resetFieldsByType() {
@@ -190,4 +219,37 @@ export default {
 .field-designer { width: 100%; }
 .field-designer__group { margin-bottom: 12px; }
 .field-designer__title { font-weight: 600; margin-bottom: 8px; color: #333; }
+
+.print-form-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.print-form-layout__form {
+  flex: 0 0 320px;
+  min-width: 0;
+}
+.print-form-layout__preview {
+  flex: 1;
+  min-width: 0;
+  background: #f2f4f7;
+  border-radius: 6px;
+  padding: 12px;
+}
+.print-form-layout__preview-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 8px;
+}
+.print-form-layout__paper {
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 6px 20px rgba(0, 0, 0, 0.08);
+  padding: 28px 28px 32px;
+  max-height: 62vh;
+  overflow: auto;
+}
 </style>

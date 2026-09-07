@@ -1,14 +1,12 @@
 package com.flyemu.share.service.basic;
 
 import com.flyemu.share.entity.basic.*;
-import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.enums.PolicySource;
 import com.flyemu.share.enums.PolicyType;
 import com.flyemu.share.enums.PriceSource;
 import com.flyemu.share.enums.PriceType;
 import com.flyemu.share.repository.basic.PricingPolicyRepository;
 import com.flyemu.share.service.BaseService;
-import cn.hutool.core.collection.CollUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,15 +14,16 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * 开单价格取数：按价格策略优先级链式回退
  * <p>
  * 销售：客户等级价格 → 最近销售价<br>
  * 采购：最近采购价格 → 产品档案采购价
+ * <p>
+ * 返回值一律为【基本单位单价】：开单行默认单位是商品基本单位（d.unitId），
+ * 行内切换到大单位（箱/件）由前端按 基本单价×换算率 等比换算，取价处不做放大。
  */
 @Service
 @Slf4j
@@ -142,33 +141,10 @@ public class PriceResolveService extends BaseService {
                 .orderBy(qPriceRecord.id.desc())
                 .fetchFirst();
         if (record == null) return null;
-        // PriceRecord.unitPrice 是基本单位单价；如果产品启用了辅助单位，需要换算为采购单位单价
-        return toPurchaseUnitPrice(productId, merchantId, accountBookId, record.getUnitPrice());
-    }
-
-    /**
-     * 将基本单位单价换算为采购单位单价（如果产品启用了辅助单位）。
-     * 换算逻辑：找到 conversionRate > 1 的辅助单位条目（即采购单位），用基本单价 × 换算率。
-     */
-    private BigDecimal toPurchaseUnitPrice(Long productId, Long merchantId, Long accountBookId, BigDecimal baseUnitPrice) {
-        Product product = jqf.selectFrom(qProduct)
-                .where(qProduct.id.eq(productId)
-                        .and(qProduct.merchantId.eq(merchantId))
-                        .and(qProduct.accountBookId.eq(accountBookId)))
-                .fetchFirst();
-        if (product == null || !Boolean.TRUE.equals(product.getEnableMultiUnit())
-                || CollUtil.isEmpty(product.getAuxiliaryUnitPrices())) {
-            return baseUnitPrice;
-        }
-        // 找 conversionRate > 1 的条目（采购单位），用最大换算率
-        Optional<AuxiliaryUnitPrice> purchaseUnit = product.getAuxiliaryUnitPrices().stream()
-                .filter(a -> a.getConversionRate() != null && a.getConversionRate() > 1)
-                .max((a, b) -> Double.compare(a.getConversionRate(), b.getConversionRate()));
-        if (purchaseUnit.isEmpty()) {
-            return baseUnitPrice;
-        }
-        BigDecimal rate = BigDecimal.valueOf(purchaseUnit.get().getConversionRate());
-        return baseUnitPrice.multiply(rate).setScale(6, RoundingMode.HALF_UP);
+        // PriceRecord.unitPrice 即基本单位单价（单据落库、写价格记录时都按 基本单价=业务单价÷换算率）。
+        // 开单行默认单位是商品基本单位（d.unitId），因此这里必须返回基本单价；
+        // 行内切换到大单位时由前端按 基本单价×换算率 等比换算，不能在此提前放大。
+        return record.getUnitPrice();
     }
 
     private BigDecimal findProductPurchasePrice(Long productId, Long merchantId, Long accountBookId) {

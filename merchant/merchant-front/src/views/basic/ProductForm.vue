@@ -126,7 +126,7 @@
                       v-model="model.purchasePrice"
                       theme="normal"
                       :min="0"
-                      :decimal-places="2"
+                      :decimal-places="priceDp"
                       placeholder="请输入进货价"
                       style="width: 100%"
                   />
@@ -228,6 +228,7 @@
 
               <t-col :span="6">
                 <t-form-item label="税率">
+                  <!-- 税率/换算率为比率口径，恒定位、不随账套小数位参数 -->
                   <t-input-number
                       v-model="model.taxRate"
                       theme="normal"
@@ -301,6 +302,7 @@
                           class="product-form__unit-select"
                           @change="(val) => auxiliaryUnitPricesChange(val)"
                       />
+                      <!-- 换算率恒2位（比率），不随账套小数位参数 -->
                       <span class="product-form__unit-eq">=</span>
                       <t-input-number
                           v-model="mu.conversionRate"
@@ -335,12 +337,12 @@
                       <input
                           ref="uploads"
                           type="file"
-                          accept="image/png,image/jpeg,image/gif,image/jpg"
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
                           class="product-form__upload-input"
                           @change="selectImg($event)"
                       />
                     </div>
-                    <div class="product-form__upload-tip">jpg/png，正方形且边长 ≤ 480，≤ 100KB</div>
+                    <div class="product-form__upload-tip">jpg/png/jpeg/webp，长宽 ≤ 8000，≤ 10MB；选图后自动进入正方形裁切</div>
                   </div>
                 </t-form-item>
               </t-col>
@@ -365,7 +367,7 @@
                       v-model="row.price"
                       theme="normal"
                       :min="0"
-                      :decimal-places="2"
+                      :decimal-places="priceDp"
                       style="width: 100%"
                   />
                 </template>
@@ -378,7 +380,7 @@
                       v-model="row[mu.unitId]"
                       theme="normal"
                       :min="0"
-                      :decimal-places="2"
+                      :decimal-places="priceDp"
                       style="width: 100%"
                   />
                 </template>
@@ -391,8 +393,16 @@
 
     <div class="modal-column-between">
       <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
-      <t-button theme="primary" :loading="loading" @click="save">保存</t-button>
+      <t-button v-auth="'product:edit'" theme="primary" :loading="loading" @click="save">保存</t-button>
     </div>
+
+    <!-- 产品图片：选图后先正方形裁切再上传 -->
+    <ProductImageCrop
+        v-if="cropVisible && cropFile"
+        :file="cropFile"
+        @cancel="onCropCancel"
+        @confirm="onCropConfirm"
+    />
   </div>
 </template>
 
@@ -406,11 +416,13 @@ import Supplier from '@js/api/basic/Supplier';
 import CustomerLevel from '@js/api/basic/CustomerLevel';
 import Unit from '@js/api/basic/Unit';
 import WarehouseLocation from '@js/api/basic/WarehouseLocation';
-import {OssUpload} from '@js/api/App';
+import {Upload} from '@js/api/App';
 import {toArrayTree} from '@common/utils';
+import ProductImageCrop from './ProductImageCrop.vue';
 
 export default {
   name: 'ProductForm',
+  components: {ProductImageCrop},
   emits: {close: null, success: null},
   props: {
     entity: Object
@@ -418,6 +430,8 @@ export default {
   data() {
     return {
       loading: false,
+      cropVisible: false,
+      cropFile: null,
       categoryList: [],
       unitList: [],
       supplierList: [],
@@ -560,33 +574,55 @@ export default {
     },
     selectImg(e) {
       const file = e.target.files?.[0];
+      // 清空 input，保证取消裁切后再次选同一文件仍能触发 change
+      e.target.value = '';
       if (!file) return;
-      if (!/\.(jpg|jpeg|png|JPG|PNG)$/.test(e.target.value)) {
-        MessagePlugin.error('图片类型要求：jpeg、jpg、png');
-        e.target.value = '';
+      const typeOk = /^image\/(png|jpe?g|webp)$/i.test(file.type || '')
+          || /\.(jpe?g|png|webp)$/i.test(file.name || '');
+      if (!typeOk) {
+        MessagePlugin.error('图片类型要求：jpg、png、jpeg、webp');
         return;
       }
-      if (file.size > 102400) {
-        e.target.value = '';
-        MessagePlugin.error('图片大于100KB');
+      if (file.size > 10 * 1024 * 1024) {
+        MessagePlugin.error('图片大小不能超过10MB');
         return;
       }
+      // 先读尺寸校验(长/宽 ≤ 8000)，通过后进入正方形裁切弹窗
       const reader = new FileReader();
       reader.onload = (ev) => {
         const image = new Image();
         image.onload = () => {
-          if (image.width !== image.height || image.width > 480) {
-            MessagePlugin.error('图片像素要相等，并且不能超过480');
+          if (image.width > 8000 || image.height > 8000) {
+            MessagePlugin.error('图片长宽不能超过8000像素，请选择较小的图片');
+            return;
           }
+          this.cropFile = file;
+          this.cropVisible = true;
+        };
+        image.onerror = () => {
+          MessagePlugin.error('图片读取失败，请重新选择');
         };
         image.src = ev.target.result;
       };
       reader.readAsDataURL(file);
-
+    },
+    onCropCancel() {
+      this.cropVisible = false;
+      this.cropFile = null;
+    },
+    onCropConfirm(blob, ext) {
+      // 先关掉裁切弹窗，上传在后台进行，成功后回填产品图
+      this.onCropCancel();
+      if (!blob) return;
       const params = new FormData();
-      params.append('file', file);
-      OssUpload('goods', params).then(({data}) => {
-        if (data) this.model.imgPath = data;
+      params.append('file', new File([blob], 'product_' + Date.now() + '.' + (ext || 'jpg'), {
+        type: blob.type || 'image/jpeg'
+      }));
+      Upload('goods', params).then(({data}) => {
+        if (data && data.path) this.model.imgPath = data.path;
+        MessagePlugin.success('图片上传成功~');
+      }).catch(() => {
+        MessagePlugin.error('图片上传失败，请重试');
       });
     },
     save() {
@@ -701,7 +737,8 @@ export default {
       this.wholeLocationList = results[5].data || [];
       this.zeroLocationList = results[6].data || [];
 
-      if (this.entity) {
+      // 仅编辑(有id)时回填客户等级价；新增/复制/从分类带入都走默认空价，避免把 null 拼进路径
+      if (this.entity?.id) {
         const {data} = await Product.customerLevelPrice(this.entity.id);
         this.customerLevelPriceList = this.buildCustomerLevelPriceList(levels, data);
       } else {

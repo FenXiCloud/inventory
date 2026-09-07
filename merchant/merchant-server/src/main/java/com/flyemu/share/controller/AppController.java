@@ -53,6 +53,13 @@ public class AppController {
     @GetMapping("/init")
     public JsonResult init(@SaAccountVal AccountDto accountDto) {
         if (accountDto != null) {
+            // 操作级权限码：按当前角色现查（systemDefault 主账号角色前端直接放行，不必下发）
+            if (accountDto.getRole() != null && !Boolean.TRUE.equals(accountDto.getRole().getSystemDefault())) {
+                accountDto.setGranted(adminService.loadFunction(accountDto.getMerchantId(), accountDto.getRole()));
+            }
+            // 回写会话快照：授权变更后刷新页面即可更新按钮可见性，无需重登
+            StpUtil.getTokenSession().set(Constants.SESSION_ACCOUNT, accountDto);
+
             //获取菜单数据
             List<MenuDto> menus = adminService.loadMenu(accountDto.getMerchantId(), accountDto.getRole());
 

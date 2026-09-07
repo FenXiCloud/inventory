@@ -2,7 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line align="center">
-        <t-button theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
+        <t-button v-auth="'accountType:edit'" theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
         <t-radio-group
             v-model="params.costType"
             variant="default-filled"
@@ -42,9 +42,9 @@
       >
         <template #ops="{ row }">
           <t-space size="small">
-            <t-link theme="primary" @click="showForm(null, row)">下级</t-link>
-            <t-link theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
-            <t-link theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
+            <t-link v-auth="'accountType:edit'" theme="primary" @click="showForm(null, row)">下级</t-link>
+            <t-link v-auth="'accountType:edit'" theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
+            <t-link v-auth="'accountType:delete'" theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
           </t-space>
         </template>
         <template #name="{ row }">
@@ -62,6 +62,7 @@
         </template>
         <template #enabled="{ row }">
           <t-tag
+              v-auth="'accountType:edit'"
               :theme="row.enabled ? 'primary' : 'danger'"
               variant="light"
               style="cursor:pointer"

@@ -11,6 +11,9 @@ export default {
   addUserByDingDing(param) {
     return Ajax.get('/admin/addUserByDingDing', param);
   },
+  syncProgress() {
+    return Ajax.get('/admin/dingDingSyncProgress', null, {repeatable: true});
+  },
   remove(adminId) {
     return Ajax.delete('/admin/' + adminId);
   },

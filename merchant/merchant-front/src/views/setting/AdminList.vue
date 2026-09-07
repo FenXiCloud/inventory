@@ -3,7 +3,11 @@
     <div class="simple-page__toolbar">
       <t-space break-line>
         <t-button theme="primary" style="border-radius: 4px" @click="synchronization()">同步钉钉用户</t-button>
-        <t-button theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
+        <span v-if="ddSyncing" class="dd-sync__tip" :title="ddProgress">
+          <t-loading size="small"/>
+          <span class="dd-sync__text">{{ ddProgress }}</span>
+        </span>
+        <t-button v-auth="'admin:edit'" theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
         <t-input
             v-model="params.username"
             clearable
@@ -35,18 +39,22 @@
         <template #ops="{ row }">
           <t-space size="small">
             <t-link theme="primary" @click="resetPassword(row)"><t-icon name="lock-on"/></t-link>
-            <t-link theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
-            <t-link v-if="!row.systemDefault" theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
+            <t-link v-auth="'admin:edit'" theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
+            <t-link v-if="$can('admin:delete') && !row.systemDefault" theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
           </t-space>
         </template>
         <template #systemDefault="{ row }">
-          <t-tag :theme="row.systemDefault ? 'primary' : 'warning'" variant="light">
-            {{ row.systemDefault ? '是' : '否' }}
-          </t-tag>
+          <t-tag
+              v-if="row.systemDefault"
+              theme="primary"
+              variant="light"
+              title="商户主账号：随商户开通自动创建，不可删除、不可禁用"
+          >主账号</t-tag>
+          <span v-else>—</span>
         </template>
         <template #enabled="{ row }">
           <t-tag
-              v-if="!row.systemDefault"
+              v-if="$can('admin:edit') && !row.systemDefault"
               :theme="row.enabled ? 'primary' : 'danger'"
               variant="light"
               style="cursor: pointer"
@@ -75,6 +83,9 @@ export default {
   data() {
     return {
       loading: false,
+      ddSyncing: false,
+      ddProgress: '',
+      ddTimer: null,
       params: {
         name: null,
         username: null,
@@ -87,7 +98,7 @@ export default {
         {colKey: 'name', title: '姓名', minWidth: 120},
         {colKey: 'mobile', title: '电话', minWidth: 120},
         {colKey: 'roleName', title: '角色', minWidth: 120},
-        {colKey: 'systemDefault', title: '默认用户', width: 100, align: 'center'},
+        {colKey: 'systemDefault', title: '主账号', width: 100, align: 'center'},
         {colKey: 'enabled', title: '状态', width: 90, align: 'center', fixed: 'right'}
       ]
     };
@@ -99,12 +110,51 @@ export default {
   },
   methods: {
     synchronization() {
-      this.loading = true;
+      // 钉钉同步为后台异步任务（全量串行调钉钉接口较慢），提交后轮询进度
       Admin.addUserByDingDing()
         .then(({data}) => {
-          // this.dataList = data;
+          MessagePlugin.info(String(data || '同步任务已提交~'));
+          this.watchDingDing();
         })
-        .finally(() => (this.loading = false));
+        .catch((err) => {
+          // 已有任务在跑（重复点击/其他页签提交）时也挂上进度显示
+          if (err && err.msg && err.msg.indexOf('进行中') >= 0) {
+            this.watchDingDing();
+          }
+        });
+    },
+    watchDingDing() {
+      if (this.ddTimer) return;
+      this.ddSyncing = true;
+      const tick = () => {
+        Admin.syncProgress().then(({data}) => {
+          if (!data) return;
+          if (data.running) {
+            this.ddSyncing = true;
+            this.ddProgress = data.progress || '同步中…';
+            return;
+          }
+          this.stopDingDingWatch();
+          const res = data.result || '';
+          if (res.indexOf('SYNC_ERROR:') === 0) {
+            MessagePlugin.error(res.substring('SYNC_ERROR:'.length));
+          } else if (res) {
+            MessagePlugin.success(res.replace(/<br\/?>/g, ' ').replace(/[；;]\s*$/, ''));
+          } else {
+            MessagePlugin.info('同步任务已结束');
+          }
+          this.loadList();
+        }).catch(() => {});
+      };
+      this.ddTimer = setInterval(tick, 2500);
+      tick();
+    },
+    stopDingDingWatch() {
+      if (this.ddTimer) {
+        clearInterval(this.ddTimer);
+        this.ddTimer = null;
+      }
+      this.ddSyncing = false;
     },
     showForm(entity) {
       let dialogId = openDialog({
@@ -174,7 +224,32 @@ export default {
   },
   created() {
     this.loadList();
+    // 进入页面时若服务器仍有在跑的同步任务（如刷新过页面），继续显示进度
+    Admin.syncProgress().then(({data}) => {
+      if (data && data.running) {
+        this.watchDingDing();
+      }
+    }).catch(() => {});
+  },
+  beforeDestroy() {
+    this.stopDingDingWatch();
   }
 };
 </script>
+
+<style scoped>
+.dd-sync__tip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 420px;
+  font-size: 12px;
+  color: #0052d9;
+}
+.dd-sync__text {
+  margin-left: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>
 

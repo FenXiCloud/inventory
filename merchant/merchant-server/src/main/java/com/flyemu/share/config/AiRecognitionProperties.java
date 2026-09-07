@@ -10,8 +10,10 @@ import org.springframework.stereotype.Component;
 public class AiRecognitionProperties {
     /** true = 启用大模型识别；false 或未配置 apiKey 时走规则降级 */
     private boolean enabled = false;
-    /** OpenAI 兼容 chat/completions 地址，如 https://api.openai.com/v1/chat/completions */
+    /** API地址 */
     private String endpoint;
+    /** API密钥 */
     private String apiKey;
-    private String model = "gpt-4o-mini";
+    /** 模型名称 */
+    private String model = "mimo-v2.5-pro";
 }

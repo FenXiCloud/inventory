@@ -193,12 +193,6 @@ public class AdminService extends BaseService {
                 ).orderBy(qMenu.menuGroup.asc(), qMenu.pos.asc()).fetch());
     }
 
-    public Admin getDefaultAdmin(Long merchantId) {
-        return bqf.selectFrom(qAdmin)
-                .where(qAdmin.merchantId.eq(merchantId).and(qAdmin.systemDefault.isTrue()))
-                .fetchFirst();
-    }
-
     public Admin selectByPrimaryKey(Long id) {
         return jqf.selectFrom(qAdmin).where(qAdmin.id.eq(id)).fetchFirst();
     }

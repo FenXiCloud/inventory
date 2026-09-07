@@ -65,6 +65,11 @@ public class AdminController {
 
     @GetMapping("/addUserByDingDing")
     public JsonResult addUserByDingDing() {
-        return JsonResult.successful(ddLoginService.addUserByDingDing());
+        return JsonResult.successful(ddLoginService.submitUserSync());
+    }
+
+    @GetMapping("/dingDingSyncProgress")
+    public JsonResult dingDingSyncProgress() {
+        return JsonResult.successful(ddLoginService.getSyncProgress());
     }
 }

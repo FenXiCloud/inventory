@@ -131,4 +131,19 @@ public class PurchaseOrderDto {
      * 来源销售订单编号
      */
     private String sourceSalesOrderNo;
+
+    /**
+     * 订单商品数量合计（基本数量，选源单列表用）
+     */
+    private BigDecimal orderQuantity;
+
+    /**
+     * 已入库数量（基本数量）
+     */
+    private BigDecimal inboundQuantity;
+
+    /**
+     * 可入库数量（基本数量，= 订单数量 - 已入库，逐行取正求和）
+     */
+    private BigDecimal remainQuantity;
 }

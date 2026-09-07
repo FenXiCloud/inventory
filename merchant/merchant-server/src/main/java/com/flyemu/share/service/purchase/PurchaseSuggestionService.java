@@ -2,6 +2,8 @@ package com.flyemu.share.service.purchase;
 
 import com.flyemu.share.entity.basic.*;
 import com.flyemu.share.entity.inventory.QInventory;
+import com.flyemu.share.entity.purchase.QPurchaseInbound;
+import com.flyemu.share.entity.purchase.QPurchaseInboundItem;
 import com.flyemu.share.entity.purchase.QPurchaseOrder;
 import com.flyemu.share.entity.purchase.QPurchaseOrderItem;
 import com.flyemu.share.entity.purchase.PurchaseOrder;
@@ -45,6 +47,8 @@ public class PurchaseSuggestionService extends BaseService {
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final static QPurchaseOrder qPurchaseOrder = QPurchaseOrder.purchaseOrder;
     private final static QPurchaseOrderItem qPurchaseOrderItem = QPurchaseOrderItem.purchaseOrderItem;
+    private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
+    private final static QPurchaseInboundItem qPurchaseInboundItem = QPurchaseInboundItem.purchaseInboundItem;
     private final static QSalesOutbound qSalesOutbound = QSalesOutbound.salesOutbound;
     private final static QSalesOutboundItem qSalesOutboundItem = QSalesOutboundItem.salesOutboundItem;
 
@@ -67,10 +71,11 @@ public class PurchaseSuggestionService extends BaseService {
     }
 
     /**
-     * 采购在途量：已审核且未生成入库单的采购订单数量，按商品汇总。
+     * 采购在途量：已审核采购订单数量 − 已被审核入库单引用入库的数量，按商品汇总（基本数量）。
+     * 旧模型整单入库订单（purchaseInboundId 非空）视为已全部到货，不计在途。
      */
     private Map<Long, BigDecimal> onOrderMap(Long merchantId, Long accountBookId) {
-        List<Tuple> tuples = jqf.select(qPurchaseOrderItem.productId, qPurchaseOrderItem.quantity.sum())
+        List<Tuple> orderTuples = jqf.select(qPurchaseOrderItem.productId, qPurchaseOrderItem.quantity.sum())
                 .from(qPurchaseOrderItem)
                 .leftJoin(qPurchaseOrder).on(qPurchaseOrder.id.eq(qPurchaseOrderItem.purchaseOrderId))
                 .where(qPurchaseOrderItem.merchantId.eq(merchantId)
@@ -80,8 +85,24 @@ public class PurchaseSuggestionService extends BaseService {
                 .groupBy(qPurchaseOrderItem.productId)
                 .fetch();
         Map<Long, BigDecimal> map = new HashMap<>();
-        for (Tuple t : tuples) {
+        for (Tuple t : orderTuples) {
             map.put(t.get(qPurchaseOrderItem.productId), nz(t.get(qPurchaseOrderItem.quantity.sum())));
+        }
+        // 新模型分批入库：扣除这些订单已被审核入库单行（带来源行引用）入库的量
+        List<Tuple> inboundTuples = jqf.select(qPurchaseOrderItem.productId, qPurchaseInboundItem.quantity.sum())
+                .from(qPurchaseInboundItem)
+                .innerJoin(qPurchaseOrderItem).on(qPurchaseOrderItem.id.eq(qPurchaseInboundItem.purchaseOrderItemId))
+                .innerJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
+                .where(qPurchaseInboundItem.merchantId.eq(merchantId)
+                        .and(qPurchaseInboundItem.accountBookId.eq(accountBookId))
+                        .and(qPurchaseInboundItem.purchaseOrderItemId.isNotNull())
+                        .and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核)))
+                .groupBy(qPurchaseOrderItem.productId)
+                .fetch();
+        for (Tuple t : inboundTuples) {
+            Long pid = t.get(qPurchaseOrderItem.productId);
+            BigDecimal remain = nz(map.get(pid)).subtract(nz(t.get(qPurchaseInboundItem.quantity.sum())));
+            map.put(pid, remain.signum() > 0 ? remain : BigDecimal.ZERO);
         }
         return map;
     }

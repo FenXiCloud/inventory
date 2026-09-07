@@ -1,11 +1,13 @@
 package com.flyemu.share.dto.purchase;
 
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import jakarta.persistence.Column;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -27,6 +29,16 @@ public class PurchaseInboundItemDto {
      * 采购明细单id
      */
     private Long purchaseInboundItemId;
+
+    /**
+     * 来源采购订单ID（分单入库用）
+     */
+    private Long purchaseOrderId;
+
+    /**
+     * 来源采购订单行ID（对应PurchaseOrderItem.id）
+     */
+    private Long purchaseOrderItemId;
 
     /**
      * 产品ID
@@ -151,5 +163,10 @@ public class PurchaseInboundItemDto {
      * 备注
      */
     private String remark;
+
+    /**
+     * 商品可用单位列表（基本单位在前，rate=1；仅启用辅助单位的商品返回，用于前端单位下拉/换算）
+     */
+    private List<AuxiliaryUnitPrice> auxiliaryUnitPrices;
 
 }

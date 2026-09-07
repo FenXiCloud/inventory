@@ -209,6 +209,7 @@ FROM
 	WHERE
 		jpi.order_status = '已审核'
 		 and jpii.merchant_id = :merchantId
+		#[AND jpi.account_book_id = :accountBookId]
 		#[ AND jpi.inbound_date BETWEEN :startDate AND :endDate]
 		 UNION ALL
 	SELECT
@@ -228,6 +229,7 @@ FROM
 	WHERE
 		jpr.order_status = '已审核'
 		and jpri.merchant_id = :merchantId
+		#[AND jpr.account_book_id = :accountBookId]
 		#[AND jpr.return_date BETWEEN :startDate AND :endDate]
 	) AS po
 	LEFT JOIN jxc_warehouse AS jw ON jw.id = po.warehouse_id

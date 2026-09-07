@@ -21,7 +21,7 @@
                accept="application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
       </div>
       <div class="import-row">
-        <t-button theme="primary" :disabled="!file" :loading="loading" @click="importData">导 入</t-button>
+        <t-button theme="primary" :disabled="!file" :loading="loading" v-auth="'purchaseInbound:edit'" @click="importData">导 入</t-button>
       </div>
     </div>
   </div>

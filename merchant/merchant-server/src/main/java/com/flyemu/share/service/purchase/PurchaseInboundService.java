@@ -1,6 +1,7 @@
 package com.flyemu.share.service.purchase;
 
 import com.flyemu.share.common.TenantAware;
+import com.flyemu.share.common.UnitConvert;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
@@ -13,6 +14,7 @@ import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.PurchaseInboundImportVo;
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.purchase.PurchaseInboundDto;
 import com.flyemu.share.dto.purchase.PurchaseInboundItemDto;
 import com.flyemu.share.dto.purchase.PurchaseOrderDto;
@@ -45,6 +47,7 @@ import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.PriceRecordService;
 import com.flyemu.share.service.basic.ProductService;
+import com.flyemu.share.service.basic.ProductAuxiliaryUnitService;
 import com.flyemu.share.service.basic.SupplierService;
 import com.flyemu.share.service.inventory.CostingService;
 import com.flyemu.share.service.inventory.InventoryService;
@@ -75,6 +78,7 @@ public class PurchaseInboundService extends BaseService {
     private final static QPurchaseInbound qPurchaseInbound = QPurchaseInbound.purchaseInbound;
     private final static QPurchaseReturn qPurchaseReturn = QPurchaseReturn.purchaseReturn;
     private final static QPurchaseInboundItem qPurchaseInboundItem = QPurchaseInboundItem.purchaseInboundItem;
+    private final static QPurchaseOrderItem qPurchaseOrderItem = QPurchaseOrderItem.purchaseOrderItem;
     private final static QSupplier qSupplier = QSupplier.supplier;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProduct qProduct = QProduct.product;
@@ -96,6 +100,7 @@ public class PurchaseInboundService extends BaseService {
     private final CostingService costingService;
     private final SettlementService settlementService;
     private final ProductService productService;
+    private final ProductAuxiliaryUnitService productAuxiliaryUnitService;
     // 采购入库单列表,把是数据拼成一条完整的记录,分页返回给前端
     public PageResults<PurchaseInboundDto> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInbound)
@@ -110,15 +115,23 @@ public class PurchaseInboundService extends BaseService {
             dto.setSupplierName(tuple.get(qSupplier.name));
             dto.setCreatedName(tuple.get(qMerchantUser.name));
             dto.setPurchaseReturnOrderNo(tuple.get(qPurchaseReturn.orderNo));
-            List<String> orderNos = bqf.selectFrom(qPurchaseOrder).select(qPurchaseOrder.orderNo).where(qPurchaseOrder.purchaseInboundId.eq(dto.getId())).fetch();
+            Set<String> orderNoSet = new HashSet<>(bqf.selectFrom(qPurchaseOrder).select(qPurchaseOrder.orderNo)
+                    .where(qPurchaseOrder.purchaseInboundId.eq(dto.getId())).fetch());
+            // 新模型：订单分批入库，入库行带来源订单引用（订单头无 purchaseInboundId）
+            orderNoSet.addAll(bqf.select(qPurchaseOrder.orderNo)
+                    .from(qPurchaseInboundItem)
+                    .innerJoin(qPurchaseOrder).on(qPurchaseOrder.id.eq(qPurchaseInboundItem.purchaseOrderId))
+                    .where(qPurchaseInboundItem.purchaseInboundId.eq(dto.getId())
+                            .and(qPurchaseInboundItem.purchaseOrderId.isNotNull()))
+                    .distinct().fetch());
 
             List<String> returnOrderNos = bqf.selectFrom(qConnection)
                     .select(qPurchaseInbound.orderNo)
                     .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qConnection.purchaseInboundId))
                     .where(qConnection.purchaseReturnId.eq(dto.getId())).fetch();
 
-            if (CollUtil.isNotEmpty(orderNos)) {
-                dto.setPurchaseOrderNos(String.join(",", orderNos));
+            if (CollUtil.isNotEmpty(orderNoSet)) {
+                dto.setPurchaseOrderNos(String.join(",", orderNoSet));
             }
 
             if (CollUtil.isNotEmpty(returnOrderNos)) {
@@ -157,6 +170,9 @@ public class PurchaseInboundService extends BaseService {
     public PurchaseInbound save(PurchaseInboundForm purchaseInboundForm, Long merchantId) {
         PurchaseInbound purchaseInbound = purchaseInboundForm.getPurchaseInbound();
         checkoutService.assertEditable(purchaseInbound.getMerchantId(), purchaseInbound.getAccountBookId(), purchaseInbound.getInboundDate());
+        // 分批入库硬校验：来源订单行累计入库不得超过该订单行数量（编辑时排除本单自身已入库量）
+        validateInboundQuantities(purchaseInboundForm.getPurchaseInboundItemList(),
+                purchaseInbound.getId() != null ? purchaseInbound.getId() : null);
         if (purchaseInbound.getId() != null) {
             PurchaseInbound original = purchaseInboundRepository.getById(purchaseInbound.getId());
             Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能更新~");
@@ -175,9 +191,14 @@ public class PurchaseInboundService extends BaseService {
                 }
                 // 自动分配货位
                 assignLocation(d, merchantId, purchaseInbound.getAccountBookId());
-                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
-                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
-                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
+                //服务端权威换算：基本数量 = 采购数量 × 换算率；基本单价 = 采购单价 ÷ 换算率
+                d.setQuantity(UnitConvert.toBaseQty(d.getSecondaryQuantity(), d.getConversionRate()));
+                d.setUnitPrice(UnitConvert.unitPrice(d.getSecondaryPrice(), d.getConversionRate()));
+                // 金额字段以用户录入为准，仅当缺省时补算小计
+                if (d.getSubtotal() == null && d.getSecondaryPrice() != null) {
+                    d.setSubtotal(d.getSecondaryPrice().multiply(nvl(d.getSecondaryQuantity()))
+                            .subtract(nvl(d.getDiscountAmount())).setScale(2, RoundingMode.HALF_UP));
+                }
                 if (d.getId() != null) {
                     ids.add(d.getId());
                 }
@@ -203,12 +224,6 @@ public class PurchaseInboundService extends BaseService {
             purchaseInbound.setReturnSum(secondarySum);
             purchaseInbound = purchaseInboundRepository.save(purchaseInbound);
 
-            if (CollUtil.isNotEmpty(purchaseInboundForm.getOrderIds())) {
-                jqf.update(qPurchaseOrder)
-                        .set(qPurchaseOrder.purchaseInboundId, purchaseInbound.getId())
-                        .where(qPurchaseOrder.id.in(purchaseInboundForm.getOrderIds()))
-                        .execute();
-            }
             for (PurchaseInboundItem d : purchaseInboundForm.getPurchaseInboundItemList()) {
                 if (d.getProductId() == null) {
                     throw new ServiceException("明细产品不能为空~");
@@ -218,9 +233,14 @@ public class PurchaseInboundService extends BaseService {
                 }
                 // 自动分配货位
                 assignLocation(d, merchantId, purchaseInbound.getAccountBookId());
-                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
-                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
-                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
+                //服务端权威换算：基本数量 = 采购数量 × 换算率；基本单价 = 采购单价 ÷ 换算率
+                d.setQuantity(UnitConvert.toBaseQty(d.getSecondaryQuantity(), d.getConversionRate()));
+                d.setUnitPrice(UnitConvert.unitPrice(d.getSecondaryPrice(), d.getConversionRate()));
+                // 金额字段以用户录入为准，仅当缺省时补算小计
+                if (d.getSubtotal() == null && d.getSecondaryPrice() != null) {
+                    d.setSubtotal(d.getSecondaryPrice().multiply(nvl(d.getSecondaryQuantity()))
+                            .subtract(nvl(d.getDiscountAmount())).setScale(2, RoundingMode.HALF_UP));
+                }
                 d.setAccountBookId(purchaseInbound.getAccountBookId());
                 d.setPurchaseInboundId(purchaseInbound.getId());
                 d.setMerchantId(merchantId);
@@ -229,6 +249,91 @@ public class PurchaseInboundService extends BaseService {
             inboundItemRepository.saveAll(purchaseInboundForm.getPurchaseInboundItemList());
             return purchaseInbound;
         }
+    }
+
+    /**
+     * 分批入库硬校验：任一来源订单行（purchaseOrderItemId）本次入库量（含同单其他行引用）不得超过
+     * 该订单行剩余可入库数量（订单行基本数量 − 其他入库单已引用入库量）。
+     */
+    private void validateInboundQuantities(List<PurchaseInboundItem> items, Long excludeInboundId) {
+        if (CollUtil.isEmpty(items)) {
+            return;
+        }
+        Set<Long> lineIds = new HashSet<>();
+        Map<Long, BigDecimal> sumBaseByLine = new HashMap<>();
+        for (PurchaseInboundItem d : items) {
+            if (d.getPurchaseOrderItemId() == null) {
+                continue;
+            }
+            lineIds.add(d.getPurchaseOrderItemId());
+            // 基本数量一律服务端按 采购数量×换算率 计算（不信任客户端基本数量；同一订单行拆多行在此求和校验）
+            BigDecimal base = UnitConvert.toBaseQty(d.getSecondaryQuantity(), d.getConversionRate());
+            sumBaseByLine.merge(d.getPurchaseOrderItemId(), base, BigDecimal::add);
+        }
+        if (lineIds.isEmpty()) {
+            return;
+        }
+        // 订单行基本数量 / 商品id / 商品名称 / 基本单位名称
+        Map<Long, BigDecimal> lineQty = new HashMap<>();
+        Map<Long, Long> lineProduct = new HashMap<>();
+        Map<Long, String> lineUnitName = new HashMap<>();
+        List<Tuple> lineRows = bqf.selectFrom(qPurchaseOrderItem)
+                .select(qPurchaseOrderItem.id, qPurchaseOrderItem.productId, qPurchaseOrderItem.quantity, qUnit.name)
+                .leftJoin(qUnit).on(qUnit.id.eq(qPurchaseOrderItem.baseUnitId))
+                .where(qPurchaseOrderItem.id.in(lineIds)).fetch();
+        Set<Long> productIds = new HashSet<>();
+        for (Tuple row : lineRows) {
+            lineQty.put(row.get(qPurchaseOrderItem.id), row.get(qPurchaseOrderItem.quantity));
+            lineProduct.put(row.get(qPurchaseOrderItem.id), row.get(qPurchaseOrderItem.productId));
+            lineUnitName.put(row.get(qPurchaseOrderItem.id), row.get(qUnit.name));
+            productIds.add(row.get(qPurchaseOrderItem.productId));
+        }
+        Map<Long, String> productName = new HashMap<>();
+        if (CollUtil.isNotEmpty(productIds)) {
+            for (Tuple r : bqf.selectFrom(qProduct).select(qProduct.id, qProduct.name)
+                    .where(qProduct.id.in(productIds)).fetch()) {
+                productName.put(r.get(qProduct.id), r.get(qProduct.name));
+            }
+        }
+        // 其他入库单已引用入库量（编辑时排除本单自身，避免把将被删除的旧行计入）
+        Map<Long, BigDecimal> consumed = consumedByOrderItemIds(lineIds, excludeInboundId);
+        for (Tuple row : lineRows) {
+            Long lineId = row.get(qPurchaseOrderItem.id);
+            BigDecimal remain = nvl(lineQty.get(lineId)).subtract(nvl(consumed.get(lineId)));
+            BigDecimal sumBase = nvl(sumBaseByLine.get(lineId));
+            if (sumBase.compareTo(remain) > 0) {
+                String name = productName.get(lineProduct.get(lineId));
+                String unitName = lineUnitName.get(lineId);
+                throw new ServiceException("商品「" + (name == null ? lineId : name) + "」本次入库数量超出订单剩余可入库数量（剩余 "
+                        + remain.stripTrailingZeros().toPlainString() + (unitName == null ? "" : " " + unitName)
+                        + "），请调整数量或另开普通采购入库单");
+            }
+        }
+    }
+
+    /**
+     * 汇总指定采购订单行已被入库的基本数量（仅统计带来源引用 purchaseOrderItemId 的行）
+     */
+    private Map<Long, BigDecimal> consumedByOrderItemIds(Collection<Long> lineIds, Long excludeInboundId) {
+        Map<Long, BigDecimal> map = new HashMap<>();
+        if (CollUtil.isEmpty(lineIds)) {
+            return map;
+        }
+        BooleanBuilder cond = new BooleanBuilder(qPurchaseInboundItem.purchaseOrderItemId.in(lineIds)
+                .and(qPurchaseInboundItem.purchaseOrderItemId.isNotNull()));
+        if (excludeInboundId != null) {
+            cond.and(qPurchaseInboundItem.purchaseInboundId.ne(excludeInboundId));
+        }
+        for (Tuple row : bqf.selectFrom(qPurchaseInboundItem)
+                .select(qPurchaseInboundItem.purchaseOrderItemId, qPurchaseInboundItem.quantity)
+                .where(cond).fetch()) {
+            map.merge(row.get(qPurchaseInboundItem.purchaseOrderItemId), nvl(row.get(qPurchaseInboundItem.quantity)), BigDecimal::add);
+        }
+        return map;
+    }
+
+    private static BigDecimal nvl(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
     }
 
     /**
@@ -412,7 +517,8 @@ public class PurchaseInboundService extends BaseService {
                         .where(qSupplier.id.eq(order.getSupplierId())).fetchOne();
                 settlementService.createFromOrder(order.getMerchantId(), order.getAccountBookId(),
                         2, order.getSupplierId(), supplierName != null ? supplierName : "",
-                        order.getOrderNo(), order.getFinalAmount(), order.getId(), "采购入库单");
+                        order.getOrderNo(), order.getFinalAmount(), order.getId(), "采购入库单",
+                        order.getInboundDate());
             }
         } else if (OrderStatus.已保存.equals(state)) {
             for (PurchaseInbound order : orders) {
@@ -453,12 +559,9 @@ public class PurchaseInboundService extends BaseService {
                 supplierService.updateTheBalance(supplier, flow);
                 setIds.add(order.getId());
                 removeInboundPrices(order);
-                // 删除关联的结算单
-                jqf.delete(QSettlementItem.settlementItem)
-                        .where(QSettlementItem.settlementItem.businessId.eq(order.getId())
-                                .and(QSettlementItem.settlementItem.businessCategory.eq("INVENTORY"))
-                                .and(QSettlementItem.settlementItem.businessType.eq("采购入库单")))
-                        .execute();
+                // 删除随审核自动生成的结算单（明细 + 空主表），避免残留"未平账"空单
+                settlementService.removeAutoSettlement(order.getMerchantId(), order.getAccountBookId(),
+                        order.getId(), "采购入库单");
             }
         }
 
@@ -696,6 +799,18 @@ public class PurchaseInboundService extends BaseService {
                     dto.setSecondaryUnitName(tuple.get(qUnit1.name));
                     list.add(dto);
                 }, List::addAll);
+        // 回填商品可用单位列表（基本单位在前，unitPrice=该行基本单价），编辑/复制入库单时"采购单位"下拉可切换
+        Set<Long> productIds = new HashSet<>();
+        for (PurchaseInboundItemDto dto : collect) {
+            if (dto.getProductId() != null) {
+                productIds.add(dto.getProductId());
+            }
+        }
+        Map<Long, List<AuxiliaryUnitPrice>> unitMap = productAuxiliaryUnitService.loadAuxUnits(productIds, merchantId);
+        for (PurchaseInboundItemDto dto : collect) {
+            dto.setAuxiliaryUnitPrices(ProductAuxiliaryUnitService.withBase(
+                    dto.getBaseUnitId(), dto.getBaseUnitName(), dto.getUnitPrice(), unitMap.get(dto.getProductId())));
+        }
         return Dict.create().set("purchaseInbound", orderDto).set("purchaseInboundItemList", collect);
     }
     // 采购入库单

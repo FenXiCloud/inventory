@@ -1,6 +1,7 @@
 package com.flyemu.share.service.purchase;
 
 import com.flyemu.share.common.TenantAware;
+import com.flyemu.share.common.UnitConvert;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.collection.CollUtil;
@@ -12,6 +13,7 @@ import com.blazebit.persistence.PagedList;
 import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.purchase.PurchaseInboundItemDto;
 import com.flyemu.share.dto.purchase.PurchaseOrderDto;
 import com.flyemu.share.dto.purchase.PurchaseOrderItemDto;
@@ -29,6 +31,7 @@ import com.flyemu.share.repository.purchase.PurchaseOrderRepository;
 import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.basic.ProductAuxiliaryUnitService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -42,6 +45,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -62,11 +66,13 @@ public class PurchaseOrderService extends BaseService {
     private final static QProduct qProduct = QProduct.product;
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final static QPurchaseOrderItem qPurchaseOrderItem = QPurchaseOrderItem.purchaseOrderItem;
+    private final static QPurchaseInboundItem qPurchaseInboundItem = QPurchaseInboundItem.purchaseInboundItem;
     private final static QSupplier qSupplier = QSupplier.supplier;
     private final static QMerchantUser qMerchantUser = QMerchantUser.merchantUser;
     private final static QProductCategory qProductCategory = QProductCategory.productCategory;
     private final CodeSeedService codeSeedService;
     private final PriceRecordService priceRecordService;
+    private final ProductAuxiliaryUnitService productAuxiliaryUnitService;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final PurchaseOrderItemRepository purchaseOrderItemRepository;
 
@@ -87,6 +93,9 @@ public class PurchaseOrderService extends BaseService {
             dtos.add(dto);
         });
 
+        // 新模型订单（无 purchaseInboundId，通过入库行引用关联）反查入库单号，旧模型数据兜底
+        fillInboundOrderNos(dtos);
+
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
 
@@ -104,6 +113,8 @@ public class PurchaseOrderService extends BaseService {
             dto.setCreatedName(tuple.get(qMerchantUser.name));
             dtos.add(dto);
         });
+
+        fillOrderQuantity(dtos);
 
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());
     }
@@ -123,7 +134,7 @@ public class PurchaseOrderService extends BaseService {
     public List<PurchaseInboundItemDto> loadToInbound(List<Long> orderIds, Long merchantId, Long supplierId) {
         QUnit qUnit1 = new QUnit("id");
 
-        return bqf.selectFrom(qPurchaseOrderItem)
+        List<Tuple> rows = bqf.selectFrom(qPurchaseOrderItem)
                 .select(qPurchaseOrderItem, qProduct.code, qProduct.name, qWarehouse.name, qProductCategory.name, qProduct.specification,
                         qProduct.imgPath, qProduct.specification, qUnit.name, qUnit1.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qPurchaseOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
@@ -135,18 +146,182 @@ public class PurchaseOrderService extends BaseService {
                 .where(qPurchaseOrderItem.purchaseOrderId.in(orderIds).and(qPurchaseOrderItem.merchantId.eq(merchantId))
                         .and(qPurchaseOrder.orderStatus.eq(OrderStatus.已审核)).and(qPurchaseOrder.purchaseInboundId.isNull()))
                 .orderBy(qPurchaseOrderItem.id.asc())
-                .fetch().stream().collect(ArrayList::new, (list, tuple) -> {
-                    PurchaseInboundItemDto dto = BeanUtil.toBean(tuple.get(qPurchaseOrderItem), PurchaseInboundItemDto.class);
-                    dto.setId(null);
-                    dto.setProductCode(tuple.get(qProduct.code));
-                    dto.setProductName(tuple.get(qProduct.name));
-                    dto.setBaseUnitName(tuple.get(qUnit.name));
-                    dto.setWarehouseName(tuple.get(qWarehouse.name));
-                    dto.setSecondaryUnitName(tuple.get(qUnit1.name));
-                    dto.setCategoryName(tuple.get(qProductCategory.name));
-                    dto.setSpec(tuple.get(qProduct.specification));
-                    list.add(dto);
-                }, List::addAll);
+                .fetch();
+
+        Set<Long> lineIds = new HashSet<>();
+        for (Tuple tuple : rows) {
+            lineIds.add(tuple.get(qPurchaseOrderItem).getId());
+        }
+        Map<Long, BigDecimal> consumed = consumedByOrderItemIds(lineIds);
+
+        List<PurchaseInboundItemDto> list = new ArrayList<>();
+        Set<Long> productIds = new HashSet<>();
+        for (Tuple tuple : rows) {
+            PurchaseOrderItem item = tuple.get(qPurchaseOrderItem);
+            BigDecimal remain = nvl(item.getQuantity()).subtract(nvl(consumed.get(item.getId())));
+            if (remain.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            PurchaseInboundItemDto dto = BeanUtil.toBean(item, PurchaseInboundItemDto.class);
+            dto.setId(null);
+            // 来源采购订单头/行引用（分单入库用）
+            dto.setPurchaseOrderItemId(item.getId());
+            // dto.purchaseOrderId 已由 item.purchaseOrderId 映射（即所属采购订单）
+            dto.setQuantity(remain);
+            BigDecimal rate = UnitConvert.rate(item.getConversionRate());
+            // 默认单位启发：剩余基本数量能被换算率整除 → 维持订单"采购单位"（整数个大单位）；否则默认切到基本单位，
+            // 避免小数大单位展示，剩余零头可直接按基本单位入库
+            boolean keepOrderUnit = item.getSecondaryUnitId() != null && UnitConvert.isWholeSecondary(remain, rate);
+            if (keepOrderUnit) {
+                dto.setSecondaryUnitId(item.getSecondaryUnitId());
+                dto.setSecondaryUnitName(tuple.get(qUnit1.name));
+                dto.setConversionRate(rate);
+                dto.setSecondaryQuantity(UnitConvert.toSecondaryQty(remain, rate));
+                dto.setSecondaryPrice(item.getSecondaryPrice() != null ? item.getSecondaryPrice()
+                        : UnitConvert.secondaryPrice(item.getUnitPrice(), rate));
+            } else {
+                dto.setSecondaryUnitId(item.getBaseUnitId());
+                dto.setSecondaryUnitName(tuple.get(qUnit.name));
+                dto.setConversionRate(BigDecimal.ONE);
+                dto.setSecondaryQuantity(remain);
+                dto.setSecondaryPrice(UnitConvert.nvl(item.getUnitPrice()));
+            }
+            dto.setProductCode(tuple.get(qProduct.code));
+            dto.setProductName(tuple.get(qProduct.name));
+            dto.setBaseUnitName(tuple.get(qUnit.name));
+            dto.setWarehouseName(tuple.get(qWarehouse.name));
+            dto.setCategoryName(tuple.get(qProductCategory.name));
+            dto.setSpec(tuple.get(qProduct.specification));
+            list.add(dto);
+            if (dto.getProductId() != null) {
+                productIds.add(dto.getProductId());
+            }
+        }
+        // 回填商品可用单位列表（基本单位在前，unitPrice=该行基本单价），前端"采购单位"下拉可切换、价格锚定基本单价
+        Map<Long, List<AuxiliaryUnitPrice>> unitMap = productAuxiliaryUnitService.loadAuxUnits(productIds, merchantId);
+        for (PurchaseInboundItemDto dto : list) {
+            dto.setAuxiliaryUnitPrices(ProductAuxiliaryUnitService.withBase(
+                    dto.getBaseUnitId(), dto.getBaseUnitName(), dto.getUnitPrice(), unitMap.get(dto.getProductId())));
+        }
+        return list;
+    }
+
+    /**
+     * 采购订单是否已被入库占用（存在引用其订单行的入库行，或旧模型已写 purchaseInboundId）
+     */
+    private boolean hasInboundItemRefs(Long orderId) {
+        List<Long> lineIds = jqf.select(qPurchaseOrderItem.id).from(qPurchaseOrderItem)
+                .where(qPurchaseOrderItem.purchaseOrderId.eq(orderId)).fetch();
+        if (CollUtil.isEmpty(lineIds)) {
+            return false;
+        }
+        return jqf.selectFrom(qPurchaseInboundItem)
+                .where(qPurchaseInboundItem.purchaseOrderItemId.in(lineIds)).fetchFirst() != null;
+    }
+
+    /**
+     * 汇总指定采购订单行已被入库的基本数量（只统计带来源引用 purchaseOrderItemId 的入库行）
+     */
+    private Map<Long, BigDecimal> consumedByOrderItemIds(Collection<Long> orderItemIds) {
+        Map<Long, BigDecimal> map = new HashMap<>();
+        if (CollUtil.isEmpty(orderItemIds)) {
+            return map;
+        }
+        List<Tuple> rows = bqf.selectFrom(qPurchaseInboundItem)
+                .select(qPurchaseInboundItem.purchaseOrderItemId, qPurchaseInboundItem.quantity)
+                .where(qPurchaseInboundItem.purchaseOrderItemId.in(orderItemIds)
+                        .and(qPurchaseInboundItem.purchaseOrderItemId.isNotNull()))
+                .fetch();
+        for (Tuple row : rows) {
+            map.merge(row.get(qPurchaseInboundItem.purchaseOrderItemId), nvl(row.get(qPurchaseInboundItem.quantity)), BigDecimal::add);
+        }
+        return map;
+    }
+
+    /**
+     * 选源单列表回填：订单数量 / 已入库数量 / 可入库数量（基本数量）
+     */
+    private void fillOrderQuantity(List<PurchaseOrderDto> dtos) {
+        List<Long> orderIds = new ArrayList<>();
+        for (PurchaseOrderDto dto : dtos) {
+            if (dto.getId() != null) {
+                orderIds.add(dto.getId());
+            }
+        }
+        if (CollUtil.isEmpty(orderIds)) {
+            return;
+        }
+        List<Tuple> orderItemRows = bqf.selectFrom(qPurchaseOrderItem)
+                .select(qPurchaseOrderItem.id, qPurchaseOrderItem.purchaseOrderId, qPurchaseOrderItem.quantity)
+                .where(qPurchaseOrderItem.purchaseOrderId.in(orderIds)).fetch();
+        Map<Long, BigDecimal> orderQty = new HashMap<>();
+        Map<Long, BigDecimal> lineQty = new HashMap<>();
+        Set<Long> lineIds = new HashSet<>();
+        for (Tuple row : orderItemRows) {
+            Long oid = row.get(qPurchaseOrderItem.purchaseOrderId);
+            Long lineId = row.get(qPurchaseOrderItem.id);
+            orderQty.merge(oid, nvl(row.get(qPurchaseOrderItem.quantity)), BigDecimal::add);
+            lineQty.put(lineId, row.get(qPurchaseOrderItem.quantity));
+            lineIds.add(lineId);
+        }
+        Map<Long, BigDecimal> consumed = consumedByOrderItemIds(lineIds);
+        Map<Long, BigDecimal> orderInbound = new HashMap<>();
+        Map<Long, BigDecimal> orderRemain = new HashMap<>();
+        for (Tuple row : orderItemRows) {
+            Long oid = row.get(qPurchaseOrderItem.purchaseOrderId);
+            Long lineId = row.get(qPurchaseOrderItem.id);
+            BigDecimal remainOfLine = nvl(lineQty.get(lineId)).subtract(nvl(consumed.get(lineId)));
+            orderInbound.merge(oid, nvl(consumed.get(lineId)), BigDecimal::add);
+            if (remainOfLine.compareTo(BigDecimal.ZERO) > 0) {
+                orderRemain.merge(oid, remainOfLine, BigDecimal::add);
+            }
+        }
+        for (PurchaseOrderDto dto : dtos) {
+            dto.setOrderQuantity(nvl(orderQty.get(dto.getId())));
+            dto.setInboundQuantity(nvl(orderInbound.get(dto.getId())));
+            dto.setRemainQuantity(nvl(orderRemain.get(dto.getId())));
+        }
+    }
+
+    /**
+     * 通过入库行引用反查入库单号（覆盖新模型无 purchaseInboundId 的订单）
+     */
+    private void fillInboundOrderNos(List<PurchaseOrderDto> dtos) {
+        List<Long> orderIds = new ArrayList<>();
+        for (PurchaseOrderDto dto : dtos) {
+            if (dto.getPurchaseInboundId() == null && dto.getId() != null) {
+                orderIds.add(dto.getId());
+            }
+        }
+        if (CollUtil.isEmpty(orderIds)) {
+            return;
+        }
+        List<Tuple> rows = bqf.selectFrom(qPurchaseInboundItem)
+                .select(qPurchaseInboundItem.purchaseOrderId, qPurchaseInbound.orderNo)
+                .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
+                .where(qPurchaseInboundItem.purchaseOrderId.in(orderIds))
+                .distinct()
+                .fetch();
+        Map<Long, Set<String>> nosByOrder = new HashMap<>();
+        for (Tuple row : rows) {
+            Long oid = row.get(qPurchaseInboundItem.purchaseOrderId);
+            String orderNo = row.get(qPurchaseInbound.orderNo);
+            if (oid != null && StrUtil.isNotEmpty(orderNo)) {
+                nosByOrder.computeIfAbsent(oid, k -> new HashSet<>()).add(orderNo);
+            }
+        }
+        for (PurchaseOrderDto dto : dtos) {
+            if (dto.getPurchaseInboundId() == null && dto.getId() != null) {
+                Set<String> nos = nosByOrder.get(dto.getId());
+                if (CollUtil.isNotEmpty(nos)) {
+                    dto.setPurchaseInboundOrderNo(String.join(",", nos));
+                }
+            }
+        }
+    }
+
+    private static BigDecimal nvl(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
     }
 
     @Transactional
@@ -161,9 +336,9 @@ public class PurchaseOrderService extends BaseService {
             Set<Long> ids = new HashSet<>();
             BigDecimal secondarySum = BigDecimal.ZERO;
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
-                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
-                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
-                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
+                //服务端权威换算：基本数量 = 采购数量 × 换算率；基本单价 = 采购单价 ÷ 换算率
+                d.setQuantity(UnitConvert.toBaseQty(d.getSecondaryQuantity(), d.getConversionRate()));
+                d.setUnitPrice(UnitConvert.unitPrice(d.getSecondaryPrice(), d.getConversionRate()));
                 if (d.getId() != null) {
                     ids.add(d.getId());
                 }
@@ -188,9 +363,9 @@ public class PurchaseOrderService extends BaseService {
 
             purchaseOrderRepository.save(order);
             for (PurchaseOrderItem d : purchaseOrderForm.getPurchaseOrderItemList()) {
-                //计算基本单价（基本单位成本 = 采购单价 / 换算率）
-                BigDecimal conversionRate = d.getConversionRate() != null ? d.getConversionRate() : BigDecimal.ONE;
-                d.setUnitPrice(d.getSecondaryPrice().divide(conversionRate, 2, RoundingMode.HALF_UP));
+                //服务端权威换算：基本数量 = 采购数量 × 换算率；基本单价 = 采购单价 ÷ 换算率
+                d.setQuantity(UnitConvert.toBaseQty(d.getSecondaryQuantity(), d.getConversionRate()));
+                d.setUnitPrice(UnitConvert.unitPrice(d.getSecondaryPrice(), d.getConversionRate()));
                 d.setAccountBookId(order.getAccountBookId());
                 d.setPurchaseOrderId(order.getId());
                 d.setMerchantId(merchantId);
@@ -221,7 +396,7 @@ public class PurchaseOrderService extends BaseService {
         PurchaseOrder original = purchaseOrderRepository.getById(purchaseOrderId);
 
         Assert.isFalse(original.getOrderStatus().equals(OrderStatus.已审核), "已审核订单不能删除~");
-        Assert.isFalse(original.getPurchaseInboundId() != null, "已关联入库单不能删除~");
+        Assert.isFalse(original.getPurchaseInboundId() != null || hasInboundItemRefs(purchaseOrderId), "已关联入库单不能删除~");
 
         jqf.delete(qPurchaseOrder)
                 .where(qPurchaseOrder.id.eq(purchaseOrderId).and(qPurchaseOrder.merchantId.eq(merchantId)).and(qPurchaseOrder.accountBookId.eq(accountBookId)))
@@ -247,7 +422,7 @@ public class PurchaseOrderService extends BaseService {
             }
         } else if (OrderStatus.已保存.equals(state)) {
             for (PurchaseOrder order : orders) {
-                if (OrderStatus.已审核.equals(order.getOrderStatus()) && order.getPurchaseInboundId() == null) {
+                if (OrderStatus.已审核.equals(order.getOrderStatus()) && order.getPurchaseInboundId() == null && !hasInboundItemRefs(order.getId())) {
                     setIds.add(order.getId());
                 } else {
                     log.error("批量操作,状态不一致-----orderId:{},State:{}", order.getId(), order.getOrderStatus());
@@ -295,6 +470,18 @@ public class PurchaseOrderService extends BaseService {
                     dto.setSecondaryUnitName(tuple.get(qUnit1.name));
                     list.add(dto);
                 }, List::addAll);
+        // 回填商品可用单位列表，订单编辑/详情行"采购单位"下拉可切换，价格锚定基本单价
+        Set<Long> productIds = new HashSet<>();
+        for (PurchaseOrderItemDto dto : collect) {
+            if (dto.getProductId() != null) {
+                productIds.add(dto.getProductId());
+            }
+        }
+        Map<Long, List<AuxiliaryUnitPrice>> unitMap = productAuxiliaryUnitService.loadAuxUnits(productIds, merchantId);
+        for (PurchaseOrderItemDto dto : collect) {
+            dto.setAuxiliaryUnitPrices(ProductAuxiliaryUnitService.withBase(
+                    dto.getBaseUnitId(), dto.getBaseUnitName(), dto.getUnitPrice(), unitMap.get(dto.getProductId())));
+        }
         return Dict.create().set("purchaseOrder", orderDto).set("purchaseOrderItemList", collect);
     }
 

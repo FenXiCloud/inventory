@@ -103,7 +103,7 @@
                   theme="normal"
                   :min="0"
                   :max="row.returnQuantity"
-                  :decimal-places="2"
+                  :decimal-places="qtyDp"
                   style="width: 100%"
                   @blur="updateQuantity(row)"
                   @focus="showStockQuantity(row)"
@@ -140,7 +140,7 @@
                   v-model="row.secondaryPrice"
                   theme="normal"
                   :min="0"
-                  :decimal-places="2"
+                  :decimal-places="priceDp"
                   style="width: 100%"
                   @keyup="handleEnter($event, rowIndex, 4)"
                   @blur="updatePrice(row)"
@@ -230,11 +230,11 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading">取消</t-button>
       <div>
-        <t-button theme="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
-        <t-button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</t-button>
+        <t-button theme="primary" v-if="!isAudited" v-auth="'purchaseReturn:edit'" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
+        <t-button v-if="!isAudited" v-auth="'purchaseReturn:edit'" @click="saveOrder('save')" :loading="loading">保存</t-button>
         <t-button @click="doPrint" :loading="loading">打印</t-button>
-        <t-button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
-        <t-button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
+        <t-button v-if="$can('purchaseReturn:audit') && form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
+        <t-button v-if="$can('purchaseReturn:audit') && isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
       </div>
     </div>
   </div>

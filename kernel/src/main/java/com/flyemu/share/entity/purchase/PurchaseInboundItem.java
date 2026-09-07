@@ -27,6 +27,12 @@ public class PurchaseInboundItem implements TenantAware {
     @Comment("采购入库主表ID")
     private Long purchaseInboundId;
 
+    @Comment("来源采购订单ID（分单入库用，普通采购为null）")
+    private Long purchaseOrderId;
+
+    @Comment("来源采购订单行ID（分单入库用，对应PurchaseOrderItem.id）")
+    private Long purchaseOrderItemId;
+
     @Comment("产品ID")
     private Long productId;
 
@@ -61,6 +67,7 @@ public class PurchaseInboundItem implements TenantAware {
     private BigDecimal conversionRate;
 
     @Comment("单价（以基本单位计）")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal unitPrice;
 
     @Comment("折扣率")

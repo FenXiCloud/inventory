@@ -31,7 +31,11 @@
           :loading="loading"
           :selected-row-keys="selectedRowKeys"
           @select-change="onSelectChange"
-      />
+      >
+        <template #remainQuantity="{ row }">
+          <span :class="{ 'qty-zero': Number(row.remainQuantity) <= 0 }">{{ fmtQty(row.remainQuantity) }}</span>
+        </template>
+      </t-table>
     </div>
     <div class="order-select__pager">
       <span class="order-select__total">合计金额：{{ amountTotal }}元</span>
@@ -79,6 +83,9 @@ export default {
         { colKey: 'orderDate', title: '订单日期', width: 130, align: 'center' },
         { colKey: 'orderNo', title: '订单编号', width: 200 },
         { colKey: 'supplierName', title: '供货商', minWidth: 120 },
+        { colKey: 'orderQuantity', title: '订单数量', width: 100, align: 'right' },
+        { colKey: 'inboundQuantity', title: '已入库', width: 90, align: 'right' },
+        { colKey: 'remainQuantity', title: '可入库', width: 90, align: 'right' },
         { colKey: 'purchaseAmount', title: '采购金额', width: 120, cell: (h, { row }) => row.finalAmount },
         { colKey: 'discountAmount', title: '折扣金额', width: 120 },
         { colKey: 'finalAmount', title: '折后金额', width: 120 },
@@ -123,12 +130,13 @@ export default {
       this.loadList();
     },
     confirm() {
-      let checkList = this.selectedRows;
-      if (checkList.length && checkList.length > 0) {
+      // 只接收仍可入库（剩余>0）的订单，已被完全入库的历史订单在选源列表标红且无法确认
+      let checkList = (this.selectedRows || []).filter(r => Number(r.remainQuantity) > 0);
+      if (checkList.length > 0) {
         let ids = checkList.map(val => val.id);
         this.$emit('success', {orderIds: ids});
       } else {
-        MessagePlugin.error("未选择数据~");
+        MessagePlugin.error("所选订单均已全部入库或无剩余数量~");
       }
     },
     updateAmountTotal() {
@@ -139,6 +147,11 @@ export default {
         }
       });
       this.amountTotal = total.toFixed(2);
+    },
+    fmtQty(v) {
+      const n = Number(v || 0);
+      if (!isFinite(n)) return '0';
+      return n.toFixed(2).replace(/\.?0+$/, '');
     },
     doSearch() {
       this.pagination.page = 1;
@@ -195,7 +208,7 @@ export default {
   flex: 1 1 auto;
   min-height: 0;
   padding: 0 16px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .order-select__pager {
@@ -212,6 +225,11 @@ export default {
   font-size: 14px;
   color: #333;
   white-space: nowrap;
+}
+
+.qty-zero {
+  color: #d54941;
+  font-weight: 500;
 }
 
 .order-select__footer {

@@ -1,10 +1,12 @@
 package com.flyemu.share.dto.purchase;
 
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -135,5 +137,10 @@ public class PurchaseOrderItemDto {
      * 备注
      */
     private String remark;
+
+    /**
+     * 商品可用单位列表（基本单位在前，rate=1；仅启用辅助单位的商品返回，用于前端单位下拉/换算）
+     */
+    private List<AuxiliaryUnitPrice> auxiliaryUnitPrices;
 
 }

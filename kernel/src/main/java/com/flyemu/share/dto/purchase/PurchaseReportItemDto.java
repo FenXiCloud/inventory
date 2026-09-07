@@ -86,4 +86,19 @@ public class PurchaseReportItemDto {
      * 采购金额
      */
     private BigDecimal subtotal;
+
+    /**
+     * 退货数量
+     */
+    private BigDecimal returnQuantity;
+
+    /**
+     * 退货金额
+     */
+    private BigDecimal returnAmount;
+
+    /**
+     * 关联退货单号
+     */
+    private String returnOrderNos;
 }

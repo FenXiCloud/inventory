@@ -135,7 +135,7 @@
                 v-model="row.secondaryQuantity"
                 theme="normal"
                 :min="0"
-                :decimal-places="2"
+                :decimal-places="qtyDp"
                 style="width: 100%"
                 @blur="updateQuantity(row)"
                 @focus="showStockQuantity(row)"
@@ -171,7 +171,7 @@
                 v-model="row.secondaryPrice"
                 theme="normal"
                 :min="0"
-                :decimal-places="2"
+                :decimal-places="priceDp"
                 style="width: 100%"
                 @keyup="handleEnter($event, rowIndex, 4)"
                 @blur="updatePrice(row)"
@@ -254,12 +254,12 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading"> 取消 </t-button>
       <div>
-        <t-button theme="primary" @click="saveOrder('add')" :loading="loading">
+        <t-button theme="primary" v-auth="'purchaseOrder:edit'" @click="saveOrder('add')" :loading="loading">
           保存并新增
         </t-button>
-        <t-button @click="saveOrder('save')" :loading="loading"> 保存 </t-button>
+        <t-button v-auth="'purchaseOrder:edit'" @click="saveOrder('save')" :loading="loading"> 保存 </t-button>
         <t-button @click="doPrint" :loading="loading"> 打印 </t-button>
-        <t-button @click="approved()" :loading="loading" v-if="form.id">
+        <t-button @click="approved()" :loading="loading" v-if="$can('purchaseOrder:audit') && form.id">
           审核
         </t-button>
       </div>
@@ -272,6 +272,7 @@ import {DialogPlugin} from '@common/dialog-plugin';
 import {openPrint} from '@common/print';
 import manba from 'manba';
 import {CopyObj} from '@common/utils';
+import {switchUnit} from '@common/unit';
 import PurchaseOrder from '@js/api/purchase/PurchaseOrder';
 import Supplier from '@js/api/basic/Supplier';
 import Product from '@js/api/basic/Product';
@@ -389,7 +390,7 @@ export default {
         totalAmount: 0.0,
         remarks: null
       },
-      productData: [],
+      productData: [newRow({ isNew: true })],
       recentSales: []
     };
   },
@@ -728,7 +729,7 @@ export default {
         finalAmount: 0.0
       };
       this.allFinalAmount = 0;
-      this.productData = [];
+      this.productData = [newRow({ isNew: true })];
       this.supplierId = null;
     },
 
@@ -818,12 +819,9 @@ export default {
     },
     changeProductUnit(value, row) {
       const item = (row.auxiliaryUnitPrices || []).find((u) => String(u.unitId) === String(value));
-      if (!item) return;
-      row.secondaryUnitName = item.unitName;
-      row.secondaryPrice = (item.unitPrice || item.price || 0).toFixed(2) || 0;
-      row.conversionRate = item.conversionRate || 1;
-      row.quantity = (row.secondaryQuantity * row.conversionRate).toFixed(2);
-      row.subtotal = (row.secondaryQuantity * row.secondaryPrice).toFixed(2);
+      if (item) {
+        switchUnit(row, item);
+      }
     },
 
     updateQuantity(item) {

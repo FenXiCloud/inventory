@@ -88,6 +88,7 @@
           bordered
           stripe
           hover
+          resizable
           height="100%"
           table-layout="fixed"
           :data="dataList"
@@ -181,6 +182,9 @@ export default {
         {colKey: 'secondaryQuantity', title: '采购数量', width: 100, align: 'right'},
         {colKey: 'secondaryPrice', title: '采购单价', width: 100, align: 'right'},
         {colKey: 'subtotal', title: '采购金额', width: 110, align: 'right'},
+        {colKey: 'returnQuantity', title: '退货数量', width: 100, align: 'right'},
+        {colKey: 'returnAmount', title: '退货金额', width: 110, align: 'right'},
+        {colKey: 'returnOrderNos', title: '关联退货单', minWidth: 150, ellipsis: true},
       ]
     }
   },

@@ -9,10 +9,10 @@
 
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="batchDelete()">删 除</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
+        <t-button theme="primary" style="border-radius: 4px" v-auth="'purchaseReservation:edit'" @click="addForm()">新 增</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'purchaseReservation:delete'" @click="batchDelete()">删 除</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'purchaseReservation:audit'" @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'purchaseReservation:audit'" @click="backApproved()">反审核</t-button>
         <t-select
             v-model="params.state"
             :options="statusOptions"

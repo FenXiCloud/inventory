@@ -180,7 +180,7 @@ public class PurchaseReportService extends BaseService {
     public PageResults<PurchaseReportItemDto> queryInbound(Page page, Query query) {
 
         PagedList<Tuple> fetchPage = bqf.selectFrom(qPurchaseInboundItem)
-                .select(qPurchaseInboundItem.secondaryPrice, qPurchaseInboundItem.subtotal, qWarehouse.name, qPurchaseInboundItem.secondaryQuantity, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qSupplier.name,
+                .select(qPurchaseInboundItem.id, qPurchaseInboundItem.secondaryPrice, qPurchaseInboundItem.subtotal, qWarehouse.name, qPurchaseInboundItem.secondaryQuantity, qPurchaseInbound.orderNo, qPurchaseInbound.inboundDate, qSupplier.name,
                         qProduct.name, qProduct.code, qUnit.name, qProductCategory.name, qSupplierCategory.name, qSupplier.code)
                 .leftJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
                 .leftJoin(qSupplier).on(qSupplier.id.eq(qPurchaseInbound.supplierId))
@@ -190,6 +190,42 @@ public class PurchaseReportService extends BaseService {
                 .leftJoin(qProductCategory).on(qProductCategory.id.eq(qProduct.productCategoryId))
                 .leftJoin(qSupplierCategory).on(qSupplier.supplierCategoryId.eq(qSupplierCategory.id))
                 .where(query.inboundBuilder.and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核))).orderBy(qPurchaseInboundItem.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
+
+        // 收集入库明细ID，批量查询关联退货信息
+        List<Long> inboundItemIds = fetchPage.stream()
+                .map(t -> t.get(qPurchaseInboundItem.id))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+
+        // key: inboundItemId, value: [returnQty, returnAmt, returnOrderNos]
+        Map<Long, BigDecimal> returnQtyMap = new HashMap<>();
+        Map<Long, BigDecimal> returnAmtMap = new HashMap<>();
+        Map<Long, Set<String>> returnOrderNosMap = new HashMap<>();
+
+        if (!inboundItemIds.isEmpty()) {
+            List<Tuple> returnItems = bqf.selectFrom(qPurchaseReturnItem)
+                    .select(qPurchaseReturnItem.purchaseInboundItemId,
+                            qPurchaseReturnItem.secondaryQuantity,
+                            qPurchaseReturnItem.subtotal,
+                            qPurchaseReturn.orderNo)
+                    .leftJoin(qPurchaseReturn).on(qPurchaseReturn.id.eq(qPurchaseReturnItem.purchaseReturnId))
+                    .where(qPurchaseReturnItem.purchaseInboundItemId.in(inboundItemIds)
+                            .and(qPurchaseReturn.orderStatus.eq(OrderStatus.已审核)))
+                    .fetch();
+
+            for (Tuple rt : returnItems) {
+                Long inboundItemId = rt.get(qPurchaseReturnItem.purchaseInboundItemId);
+                if (inboundItemId == null) continue;
+                BigDecimal qty = rt.get(qPurchaseReturnItem.secondaryQuantity);
+                BigDecimal amt = rt.get(qPurchaseReturnItem.subtotal);
+                String orderNo = rt.get(qPurchaseReturn.orderNo);
+                returnQtyMap.merge(inboundItemId, qty == null ? BigDecimal.ZERO : qty, BigDecimal::add);
+                returnAmtMap.merge(inboundItemId, amt == null ? BigDecimal.ZERO : amt, BigDecimal::add);
+                if (StrUtil.isNotBlank(orderNo)) {
+                    returnOrderNosMap.computeIfAbsent(inboundItemId, k -> new LinkedHashSet<>()).add(orderNo);
+                }
+            }
+        }
 
         List<PurchaseReportItemDto> dtos = new ArrayList<>();
         fetchPage.forEach(tuple -> {
@@ -208,6 +244,16 @@ public class PurchaseReportService extends BaseService {
             dto.setSupplierCategoryName(tuple.get(qSupplierCategory.name));
             dto.setProductCode(tuple.get(qProduct.code));
             dto.setProductName(tuple.get(qProduct.name));
+
+            // 退货关联信息
+            Long itemId = tuple.get(qPurchaseInboundItem.id);
+            BigDecimal returnQty = returnQtyMap.getOrDefault(itemId, BigDecimal.ZERO);
+            BigDecimal returnAmt = returnAmtMap.getOrDefault(itemId, BigDecimal.ZERO);
+            dto.setReturnQuantity(returnQty);
+            dto.setReturnAmount(returnAmt);
+            Set<String> orderNos = returnOrderNosMap.get(itemId);
+            dto.setReturnOrderNos(orderNos != null ? String.join(",", orderNos) : null);
+
             dtos.add(dto);
         });
 

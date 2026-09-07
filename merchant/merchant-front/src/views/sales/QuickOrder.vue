@@ -68,10 +68,10 @@
             <span v-else class="quick-order__muted">—</span>
           </template>
           <template #quantity="{ row }">
-            <t-input-number v-model="row.quantity" theme="normal" :min="0" :decimal-places="2" style="width:100%" @change="calcSubtotal(row)"/>
+            <t-input-number v-model="row.quantity" theme="normal" :min="0" :decimal-places="qtyDp" style="width:100%" @change="calcSubtotal(row)"/>
           </template>
           <template #unitPrice="{ row }">
-            <t-input-number v-model="row.unitPrice" theme="normal" :min="0" :decimal-places="2" style="width:100%" @change="calcSubtotal(row)"/>
+            <t-input-number v-model="row.unitPrice" theme="normal" :min="0" :decimal-places="priceDp" style="width:100%" @change="calcSubtotal(row)"/>
           </template>
           <template #subtotal="{ row }">
             <span>{{ fmt(row.subtotal) }}</span>
@@ -125,7 +125,7 @@
           />
         </t-form-item>
         <t-form-item label="套餐数量">
-          <t-input-number v-model="comboQuantity" :min="1" :decimal-places="0" style="width: 100%"/>
+          <t-input-number v-model="comboQuantity" :min="1" :decimal-places="0" style="width: 100%"/> <!-- 套餐数量按整件，恒0位 -->
         </t-form-item>
       </t-form>
       <div style="text-align: right">

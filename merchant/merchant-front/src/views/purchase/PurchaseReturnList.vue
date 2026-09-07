@@ -2,9 +2,9 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
+        <t-button theme="primary" style="border-radius: 4px" v-auth="'purchaseReturn:edit'" @click="addForm()">新 增</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'purchaseReturn:audit'" @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'purchaseReturn:audit'" @click="backApproved()">反审核</t-button>
         <t-select
             v-model="params.state"
             :options="stateOptions"
@@ -62,8 +62,8 @@
         <template #ops="{ row }">
           <t-space size="small">
             <template v-if="row.orderStatus === '已保存'">
-              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
-              <t-link theme="primary" @click="doRemove(row)">删除</t-link>
+              <t-link theme="primary" v-auth="'purchaseReturn:edit'" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link theme="primary" v-auth="'purchaseReturn:delete'" @click="doRemove(row)">删除</t-link>
             </template>
             <template v-else-if="row.orderStatus === '已审核'">
               <t-link theme="primary" @click="detail(row.id)">详情</t-link>
@@ -196,7 +196,7 @@ export default {
     detail(orderId = null) {
       this.pushTab({
         key: 'PurchaseReturnDetail',
-        title: '采购退货单',
+        title: '采购退货单详情',
         params: {orderId: orderId}
       });
     },

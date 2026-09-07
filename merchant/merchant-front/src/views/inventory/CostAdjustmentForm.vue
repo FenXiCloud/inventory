@@ -116,13 +116,13 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading"> 取消</t-button>
       <div>
-        <t-button v-if="!isAudited && !looked" theme="primary" @click="saveOrder('add')" :loading="loading">
+        <t-button v-if="!isAudited && !looked" v-auth="'costAdjustment:edit'" theme="primary" @click="saveOrder('add')" :loading="loading">
           保存并新增
         </t-button>
-        <t-button v-if="!isAudited && !looked" @click="saveOrder('save')" :loading="loading"> 保存</t-button>
+        <t-button v-if="!isAudited && !looked" v-auth="'costAdjustment:edit'" @click="saveOrder('save')" :loading="loading"> 保存</t-button>
         <t-button @click="doPrint" :loading="loading"> 打印 </t-button>
-        <t-button v-if="form.id && !isAudited && !looked" @click="approved()" :loading="loading"> 审核</t-button>
-        <t-button v-if="isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</t-button>
+        <t-button v-if="$can('costAdjustment:audit') && form.id && !isAudited && !looked" @click="approved()" :loading="loading"> 审核</t-button>
+        <t-button v-if="$can('costAdjustment:audit') && isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</t-button>
       </div>
     </div>
   </div>

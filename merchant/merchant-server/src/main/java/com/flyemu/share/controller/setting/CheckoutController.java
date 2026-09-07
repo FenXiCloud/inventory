@@ -62,7 +62,8 @@ public class CheckoutController {
      */
     @PutMapping
     public JsonResult cancelCheckout(@SaAccountVal AccountDto accountDto) {
-        LocalDate checkDate = checkoutService.cancelCheckout(accountDto.getAccountBookId(), accountDto.getMerchantId());
+        LocalDate checkDate = checkoutService.cancelCheckout(
+                accountDto.getAccountBookId(), accountDto.getMerchantId(), accountDto.getAdminId());
         SaSession session = StpUtil.getTokenSession();
         accountDto.setCheckDate(checkDate);
         session.set(Constants.SESSION_ACCOUNT, accountDto);

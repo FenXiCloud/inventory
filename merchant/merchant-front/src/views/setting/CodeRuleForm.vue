@@ -1,7 +1,9 @@
 <template>
   <div class="modal-column">
     <div class="modal-column-full-body">
-      <t-form ref="form" :data="model" :rules="validationRules" label-width="120px">
+      <div class="code-form-layout">
+        <div class="code-form-layout__form">
+          <t-form ref="form" :data="model" :rules="validationRules" label-width="120px">
         <t-form-item label="规则名称" name="name">
           <t-input placeholder="请输入规则名称" v-model="model.name"/>
         </t-form-item>
@@ -60,7 +62,12 @@
               clearable
           />
         </t-form-item>
-      </t-form>
+          </t-form>
+        </div>
+        <div class="code-form-layout__preview">
+          <CodeRulePreview :rule="model" :data="previewData" :loading="previewLoading" />
+        </div>
+      </div>
     </div>
     <div class="modal-column-between">
       <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
@@ -74,9 +81,11 @@ import CodeRule from "@js/api/setting/CodeRule";
 import {MessagePlugin} from "tdesign-vue-next";
 import {CopyObj} from "@common/utils";
 import manba from "manba";
+import CodeRulePreview from "./CodeRulePreview.vue";
 
 export default {
   name: "CodeRuleForm",
+  components: {CodeRulePreview},
   emits: {
     close: null,
     success: null
@@ -142,10 +151,47 @@ export default {
         documentType: null,
         systemDefault: null,
       },
+      previewData: null,
+      previewLoading: false,
+      previewTimer: null,
       validationRules: {}
     }
   },
+  watch: {
+    model: {
+      deep: true,
+      handler() {
+        this.schedulePreview();
+      }
+    }
+  },
   methods: {
+
+    schedulePreview() {
+      if (this.previewTimer) clearTimeout(this.previewTimer);
+      this.previewTimer = setTimeout(() => this.fetchPreview(), 300);
+    },
+
+    fetchPreview() {
+      const type = this.model.documentType;
+      if (!type) {
+        this.previewData = null;
+        return;
+      }
+      const payload = {
+        documentType: type,
+        prefix: this.model.prefix || '',
+        format: this.model.format || '',
+        serialNumberLength: Number(this.model.serialNumberLength) || 4,
+        startValue: Number(this.model.startValue) || 1,
+        resetPeriod: this.model.resetPeriod || '日'
+      };
+      this.previewLoading = true;
+      CodeRule.preview(payload).then(({data}) => {
+        this.previewData = data;
+      }).catch(() => {
+      }).finally(() => this.previewLoading = false);
+    },
 
     handleBlurForStartValue(event) {
       let startValue = parseInt(this.model.startValue);
@@ -228,6 +274,29 @@ export default {
     // 界面默认值设置 end
 
     CopyObj(this.model, this.CodeRule);
+    this.schedulePreview();
+  },
+  beforeUnmount() {
+    if (this.previewTimer) clearTimeout(this.previewTimer);
   }
 }
 </script>
+
+<style scoped>
+.code-form-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.code-form-layout__form {
+  flex: 0 0 380px;
+  min-width: 0;
+}
+.code-form-layout__preview {
+  flex: 1;
+  min-width: 0;
+  background: #f7f8fa;
+  border-radius: 6px;
+  padding: 12px;
+}
+</style>

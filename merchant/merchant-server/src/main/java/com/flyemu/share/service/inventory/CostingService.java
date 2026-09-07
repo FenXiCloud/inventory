@@ -3,14 +3,13 @@ package com.flyemu.share.service.inventory;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryCostBatch;
 import com.flyemu.share.entity.inventory.InventoryCostConsume;
-import com.flyemu.share.entity.setting.AccountBookParameters;
-import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.enums.CostingMethod;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.inventory.InventoryCostBatchRepository;
 import com.flyemu.share.repository.inventory.InventoryCostConsumeRepository;
 import com.flyemu.share.service.BaseService;
+import com.flyemu.share.service.setting.AccountBookParamReader;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,32 +34,20 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class CostingService extends BaseService {
 
-    private static final QAccountBookParameters Q_PARAMS = QAccountBookParameters.accountBookParameters;
     private static final DateTimeFormatter BATCH_TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final InventoryCostBatchRepository batchRepository;
     private final InventoryCostConsumeRepository consumeRepository;
     private final InventoryService inventoryService;
+    private final AccountBookParamReader paramReader;
 
+    /** 参数读取统一委托 {@link AccountBookParamReader}（保留方法签名，成本链路调用方不变） */
     public CostingMethod resolveMethod(Long accountBookId) {
-        if (accountBookId == null) {
-            return CostingMethod.移动加权平均;
-        }
-        AccountBookParameters params = bqf.selectFrom(Q_PARAMS)
-                .where(Q_PARAMS.accountBookId.eq(Math.toIntExact(accountBookId)))
-                .fetchFirst();
-        return CostingMethod.fromParam(params == null ? null : params.getCostAccounting());
+        return paramReader.costingMethod(accountBookId);
     }
 
     public boolean allowNegativeStock(Long accountBookId) {
-        if (accountBookId == null) {
-            return false;
-        }
-        AccountBookParameters params = bqf.selectFrom(Q_PARAMS)
-                .where(Q_PARAMS.accountBookId.eq(Math.toIntExact(accountBookId)))
-                .fetchFirst();
-        // availableInventory: 1=是允许负库存, 2=否
-        return params != null && params.getAvailableInventory() != null && params.getAvailableInventory() == 1;
+        return paramReader.allowNegativeStock(accountBookId);
     }
 
     /**
@@ -71,8 +58,13 @@ public class CostingService extends BaseService {
         if (req.getQty() == null || req.getQty() <= 0) {
             return null;
         }
+        // 批次成本登记只在先进先出法下有意义：每个入库批次登记单位成本与金额，供出库按顺序核算。
+        // 移动平均法下成本按库内移动均价核算，批次仅作为数量/来源层，不登记单位成本与金额。
+        boolean fifo = resolveMethod(req.getAccountBookId()) == CostingMethod.先进先出;
         BigDecimal unitCost = defaultCost(req.getUnitCost());
-        BigDecimal total = unitCost.multiply(BigDecimal.valueOf(req.getQty())).setScale(2, RoundingMode.HALF_EVEN);
+        BigDecimal total = fifo
+                ? unitCost.multiply(BigDecimal.valueOf(req.getQty())).setScale(2, RoundingMode.HALF_EVEN)
+                : BigDecimal.ZERO;
 
         InventoryCostBatch batch = new InventoryCostBatch();
         batch.setBatchNo(buildBatchNo(req.getOrderType(), req.getOrderId()));
@@ -84,7 +76,7 @@ public class CostingService extends BaseService {
         batch.setInboundItemId(req.getItemId());
         batch.setQtyIn(req.getQty());
         batch.setQtyRemain(req.getQty());
-        batch.setUnitCost(unitCost);
+        batch.setUnitCost(fifo ? unitCost : BigDecimal.ZERO);
         batch.setTotalCostRemain(total);
         batch.setSupplierId(req.getSupplierId());
         batch.setClosed(false);
@@ -154,8 +146,8 @@ public class CostingService extends BaseService {
         }
 
         if (need > 0) {
-            if (method == CostingMethod.移动加权平均 && onHand >= req.getQty()) {
-                // 历史库存无完整批次时，移动加权仍可按平均成本出库
+            if (onHand >= req.getQty()) {
+                // 历史库存无完整批次时，两种成本法都可按平均成本出库
                 takes.add(new LayerTake(null, need));
             } else if (allowNegativeStock(req.getAccountBookId())) {
                 takes.add(new LayerTake(null, need));

@@ -62,6 +62,7 @@
             </template>
             <template #ops="{ row }">
               <t-space size="small">
+                <t-link theme="primary" @click="doPreview(row)">预览</t-link>
                 <t-link theme="primary" @click="showForm(row)">编辑</t-link>
                 <t-link theme="primary" @click="doRemove(row)">删除</t-link>
               </t-space>
@@ -78,6 +79,7 @@ import CodeRule from "@js/api/setting/CodeRule";
 import {MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
 import CodeRuleForm from "./CodeRuleForm.vue";
+import CodeRulePreviewDialog from "./CodeRulePreviewDialog.vue";
 import {openDialog, closeDialog} from '@common/dialog';
 import {h} from "vue";
 
@@ -126,7 +128,7 @@ export default {
         {colKey: 'serialNumberLength', title: '流水号位数', width: 120},
         {colKey: 'createdAt', title: '创建时间', width: 140},
         {colKey: 'systemDefault', title: '默认', width: 80, align: 'center'},
-        {colKey: 'ops', title: '操作', width: 120, fixed: 'right', align: 'center'}
+        {colKey: 'ops', title: '操作', width: 150, fixed: 'right', align: 'center'}
       ]
     }
   },
@@ -160,7 +162,7 @@ export default {
       let dialogId = openDialog({
         header: "规则编码",
         closeOnOverlayClick: false,
-        width: '50vw',
+        width: '860px',
         body: h(CodeRuleForm, {
           CodeRule,
           onClose: () => {
@@ -168,6 +170,19 @@ export default {
           },
           onSuccess: () => {
             this.doSearch();
+            closeDialog(dialogId);
+          }
+        })
+      });
+    },
+    doPreview(row) {
+      let dialogId = openDialog({
+        header: "编码规则预览",
+        closeOnOverlayClick: false,
+        width: '640px',
+        body: h(CodeRulePreviewDialog, {
+          codeRule: row,
+          onClose: () => {
             closeDialog(dialogId);
           }
         })
@@ -199,7 +214,9 @@ export default {
       let documentType = row.documentType;
       DialogPlugin.confirm({
         header: "系统提示",
-        body: `确认要「${systemDefault ? "启用" : "禁用"}」规则：${row.name}?`,
+        body: systemDefault
+            ? `确认将规则「${row.name}」设为默认?`
+            : `确认取消规则「${row.name}」的默认状态?`,
         onConfirm: () => {
           CodeRule.save({id: row.id, systemDefault: systemDefault, documentType: documentType}).then((success) => {
             MessagePlugin.success("操作成功~");

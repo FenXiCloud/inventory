@@ -39,6 +39,8 @@
         </div>
       </t-content>
     </t-layout>
+    <!-- AI助手悬浮窗 -->
+    <AiAssistant />
   </t-layout>
 </template>
 
@@ -46,11 +48,12 @@
 import AppHead from "@views/app/AppHead";
 import AppMenu from "@views/app/AppMenu";
 import SysTabs from "@views/common/sys-tabs";
+import AiAssistant from "@views/components/AiAssistant";
 import {mapState} from "vuex";
 import {MessagePlugin} from "tdesign-vue-next";
 export default {
   name: "AppFrame",
-  components: {SysTabs, AppMenu, AppHead},
+  components: {SysTabs, AppMenu, AppHead, AiAssistant},
   computed: {
     ...mapState(['siderCollapsed', 'currentTab', 'tabs'])
   },

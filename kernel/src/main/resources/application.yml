@@ -84,6 +84,7 @@ fenxi:
 invoice:
   platform:
     mock-enabled: ${INVOICE_MOCK_ENABLED:true}
+
     account:
       username: ${INVOICE_USERNAME:}
       password: ${INVOICE_PASSWORD:}
@@ -96,3 +97,12 @@ invoice:
       invoice-type: ${SELLER_INVOICE_TYPE:030}
       bank: ${SELLER_BANK:}
       bank-account: ${SELLER_BANK_ACCOUNT:}
+
+# ============ AI助手配置（小米MiMo） ============
+ai:
+  recognition:
+    enabled: true
+    endpoint: https://api.xiaomimimo.com/anthropic/v1/messages
+    api-key: ${MIMO_API_KEY:sk-cqf7j85wingx3r0yxr11a9am7ngsjjwb38639zmy4p5nwo69}
+    model: mimo-v2.5-pro
+

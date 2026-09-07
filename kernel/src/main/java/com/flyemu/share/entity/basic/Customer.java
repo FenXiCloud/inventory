@@ -1,6 +1,7 @@
 package com.flyemu.share.entity.basic;
 
 import com.flyemu.share.common.TenantAware;
+import com.flyemu.share.dto.CustomerAttachment;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,8 +10,11 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Setter
@@ -45,6 +49,10 @@ public class Customer implements TenantAware {
 
     @Comment("备注")
     private String remarks;
+
+    @Comment("附件（证件附件/资格证附件）")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<CustomerAttachment> attachments;
 
     @Comment("客户分类ID")
     @Column(nullable = false)

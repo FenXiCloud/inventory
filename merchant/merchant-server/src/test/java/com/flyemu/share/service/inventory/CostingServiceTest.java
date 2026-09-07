@@ -7,6 +7,7 @@ import com.flyemu.share.enums.CostingMethod;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.repository.inventory.InventoryCostBatchRepository;
 import com.flyemu.share.repository.inventory.InventoryCostConsumeRepository;
+import com.flyemu.share.service.setting.AccountBookParamReader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,7 +53,8 @@ public class CostingServiceTest {
 
     @BeforeEach
     void setUp() {
-        costingService = spy(new CostingService(batchRepository, consumeRepository, inventoryService));
+        // reader 用真实实例：测试仅触发 accountBookId=null 的短路分支，不触碰其注入字段
+        costingService = spy(new CostingService(batchRepository, consumeRepository, inventoryService, new AccountBookParamReader()));
     }
 
     @Test
@@ -295,6 +297,8 @@ public class CostingServiceTest {
 
     @Test
     void createReceiptBatch_setsQtyAndCost() {
+        // 先进先出法：入库批次登记单位成本与金额
+        doReturn(CostingMethod.先进先出).when(costingService).resolveMethod(any());
         when(batchRepository.save(any(InventoryCostBatch.class))).thenAnswer(inv -> {
             InventoryCostBatch b = inv.getArgument(0);
             b.setId(100L);
@@ -319,6 +323,33 @@ public class CostingServiceTest {
         assertEquals(10, saved.getQtyRemain());
         assertEquals(0, new BigDecimal("8.50").compareTo(saved.getUnitCost()));
         assertEquals(0, new BigDecimal("85.00").compareTo(saved.getTotalCostRemain()));
+        assertFalse(saved.getClosed());
+    }
+
+    @Test
+    void createReceiptBatch_movingAverage_storesQtyOnlyNoLayerCost() {
+        // 移动平均法：入库批次只保留数量层，不登记单位成本与金额
+        doReturn(CostingMethod.移动加权平均).when(costingService).resolveMethod(any());
+        when(batchRepository.save(any(InventoryCostBatch.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CostingService.ReceiptRequest req = new CostingService.ReceiptRequest();
+        req.setQty(10);
+        req.setUnitCost(new BigDecimal("8.50"));
+        req.setProductId(1L);
+        req.setWarehouseId(2L);
+        req.setOrderId(3L);
+        req.setOrderType(OperationType.采购入库);
+        req.setInboundDate(LocalDate.of(2024, 3, 1));
+        req.setMerchantId(100L);
+        req.setAccountBookId(200L);
+
+        InventoryCostBatch saved = costingService.createReceiptBatch(req);
+
+        assertNotNull(saved);
+        assertEquals(10, saved.getQtyIn());
+        assertEquals(10, saved.getQtyRemain());
+        assertEquals(0, BigDecimal.ZERO.compareTo(saved.getUnitCost()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(saved.getTotalCostRemain()));
         assertFalse(saved.getClosed());
     }
 

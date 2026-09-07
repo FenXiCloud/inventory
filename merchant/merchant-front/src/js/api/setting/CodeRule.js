@@ -12,5 +12,9 @@ export default {
     },
     select(param) {
         return Ajax.get('/codeRule/select', param)
+    },
+    /* 编码效果预览（服务端只读计算，不消耗流水号） */
+    preview(param) {
+        return Ajax.post('/codeRule/preview', param)
     }
 }

@@ -13,7 +13,7 @@
                     :keys="{ value: 'id', label: 'customName' }"
                     v-model="form.productId" placeholder="输入编码/名称" :disabled="isLocked" clearable/>
           <label class="mr-20px ml-20px" style="font-size: 16px !important">数量：</label>
-          <t-input-number class="w-140px" v-model="form.quantity" :min="0" :decimal-places="0" :disabled="isLocked"/>
+          <t-input-number class="w-140px" v-model="form.quantity" :min="0" :decimal-places="0" :disabled="isLocked"/> <!-- 装配成品数量按整件，恒0位；装配单明细行数量随账套参数 -->
           <label class="mr-20px ml-20px" style="font-size: 16px !important">仓库：</label>
           <t-select class="w-178px" filterable :options="warehouseList"
                     :keys="{ value: 'id', label: 'name' }"
@@ -60,7 +60,7 @@
               v-model="row.quantity"
               theme="normal"
               :min="0"
-              :decimal-places="0"
+              :decimal-places="qtyDp"
               style="width: 100%"
           />
           <div v-else class="flex">
@@ -85,11 +85,11 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading"> 取消</t-button>
       <div>
-        <t-button @click="saveOrder()" v-if="!isLocked"
+        <t-button @click="saveOrder()" v-if="!isLocked" v-auth="'assemblyOrder:edit'"
                   :loading="loading"> 保存
         </t-button>
-        <t-button v-if="form.id && !isLocked" theme="primary" @click="approved()" :loading="loading"> 审核</t-button>
-        <t-button v-if="isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</t-button>
+        <t-button v-if="$can('assemblyOrder:audit') && form.id && !isLocked" theme="primary" @click="approved()" :loading="loading"> 审核</t-button>
+        <t-button v-if="$can('assemblyOrder:audit') && isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</t-button>
       </div>
     </div>
   </div>

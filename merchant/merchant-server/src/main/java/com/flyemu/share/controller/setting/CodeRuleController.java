@@ -6,6 +6,7 @@ import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.entity.setting.CodeRule;
 import com.flyemu.share.service.setting.CodeRuleService;
+import com.flyemu.share.service.setting.CodeSeedService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class CodeRuleController {
 
     private final CodeRuleService codeRuleService;
+    private final CodeSeedService codeSeedService;
 
     @GetMapping
     public JsonResult list(CodeRuleService.Query query, @SaAccountVal AccountDto accountDto) {
@@ -46,6 +48,16 @@ public class CodeRuleController {
     @GetMapping("/select")
     public JsonResult select(@SaAccountVal AccountDto accountDto) {
         return JsonResult.successful(codeRuleService.select(accountDto.getMerchantId(), accountDto.getAccountBookId()));
+    }
+
+    /**
+     * 编码规则效果预览（只读，不消耗流水号）：草稿规则字段 + 当前账套流水进度
+     */
+    @PostMapping("/preview")
+    public JsonResult preview(@RequestBody CodeRule draft, @SaAccountVal AccountDto accountDto) {
+        TenantScope.bind(draft, accountDto);
+        return JsonResult.successful(codeSeedService.preview(
+                accountDto.getMerchantId(), accountDto.getAccountBookId(), draft));
     }
 
 }

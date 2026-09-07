@@ -17,7 +17,7 @@
     </div>
 
     <div class="simple-page__hint">
-      结账日期不能小于系统启用日期：{{ accountBook.startDate }}，也不能小于或等于上次结账日期: {{ accountBook.checkoutDate }}，结账日期之前的数据只能查询，不能修改。
+      结账日期不能小于系统启用日期：{{ accountBook.startDate }}，也不能小于或等于上次结账日期: {{ accountBook.checkoutDate }}，必须按月连续结账（不允许跳月），结账日期之前的数据只能查询，不能修改。
     </div>
 
     <!-- 结账前检查报告弹窗 -->
@@ -79,6 +79,7 @@
           <t-button theme="primary" variant="outline" @click="exportMonthlySummary">导出</t-button>
         </div>
         <t-table
+            row-key="id"
             :data="monthlyData"
             :columns="monthlyColumns"
             bordered

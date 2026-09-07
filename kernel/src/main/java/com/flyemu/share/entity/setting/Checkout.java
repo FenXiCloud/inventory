@@ -22,6 +22,11 @@ public class Checkout implements Serializable, TenantAware{
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    @Column(nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    private Long version = 0L;
+
     @Comment("创建时间")
     @CreationTimestamp
     @Column(updatable = false)

@@ -13,6 +13,10 @@ spring:
 sa-token:
   token-name: i-c-m-token
 
+# 操作级权限强制（新增/编辑、审核/反审核、删除 后端拦截）。置 false 可一键停用后端强制
+permission:
+  enforce: true
+
 aliyun:
   accessKeyId:
   accessKeySecret:

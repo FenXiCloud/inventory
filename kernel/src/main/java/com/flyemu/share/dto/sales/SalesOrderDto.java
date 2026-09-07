@@ -90,4 +90,16 @@ public class SalesOrderDto {
 
     @Comment("关联的采购入库单编号")
     private String purchaseInOrderNos;
+
+    @Comment("订单商品总数量")
+    private BigDecimal orderQuantity;
+
+    @Comment("已出库数量")
+    private BigDecimal outQuantity;
+
+    @Comment("已退货数量")
+    private BigDecimal returnQuantity;
+
+    @Comment("可出库数量（订单数量+已退货-已出库，按明细逐行取正求和）")
+    private BigDecimal remainQuantity;
 }

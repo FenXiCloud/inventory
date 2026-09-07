@@ -2,12 +2,12 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button style="border-radius: 4px" @click="showImportForm()">导 入</t-button>
+        <t-button theme="primary" style="border-radius: 4px" v-auth="'salesOutbound:edit'" @click="addForm()">新 增</t-button>
+        <t-button style="border-radius: 4px" v-auth="'salesOutbound:edit'" @click="showImportForm()">导 入</t-button>
         <t-button style="border-radius: 4px" @click="exportToExcel()">导 出</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="batchDelete()">批量删除</t-button>
-        <t-button variant="outline" style="border-radius: 4px"           @click="approved()">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'salesOutbound:delete'" @click="batchDelete()">批量删除</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'salesOutbound:audit'"          @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'salesOutbound:audit'" @click="backApproved()">反审核</t-button>
         <t-select
             v-model="params.state"
             :options="stateOptions"
@@ -66,8 +66,8 @@
           <t-space size="small">
             <t-link theme="primary" @click="viewDetail(row)">详情</t-link>
             <template v-if="row.orderStatus === '已保存'">
-              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
-              <t-link theme="primary" @click="doRemove(row)">删除</t-link>
+              <t-link theme="primary" v-auth="'salesOutbound:edit'" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link theme="primary" v-auth="'salesOutbound:delete'" @click="doRemove(row)">删除</t-link>
             </template>
             <template v-if="row.orderStatus === '已审核'">
               <t-link theme="primary" @click="showQuickReceipt(row)">便捷收款</t-link>

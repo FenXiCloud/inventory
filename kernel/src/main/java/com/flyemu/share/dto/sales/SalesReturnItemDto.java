@@ -1,5 +1,6 @@
 package com.flyemu.share.dto.sales;
 
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -8,6 +9,7 @@ import org.hibernate.annotations.Comment;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 销售退单明细DTO
@@ -37,6 +39,9 @@ public class SalesReturnItemDto {
 
     @Comment("换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)")
     private BigDecimal conversionRate;
+
+    @Comment("销售单位单价（业务单价 = 基本单价 × 换算率）")
+    private BigDecimal secondaryPrice;
 
     @Comment("单价（以基本单位计）")
     private BigDecimal unitPrice;
@@ -75,6 +80,12 @@ public class SalesReturnItemDto {
     private String productName;
     @Comment("单位")
     private String unitName;
+
+    @Comment("业务单位名称")
+    private String secondaryUnitName;
+
+    @Comment("可用单位下拉（服务端回填，基本单位在前）")
+    private List<AuxiliaryUnitPrice> auxiliaryUnitPrices;
 
     @Comment("备注")
     private String remark;

@@ -5,11 +5,14 @@
         <t-form-item label="角色名称" name="name">
           <t-input placeholder="请输入角色名称" v-model="model.name"/>
         </t-form-item>
+        <t-form-item label="是否默认" name="systemDefault">
+          <t-select v-model="model.systemDefault" :options="defaultOptions" placeholder="请选择"/>
+        </t-form-item>
       </t-form>
     </div>
     <div class="modal-column-between">
       <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
-      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
+      <t-button v-auth="'role:edit'" theme="primary" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>
@@ -27,6 +30,10 @@ export default {
   data() {
     return {
       loading: false,
+      defaultOptions: [
+        { value: true, label: '是' },
+        { value: false, label: '否' }
+      ],
       model: {
         id: null,
         name: null,

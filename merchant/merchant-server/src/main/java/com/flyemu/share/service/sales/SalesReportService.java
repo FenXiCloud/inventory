@@ -20,6 +20,7 @@ import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.form.SalesReportForm;
 import com.flyemu.share.service.BaseService;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
 
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -107,7 +108,7 @@ public class SalesReportService extends BaseService {
         //销售出库单列表
         List<SalesOutbound> salesOutboundList = salesOutboundRepository.findAll(salesOutboundSpecification);
         if (CollectionUtils.isEmpty(salesOutboundList)
-                && !StrUtil.equals(salesType, SalesReportConstant.SALES_TYPE_RETURN)) {
+                && StrUtil.equals(salesType, SalesReportConstant.SALES_TYPE_OUT)) {
             return results;
         }
         List<Product> productList = loadProducts(merchantId, accountBookId);
@@ -152,6 +153,7 @@ public class SalesReportService extends BaseService {
         }
         if (StrUtil.equals(salesType, SalesReportConstant.SALES_TYPE_OUT)){
             List<SalesReportItemDto> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
+            enrichWithReturnData(outItemDTOList, outboundItemList, merchantId, accountBookId);
             return getSalesReportItemDtoPageResults(page, outItemDTOList);
         }
 
@@ -166,6 +168,7 @@ public class SalesReportService extends BaseService {
         List<SalesReportItemDto> resultList = new ArrayList<>();
         if (StrUtil.equals(salesType, SalesReportConstant.SALES_TYPE_ALL)){
             List<SalesReportItemDto> outItemDTOList = getSalesReportOutItemDTOS(outboundItemList, productCategoryList, productList, unitList, warehouseList, salesOutboundList, customerList);
+            enrichWithReturnData(outItemDTOList, outboundItemList, merchantId, accountBookId);
             List<SalesReportItemDto> returnItemDTOList = getSalesReportReturnItemDTOS(returnItemList, productCategoryList, productList, unitList, warehouseList, salesReturnList, customerList);
             resultList.addAll(outItemDTOList);
             resultList.addAll(returnItemDTOList);
@@ -233,6 +236,53 @@ public class SalesReportService extends BaseService {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         return salesReturnItemRepository.findAll(returnOrderItemQuery);
+    }
+
+    /**
+     * 为出库明细DTO补充关联退货信息
+     */
+    private void enrichWithReturnData(List<SalesReportItemDto> dtos, List<SalesOutboundItem> outboundItemList, Long merchantId, Long accountBookId) {
+        if (CollectionUtils.isEmpty(dtos) || CollectionUtils.isEmpty(outboundItemList)) return;
+
+        List<Long> outboundItemIds = outboundItemList.stream().map(SalesOutboundItem::getId).filter(java.util.Objects::nonNull).toList();
+        if (outboundItemIds.isEmpty()) return;
+
+        // 批量查询关联的退货明细
+        QSalesReturnItem qReturnItem = QSalesReturnItem.salesReturnItem;
+        QSalesReturn qReturn = QSalesReturn.salesReturn;
+        List<Tuple> returnItems = bqf.selectFrom(qReturnItem)
+                .select(qReturnItem.outItemId, qReturnItem.quantity, qReturnItem.subtotal, qReturn.orderNo)
+                .leftJoin(qReturn).on(qReturn.id.eq(qReturnItem.salesReturnId))
+                .where(qReturnItem.outItemId.in(outboundItemIds)
+                        .and(qReturn.orderStatus.eq(OrderStatus.已审核)))
+                .fetch();
+
+        Map<Long, BigDecimal> returnQtyMap = new HashMap<>();
+        Map<Long, BigDecimal> returnAmtMap = new HashMap<>();
+        Map<Long, java.util.Set<String>> returnOrderNosMap = new HashMap<>();
+
+        for (Tuple rt : returnItems) {
+            Long outItemId = rt.get(qReturnItem.outItemId);
+            if (outItemId == null) continue;
+            BigDecimal qty = rt.get(qReturnItem.quantity);
+            BigDecimal amt = rt.get(qReturnItem.subtotal);
+            String orderNo = rt.get(qReturn.orderNo);
+            returnQtyMap.merge(outItemId, qty == null ? BigDecimal.ZERO : qty, BigDecimal::add);
+            returnAmtMap.merge(outItemId, amt == null ? BigDecimal.ZERO : amt, BigDecimal::add);
+            if (StrUtil.isNotBlank(orderNo)) {
+                returnOrderNosMap.computeIfAbsent(outItemId, k -> new java.util.LinkedHashSet<>()).add(orderNo);
+            }
+        }
+
+        // 为每个出库明细DTO设置退货信息
+        for (int i = 0; i < dtos.size() && i < outboundItemList.size(); i++) {
+            Long outItemId = outboundItemList.get(i).getId();
+            SalesReportItemDto dto = dtos.get(i);
+            dto.setReturnQuantity(returnQtyMap.getOrDefault(outItemId, BigDecimal.ZERO));
+            dto.setReturnAmount(returnAmtMap.getOrDefault(outItemId, BigDecimal.ZERO));
+            java.util.Set<String> orderNos = returnOrderNosMap.get(outItemId);
+            dto.setReturnOrderNos(orderNos != null ? String.join(",", orderNos) : null);
+        }
     }
 
     private List<SalesReportItemDto> getSalesReportOutItemDTOS(List<SalesOutboundItem> outboundItemList, List<ProductCategory> productCategoryList, List<Product> productList, List<Unit> unitList, List<Warehouse> warehouseList, List<SalesOutbound> salesOutboundList, List<Customer> customerList) {

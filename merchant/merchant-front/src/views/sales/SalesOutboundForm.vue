@@ -54,8 +54,12 @@
             :foot-data="footData"
             :loading="loading"
         >
-          <template #ops="{ rowIndex }">
+          <template #ops="{ row, rowIndex }">
             <template v-if="!isAudited">
+              <div class="fa fa-files-o text-hover mr-5px"
+                   title="拆行：同一销售订单行可拆成多行，按不同单位出库（如整箱+零头）"
+                   v-if="!row.isNew && row.tempId"
+                   @click="splitRow(rowIndex)"></div>
               <div class="fa fa-plus text-hover mr-5px" @click="adjustRows('insert', rowIndex)"></div>
               <div class="fa fa-minus text-hover" v-if="isDeleting" @click="adjustRows('delete', rowIndex)"></div>
             </template>
@@ -111,7 +115,24 @@
             </template>
             <span v-else-if="!row.isNew">{{ row.batchNumber || '-' }}</span>
           </template>
-          <template #quantity="{ row, rowIndex }">
+          <template #secondaryUnitName="{ row }">
+            <!-- 多单位商品：出库单位下拉，可切换 -->
+            <template v-if="!row.isNew && !isAudited && (row.auxiliaryUnitPrices || []).length">
+              <t-select
+                  :clearable="false"
+                  v-model="row.secondaryUnitId"
+                  :options="row.auxiliaryUnitPrices"
+                  filterable
+                  @change="onUnitChange(row, $event)"
+                  :keys="{ value: 'unitId', label: 'unitName' }"
+              />
+            </template>
+            <span v-else>{{ row.secondaryUnitName || row.unitName }}</span>
+          </template>
+          <template #baseUnitName="{ row }">
+            <span v-if="!row.isNew">{{ row.unitName }}</span>
+          </template>
+          <template #secondaryQuantity="{ row, rowIndex }">
             <template v-if="!row.isNew && !isAudited">
               <t-tooltip theme="light">
                 <template #content>
@@ -120,19 +141,19 @@
                 </template>
                 <t-input-number
                     :id="'r'+rowIndex+''+3"
-                    v-model="row.quantity"
+                    v-model="row.secondaryQuantity"
                     theme="normal"
                     :min="0"
-                    :decimal-places="2"
+                    :decimal-places="qtyDp"
                     style="width: 100%"
                     @blur="updateQuantity(row)"
                     @focus="showStockQuantity(row)"
                 />
               </t-tooltip>
             </template>
-            <span v-else-if="!row.isNew">{{ row.quantity }}</span>
+            <span v-else-if="!row.isNew">{{ row.secondaryQuantity }}</span>
           </template>
-          <template #unitPrice="{ row, rowIndex }">
+          <template #secondaryPrice="{ row, rowIndex }">
             <template v-if="!row.isNew && !isAudited">
               <t-tooltip theme="light">
                 <template #content>
@@ -157,17 +178,17 @@
                 </template>
                 <t-input-number
                     :id="'r'+rowIndex+''+4"
-                    v-model="row.unitPrice"
+                    v-model="row.secondaryPrice"
                     theme="normal"
                     :min="0"
-                    :decimal-places="2"
+                    :decimal-places="priceDp"
                     style="width: 100%"
                     @blur="updatePrice(row)"
                     @focus="showPrice(row)"
                 />
               </t-tooltip>
             </template>
-            <span v-else-if="!row.isNew">{{ row.unitPrice }}</span>
+            <span v-else-if="!row.isNew">{{ row.secondaryPrice }}</span>
           </template>
           <template #discountRate="{ row, rowIndex }">
             <t-input-number
@@ -295,12 +316,12 @@
       <div class="page-column-footer modal-column-between bg-white-color border">
         <t-button @click="closeWindow" :loading="loading">取消</t-button>
         <div>
-          <t-button theme="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
-          <t-button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</t-button>
+          <t-button theme="primary" v-if="!isAudited" v-auth="'salesOutbound:edit'" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
+          <t-button v-if="!isAudited" v-auth="'salesOutbound:edit'" @click="saveOrder('save')" :loading="loading">保存</t-button>
           <t-button @click="doPrint" :loading="loading">打印</t-button>
           <t-button v-if="form.id && isAudited" theme="warning" @click="generatePickOrder()" :loading="loading">生成拣货单</t-button>
-          <t-button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
-          <t-button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
+          <t-button v-if="$can('salesOutbound:audit') && form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
+          <t-button v-if="$can('salesOutbound:audit') && isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
         </div>
       </div>
     </div>
@@ -342,7 +363,7 @@
           />
         </t-form-item>
         <t-form-item label="套餐数量">
-          <t-input-number v-model="comboQuantity" :min="1" :decimal-places="0" style="width: 100%"/>
+          <t-input-number v-model="comboQuantity" :min="1" :decimal-places="0" style="width: 100%"/> <!-- 套餐数量按整件，恒0位 -->
         </t-form-item>
       </t-form>
       <div style="text-align: right">
@@ -356,6 +377,7 @@
 import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
 import {openPrint} from '@common/print';
+import {switchUnit} from '@common/unit';
 import manba from "manba";
 import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -407,24 +429,25 @@ export default {
         {
           colKey: 'ops',
           title: '操作',
-          width: 70,
+          width: 100,
           align: 'center',
           fixed: 'left',
           foot: () => '合计'
         },
         { colKey: 'imgPath', title: '产品图片', width: 100 },
-        { colKey: 'productCode', title: '产品编码', width: 240 },
-        { colKey: 'productInfo', title: '产品信息', width: 180, align: 'center' },
-        { colKey: 'specification', title: '规格型号', align: 'center', width: 100 },
+        { colKey: 'productInfo', title: '产品信息', minWidth: 200 },
+        { colKey: 'secondaryUnitName', title: '销售单位', align: 'center', width: 100 },
         { colKey: 'productCategoryName', title: '产品类别', align: 'center', width: 100 },
-        { colKey: 'warehouse', title: '仓库', align: 'center', width: 180 },
+        { colKey: 'specification', title: '规格型号', align: 'center', width: 100 },
+        { colKey: 'warehouse', title: '仓库', align: 'center', width: 140 },
         { colKey: 'batchNumber', title: '批次号', align: 'center', width: 100 },
-        { colKey: 'quantity', title: '数量', width: 90 },
-        { colKey: 'unitName', title: '单位', align: 'center', width: 80 },
-        { colKey: 'unitPrice', title: '单价', width: 100 },
+        { colKey: 'secondaryQuantity', title: '数量', width: 90 },
+        { colKey: 'baseUnitName', title: '基本单位', align: 'center', width: 80 },
+        { colKey: 'quantity', title: '基本数量', width: 90 },
+        { colKey: 'secondaryPrice', title: '销售单价', width: 100 },
         { colKey: 'discountRate', title: '折扣率(%)', width: 100 },
         { colKey: 'discountValue', title: '折扣额', width: 100 },
-        { colKey: 'subtotal', title: '金额', width: 100 },
+        { colKey: 'subtotal', title: '销售金额', width: 100 },
         { colKey: 'taxRate', title: '税率', align: 'center', width: 80 },
         { colKey: 'remark', title: '备注', width: 100 },
         { colKey: 'salesOrderNo', title: '关联销售单号', width: 200 },
@@ -543,8 +566,8 @@ export default {
         return {
           ...r,
           productName: r.productName || p.name || '',
-          quantity: r.quantity ?? r.secondaryQuantity,
-          price: r.unitPrice ?? r.secondaryPrice ?? r.price,
+          quantity: r.secondaryQuantity ?? r.quantity,
+          price: r.secondaryPrice ?? r.unitPrice ?? r.price,
           amount: r.subtotal ?? r.amount,
         };
       });
@@ -596,7 +619,13 @@ export default {
       let g = newRow({
         isNew: false,
         quantity: 1,
+        secondaryQuantity: 1,
         unitPrice: unitPrice,
+        secondaryPrice: unitPrice,
+        conversionRate: 1,
+        secondaryUnitId: d.unitId,
+        secondaryUnitName: d.unitName,
+        auxiliaryUnitPrices: d.auxiliaryUnitPrices || null,
         warehouseId: defaultWarehouseId,
         discountValue: 0.00,
         discountRate: 0.00,
@@ -665,10 +694,18 @@ export default {
       comboItems.forEach((ci) => {
         const p = (this.productList || []).find((i) => String(i.id) === String(ci.productId));
         if (!p) return;
+        const comboQty = (Number(ci.quantity) || 1) * qty;
+        const comboPrice = p.lastSalePrice || 0;
         const row = newRow({
           isNew: false,
-          quantity: (Number(ci.quantity) || 1) * qty,
-          unitPrice: p.lastSalePrice || 0,
+          quantity: comboQty,
+          secondaryQuantity: comboQty,
+          unitPrice: comboPrice,
+          secondaryPrice: comboPrice,
+          conversionRate: 1,
+          secondaryUnitId: p.unitId,
+          secondaryUnitName: p.unitName,
+          auxiliaryUnitPrices: p.auxiliaryUnitPrices || null,
           warehouseId: defaultWarehouseId,
           discountValue: 0.00,
           discountRate: 0.00,
@@ -680,7 +717,7 @@ export default {
           productName: p.name,
           remark: "",
         });
-        row.subtotal = (row.quantity * row.unitPrice).toFixed(2);
+        row.subtotal = (comboQty * comboPrice).toFixed(2);
         newRows.push(row);
       });
       if (!newRows.length) {
@@ -774,11 +811,11 @@ export default {
       let warehouseFlag = false;
       this.productData.forEach(item => {
         if (item.isNew) return;
-        if (item.quantity === 0 || !item.quantity) {
+        if (item.secondaryQuantity === 0 || !item.secondaryQuantity) {
           quantityFlag = true;
           LoadingPlugin(false);
         }
-        if (item.unitPrice === 0 || !item.unitPrice) {
+        if (item.secondaryPrice === 0 || !item.secondaryPrice) {
           unitPriceFlag = true;
           LoadingPlugin(false);
         }
@@ -820,7 +857,7 @@ export default {
         return;
       }
       let productData = this.productData
-        .filter(c => !c.isNew && c.quantity > 0)
+        .filter(c => !c.isNew && c.secondaryQuantity > 0)
         .map(({ _rowKey, ...rest }) => rest);
       SalesOutbound.save({
         salesOutbound: Object.assign(this.form),
@@ -859,6 +896,23 @@ export default {
       } else {
         this.productData.splice(index, 1);
       }
+    },
+    splitRow(index) {
+      const row = this.productData[index];
+      if (!row || row.isNew || !row.tempId) return;
+      // 同一源订单行拆成两行：新行清空单据行 id 与数量，保留 tempId/salesOrderId/单位/批次等，
+      // 服务端按 tempId 用基本数量合计校验 ≤ 订单行剩余
+      const copy = {
+        ...row,
+        _rowKey: `r-${++rowSeq}`,
+        id: null,
+        secondaryQuantity: 0,
+        quantity: 0,
+        discountValue: 0,
+        subtotal: 0,
+        isNew: false,
+      };
+      this.productData.splice(index + 1, 0, copy);
     },
     changeCustomer(value) {
       if (value == null || value === '') {
@@ -902,26 +956,36 @@ export default {
         });
       });
     },
-    changeProductUnit(value, row) {
+    onUnitChange(row, value) {
       const item = (row.auxiliaryUnitPrices || []).find((u) => String(u.unitId) === String(value));
       if (!item) return;
-      row.orderUnitName = item.unitName;
-      row.unitPrice = (item.price || 0).toFixed(2) || 0;
-      row.num = item.num || 1;
-      row.sysQuantity = (row.quantity * row.num).toFixed(2);
-      row.subtotal = (row.quantity * row.unitPrice).toFixed(2);
+      // 按基本单价等比换算：基本数量/基本单价/业务价就地更新
+      switchUnit(row, item);
+      // switchUnit 写的是采购口径 discountAmount，销售明细用 discountValue
+      row.discountValue = Number(row.discountAmount) || 0;
+      delete row.discountAmount;
+      // 按业务量×业务价重算折扣金额与小计（保持一致）
+      this.recalcRow(row);
     },
     updateQuantity(item) {
       if (!item.productId) return;
-      item.quantity = item.quantity || 1;
-      item.subtotal = ((item.quantity * item.unitPrice * (100 - item.discountRate)) / 100).toFixed(2);
-      item.discountValue = (((item.quantity * item.unitPrice) * item.discountRate) / 100).toFixed(2);
+      item.secondaryQuantity = item.secondaryQuantity || 1;
+      this.recalcRow(item);
     },
     updatePrice(item) {
       if (!item.productId) return;
-      item.unitPrice = item.unitPrice || 0.00;
-      item.discountValue = (item.unitPrice * item.quantity * item.discountRate / 100).toFixed(2);
-      item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);
+      item.secondaryPrice = item.secondaryPrice || 0.00;
+      this.recalcRow(item);
+    },
+    recalcRow(item) {
+      const sq = Number(item.secondaryQuantity) || 0;
+      const sp = Number(item.secondaryPrice) || 0;
+      const rate = Number(item.conversionRate) || 1;
+      const dr = Number(item.discountRate) || 0;
+      item.quantity = Number((sq * rate).toFixed(2));
+      if (rate) item.unitPrice = Number((sp / rate).toFixed(2));
+      item.discountValue = Number((sq * sp * dr / 100).toFixed(2));
+      item.subtotal = Number((sq * sp * (100 - dr) / 100).toFixed(2));
     },
     showPrice(row) {
       let productId = row.productId;
@@ -941,18 +1005,27 @@ export default {
     },
     updateDiscount(item) {
       item.discountRate = item.discountRate || 0.00;
-      item.subtotal = ((item.quantity || 0) * item.unitPrice * (100 - item.discountRate || 0) / 100).toFixed(2);
-      item.discountValue = ((item.quantity || 0) * item.unitPrice - item.subtotal).toFixed(2);
+      const sq = Number(item.secondaryQuantity) || 0;
+      const sp = Number(item.secondaryPrice) || 0;
+      item.subtotal = Number((sq * sp * (100 - item.discountRate) / 100).toFixed(2));
+      item.discountValue = Number((sq * sp - item.subtotal).toFixed(2));
+      this.recalcRow(item);
     },
     updateDiscountAmount(item) {
       item.discountValue = item.discountValue || 0.00;
-      item.discountRate = (((item.discountValue / (item.unitPrice * item.quantity)) * 100) || 0).toFixed(2);
-      item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);
+      const sq = Number(item.secondaryQuantity) || 0;
+      const sp = Number(item.secondaryPrice) || 0;
+      item.discountRate = (((item.discountValue / (sp * sq)) * 100) || 0);
+      this.recalcRow(item);
     },
     updateFinalAmount(item) {
-      item.subtotal = item.subtotal || 0;
-      item.unitPrice = ((item.subtotal) / ((100 - item.discountRate)) * 100 / item.quantity).toFixed(2);
-      item.discoutPrice = (item.unitPrice - item.subtotal).toFixed(2);
+      // 小计（折后金额）反推业务单价：折前业务金额 = 小计 ÷ (100-折扣率)%
+      item.subtotal = Number(item.subtotal) || 0;
+      const dr = Number(item.discountRate) || 0;
+      const sq = Number(item.secondaryQuantity) || 1;
+      const pre = dr < 100 ? item.subtotal * 100 / (100 - dr) : item.subtotal;
+      item.secondaryPrice = Number((pre / sq).toFixed(2));
+      this.recalcRow(item);
     },
     approved() {
       DialogPlugin.confirm({
@@ -1017,6 +1090,26 @@ export default {
       if (!url || url === '-') return;
       this.previewImageUrl = url;
       this.previewVisible = true;
+    }
+  },
+  watch: {
+    'productData': {
+      handler(newVal) {
+        // 监听业务数量/业务单价变化：自动同步基本数量/基本单价并计算小计、折扣额
+        newVal.forEach(row => {
+          if (!row.isNew) {
+            const sq = Number(row.secondaryQuantity) || 0;
+            const sp = Number(row.secondaryPrice) || 0;
+            const rate = Number(row.conversionRate) || 1;
+            const dr = Number(row.discountRate) || 0;
+            row.quantity = Number((sq * rate).toFixed(2));
+            if (rate) row.unitPrice = Number((sp / rate).toFixed(2));
+            row.subtotal = Number((sq * sp * (100 - dr) / 100).toFixed(2));
+            row.discountValue = Number((sq * sp * dr / 100).toFixed(2));
+          }
+        });
+      },
+      deep: true
     }
   },
   created() {

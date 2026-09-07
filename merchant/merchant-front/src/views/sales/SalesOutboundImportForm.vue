@@ -25,7 +25,7 @@
     </div>
     <div class="modal-column-between">
       <t-button @click="$emit('close')" :loading="loading">取消</t-button>
-      <t-button theme="primary" :disabled="!file" @click="importData" :loading="loading">导 入</t-button>
+      <t-button theme="primary" :disabled="!file" v-auth="'salesOutbound:edit'" @click="importData" :loading="loading">导 入</t-button>
     </div>
   </div>
 </template>

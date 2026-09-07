@@ -46,7 +46,12 @@ public class SalesReturnItem implements TenantAware {
     @Comment("换算率 (基本单位到辅助单位的换算率，例如：1箱=12个，则换算率为12。如果未使用辅助单位，则为1)")
     private BigDecimal conversionRate;
 
+    @Comment("销售单位单价（业务单价 = 基本单价 × 换算率）")
+    @Column(precision = 18, scale = 6)
+    private BigDecimal secondaryPrice;
+
     @Comment("单价（以基本单位计）")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal unitPrice;
 
     @Comment("折扣率")
@@ -59,6 +64,7 @@ public class SalesReturnItem implements TenantAware {
     private BigDecimal subtotal;
 
     @Comment("退货入库单位成本（审核时写入）")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal costPrice;
 
     @Comment("退货入库成本金额（审核时写入）")

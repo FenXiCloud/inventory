@@ -49,6 +49,7 @@
           bordered
           stripe
           hover
+          resizable
           height="100%"
           table-layout="fixed"
           :data="displayList"
@@ -111,6 +112,8 @@ export default {
         customerIds: [],
         productIds: []
       },
+      // 已点击“查询”生效的排行维度（切换下拉时先不改变表头/数据，点击查询后才切换）
+      searchedRankingType: 'PRODUCT',
       dateRangeValue: [startTime, endTime],
       rankingTypeOptions: [
         { label: '按产品', value: 'PRODUCT' },
@@ -120,7 +123,7 @@ export default {
   },
   computed: {
     isCustomerRank() {
-      return this.params.rankingType === 'CUSTOMER';
+      return this.searchedRankingType === 'CUSTOMER';
     },
     columns() {
       const cols = [
@@ -154,6 +157,7 @@ export default {
     queryParams() {
       const [start, end] = this.dateRangeValue || [];
       return Object.assign({}, this.params, {
+        rankingType: this.searchedRankingType,
         page: this.pagination.page,
         pageSize: this.pagination.pageSize,
         start: start || null,
@@ -186,6 +190,8 @@ export default {
       this.loadList();
     },
     doSearch() {
+      // 点击“查询”后才切换排行维度，避免未查询时表头与数据不一致（内容空白）
+      this.searchedRankingType = this.params.rankingType;
       this.pagination.page = 1;
       this.loadList();
     },

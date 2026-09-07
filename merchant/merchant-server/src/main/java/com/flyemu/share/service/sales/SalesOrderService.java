@@ -9,6 +9,8 @@ import com.flyemu.share.repository.sales.SalesOrderItemRepository;
 import com.flyemu.share.repository.sales.SalesOrderRepository;
 import com.flyemu.share.repository.sales.SalesOutboundRepository;
 import com.flyemu.share.common.TenantAware;
+import com.flyemu.share.common.UnitConvert;
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.SalesOrderImportVo;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
@@ -44,6 +46,7 @@ import com.flyemu.share.form.TransferToPurchaseForm;
 import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.basic.ProductAuxiliaryUnitService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
@@ -60,6 +63,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +100,7 @@ public class SalesOrderService extends BaseService {
     private final static QWarehouse qWarehouse = QWarehouse.warehouse;
     private final PriceRecordService priceRecordService;
     private final PriceRecordRepository priceRecordRepository;
+    private final ProductAuxiliaryUnitService productAuxiliaryUnitService;
     private final PurchaseInboundRepository purchaseInboundRepository;
     private final PurchaseInboundItemRepository purchaseInboundItemRepository;
     private final ToOrderLogRepository toOrderLogRepository;
@@ -236,6 +241,8 @@ public class SalesOrderService extends BaseService {
             //保存新关系
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
+                    //服务端权威换算：基本数量 = 销售数量 × 换算率；基本单价 = 销售单价 ÷ 换算率
+                    normalizeUnit(item);
                     //保存价格记录
                     savePrice(item, update);
                     item.setSalesOrderId(update.getId());
@@ -257,6 +264,8 @@ public class SalesOrderService extends BaseService {
             SalesOrder save = salesOrderRepository.save(salesOrder);
             if (!CollectionUtils.isEmpty(salesOrderItemList)) {
                 salesOrderItemList.forEach(item -> {
+                    //服务端权威换算：基本数量 = 销售数量 × 换算率；基本单价 = 销售单价 ÷ 换算率
+                    normalizeUnit(item);
                     //保存价格记录
                     savePrice(item, save);
                     item.setSalesOrderId(save.getId());
@@ -273,6 +282,43 @@ public class SalesOrderService extends BaseService {
                 salesOrderItemRepository.saveAll(salesOrderItemList);
             }
             return save;
+        }
+    }
+
+    /**
+     * 老数据兜底 + 服务端权威换算（保存时调用）：
+     * 基本数量 = 销售数量 × 换算率；基本单价 = 销售单价 ÷ 换算率。
+     */
+    private void normalizeUnit(SalesOrderItem d) {
+        if (d.getConversionRate() == null) {
+            d.setConversionRate(BigDecimal.ONE);
+        }
+        if (d.getSecondaryUnitId() == null) {
+            d.setSecondaryUnitId(d.getBaseUnitId());
+        }
+        if (d.getSecondaryQuantity() == null) {
+            d.setSecondaryQuantity(d.getQuantity());
+        }
+        if (d.getSecondaryPrice() == null) {
+            d.setSecondaryPrice(UnitConvert.secondaryPrice(d.getUnitPrice(), d.getConversionRate()));
+        }
+        d.setQuantity(UnitConvert.toBaseQty(d.getSecondaryQuantity(), d.getConversionRate()));
+        d.setUnitPrice(UnitConvert.unitPrice(d.getSecondaryPrice(), d.getConversionRate()));
+    }
+
+    /** load/详情回填：老数据兜底业务单位字段（不重算已持久化的基本数量/基本单价） */
+    private void fillUnitFallback(SalesOrderItemDto d) {
+        if (d.getConversionRate() == null) {
+            d.setConversionRate(BigDecimal.ONE);
+        }
+        if (d.getSecondaryUnitId() == null) {
+            d.setSecondaryUnitId(d.getBaseUnitId());
+        }
+        if (d.getSecondaryQuantity() == null) {
+            d.setSecondaryQuantity(d.getQuantity());
+        }
+        if (d.getSecondaryPrice() == null) {
+            d.setSecondaryPrice(UnitConvert.secondaryPrice(d.getUnitPrice(), d.getConversionRate()));
         }
     }
 
@@ -358,21 +404,41 @@ public class SalesOrderService extends BaseService {
             throw new ServiceException("单据不存在");
         }
         SalesOrderDto dto = BeanUtil.toBean(salesOrder, SalesOrderDto.class);
+        QUnit qUnitSec = new QUnit("unitSec");
         List<Tuple> fetch = jqf.selectFrom(qSalesOrderItem)
-                .select(qSalesOrderItem, qProduct.code, qProduct.name, qUnit.name)
+                .select(qSalesOrderItem, qProduct.code, qProduct.name, qUnit.name, qUnitSec.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qSalesOrderItem.productId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qSalesOrderItem.baseUnitId))
+                .leftJoin(qUnitSec).on(qUnitSec.id.eq(qSalesOrderItem.secondaryUnitId))
                 .where(qSalesOrderItem.salesOrderId.eq(orderId)
                         .and(qSalesOrderItem.merchantId.eq(merchantId)))
                 .orderBy(qSalesOrderItem.id.asc()).fetch();
         List<SalesOrderItemDto> salesOrderItemDTOS = new ArrayList<>();
+        Set<Long> productIds = new HashSet<>();
         fetch.forEach(tuple -> {
             SalesOrderItemDto salesOrderItemDTO = BeanUtil.toBean(tuple.get(qSalesOrderItem), SalesOrderItemDto.class);
             salesOrderItemDTO.setProductName(tuple.get(qProduct.name));
             salesOrderItemDTO.setProductCode(tuple.get(qProduct.code));
             salesOrderItemDTO.setUnitName(tuple.get(qUnit.name));
+            //老数据兜底业务单位字段 + 业务单位名（旧行无业务单位则回落基本单位）
+            fillUnitFallback(salesOrderItemDTO);
+            String secondaryName = tuple.get(qUnitSec.name);
+            if (salesOrderItemDTO.getSecondaryUnitId() != null && StrUtil.isNotBlank(secondaryName)) {
+                salesOrderItemDTO.setSecondaryUnitName(secondaryName);
+            } else {
+                salesOrderItemDTO.setSecondaryUnitName(tuple.get(qUnit.name));
+            }
+            if (salesOrderItemDTO.getProductId() != null) {
+                productIds.add(salesOrderItemDTO.getProductId());
+            }
             salesOrderItemDTOS.add(salesOrderItemDTO);
         });
+        // 回填商品可用单位列表（基本单位在前，unitPrice=该行基本单价），订单行"销售单位"下拉可切换
+        Map<Long, List<AuxiliaryUnitPrice>> unitMap = productAuxiliaryUnitService.loadAuxUnits(productIds, merchantId);
+        for (SalesOrderItemDto row : salesOrderItemDTOS) {
+            row.setAuxiliaryUnitPrices(ProductAuxiliaryUnitService.withBase(
+                    row.getBaseUnitId(), row.getUnitName(), row.getUnitPrice(), unitMap.get(row.getProductId())));
+        }
         dto.setSalesOrderItemList(salesOrderItemDTOS);
         dto.setPurchaseStatusText(getPurchaseStatusText(dto.getPurchaseStatus()));
         return dto;
@@ -470,21 +536,115 @@ public class SalesOrderService extends BaseService {
             dto.setPurchaseStatusText(getPurchaseStatusText(dto.getPurchaseStatus()));
             dtos.add(dto);
         });
+        fillOutBoundQuantity(dtos);
         return new PageResults<>(dtos, page, totalSize);
     }
 
     /**
-     * 选中销售订单后，生成可出库明细（数量为剩余可出库数量）
+     * 选源单列表：按订单头汇总 商品数量 / 已出库 / 已退货 / 可出库
+     * 口径与 {@link #calcOutAndReturnQuantity} 及 {@link #loadToOutbound} 完全一致：
+     * 可出库 = 逐明细 (订单数量 + 已退货 - 已出库) 取正后求和，避免跨行正负抵消。
+     */
+    private void fillOutBoundQuantity(List<SalesOrderDto> dtos) {
+        if (dtos == null || dtos.isEmpty()) {
+            return;
+        }
+        List<Long> orderIds = new ArrayList<>();
+        for (SalesOrderDto dto : dtos) {
+            if (dto.getId() != null) {
+                orderIds.add(dto.getId());
+            }
+        }
+        if (orderIds.isEmpty()) {
+            return;
+        }
+
+        // 订单明细数量：orderItemId -> (订单id, 数量)
+        Map<Long, Long> orderIdByItem = new HashMap<>();
+        Map<Long, BigDecimal> orderQtyByItem = new HashMap<>();
+        List<Tuple> items = bqf.select(qSalesOrderItem.salesOrderId, qSalesOrderItem.id, qSalesOrderItem.quantity)
+                .from(qSalesOrderItem)
+                .where(qSalesOrderItem.salesOrderId.in(orderIds))
+                .fetch();
+        for (Tuple tuple : items) {
+            Long itemId = tuple.get(qSalesOrderItem.id);
+            Long salesOrderId = tuple.get(qSalesOrderItem.salesOrderId);
+            if (itemId == null || salesOrderId == null) {
+                continue;
+            }
+            orderIdByItem.put(itemId, salesOrderId);
+            orderQtyByItem.put(itemId, tuple.get(qSalesOrderItem.quantity) == null
+                    ? BigDecimal.ZERO : tuple.get(qSalesOrderItem.quantity));
+        }
+
+        // 出库明细 + 关联退货明细（行语义与 calcOutAndReturnQuantity 相同：一条出库行配多条退货行时，出库量随行重复）
+        Map<Long, BigDecimal> outByItem = new HashMap<>();
+        Map<Long, BigDecimal> returnByItem = new HashMap<>();
+        List<Tuple> rows = bqf.select(qSalesOutboundItem.tempId, qSalesOutboundItem.quantity, qsalesReturnItem.quantity)
+                .from(qSalesOutboundItem)
+                .leftJoin(qsalesReturnItem)
+                .on(qsalesReturnItem.salesOutboundId.eq(qSalesOutboundItem.salesOutboundId)
+                        .and(qsalesReturnItem.outItemId.eq(qSalesOutboundItem.id)))
+                .where(qSalesOutboundItem.salesOrderId.in(orderIds))
+                .fetch();
+        for (Tuple tuple : rows) {
+            Long itemId = tuple.get(qSalesOutboundItem.tempId);
+            if (itemId == null || !orderIdByItem.containsKey(itemId)) {
+                continue;
+            }
+            BigDecimal out = tuple.get(qSalesOutboundItem.quantity) == null
+                    ? BigDecimal.ZERO : tuple.get(qSalesOutboundItem.quantity);
+            BigDecimal ret = tuple.get(qsalesReturnItem.quantity) == null
+                    ? BigDecimal.ZERO : tuple.get(qsalesReturnItem.quantity);
+            outByItem.merge(itemId, out, BigDecimal::add);
+            returnByItem.merge(itemId, ret, BigDecimal::add);
+        }
+
+        // 按订单汇总
+        Map<Long, BigDecimal[]> agg = new HashMap<>(); // [商品数量, 已出库, 已退货, 可出库]
+        for (Map.Entry<Long, Long> entry : orderIdByItem.entrySet()) {
+            Long itemId = entry.getKey();
+            Long salesOrderId = entry.getValue();
+            BigDecimal orderQty = orderQtyByItem.getOrDefault(itemId, BigDecimal.ZERO);
+            BigDecimal outQty = outByItem.getOrDefault(itemId, BigDecimal.ZERO);
+            BigDecimal returnQty = returnByItem.getOrDefault(itemId, BigDecimal.ZERO);
+            BigDecimal remain = orderQty.add(returnQty).subtract(outQty);
+            BigDecimal[] a = agg.computeIfAbsent(salesOrderId, k -> new BigDecimal[4]);
+            a[0] = nvl(a[0]).add(orderQty);
+            a[1] = nvl(a[1]).add(outQty);
+            a[2] = nvl(a[2]).add(returnQty);
+            if (remain.compareTo(BigDecimal.ZERO) > 0) {
+                a[3] = nvl(a[3]).add(remain);
+            }
+        }
+        for (SalesOrderDto dto : dtos) {
+            BigDecimal[] a = agg.get(dto.getId());
+            dto.setOrderQuantity(a == null ? BigDecimal.ZERO : nvl(a[0]));
+            dto.setOutQuantity(a == null ? BigDecimal.ZERO : nvl(a[1]));
+            dto.setReturnQuantity(a == null ? BigDecimal.ZERO : nvl(a[2]));
+            dto.setRemainQuantity(a == null ? BigDecimal.ZERO : nvl(a[3]));
+        }
+    }
+
+    private static BigDecimal nvl(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
+    }
+
+    /**
+     * 选中销售订单后，生成可出库明细（数量为剩余可出库基本数量）。
+     * 业务单位按订单单位启发折算：剩余基本量能被换算率整除则维持订单"销售单位"，否则回落到基本单位。
      */
     public List<SalesOutboundItemDto> loadToOutbound(List<Long> orderIds, Long merchantId, Long customerId) {
         if (CollectionUtils.isEmpty(orderIds)) {
             return new ArrayList<>();
         }
+        QUnit qUnitSec = new QUnit("unitSec");
         List<Tuple> rows = bqf.selectFrom(qSalesOrderItem)
-                .select(qSalesOrderItem, qSalesOrder.orderNo, qProduct.code, qProduct.name, qUnit.name)
+                .select(qSalesOrderItem, qSalesOrder.orderNo, qProduct.code, qProduct.name, qUnit.name, qUnitSec.name)
                 .leftJoin(qSalesOrder).on(qSalesOrder.id.eq(qSalesOrderItem.salesOrderId))
                 .leftJoin(qProduct).on(qProduct.id.eq(qSalesOrderItem.productId).and(qProduct.merchantId.eq(merchantId)))
                 .leftJoin(qUnit).on(qUnit.id.eq(qSalesOrderItem.baseUnitId).and(qUnit.merchantId.eq(merchantId)))
+                .leftJoin(qUnitSec).on(qUnitSec.id.eq(qSalesOrderItem.secondaryUnitId).and(qUnitSec.merchantId.eq(merchantId)))
                 .where(qSalesOrderItem.salesOrderId.in(orderIds)
                         .and(qSalesOrderItem.merchantId.eq(merchantId))
                         .and(qSalesOrder.customerId.eq(customerId))
@@ -494,6 +654,7 @@ public class SalesOrderService extends BaseService {
                 .fetch();
 
         List<SalesOutboundItemDto> result = new ArrayList<>();
+        Set<Long> productIds = new HashSet<>();
         for (Tuple tuple : rows) {
             SalesOrderItem item = tuple.get(qSalesOrderItem);
             BigDecimal[] outAndReturn = calcOutAndReturnQuantity(item.getSalesOrderId(), item.getId());
@@ -511,6 +672,24 @@ public class SalesOrderService extends BaseService {
             dto.setProductName(tuple.get(qProduct.name));
             dto.setUnitName(tuple.get(qUnit.name));
             dto.setQuantity(remain);
+            // 默认单位启发：剩余基本数量能被换算率整除 → 维持订单"销售单位"；否则回落到基本单位
+            BigDecimal rate = UnitConvert.rate(item.getConversionRate());
+            boolean keepOrderUnit = item.getSecondaryUnitId() != null && UnitConvert.isWholeSecondary(remain, rate);
+            if (keepOrderUnit) {
+                dto.setSecondaryUnitId(item.getSecondaryUnitId());
+                dto.setSecondaryUnitName(tuple.get(qUnitSec.name));
+                dto.setConversionRate(rate);
+                dto.setSecondaryQuantity(UnitConvert.toSecondaryQty(remain, rate));
+                dto.setSecondaryPrice(item.getSecondaryPrice() != null ? item.getSecondaryPrice()
+                        : UnitConvert.secondaryPrice(item.getUnitPrice(), rate));
+            } else {
+                dto.setSecondaryUnitId(item.getBaseUnitId());
+                dto.setSecondaryUnitName(tuple.get(qUnit.name));
+                dto.setConversionRate(BigDecimal.ONE);
+                dto.setSecondaryQuantity(remain);
+                dto.setSecondaryPrice(UnitConvert.nvl(item.getUnitPrice()));
+            }
+            // 金额沿用基本口径：小计/折扣 = 基本数量 × 基本单价（业务量×业务价恒等）
             BigDecimal unitPrice = item.getUnitPrice() == null ? BigDecimal.ZERO : item.getUnitPrice();
             BigDecimal discountRate = item.getDiscountRate() == null ? BigDecimal.ZERO : item.getDiscountRate();
             BigDecimal qty = remain;
@@ -520,7 +699,16 @@ public class SalesOrderService extends BaseService {
                     .setScale(2, java.math.RoundingMode.HALF_UP);
             dto.setDiscountValue(discountValue);
             dto.setSubtotal(subtotal);
+            if (dto.getProductId() != null) {
+                productIds.add(dto.getProductId());
+            }
             result.add(dto);
+        }
+        // 回填商品可用单位列表（基本单位在前，unitPrice=该行基本单价），出库行"销售单位"下拉可切换
+        Map<Long, List<AuxiliaryUnitPrice>> unitMap = productAuxiliaryUnitService.loadAuxUnits(productIds, merchantId);
+        for (SalesOutboundItemDto dto : result) {
+            dto.setAuxiliaryUnitPrices(ProductAuxiliaryUnitService.withBase(
+                    dto.getBaseUnitId(), dto.getUnitName(), dto.getUnitPrice(), unitMap.get(dto.getProductId())));
         }
         return result;
     }

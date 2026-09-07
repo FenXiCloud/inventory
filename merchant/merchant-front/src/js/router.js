@@ -264,6 +264,12 @@ const groupRoutes = [
     )
   },
   {
+    name: 'SalesReturnDetail',
+    component: defineAsyncComponent(() =>
+      import('@views/sales/SalesReturnDetail.vue')
+    )
+  },
+  {
     name: 'SalesOutboundList',
     component: defineAsyncComponent(() =>
       import('@views/sales/SalesOutboundList.vue')

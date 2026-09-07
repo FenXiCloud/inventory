@@ -107,7 +107,7 @@
               v-model="row.secondaryQuantity"
               theme="normal"
               :min="0"
-              :decimal-places="2"
+              :decimal-places="qtyDp"
               style="width: 100%"
               @blur="updateQuantity(row)"
             />
@@ -120,7 +120,7 @@
               v-model="row.secondaryPrice"
               theme="normal"
               :min="0"
-              :decimal-places="2"
+              :decimal-places="priceDp"
               style="width: 100%"
               @keyup="handleEnter($event, rowIndex, 4)"
               @blur="updatePrice(row)"
@@ -210,12 +210,12 @@
       <div>
         <!-- 待审核状态：保存、审核 -->
         <template v-if="!isReadOnly">
-          <t-button theme="primary" @click="saveOrder('add')" :loading="loading">
+          <t-button theme="primary" v-auth="'salesReservation:edit'" @click="saveOrder('add')" :loading="loading">
             保存并新增
           </t-button>
-          <t-button @click="saveOrder('save')" :loading="loading"> 保存 </t-button>
+          <t-button v-auth="'salesReservation:edit'" @click="saveOrder('save')" :loading="loading"> 保存 </t-button>
         </template>
-        <t-button @click="approved()" :loading="loading" v-if="form.id && form.orderStatus === '已保存'">
+        <t-button @click="approved()" :loading="loading" v-if="$can('salesReservation:audit') && form.id && form.orderStatus === '已保存'">
           审核
         </t-button>
         <!-- 已审核状态：转进货预订、转销售单 -->
@@ -229,7 +229,7 @@
         </t-button>
         <!-- 反审核（仅已审核且未转进货时） -->
         <t-button @click="unApproved()" :loading="loading"
-          v-if="form.id && form.orderStatus === '已审核' && !isConvertedToPurchase">
+          v-if="$can('salesReservation:audit') && form.id && form.orderStatus === '已审核' && !isConvertedToPurchase">
           反审核
         </t-button>
       </div>

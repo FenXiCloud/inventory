@@ -83,6 +83,23 @@
         <template #productCategoryName="{ row }">
           {{ productList.find(item => item.id === row.productId)?.productCategoryName || '-' }}
         </template>
+        <template #secondaryUnitName="{ row }">
+          <!-- 多单位商品：退货单位下拉，可切换 -->
+          <template v-if="!row.isNew && !isAudited && (row.auxiliaryUnitPrices || []).length">
+            <t-select
+                :clearable="false"
+                v-model="row.secondaryUnitId"
+                :options="row.auxiliaryUnitPrices"
+                filterable
+                @change="onUnitChange(row, $event)"
+                :keys="{ value: 'unitId', label: 'unitName' }"
+            />
+          </template>
+          <span v-else-if="!row.isNew">{{ row.secondaryUnitName || row.unitName }}</span>
+        </template>
+        <template #baseUnitName="{ row }">
+          <span v-if="!row.isNew">{{ row.unitName }}</span>
+        </template>
         <template #warehouse="{ row }">
           <template v-if="!row.isNew && !isAudited">
             <t-select
@@ -95,21 +112,20 @@
           </template>
           <span v-else-if="!row.isNew">{{ warehouseName(row.warehouseId) }}</span>
         </template>
-        <template #quantity="{ row, rowIndex }">
+        <template #secondaryQuantity="{ row, rowIndex }">
           <t-input-number
               v-if="!row.isNew && !isAudited"
               :id="'r'+rowIndex+''+3"
-              v-model="row.quantity"
+              v-model="row.secondaryQuantity"
               theme="normal"
               :min="0"
-              :max="row.returnQuantity"
-              :decimal-places="2"
+              :decimal-places="qtyDp"
               style="width: 100%"
               @blur="updateQuantity(row)"
           />
-          <span v-else-if="!row.isNew">{{ row.quantity }}</span>
+          <span v-else-if="!row.isNew">{{ row.secondaryQuantity }}</span>
         </template>
-        <template #unitPrice="{ row, rowIndex }">
+        <template #secondaryPrice="{ row, rowIndex }">
           <template v-if="!row.isNew && !isAudited">
             <t-tooltip theme="light">
               <template #content>
@@ -134,17 +150,17 @@
               </template>
               <t-input-number
                   :id="'r'+rowIndex+''+4"
-                  v-model="row.unitPrice"
+                  v-model="row.secondaryPrice"
                   theme="normal"
                   :min="0"
-                  :decimal-places="2"
+                  :decimal-places="priceDp"
                   style="width: 100%"
                   @blur="updatePrice(row)"
                   @focus="showPrice(row)"
               />
             </t-tooltip>
           </template>
-          <span v-else-if="!row.isNew">{{ row.unitPrice }}</span>
+          <span v-else-if="!row.isNew">{{ row.secondaryPrice }}</span>
         </template>
         <template #discountRate="{ row, rowIndex }">
           <t-input-number
@@ -244,11 +260,11 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading">取消</t-button>
       <div>
-        <t-button theme="primary" v-if="!isAudited" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
-        <t-button v-if="!isAudited" @click="saveOrder('save')" :loading="loading">保存</t-button>
+        <t-button theme="primary" v-if="!isAudited" v-auth="'salesReturn:edit'" @click="saveOrder('add')" :loading="loading">保存并新增</t-button>
+        <t-button v-if="!isAudited" v-auth="'salesReturn:edit'" @click="saveOrder('save')" :loading="loading">保存</t-button>
         <t-button @click="doPrint" :loading="loading">打印</t-button>
-        <t-button v-if="form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
-        <t-button v-if="isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
+        <t-button v-if="$can('salesReturn:audit') && form.id && !isAudited" @click="approved()" :loading="loading">审核</t-button>
+        <t-button v-if="$can('salesReturn:audit') && isAudited" @click="backApproved()" :loading="loading">反审核</t-button>
       </div>
     </div>
   </div>
@@ -257,6 +273,7 @@
 import {LoadingPlugin, MessagePlugin} from "tdesign-vue-next";
 import {DialogPlugin} from '@common/dialog-plugin';
 import {openPrint} from '@common/print';
+import {switchUnit} from '@common/unit';
 import manba from "manba";
 import Customer from "@js/api/basic/Customer";
 import Warehouse from "@js/api/basic/Warehouse";
@@ -278,6 +295,10 @@ function newRow(extra = {}) {
 export default {
   name: "SalesReturnForm",
   components: {Stamp},
+  props: {
+    type: String,
+    orderId: [String, Number],
+  },
   computed: {
     ...mapState(['accountBook']),
     isAudited() {
@@ -305,19 +326,20 @@ export default {
           foot: () => '合计'
         },
         { colKey: 'imgPath', title: '产品图片', width: 100 },
-        { colKey: 'productCode', title: '产品编码', width: 240 },
-        { colKey: 'productInfo', title: '产品信息', width: 180, align: 'center' },
-        { colKey: 'specification', title: '规格型号', align: 'center', width: 100 },
-        { colKey: 'productCategoryName', title: '产品类别', align: 'center', width: 100 },
-        { colKey: 'warehouse', title: '仓库', align: 'center', width: 180 },
-        { colKey: 'quantity', title: '数量', width: 90 },
-        { colKey: 'unitName', title: '单位', align: 'center', width: 80 },
-        { colKey: 'unitPrice', title: '单价', width: 100 },
+        { colKey: 'productInfo', title: '产品信息', minWidth: 300 },
+        { colKey: 'secondaryUnitName', title: '退货单位', align: 'center', width: 100 },
+        { colKey: 'productCategoryName', title: '产品类别', align: 'center', width: 80 },
+        { colKey: 'specification', title: '规格型号', align: 'center', width: 80 },
+        { colKey: 'warehouse', title: '仓库', align: 'center', width: 120 },
+        { colKey: 'secondaryQuantity', title: '退货数量', width: 90 },
+        { colKey: 'baseUnitName', title: '基本单位', align: 'center', width: 80 },
+        { colKey: 'quantity', title: '基本数量', width: 90 },
+        { colKey: 'secondaryPrice', title: '退货单价', width: 100 },
         { colKey: 'discountRate', title: '折扣率(%)', width: 100 },
         { colKey: 'discountValue', title: '折扣额', width: 100 },
-        { colKey: 'subtotal', title: '金额', width: 100 },
-        { colKey: 'remark', title: '备注', width: 200 },
-        { colKey: 'salesOutboundNo', title: '关联销售出库单号', width: 200, align: 'center' },
+        { colKey: 'subtotal', title: '退货金额', width: 100 },
+        { colKey: 'remark', title: '备注', width: 160 },
+        { colKey: 'salesOutboundNo', title: '关联销售出库单号', width: 180, align: 'center' },
       ];
     },
     footData() {
@@ -368,8 +390,6 @@ export default {
       },
       productData: [],
       selectSalesOutboundIdList: [],
-      orderId: null,
-      type: null,
       recentSales: [],
     }
   },
@@ -449,16 +469,32 @@ export default {
         if (product) {
           row.productName = product.name;
           row.productCode = product.code;
+          row.baseUnitId = row.baseUnitId || product.unitId;
+          row.unitName = product.unitName || (unitMap.get(row.baseUnitId)?.name || '');
+          // 单位下拉选项来自商品档案（基本单位在前），服务端 select 已回填
+          row.auxiliaryUnitPrices = product.auxiliaryUnitPrices || null;
+        } else if (unitMap.get(row.baseUnitId)) {
+          row.unitName = unitMap.get(row.baseUnitId).name;
         }
-        const unit = unitMap.get(row.baseUnitId);
-        if (unit) {
-          row.unitName = unit.name;
-        }
+        // 默认按出库行的业务单位/业务数量/业务价退回，保持金额口径与源出库行一致
+        const rate = Number(row.conversionRate) || 1;
+        row.secondaryUnitId = row.secondaryUnitId || row.baseUnitId;
+        row.secondaryUnitName = row.secondaryUnitName
+            || (row.auxiliaryUnitPrices || []).find(u => String(u.unitId) === String(row.secondaryUnitId))?.unitName
+            || (unitMap.get(row.secondaryUnitId)?.name)
+            || row.unitName;
+        row.secondaryQuantity = row.secondaryQuantity != null ? Number(row.secondaryQuantity) : Number(row.quantity);
+        row.secondaryPrice = row.secondaryPrice != null ? Number(row.secondaryPrice)
+            : (rate ? Number((Number(row.unitPrice) * rate).toFixed(2)) : Number(row.unitPrice));
+        row.unitPrice = row.unitPrice != null ? Number(row.unitPrice)
+            : (rate ? Number((Number(row.secondaryPrice) / rate).toFixed(2)) : Number(row.secondaryPrice));
+        row.quantity = row.quantity != null ? Number(row.quantity)
+            : Number((Number(row.secondaryQuantity) * rate).toFixed(2));
+        row.discountRate = Number(row.discountRate) || 0;
+        // 可退上限（基本口径）＝该出库行基本数量
+        row.returnQuantity = row.returnQuantity != null ? Number(row.returnQuantity) : row.quantity;
         row.outItemId = row.id;
         row.id = null;
-        if (row.returnQuantity == null) {
-          row.returnQuantity = row.quantity;
-        }
       });
       this.productData = this.applyDefaultWarehouse(itemList).map((row) => newRow({ ...row, isNew: false }));
       this.selectSalesOutboundIdList = params.selectSalesOutboundIdList || [];
@@ -478,9 +514,17 @@ export default {
     selectProduct(value, index) {
       const d = (this.productList || []).find((item) => String(item.id) === String(value));
       if (!d) return;
-      const unitPrice = d.lastSalePrice || 0;
+      const unitPrice = d.lastSalePrice || 0; // 基本单位销售价（Product.select 已统一返回基本单价）
       let g = newRow({
         isNew: false,
+        // 业务口径：默认按基本单位、基本价录入；多单位商品默认退到基本单位
+        conversionRate: 1,
+        secondaryUnitId: d.unitId,
+        secondaryUnitName: d.unitName,
+        secondaryQuantity: 1,
+        secondaryPrice: unitPrice,
+        auxiliaryUnitPrices: d.auxiliaryUnitPrices || null,
+        // 基本口径（服务端权威，前端同步）
         quantity: 1,
         unitPrice: unitPrice,
         warehouseId: this.resolveDefaultWarehouseId(),
@@ -523,8 +567,8 @@ export default {
       let subtotalFlag = false;
       let warehouseFlag = false;
       productData.forEach(item => {
-        if (item.quantity === 0 || !item.quantity) quantityFlag = true;
-        if (item.unitPrice === 0 || !item.unitPrice) unitPriceFlag = true;
+        if (item.secondaryQuantity === 0 || !item.secondaryQuantity) quantityFlag = true;
+        if (item.secondaryPrice === 0 || !item.secondaryPrice) unitPriceFlag = true;
         if (item.subtotal === 0 || !item.subtotal) subtotalFlag = true;
         if (!item.warehouseId) warehouseFlag = true;
       });
@@ -643,18 +687,43 @@ export default {
     },
     updateQuantity(item) {
       if (!item.productId) return;
-      item.quantity = item.quantity || 1;
-      if (item.returnQuantity != null && Number(item.quantity) > Number(item.returnQuantity)) {
-        item.quantity = item.returnQuantity;
-      }
-      item.subtotal = ((item.quantity * item.unitPrice * (100 - item.discountRate)) / 100).toFixed(2);
-      item.discountValue = (((item.quantity * item.unitPrice) * item.discountRate) / 100).toFixed(2);
+      item.secondaryQuantity = item.secondaryQuantity || 1;
+      this.recalcRow(item);
     },
     updatePrice(item) {
       if (!item.productId) return;
-      item.unitPrice = item.unitPrice || 0.00;
-      item.discountValue = (item.unitPrice * item.quantity * item.discountRate / 100).toFixed(2);
-      item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);
+      item.secondaryPrice = item.secondaryPrice || 0.00;
+      this.recalcRow(item);
+    },
+    onUnitChange(row, value) {
+      // 切换退货单位：按基本单价等比换算（switchUnit），业务价/基本量/小计随率更新
+      const item = (row.auxiliaryUnitPrices || []).find((u) => String(u.unitId) === String(value));
+      if (item) {
+        switchUnit(row, item);
+        // switchUnit 写的是采购口径 discountAmount，销售明细用 discountValue
+        row.discountValue = Number(row.discountAmount) || 0;
+        delete row.discountAmount;
+        this.recalcRow(row);
+      }
+    },
+    recalcRow(item) {
+      // 若该行来自源销售出库：业务数量不得超过可退上限（上限为基本口径，按当前单位折算）
+      if (item.returnQuantity != null) {
+        const maxBase = Number(item.returnQuantity) || 0;
+        const rateC = Number(item.conversionRate) || 1;
+        const sqC = Number(item.secondaryQuantity) || 0;
+        if (rateC && sqC * rateC > maxBase + 1e-9) {
+          item.secondaryQuantity = Math.floor((maxBase / rateC) * 10000) / 10000;
+        }
+      }
+      const sq = Number(item.secondaryQuantity) || 0;
+      const sp = Number(item.secondaryPrice) || 0;
+      const rate = Number(item.conversionRate) || 1;
+      const dr = Number(item.discountRate) || 0;
+      item.quantity = Number((sq * rate).toFixed(4));
+      if (rate) item.unitPrice = Number((sp / rate).toFixed(2));
+      item.discountValue = Number((sq * sp * dr / 100).toFixed(2));
+      item.subtotal = Number((sq * sp * (100 - dr) / 100).toFixed(2));
     },
     showPrice(row) {
       let productId = row.productId;
@@ -671,18 +740,23 @@ export default {
     },
     updateDiscount(item) {
       item.discountRate = item.discountRate || 0.00;
-      item.subtotal = ((item.quantity || 0) * item.unitPrice * (100 - item.discountRate || 0) / 100).toFixed(2);
-      item.discountValue = ((item.quantity || 0) * item.unitPrice - item.subtotal).toFixed(2);
+      this.recalcRow(item);
     },
     updateDiscountAmount(item) {
       item.discountValue = item.discountValue || 0.00;
-      item.discountRate = (((item.discountValue / (item.unitPrice * item.quantity)) * 100) || 0).toFixed(2);
-      item.subtotal = (item.unitPrice * item.quantity - item.discountValue).toFixed(2);
+      const sq = Number(item.secondaryQuantity) || 0;
+      const sp = Number(item.secondaryPrice) || 0;
+      item.discountRate = (((item.discountValue / (sp * sq)) * 100) || 0);
+      this.recalcRow(item);
     },
     updateFinalAmount(item) {
-      item.subtotal = item.subtotal || 0;
-      item.unitPrice = ((item.subtotal) / ((100 - item.discountRate)) * 100 / item.quantity).toFixed(2);
-      item.discoutPrice = (item.unitPrice - item.subtotal).toFixed(2);
+      // 折后金额反推业务单价：折前业务金额 = 小计 ÷ (100-折扣率)%
+      item.subtotal = Number(item.subtotal) || 0;
+      const dr = Number(item.discountRate) || 0;
+      const sq = Number(item.secondaryQuantity) || 1;
+      const pre = dr < 100 ? item.subtotal * 100 / (100 - dr) : item.subtotal;
+      item.secondaryPrice = Number((pre / sq).toFixed(2));
+      this.recalcRow(item);
     },
     updateCustomerAmount() {
       this.form.refundAmount = (this.form.finalAmount - this.form.customerAmount).toFixed(2);
@@ -727,9 +801,20 @@ export default {
       this.$store.commit('closeTabKey', this.$store.state.currentTab);
       this.$store.commit('newTab', "SalesReturnList");
       this.$nextTick(() => {
-        this.$store.commit('SET_TAB_DATA_RETURN', {refresh: true});
+        this.$store.commit('SET_TAB_DATA', {refresh: true});
       });
     },
+  },
+  watch: {
+    'productData': {
+      handler(newVal) {
+        // 业务数量/单价/折扣变化时，同步基本数量/基本单价并计算折扣额、小计（含可退上限折算）
+        newVal.forEach(row => {
+          if (!row.isNew && row.productId) this.recalcRow(row);
+        });
+      },
+      deep: true
+    }
   },
   created() {
     LoadingPlugin(true);
@@ -747,10 +832,6 @@ export default {
         item.customName = `${item.code}--${item.name}`;
       });
       this.warehouseId = this.warehouseList.find(val => val.systemDefault || val.isDefault)?.id;
-      const tabData = this.$store.state.currentTabDataReturn;
-      this.$store.commit('SET_TAB_DATA_RETURN', null);
-      this.type = tabData?.type;
-      this.orderId = tabData?.orderId;
       if (this.orderId) {
         SalesReturn.load(this.orderId).then(response => {
           let salesReturn = response.data;

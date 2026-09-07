@@ -2,11 +2,11 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button style="border-radius: 4px" @click="showImportForm()">导 入</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="batchDelete()">批量删除</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
+        <t-button theme="primary" style="border-radius: 4px" v-auth="'salesOrder:edit'" @click="addForm()">新 增</t-button>
+        <t-button style="border-radius: 4px" v-auth="'salesOrder:edit'" @click="showImportForm()">导 入</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'salesOrder:audit'" @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'salesOrder:delete'" @click="batchDelete()">批量删除</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'salesOrder:audit'" @click="backApproved()">反审核</t-button>
         <t-select
             v-model="params.state"
             :options="stateOptions"
@@ -64,14 +64,14 @@
         <template #ops="{ row }">
           <t-space size="small">
             <template v-if="row.orderStatus === '已保存'">
-              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
-              <t-link theme="primary" @click="doRemove(row)">删除</t-link>
+              <t-link theme="primary" v-auth="'salesOrder:edit'" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link theme="primary" v-auth="'salesOrder:delete'" @click="doRemove(row)">删除</t-link>
             </template>
             <t-dropdown :min-column-width="110" @click="(item) => onMore(item, row)">
               <t-link theme="primary">更多</t-link>
               <template #dropdown>
                 <t-dropdown-menu>
-                  <t-dropdown-item v-if="row.orderStatus === '已保存'" value="approve">审核</t-dropdown-item>
+                  <t-dropdown-item v-if="$can('salesOrder:audit') && row.orderStatus === '已保存'" value="approve">审核</t-dropdown-item>
                   <t-dropdown-item v-if="row.orderStatus === '已保存'" value="cancel">取消</t-dropdown-item>
                   <t-dropdown-item v-if="row.orderStatus === '已审核' && row.status !== 2" value="toOutbound">转出库单</t-dropdown-item>
                   <t-dropdown-item value="detail">详情</t-dropdown-item>

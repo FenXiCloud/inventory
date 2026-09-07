@@ -90,6 +90,7 @@
           bordered
           stripe
           hover
+          resizable
           height="100%"
           table-layout="fixed"
           :data="dataList"
@@ -188,6 +189,9 @@ export default {
         {colKey: 'quantity', title: '数量', width: 90, align: 'right'},
         {colKey: 'unitPrice', title: '单价', width: 90, align: 'right'},
         {colKey: 'subtotal', title: '销售收入', width: 110, align: 'right'},
+        {colKey: 'returnQuantity', title: '退货数量', width: 100, align: 'right'},
+        {colKey: 'returnAmount', title: '退货金额', width: 110, align: 'right'},
+        {colKey: 'returnOrderNos', title: '关联退货单', minWidth: 150, ellipsis: true},
       ]
     }
   },

@@ -18,6 +18,7 @@
           size="medium"
           bordered
           hover
+          resizable
           height="100%"
           table-layout="fixed"
           :data="dataList"
@@ -33,6 +34,18 @@
 import InventoryReport from '@js/api/inventory/InventoryReport';
 import { export_json_to_excel } from '@js/excel/export2Excel';
 import { MessagePlugin } from 'tdesign-vue-next';
+import { fmtQty, fmtPrice, fmtMoney } from '@common/number';
+
+// 报表列精度口径：数量随账套 qtyDp、均价类随 priceDp、金额恒2位；未列入的键（天数/种类数等整数）原样显示
+const QTY_KEYS = new Set([
+  'currentQuantity', 'alertQuantity', 'shortageQuantity', 'maxStockQuantity', 'excessQuantity',
+  'quantity', 'onOrderQuantity', 'reservedQuantity', 'availableQuantity',
+  'lossQuantity', 'gainQuantity', 'netQuantity',
+]);
+const PRICE_KEYS = new Set(['averageCost']);
+const MONEY_KEYS = new Set(['totalCost', 'lossAmount', 'gainAmount', 'netAmount']);
+const kindOf = (k) => (QTY_KEYS.has(k) ? 'qty' : PRICE_KEYS.has(k) ? 'price' : MONEY_KEYS.has(k) ? 'money' : null);
+const fmtOf = (kind) => (kind === 'qty' ? fmtQty : kind === 'price' ? fmtPrice : fmtMoney);
 
 const CONFIG = {
   warning: {
@@ -190,7 +203,10 @@ export default {
       return this.config.hint || '';
     },
     columns() {
-      return this.config.columns || [];
+      return (this.config.columns || []).map((c) => {
+        const kind = kindOf(c.colKey);
+        return kind ? { ...c, render: ({ row }) => fmtOf(kind)(row[c.colKey]) } : c;
+      });
     },
     footData() {
       const cols = this.columns || [];
@@ -203,7 +219,8 @@ export default {
             const v = Number(row[c.colKey]);
             return acc + (Number.isFinite(v) ? v : 0);
           }, 0);
-          foot[c.colKey] = Number(sum.toFixed(2));
+          const kind = kindOf(c.colKey);
+          foot[c.colKey] = kind ? fmtOf(kind)(sum) : Number(sum.toFixed(2));
           hasNumeric = true;
         }
       });

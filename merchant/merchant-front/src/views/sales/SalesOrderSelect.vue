@@ -31,7 +31,11 @@
           :loading="loading"
           :selected-row-keys="selectedRowKeys"
           @select-change="onSelectChange"
-      />
+      >
+        <template #remainQuantity="{ row }">
+          <span :class="{ 'qty-zero': Number(row.remainQuantity) <= 0 }">{{ fmtQty(row.remainQuantity) }}</span>
+        </template>
+      </t-table>
     </div>
     <div class="order-select__pager">
       <span class="order-select__total">合计金额：{{ amountTotal }}元</span>
@@ -80,6 +84,10 @@ export default {
         { colKey: 'orderNo', title: '订单编号', width: 200 },
         { colKey: 'outOrderNo', title: '关联销售出库单', width: 200 },
         { colKey: 'customerName', title: '客户', minWidth: 120 },
+        { colKey: 'orderQuantity', title: '商品数量', width: 100, align: 'right' },
+        { colKey: 'outQuantity', title: '已出库', width: 90, align: 'right' },
+        { colKey: 'returnQuantity', title: '已退货', width: 90, align: 'right' },
+        { colKey: 'remainQuantity', title: '可出库', width: 90, align: 'right' },
         { colKey: 'totalAmount', title: '销售金额', width: 120 },
         { colKey: 'discountAmount', title: '折扣金额', width: 120 },
         { colKey: 'finalAmount', title: '折后金额', width: 120 },
@@ -141,6 +149,11 @@ export default {
       });
       this.amountTotal = total.toFixed(2);
     },
+    fmtQty(v) {
+      const n = Number(v || 0);
+      if (!isFinite(n)) return '0';
+      return n.toFixed(2).replace(/\.?0+$/, '');
+    },
     doSearch() {
       this.pagination.page = 1;
       this.loadList();
@@ -196,7 +209,7 @@ export default {
   flex: 1 1 auto;
   min-height: 0;
   padding: 0 16px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .order-select__pager {
@@ -213,6 +226,11 @@ export default {
   font-size: 14px;
   color: #333;
   white-space: nowrap;
+}
+
+.qty-zero {
+  color: #d54941;
+  font-weight: 500;
 }
 
 .order-select__footer {

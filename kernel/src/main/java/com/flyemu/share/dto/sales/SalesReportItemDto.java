@@ -103,4 +103,13 @@ public class SalesReportItemDto {
     private BigDecimal profitAmount;
     private BigDecimal profitRate;
     private Integer rankNo;
+
+    @Comment("退货数量")
+    private BigDecimal returnQuantity;
+
+    @Comment("退货金额")
+    private BigDecimal returnAmount;
+
+    @Comment("关联退货单号")
+    private String returnOrderNos;
 }

@@ -55,6 +55,7 @@
           bordered
           stripe
           hover
+          resizable
           height="100%"
           table-layout="fixed"
           :data="dataList"

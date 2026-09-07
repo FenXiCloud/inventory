@@ -34,6 +34,18 @@
         <template #startDate="{ row }">
           {{ formatMonth(row.startDate) }}
         </template>
+        <template #costAccounting="{ row }">
+          {{ costMethodText(row.costAccounting) }}
+        </template>
+        <template #availableInventory="{ row }">
+          {{ allowNegativeText(row.availableInventory) }}
+        </template>
+        <template #quantityDecimal="{ row }">
+          {{ decimalText(row.quantityDecimal) }}
+        </template>
+        <template #priceDecimal="{ row }">
+          {{ decimalText(row.priceDecimal) }}
+        </template>
         <template #enabled="{ row }">
           <t-tag
               :theme="row.enabled ? 'primary' : 'danger'"
@@ -95,6 +107,10 @@ export default {
       },
       columns: [
         {colKey: 'name', title: '名称', minWidth: 150, ellipsis: true},
+        {colKey: 'costAccounting', title: '成本核算方法', width: 115, align: 'center'},
+        {colKey: 'availableInventory', title: '可用库存允许为负', width: 135, align: 'center'},
+        {colKey: 'quantityDecimal', title: '数量小数位', width: 95, align: 'center'},
+        {colKey: 'priceDecimal', title: '单价小数位', width: 95, align: 'center'},
         {colKey: 'startDate', title: '启用日期', width: 120},
         {colKey: 'enabled', title: '状态', width: 90, align: 'center'},
         {colKey: 'ops', title: '操作', width: 180, fixed: 'right', align: 'center'}
@@ -114,6 +130,16 @@ export default {
       if (!value) return '';
       const str = String(value);
       return str.length >= 7 ? str.substring(0, 7) : str;
+    },
+    // 未设置过参数时按账套参数默认值展示（移动平均法/不允许/2位）
+    costMethodText(value) {
+      return value === 2 ? '先进先出法' : '移动平均法';
+    },
+    allowNegativeText(value) {
+      return value === 1 ? '是' : '否';
+    },
+    decimalText(value) {
+      return value == null ? 2 : value;
     },
     showForm(accountBook) {
       let dialogId = openDialog({

@@ -70,5 +70,11 @@ public class AccountBookParameters implements Serializable {
      */
     private Date updateTime;
 
+    /**
+     * 成本核算方法「期间内切换」的用户确认标记（不落库，仅保存请求携带）
+     */
+    @Transient
+    private Boolean costMethodConfirmed;
+
 }
 

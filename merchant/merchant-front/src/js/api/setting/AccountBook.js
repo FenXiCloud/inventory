@@ -38,5 +38,13 @@ export default {
 	},
 	saveParameters(param) {
 		return Ajax.put('/accountBookParameters', param);
+	},
+	/* 成本法切换预览：期间起始日 + 本期间已审核出入库流水数（二次确认警告文案用） */
+	costSwitchPreview(accountBookId) {
+		return Ajax.get('/accountBookParameters/costSwitchPreview', {accountBookId});
+	},
+	/* 当前登录账套参数（含 costAccounting 成本核算方法） */
+	parameters() {
+		return Ajax.get('/accountBookParameters');
 	}
 };

@@ -100,6 +100,7 @@
       >
         <template #actualQuantity="{ row }">
           <div v-if="!isLocked" :id="`qty-${row._rowKey}`">
+            <!-- 盘点数量为整件口径（结余列为整数），恒0位、不随账套参数 -->
             <t-input-number
                 v-model="row.actualQuantity"
                 theme="normal"
@@ -149,14 +150,14 @@
       <t-button :loading="loading" @click="closeWindow">取消</t-button>
       <div class="stock-take-form__actions">
         <template v-if="!isAudited && !looked">
-          <t-button theme="primary" :loading="loading" @click="saveOrder('save')">保存</t-button>
-          <t-button theme="primary" variant="outline" :loading="loading" @click="saveAndApprove">
+          <t-button v-auth="'stockTake:edit'" theme="primary" :loading="loading" @click="saveOrder('save')">保存</t-button>
+          <t-button v-auth="'stockTake:edit'" theme="primary" variant="outline" :loading="loading" @click="saveAndApprove">
             保存并审核
           </t-button>
-          <t-button v-if="!form.id" variant="outline" :loading="loading" @click="saveOrder('add')">
+          <t-button v-if="!form.id" v-auth="'stockTake:edit'" variant="outline" :loading="loading" @click="saveOrder('add')">
             保存并新增
           </t-button>
-          <t-button v-if="form.id" :loading="loading" @click="approved">审核</t-button>
+          <t-button v-if="$can('stockTake:audit') && form.id" :loading="loading" @click="approved">审核</t-button>
           <t-button v-if="form.id" variant="outline" :loading="loading" @click="doPrint">打印</t-button>
         </template>
         <template v-else-if="isAudited">
@@ -190,7 +191,7 @@
             </span>
           </t-tooltip>
           <t-button variant="outline" :loading="loading" @click="doPrint">打印</t-button>
-          <t-button v-if="!looked" :loading="loading" @click="backApproved">反审核</t-button>
+          <t-button v-if="$can('stockTake:audit') && !looked" :loading="loading" @click="backApproved">反审核</t-button>
         </template>
         <template v-else>
           <t-button variant="outline" :loading="loading" @click="doPrint">打印</t-button>

@@ -41,6 +41,16 @@ public class SupplierFlowController {
         return JsonResult.successful(supplierFlowService.statement(page, queryDTO));
     }
 
+    @GetMapping("/statementSummary")
+    public JsonResult statementSummary(
+            @RequestParam Long supplierId,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startTime,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endTime, @SaAccountVal AccountDto accountDto) {
+        LocalDateTime startDateTime = startTime.atStartOfDay();
+        LocalDateTime endDateTime = endTime.atTime(LocalTime.MAX);
+        return JsonResult.successful(supplierFlowService.statementSummary(supplierId, startDateTime, endDateTime, accountDto.getMerchantId(), accountDto.getAccountBookId()));
+    }
+
     @GetMapping
     public JsonResult list(SupplierFlowService.Query query, @SaAccountVal AccountDto accountDto) {
         TenantScope.bind(query, accountDto);

@@ -39,7 +39,7 @@
     <section class="supplier-main">
       <div class="supplier-main__toolbar">
         <t-space break-line>
-          <t-button theme="primary" style="border-radius: 4px" @click="showSupplierForm()">新 增</t-button>
+          <t-button v-auth="'supplier:edit'" theme="primary" style="border-radius: 4px" @click="showSupplierForm()">新 增</t-button>
           <t-input
               v-model="params.filter"
               clearable
@@ -81,8 +81,8 @@
         >
           <template #ops="{ row }">
             <t-space size="small">
-              <t-link theme="primary" @click="showSupplierForm(row)"><t-icon name="edit"/></t-link>
-              <t-link theme="primary" @click="deleteSupplier(row)"><t-icon name="delete"/></t-link>
+              <t-link v-auth="'supplier:edit'" theme="primary" @click="showSupplierForm(row)"><t-icon name="edit"/></t-link>
+              <t-link v-auth="'supplier:delete'" theme="primary" @click="deleteSupplier(row)"><t-icon name="delete"/></t-link>
             </t-space>
           </template>
           <template #enabled="{ row }">
@@ -333,7 +333,7 @@ export default {
 .supplier-main__table {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .supplier-main__pager {

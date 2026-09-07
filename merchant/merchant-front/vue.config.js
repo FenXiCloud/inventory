@@ -19,6 +19,10 @@ module.exports = {
             '^/api': {
                 target: 'http://localhost:8410',
                 pathRewrite: {'^/api': ''}
+            },
+            // 上传后的附件/图片通过后端 /attachment/** 回读（如产品图片）
+            '^/attachment': {
+                target: 'http://localhost:8410'
             }
         }
     },

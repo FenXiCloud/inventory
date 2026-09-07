@@ -6,12 +6,14 @@ import com.flyemu.share.repository.sales.SalesOutboundRepository;
 import com.flyemu.share.repository.sales.SalesReturnItemRepository;
 import com.flyemu.share.repository.sales.SalesReturnRepository;
 import com.flyemu.share.common.TenantAware;
+import com.flyemu.share.common.UnitConvert;
 import cn.dev33.satoken.exception.InvalidContextException;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.flyemu.share.common.TenantFilters;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
+import com.flyemu.share.dto.AuxiliaryUnitPrice;
 import com.flyemu.share.dto.sales.SalesReturnDto;
 import com.flyemu.share.dto.sales.SalesReturnItemDto;
 import com.flyemu.share.entity.basic.*;
@@ -30,6 +32,7 @@ import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.basic.CustomerService;
 import com.flyemu.share.service.basic.PriceRecordService;
+import com.flyemu.share.service.basic.ProductAuxiliaryUnitService;
 import com.flyemu.share.service.inventory.CostingService;
 import com.flyemu.share.service.inventory.InventoryService;
 import com.flyemu.share.service.setting.CodeSeedService;
@@ -50,8 +53,10 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -85,6 +90,7 @@ public class SalesReturnService extends BaseService {
     private final InventoryService inventoryService;
     private final CostingService costingService;
     private final CustomerService customerService;
+    private final ProductAuxiliaryUnitService productAuxiliaryUnitService;
 
     public PageResults<SalesReturnDto> query(Page page, SalesReturnService.Query query) {
         long totalSize = bqf.selectFrom(qSalesReturn)
@@ -161,6 +167,8 @@ public class SalesReturnService extends BaseService {
                     .execute();
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    //服务端权威换算：基本数量 = 业务数量 × 换算率；基本单价 = 业务单价 ÷ 换算率
+                    normalizeUnit(item);
                     checkQuantity(item);
                     savePrice(item, update);
                     item.setSalesReturnId(update.getId());
@@ -179,6 +187,8 @@ public class SalesReturnService extends BaseService {
             SalesReturn save = salesReturnRepository.save(salesReturn);
             if (!CollectionUtils.isEmpty(salesReturnItemList)) {
                 salesReturnItemList.forEach(item -> {
+                    //服务端权威换算：基本数量 = 业务数量 × 换算率；基本单价 = 业务单价 ÷ 换算率
+                    normalizeUnit(item);
                     checkQuantity(item);
                     //保存价格记录
                     savePrice(item, save);
@@ -199,10 +209,12 @@ public class SalesReturnService extends BaseService {
                 for (SalesReturnItem item : salesReturnItemListTemp) {
                     //出库单id
                     Long outItemId = item.getOutItemId();
+                    if (outItemId == null) continue;
                     //出库单
                     SalesOutboundItem salesOutboundItem = salesOutboundItemRepository.getById(outItemId);
                     //订单id
                     Long tempId = salesOutboundItem.getTempId();
+                    if (tempId == null) continue;
                     //订单
                     SalesOrderItem salesOrderItem = salesOrderItemRepository.getReferenceById(tempId);
                     //修改订单退货数量
@@ -221,6 +233,43 @@ public class SalesReturnService extends BaseService {
             return save;
         }
 
+    }
+
+    /**
+     * 老数据兜底 + 服务端权威换算（保存时调用）：
+     * 基本数量 = 业务数量 × 换算率；基本单价 = 业务单价 ÷ 换算率。
+     */
+    private void normalizeUnit(SalesReturnItem d) {
+        if (d.getConversionRate() == null) {
+            d.setConversionRate(BigDecimal.ONE);
+        }
+        if (d.getSecondaryUnitId() == null) {
+            d.setSecondaryUnitId(d.getBaseUnitId());
+        }
+        if (d.getSecondaryQuantity() == null) {
+            d.setSecondaryQuantity(d.getQuantity());
+        }
+        if (d.getSecondaryPrice() == null) {
+            d.setSecondaryPrice(UnitConvert.secondaryPrice(d.getUnitPrice(), d.getConversionRate()));
+        }
+        d.setQuantity(UnitConvert.toBaseQty(d.getSecondaryQuantity(), d.getConversionRate()));
+        d.setUnitPrice(UnitConvert.unitPrice(d.getSecondaryPrice(), d.getConversionRate()));
+    }
+
+    /** load/详情回填：老数据兜底业务单位字段（不重算已持久化的基本数量/基本单价） */
+    private void fillUnitFallback(SalesReturnItemDto d) {
+        if (d.getConversionRate() == null) {
+            d.setConversionRate(BigDecimal.ONE);
+        }
+        if (d.getSecondaryUnitId() == null) {
+            d.setSecondaryUnitId(d.getBaseUnitId());
+        }
+        if (d.getSecondaryQuantity() == null) {
+            d.setSecondaryQuantity(d.getQuantity());
+        }
+        if (d.getSecondaryPrice() == null) {
+            d.setSecondaryPrice(UnitConvert.secondaryPrice(d.getUnitPrice(), d.getConversionRate()));
+        }
     }
 
     private void checkQuantity(SalesReturnItem item) {
@@ -290,19 +339,33 @@ public class SalesReturnService extends BaseService {
             throw new ServiceException("单据不存在");
         }
         SalesReturnDto dto = BeanUtil.toBean(salesReturn, SalesReturnDto.class);
+        QUnit qUnitSec = new QUnit("unitSec");
         List<Tuple> fetch = jqf.selectFrom(qsalesReturnItem)
-                .select(qsalesReturnItem, qProduct.code, qProduct.name, qUnit.name)
+                .select(qsalesReturnItem, qProduct.code, qProduct.name, qUnit.name, qUnitSec.name)
                 .leftJoin(qProduct).on(qProduct.id.eq(qsalesReturnItem.productId))
                 .leftJoin(qUnit).on(qUnit.id.eq(qsalesReturnItem.baseUnitId))
+                .leftJoin(qUnitSec).on(qUnitSec.id.eq(qsalesReturnItem.secondaryUnitId))
                 .where(qsalesReturnItem.salesReturnId.eq(orderId)
                         .and(qsalesReturnItem.merchantId.eq(merchantId)))
                 .orderBy(qsalesReturnItem.id.asc()).fetch();
         List<SalesReturnItemDto> salesReturnItemDTOList = new ArrayList<>();
+        Set<Long> productIds = new HashSet<>();
         fetch.forEach(tuple -> {
             SalesReturnItemDto salesReturnItemDTO = BeanUtil.toBean(tuple.get(qsalesReturnItem), SalesReturnItemDto.class);
             salesReturnItemDTO.setProductName(tuple.get(qProduct.name));
             salesReturnItemDTO.setProductCode(tuple.get(qProduct.code));
             salesReturnItemDTO.setUnitName(tuple.get(qUnit.name));
+            //老数据兜底业务单位字段 + 业务单位名（旧行无业务单位则回落基本单位）
+            fillUnitFallback(salesReturnItemDTO);
+            String secondaryName = tuple.get(qUnitSec.name);
+            if (salesReturnItemDTO.getSecondaryUnitId() != null && StrUtil.isNotBlank(secondaryName)) {
+                salesReturnItemDTO.setSecondaryUnitName(secondaryName);
+            } else {
+                salesReturnItemDTO.setSecondaryUnitName(tuple.get(qUnit.name));
+            }
+            if (salesReturnItemDTO.getProductId() != null) {
+                productIds.add(salesReturnItemDTO.getProductId());
+            }
             Long salesOutboundId = salesReturnItemDTO.getSalesOutboundId();
             if (salesOutboundId != null) {
                 SalesOutbound salesOutbound = salesOutboundRepository.findById(salesOutboundId).orElse(null);
@@ -312,6 +375,12 @@ public class SalesReturnService extends BaseService {
             }
             salesReturnItemDTOList.add(salesReturnItemDTO);
         });
+        // 回填商品可用单位列表（基本单位在前，unitPrice=该行基本单价），退货行"退货单位"下拉可切换
+        Map<Long, List<AuxiliaryUnitPrice>> unitMap = productAuxiliaryUnitService.loadAuxUnits(productIds, merchantId);
+        for (SalesReturnItemDto row : salesReturnItemDTOList) {
+            row.setAuxiliaryUnitPrices(ProductAuxiliaryUnitService.withBase(
+                    row.getBaseUnitId(), row.getUnitName(), row.getUnitPrice(), unitMap.get(row.getProductId())));
+        }
         dto.setSalesReturnItemList(salesReturnItemDTOList);
         return dto;
     }

@@ -112,10 +112,10 @@
       <t-button @click="closeWindow" :loading="loading">取消</t-button>
       <div>
         <template v-if="!isAudited">
-          <t-button theme="primary" @click="saveForm('save')" :loading="loading">保存</t-button>
-          <t-button v-if="form.orderStatus == '已保存'" @click="saveForm('audit')" :loading="loading">审核</t-button>
+          <t-button v-auth="'settlement:edit'" theme="primary" @click="saveForm('save')" :loading="loading">保存</t-button>
+          <t-button v-if="$can('settlement:audit') && form.orderStatus == '已保存'" @click="saveForm('audit')" :loading="loading">审核</t-button>
         </template>
-        <t-button v-else @click="approved('已保存')" :loading="loading">反审核</t-button>
+        <t-button v-if="isAudited && $can('settlement:audit')" @click="approved('已保存')" :loading="loading">反审核</t-button>
       </div>
     </div>
   </div>

@@ -48,8 +48,19 @@
         <template #type="{ row }">
           {{ row.type == "1" ? "客户结算" : "供应商结算" }}
         </template>
+        <template #sumDocumentAmount="{ row }">{{ money(row.sumDocumentAmount) }}</template>
+        <template #sumVerifiedAmount="{ row }">{{ money(row.sumVerifiedAmount) }}</template>
+        <template #sumUnverifiedAmount="{ row }">{{ money(row.sumUnverifiedAmount) }}</template>
         <template #orderStatus="{ row }">
-          <t-tag :theme="row.orderStatus === '已平账' ? 'success' : row.orderStatus === '未平账' ? 'warning' : 'default'">{{ row.orderStatus }}</t-tag>
+          <t-tag
+              v-if="row.statusMismatch"
+              theme="danger"
+              :title="'已平账但仍有剩余 ' + money(row.sumUnverifiedAmount) + '，请核对'"
+          >已平账(异常)</t-tag>
+          <t-tag
+              v-else
+              :theme="row.orderStatus === '已平账' ? 'success' : row.orderStatus === '未平账' ? 'warning' : 'default'"
+          >{{ row.orderStatus }}</t-tag>
         </template>
       </t-table>
     </div>
@@ -90,10 +101,16 @@ export default {
       columns: [
         {colKey: 'orderDate', title: '单据日期', width: 120, align: 'center'},
         {colKey: 'orderNo', title: '单据编号', minWidth: 160, ellipsis: true},
+        {colKey: 'sourceBusinessNo', title: '源单据号', minWidth: 160, ellipsis: true},
+        {colKey: 'sourceBusinessType', title: '源单据类型', width: 110, align: 'center'},
+        {colKey: 'sourceDate', title: '源单据日期', width: 120, align: 'center'},
+        {colKey: 'sumDocumentAmount', title: '单据金额', width: 110, align: 'right'},
+        {colKey: 'sumVerifiedAmount', title: '已核销/实收', width: 120, align: 'right'},
+        {colKey: 'sumUnverifiedAmount', title: '剩余未结', width: 110, align: 'right'},
         {colKey: 'type', title: '业务类型', width: 120, align: 'center'},
         {colKey: 'personnelName', title: '客户/供应商', minWidth: 140, ellipsis: true},
         {colKey: 'orderStaffName', title: '业务员', width: 100, align: 'center'},
-        {colKey: 'orderStatus', title: '状态', width: 90, align: 'center'},
+        {colKey: 'orderStatus', title: '状态', width: 100, align: 'center'},
         {colKey: 'remarks', title: '备注', minWidth: 120, ellipsis: true},
       ]
     };
@@ -110,6 +127,9 @@ export default {
     },
   },
   methods: {
+    money(v) {
+      return v === null || v === undefined ? '' : Number(v).toFixed(2);
+    },
     onPageChange(pageInfo) {
       this.pagination.page = pageInfo.current;
       this.pagination.pageSize = pageInfo.pageSize;

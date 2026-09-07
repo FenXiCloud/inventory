@@ -138,8 +138,6 @@ export default {
       this.selectedRowKeys = [];
       this.selectedRows = [];
       const balance = Number(this.params.balance) || 0;
-      this.openingBalance.documentAmount = balance;
-      this.openingBalance.unverifiedAmount = balance;
 
       const params = {
         page: this.pagination.page,
@@ -156,13 +154,18 @@ export default {
 
       apiModule
         .writeOff(params)
-        .then(({ data: { results, total } }) => {
-          const list = results || [];
-          if (balance > 0) {
+        .then(({ data }) => {
+          const list = data.results || [];
+          // 期初展示额：优先用后端按「期初应收未收额」计算的值；老接口（结算单）没有该字段时回退到外部传入的 balance
+          const hasOpening = typeof data.opening === 'number';
+          const openingAmount = hasOpening ? data.opening : balance;
+          this.openingBalance.documentAmount = openingAmount;
+          this.openingBalance.unverifiedAmount = openingAmount;
+          if (openingAmount > 0) {
             list.unshift(this.openingBalance);
           }
           this.dataList = list;
-          this.pagination.total = (total || 0) + (balance > 0 ? 1 : 0);
+          this.pagination.total = (data.total || 0) + (openingAmount > 0 ? 1 : 0);
         })
         .finally(() => (this.loading = false));
     },

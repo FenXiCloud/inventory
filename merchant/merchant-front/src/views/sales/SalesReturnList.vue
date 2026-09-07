@@ -2,9 +2,9 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button variant="outline" style="border-radius: 4px"           @click="approved()">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
+        <t-button theme="primary" style="border-radius: 4px" v-auth="'salesReturn:edit'" @click="addForm()">新 增</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'salesReturn:audit'"           @click="approved()">审 核</t-button>
+        <t-button variant="outline" style="border-radius: 4px" v-auth="'salesReturn:audit'" @click="backApproved()">反审核</t-button>
         <t-select
             v-model="params.state"
             :options="stateOptions"
@@ -60,9 +60,14 @@
           @select-change="onSelectChange"
       >
         <template #ops="{ row }">
-          <t-space v-if="row.orderStatus === '已保存'" size="small">
-            <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
-            <t-link theme="primary" @click="doRemove(row)">删除</t-link>
+          <t-space size="small">
+            <template v-if="row.orderStatus === '已保存'">
+              <t-link theme="primary" v-auth="'salesReturn:edit'" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link theme="primary" v-auth="'salesReturn:delete'" @click="doRemove(row)">删除</t-link>
+            </template>
+            <template v-else-if="row.orderStatus === '已审核'">
+              <t-link theme="primary" @click="detail(row.id)">详情</t-link>
+            </template>
           </t-space>
         </template>
         <template #orderStatus="{ row }">
@@ -105,11 +110,11 @@ const endTime = manba().endOf(manba.DAY).format("YYYY-MM-DD");
 export default {
   name: "SalesReturnList",
   watch: {
-    '$store.state.currentTabDataReturn': {
+    '$store.state.currentTabData': {
       handler(newVal) {
         if (newVal && newVal.refresh) {
           this.loadList();
-          this.$store.commit('SET_TAB_DATA_RETURN', null);
+          this.$store.commit('SET_TAB_DATA', null);
         }
       },
       deep: true
@@ -195,10 +200,17 @@ export default {
       this.loadList();
     },
     addForm(type = 'add', orderId = null) {
-      this.$store.commit('SET_TAB_DATA_RETURN', {type, orderId});
       this.pushTab({
         key: 'SalesReturnForm',
         title: type === 'edit' ? '编辑销售退货单' : '新增销售退货单',
+        params: {type, orderId}
+      });
+    },
+    detail(orderId = null) {
+      this.pushTab({
+        key: 'SalesReturnDetail',
+        title: '销售退货单详情',
+        params: {orderId: orderId}
       });
     },
     clearSelection() {

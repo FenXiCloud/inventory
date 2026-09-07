@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.DynamicUpdate;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @JsonInclude()
@@ -77,4 +79,42 @@ public class Settlement implements TenantAware {
 
     /** 备注 */
     private String remarks;
+
+    // ===== 以下为列表核对展示用临时字段(@Transient 不落库,仅 SettlementService.query 填充) =====
+
+    /** 单据金额(INVENTORY 明细合计) */
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private BigDecimal sumDocumentAmount;
+
+    /** 已核销/实收金额(INVENTORY 明细合计) */
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private BigDecimal sumVerifiedAmount;
+
+    /** 剩余未结(INVENTORY 明细合计) */
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private BigDecimal sumUnverifiedAmount;
+
+    /** 源单据号(多条用、连接) */
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String sourceBusinessNo;
+
+    /** 源单据类型(销售出库单/采购入库单) */
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String sourceBusinessType;
+
+    /** 源单据日期 */
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
+    private LocalDate sourceDate;
+
+    /** 状态异常：已平账却仍有剩余(>0.005),用于列表红标提示核对 */
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean statusMismatch;
 }

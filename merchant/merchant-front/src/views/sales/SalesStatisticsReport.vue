@@ -47,7 +47,9 @@
           bordered
           stripe
           hover
+          resizable
           height="100%"
+          table-layout="fixed"
           :data="dataList"
           :columns="columns"
           :loading="loading"

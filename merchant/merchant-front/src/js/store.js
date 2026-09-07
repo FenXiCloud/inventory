@@ -22,8 +22,13 @@ export default createStore({
     updateAccountBooks(state, {accountBooks}) {
       state.accountBooks = accountBooks;
       let accountBook = accountBooks.find(val=>val.current===true)
-      accountBook.checkoutSDate = manba(accountBook.checkoutDate).add(1,manba.DAY).format("YYYY-MM-dd")
-      state.accountBook = accountBook
+      if (accountBook) {
+        accountBook.checkoutSDate = manba(accountBook.checkoutDate).add(1,manba.DAY).format("YYYY-MM-dd")
+        state.accountBook = accountBook
+      } else {
+        // 兜底：后端 /init 已随账套下发数量/单价小数位（quantityDecimal/priceDecimal），无 current 时保持空对象
+        console.warn('未找到当前账套');
+      }
     },
     updateAccountBook(state, checkoutDate) {
       if(checkoutDate){

@@ -34,11 +34,14 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import com.flyemu.share.service.fund.vo.SupplierStatementSummaryVO;
 
 @Service
 @Slf4j
@@ -75,6 +78,79 @@ public class SupplierFlowService extends BaseService {
         return new PageResults<>(fetchPage, page);
     }
 
+    public SupplierStatementSummaryVO statementSummary(Long supplierId, LocalDateTime startTime, LocalDateTime endTime, Long merchantId, Long accountBookId) {
+        SupplierStatementSummaryVO vo = new SupplierStatementSummaryVO();
+
+        // 1. 查询期初余额（startTime 之前的最新余额）
+        SupplierFlow initialFlow = bqf.selectFrom(qSupplierFlow)
+                .where(qSupplierFlow.supplierId.eq(supplierId)
+                        .and(qSupplierFlow.merchantId.eq(merchantId))
+                        .and(qSupplierFlow.accountBookId.eq(accountBookId))
+                        .and(qSupplierFlow.createdAt.lt(startTime))
+                        .and(qSupplierFlow.supplierFlowType.eq(SupplierFlow.SupplierFlowType.期初)))
+                .orderBy(qSupplierFlow.createdAt.desc())
+                .fetchFirst();
+
+        BigDecimal openingBalance = BigDecimal.ZERO;
+        if (initialFlow != null && initialFlow.getBalancePayable() != null) {
+            openingBalance = initialFlow.getBalancePayable();
+        } else {
+            // 如果没有期初记录，查询 startTime 之前的最后一条记录的余额
+            SupplierFlow lastFlow = bqf.selectFrom(qSupplierFlow)
+                    .where(qSupplierFlow.supplierId.eq(supplierId)
+                            .and(qSupplierFlow.merchantId.eq(merchantId))
+                            .and(qSupplierFlow.accountBookId.eq(accountBookId))
+                            .and(qSupplierFlow.createdAt.lt(startTime)))
+                    .orderBy(qSupplierFlow.createdAt.desc())
+                    .fetchFirst();
+            if (lastFlow != null && lastFlow.getBalancePayable() != null) {
+                openingBalance = lastFlow.getBalancePayable();
+            }
+        }
+        vo.setOpeningBalance(openingBalance);
+
+        // 2. 查询本期数据
+        List<SupplierFlow> periodFlows = bqf.selectFrom(qSupplierFlow)
+                .where(qSupplierFlow.supplierId.eq(supplierId)
+                        .and(qSupplierFlow.merchantId.eq(merchantId))
+                        .and(qSupplierFlow.accountBookId.eq(accountBookId))
+                        .and(qSupplierFlow.createdAt.goe(startTime))
+                        .and(qSupplierFlow.createdAt.loe(endTime))
+                        .and(qSupplierFlow.supplierFlowType.ne(SupplierFlow.SupplierFlowType.期初)))
+                .fetch();
+
+        BigDecimal totalPurchaseAmount = BigDecimal.ZERO;
+        BigDecimal totalCopeWithAmount = BigDecimal.ZERO;
+        BigDecimal totalActualPaymentAmount = BigDecimal.ZERO;
+        BigDecimal totalPreferentialAmount = BigDecimal.ZERO;
+
+        for (SupplierFlow flow : periodFlows) {
+            if (flow.getPurchaseAmount() != null) {
+                totalPurchaseAmount = totalPurchaseAmount.add(flow.getPurchaseAmount());
+            }
+            if (flow.getCopeWithAmount() != null) {
+                totalCopeWithAmount = totalCopeWithAmount.add(flow.getCopeWithAmount());
+            }
+            if (flow.getActualPaymentAmount() != null) {
+                totalActualPaymentAmount = totalActualPaymentAmount.add(flow.getActualPaymentAmount());
+            }
+            if (flow.getPreferentialAmount() != null) {
+                totalPreferentialAmount = totalPreferentialAmount.add(flow.getPreferentialAmount());
+            }
+        }
+
+        vo.setTotalPurchaseAmount(totalPurchaseAmount);
+        vo.setTotalCopeWithAmount(totalCopeWithAmount);
+        vo.setTotalActualPaymentAmount(totalActualPaymentAmount);
+        vo.setTotalPreferentialAmount(totalPreferentialAmount);
+
+        // 3. 计算期末余额
+        BigDecimal closingBalance = openingBalance.add(totalCopeWithAmount).subtract(totalActualPaymentAmount);
+        vo.setClosingBalance(closingBalance);
+
+        return vo;
+    }
+
     public PageResults<SupplierFlowDTO> query(Page page, Query query) {
         PagedList<Tuple> fetchPage = bqf.selectFrom(qSupplierFlow).select(qSupplierFlow, qSupplier.name, qSupplier.code).leftJoin(qSupplier).on(qSupplier.id.eq(qSupplierFlow.supplierId)).where(query.buildersV2()).orderBy(qSupplierFlow.id.desc()).fetchPage(page.getOffset(), page.getOffsetEnd());
 
@@ -97,11 +173,7 @@ public class SupplierFlowService extends BaseService {
      * 校验账套是否已结账，结账后不允许设置/修改期初余额
      */
     private void assertNotCheckedOut(Long merchantId, Long accountBookId) {
-        LocalDate checkoutDate = jqf.select(qAccountBook.checkoutDate)
-                .from(qAccountBook)
-                .where(qAccountBook.merchantId.eq(merchantId).and(qAccountBook.id.eq(accountBookId)))
-                .fetchOne();
-        if (checkoutDate != null) {
+        if (checkoutService.isCheckedOut(merchantId, accountBookId)) {
             throw new ServiceException("账套已结账，不允许设置或修改供应商期初余额");
         }
     }

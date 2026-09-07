@@ -32,7 +32,7 @@
     </t-form-item>
 
     <t-form-item label="容量" name="capacity">
-      <t-input-number v-model="formData.capacity" :min="0" :decimal-places="2" placeholder="可选" />
+      <t-input-number v-model="formData.capacity" :min="0" :decimal-places="qtyDp" placeholder="可选" />
     </t-form-item>
 
     <t-form-item label="状态" name="enabled">
@@ -49,7 +49,7 @@
 
     <t-form-item>
       <t-space>
-        <t-button theme="primary" type="submit">保 存</t-button>
+        <t-button v-auth="'warehouseLocation:edit'" theme="primary" type="submit">保 存</t-button>
         <t-button variant="outline" @click="onCancel">取 消</t-button>
       </t-space>
     </t-form-item>

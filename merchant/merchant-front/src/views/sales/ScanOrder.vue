@@ -43,10 +43,10 @@
           <span>{{ row.productName || '—' }}</span>
         </template>
         <template #quantity="{ row }">
-          <t-input-number v-model="row.quantity" theme="normal" :min="0" :decimal-places="2" style="width:100%" @change="calcSubtotal(row)"/>
+          <t-input-number v-model="row.quantity" theme="normal" :min="0" :decimal-places="qtyDp" style="width:100%" @change="calcSubtotal(row)"/>
         </template>
         <template #unitPrice="{ row }">
-          <t-input-number v-model="row.unitPrice" theme="normal" :min="0" :decimal-places="2" style="width:100%" @change="calcSubtotal(row)"/>
+          <t-input-number v-model="row.unitPrice" theme="normal" :min="0" :decimal-places="priceDp" style="width:100%" @change="calcSubtotal(row)"/>
         </template>
         <template #subtotal="{ row }">
           <span>¥{{ fmt(row.subtotal) }}</span>

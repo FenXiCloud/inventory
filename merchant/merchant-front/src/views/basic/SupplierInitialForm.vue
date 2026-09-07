@@ -64,7 +64,7 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading">取消</t-button>
       <div>
-        <t-button theme="primary" @click="save" :loading="loading">保存</t-button>
+        <t-button v-auth="'supplierInitial:edit'" theme="primary" @click="save" :loading="loading">保存</t-button>
       </div>
     </div>
   </div>

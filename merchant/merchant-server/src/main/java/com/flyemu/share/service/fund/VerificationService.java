@@ -483,12 +483,23 @@ public class VerificationService extends BaseService {
                 throw new ServiceException("核销明细不能为空");
             }
             handleOrderReceiptOrPayment(verification, direction);
-            // 审核时同步更新结算单
+            // 审核/反审核同步更新结算单(审核累加,反审核对称扣减)
+            String businessType = verification.getType() != null && verification.getType() == 2 ? "采购入库单" : "销售出库单";
             if (isAudit) {
-                String businessType = verification.getType() != null && verification.getType() == 2 ? "采购入库单" : "销售出库单";
                 for (VerificationItem item : items) {
                     if (item.getBusinessId() != null && item.getCurrentVerifyAmount() != null) {
                         settlementService.updateWriteOff(
+                                item.getBusinessId().longValue(),
+                                item.getCurrentVerifyAmount(),
+                                verification.getMerchantId(),
+                                verification.getAccountBookId(),
+                                businessType);
+                    }
+                }
+            } else {
+                for (VerificationItem item : items) {
+                    if (item.getBusinessId() != null && item.getCurrentVerifyAmount() != null) {
+                        settlementService.reverseWriteOff(
                                 item.getBusinessId().longValue(),
                                 item.getCurrentVerifyAmount(),
                                 verification.getMerchantId(),

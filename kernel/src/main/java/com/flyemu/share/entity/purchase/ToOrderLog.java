@@ -39,7 +39,7 @@ public class ToOrderLog implements TenantAware {
     private BigDecimal purchaseQuantity;
 
     @Comment("本次采购单价")
-    @Column(precision = 15, scale = 4)
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal purchasePrice;
 
     @Comment("供应商ID")

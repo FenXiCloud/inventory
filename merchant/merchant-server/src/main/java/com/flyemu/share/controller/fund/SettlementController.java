@@ -69,4 +69,25 @@ public class SettlementController {
         TenantScope.bind(query, accountDto);
         return JsonResult.successful(settlementService.writeOffCandidates(page, query));
     }
+
+    /**
+     * 一次性清理历史遗留的"未平账空单"（无任何结算明细的结算单主表）。
+     * 与 /inventory/rebuildCostChain 同属后台维护接口；merchantId/accountBookId 缺省则全库清理。
+     */
+    @PostMapping("/cleanOrphanSettlements")
+    public JsonResult cleanOrphanSettlements(@RequestParam(required = false) Long merchantId,
+                                             @RequestParam(required = false) Long accountBookId) {
+        int removed = settlementService.cleanOrphanSettlements(merchantId, accountBookId);
+        return JsonResult.successful(removed).setMsg("已清理 " + removed + " 张空结算单");
+    }
+
+    /**
+     * 一次性迁移：结算单取号切到 code_seed 后，把各账套归零桶计数器回填到历史最大流水号，
+     * 保证新单从旧号之后接续且不重号。后台维护接口，正式切换取号前调用一次。
+     */
+    @PostMapping("/migrateSettlementSerialSeed")
+    public JsonResult migrateSettlementSerialSeed() {
+        int seeded = settlementService.migrateSettlementSerialSeed();
+        return JsonResult.successful(seeded).setMsg("已将结算单取号接续到历史流水，共回填 " + seeded + " 处");
+    }
 }

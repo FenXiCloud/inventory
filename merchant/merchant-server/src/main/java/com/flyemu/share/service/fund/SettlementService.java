@@ -1,7 +1,6 @@
 package com.flyemu.share.service.fund;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.StrUtil;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.common.TenantAware;
@@ -19,10 +18,11 @@ import com.flyemu.share.repository.fund.SettlementRepository;
 import com.flyemu.share.service.BaseService;
 import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.setting.CodeRuleService;
-import com.flyemu.share.way.CodeGenerator;
+import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Projections;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -47,6 +48,10 @@ public class SettlementService extends BaseService {
     private final SettlementRepository settlementRepository;
     private final SettlementItemRepository settlementItemRepository;
     private final CodeRuleService codeRuleService;
+    private final CodeSeedService codeSeedService;
+
+    /** 平账判断误差阈值(金额两位小数),剩余未结超过该值视为未平账 */
+    private static final BigDecimal SETTLE_EPSILON = new BigDecimal("0.005");
 
     @Transactional
     public Settlement save(SettlementForm dto) {
@@ -113,35 +118,9 @@ public class SettlementService extends BaseService {
         if (StrUtil.isNotBlank(settlement.getOrderNo())) {
             return;
         }
-        CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
-                CodeRule.DocumentType.结算单,
-                settlement.getMerchantId(),
-                settlement.getAccountBookId());
-
-        StringBuilder codeBuilder = new StringBuilder();
-        if (codeRule != null) {
-            if (StrUtil.isNotBlank(codeRule.getPrefix())) {
-                codeBuilder.append(codeRule.getPrefix());
-            }
-            if (StrUtil.isNotBlank(codeRule.getFormat())) {
-                String formattedDate = DateUtil.format(new Date(), codeRule.getFormat());
-                codeBuilder.append(formattedDate);
-            }
-            Integer serialLength = codeRule.getSerialNumberLength();
-            if (serialLength != null && serialLength > 0) {
-                Long maxId = jqf.select(qSettlement.id.max())
-                        .from(qSettlement)
-                        .where(qSettlement.merchantId.eq(settlement.getMerchantId())
-                                .and(qSettlement.accountBookId.eq(settlement.getAccountBookId())))
-                        .fetchOne();
-                Integer currentSerial = Math.toIntExact(maxId != null ? maxId + 1 : 1L);
-                String serialStr = String.format("%0" + serialLength + "d", currentSerial);
-                codeBuilder.append(serialStr);
-            }
-        } else {
-            codeBuilder.append(CodeGenerator.generateCode());
-        }
-        settlement.setOrderNo(codeBuilder.toString());
+        // 统一走 code_seed 单调取号（与采购/销售订单一致）：按账套+重置周期递增，删除/反审核单据不复用已发号段。
+        settlement.setOrderNo(codeSeedService.generateCode(
+                settlement.getMerchantId(), settlement.getAccountBookId(), "结算单"));
     }
 
     public PageResults<Settlement> query(Page page, Query query) {
@@ -149,7 +128,59 @@ public class SettlementService extends BaseService {
                 .where(query.builder)
                 .orderBy(qSettlement.id.desc())
                 .fetchPage(page.getOffset(), page.getOffsetEnd());
+        enrichListRows(fetchPage);
         return new PageResults<>(fetchPage, page, fetchPage.getTotalSize());
+    }
+
+    /**
+     * 列表行富化：按结算单批量取 INVENTORY 明细，填充可核对列
+     * (源单据号/源单据类型/源单据日期、单据金额/已核销实收/剩余未结、已平账但仍有剩余的异常标)。
+     * 仅计 INVENTORY 明细(FUND / business_category 为空的历史手工行忽略)；纯手工 FUND 结算单保持 null、不标红。
+     */
+    private void enrichListRows(List<Settlement> settlements) {
+        if (settlements == null || settlements.isEmpty()) {
+            return;
+        }
+        List<Long> settlementIds = settlements.stream().map(Settlement::getId).collect(Collectors.toList());
+        Map<Long, List<SettlementItem>> itemsBySettlement = jqf.selectFrom(qSettlementItem)
+                .where(qSettlementItem.settlementId.in(settlementIds))
+                .fetch()
+                .stream()
+                .collect(Collectors.groupingBy(SettlementItem::getSettlementId));
+        for (Settlement s : settlements) {
+            List<SettlementItem> inv = itemsBySettlement.getOrDefault(s.getId(), Collections.emptyList()).stream()
+                    .filter(i -> "INVENTORY".equals(i.getBusinessCategory()))
+                    .collect(Collectors.toList());
+            if (inv.isEmpty()) {
+                continue;
+            }
+            BigDecimal doc = inv.stream().map(SettlementItem::getDocumentAmount).filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal verified = inv.stream().map(SettlementItem::getVerifiedAmount).filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal unverified = inv.stream().map(SettlementItem::getUnverifiedAmount).filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            s.setSumDocumentAmount(doc);
+            s.setSumVerifiedAmount(verified);
+            s.setSumUnverifiedAmount(unverified);
+            String sourceNo = inv.stream().map(SettlementItem::getBusinessNo).filter(Objects::nonNull)
+                    .filter(n -> !n.isBlank()).distinct().collect(Collectors.joining("、"));
+            if (!sourceNo.isEmpty()) {
+                s.setSourceBusinessNo(sourceNo);
+            }
+            String sourceType = inv.stream().map(SettlementItem::getBusinessType).filter(Objects::nonNull)
+                    .distinct().collect(Collectors.joining("、"));
+            if (!sourceType.isEmpty()) {
+                s.setSourceBusinessType(sourceType);
+            }
+            Date firstDate = inv.stream().map(SettlementItem::getBusinessDate).filter(Objects::nonNull)
+                    .min(Date::compareTo).orElse(null);
+            if (firstDate != null) {
+                s.setSourceDate(new java.sql.Date(firstDate.getTime()).toLocalDate());
+            }
+            s.setStatusMismatch(OrderStatus.已平账.equals(s.getOrderStatus())
+                    && unverified.abs().compareTo(SETTLE_EPSILON) > 0);
+        }
     }
 
     public BigDecimal queryTotal(Query query) {
@@ -188,6 +219,10 @@ public class SettlementService extends BaseService {
     public void approved(List<Long> ids, OrderStatus state, Long adminId, Long merchantId) {
         if (ids == null || ids.isEmpty()) {
             throw new ServiceException("请选择要操作的数据");
+        }
+        // 平账/未平账是核销自动计算的派生状态，禁止通过审核接口直接写入（防止绕过余额校验）
+        if (state != OrderStatus.已保存 && state != OrderStatus.已审核) {
+            throw new ServiceException("平账/未平账由核销自动计算，仅支持【已审核/已保存】的审核与反审核操作");
         }
         List<Settlement> settlements = jqf.select(qSettlement)
                 .from(qSettlement)
@@ -247,7 +282,8 @@ public class SettlementService extends BaseService {
     public Settlement createFromOrder(Long merchantId, Long accountBookId, Integer type,
                                        Long personnelId, String personnelName,
                                        String businessNo, BigDecimal documentAmount,
-                                       Long businessId, String businessType) {
+                                       Long businessId, String businessType,
+                                       LocalDate businessDate) {
         // 防重复：同一订单已存在结算单则跳过
         Long exists = jqf.select(qSettlementItem.id.count())
                 .from(qSettlementItem)
@@ -283,6 +319,10 @@ public class SettlementService extends BaseService {
         item.setBusinessCategory("INVENTORY");
         item.setBusinessType(businessType);
         item.setDocumentAmount(documentAmount);
+        // 记录源单据业务日期(列表核对列展示用)
+        if (businessDate != null) {
+            item.setBusinessDate(java.sql.Date.valueOf(businessDate));
+        }
         item.setCurrentVerifyAmount(BigDecimal.ZERO);
         item.setVerifiedAmount(BigDecimal.ZERO);
         item.setUnverifiedAmount(documentAmount);
@@ -292,14 +332,150 @@ public class SettlementService extends BaseService {
     }
 
     /**
-     * 查询未结算完的结算单（供收款/付款单选源单）
+     * 反审核出入库单时，删除其自动生成的未平账结算单（明细 + 无残留明细的主表一并删除）。
+     * 明细已被核销（verifiedAmount>0）时不删除并抛异常，调用方应先拦截付款/核销场景。
      */
+    @Transactional
+    public void removeAutoSettlement(Long merchantId, Long accountBookId, Long businessId, String businessType) {
+        if (businessId == null) {
+            return;
+        }
+        List<Tuple> rows = jqf.select(qSettlementItem.id, qSettlementItem.settlementId, qSettlementItem.verifiedAmount)
+                .from(qSettlementItem)
+                .innerJoin(qSettlement).on(qSettlement.id.eq(qSettlementItem.settlementId))
+                .where(qSettlementItem.businessId.eq(businessId)
+                        .and(qSettlementItem.businessCategory.eq("INVENTORY"))
+                        .and(qSettlementItem.businessType.eq(businessType))
+                        .and(qSettlement.merchantId.eq(merchantId))
+                        .and(qSettlement.accountBookId.eq(accountBookId)))
+                .fetch();
+        if (rows.isEmpty()) {
+            return;
+        }
+        Set<Long> settlementIds = new HashSet<>();
+        List<Long> itemIds = new ArrayList<>();
+        for (Tuple row : rows) {
+            BigDecimal verified = row.get(qSettlementItem.verifiedAmount);
+            if (verified != null && verified.signum() > 0) {
+                throw new ServiceException("该单据的结算单已核销，无法随单据反审核删除，请先处理相关收付款/核销~");
+            }
+            itemIds.add(row.get(qSettlementItem.id));
+            settlementIds.add(row.get(qSettlementItem.settlementId));
+        }
+        jqf.delete(qSettlementItem).where(qSettlementItem.id.in(itemIds)).execute();
+        // 主表已无任何明细 → 一并删除，避免残留"未平账"空单
+        for (Long sid : settlementIds) {
+            long remain = jqf.selectFrom(qSettlementItem)
+                    .where(qSettlementItem.settlementId.eq(sid)).fetchCount();
+            if (remain == 0) {
+                jqf.delete(qSettlement).where(qSettlement.id.eq(sid)).execute();
+            }
+        }
+    }
+
     /**
-     * 收款/付款单保存时更新关联结算单的已核销金额
+     * 一次性清理历史遗留的"未平账空单"：主表为未平账且没有任何结算明细则视为空单删除。
+     * 修复"反审核未删结算单主表"bug 之前产生的脏数据，通过管理接口调用（可按账套过滤）。
+     *
+     * @return 清理的空结算单数量
+     */
+    @Transactional
+    public int cleanOrphanSettlements(Long merchantId, Long accountBookId) {
+        BooleanBuilder cond = new BooleanBuilder(qSettlement.orderStatus.eq(OrderStatus.未平账));
+        if (merchantId != null) {
+            cond.and(qSettlement.merchantId.eq(merchantId));
+        }
+        if (accountBookId != null) {
+            cond.and(qSettlement.accountBookId.eq(accountBookId));
+        }
+        List<Long> orphanIds = jqf.select(qSettlement.id).from(qSettlement)
+                .where(cond, qSettlement.id.notIn(
+                        JPAExpressions.select(qSettlementItem.settlementId).from(qSettlementItem)))
+                .fetch();
+        if (orphanIds.isEmpty()) {
+            return 0;
+        }
+        // 兜底清掉可能残留的空明细（正常为空单不会有明细）
+        jqf.delete(qSettlementItem)
+                .where(qSettlementItem.settlementId.in(orphanIds)).execute();
+        jqf.delete(qSettlement).where(qSettlement.id.in(orphanIds)).execute();
+        return orphanIds.size();
+    }
+
+    /**
+     * 一次性迁移：结算单取号从旧的 max(id)+1 切到 code_seed 后，把各账套"当前归零桶"的 code_seed
+     * 计数器回填到历史最大流水号（从既有单号右端截取），使新单接续（如 ...0072 之后到 ...0073）且不重号。
+     * 已删除单据的历史高位无法复原，回填取现存单据最大流水，保证后续不再复用现存单号即可。
+     *
+     * @return 实际新建/抬升的计数条数
+     */
+    @Transactional
+    public int migrateSettlementSerialSeed() {
+        int seeded = 0;
+        List<Tuple> pairs = jqf.select(qSettlement.merchantId, qSettlement.accountBookId)
+                .from(qSettlement).distinct().fetch();
+        for (Tuple pair : pairs) {
+            Long merchantId = pair.get(qSettlement.merchantId);
+            Long accountBookId = pair.get(qSettlement.accountBookId);
+            if (merchantId == null || accountBookId == null) {
+                continue;
+            }
+            CodeRule rule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(
+                    CodeRule.DocumentType.结算单, merchantId, accountBookId);
+            if (rule == null || rule.getSerialNumberLength() == null) {
+                continue;
+            }
+            int serialLen = rule.getSerialNumberLength();
+            List<Settlement> list = jqf.selectFrom(qSettlement)
+                    .where(qSettlement.merchantId.eq(merchantId)
+                            .and(qSettlement.accountBookId.eq(accountBookId))
+                            .and(qSettlement.orderNo.isNotNull()))
+                    .fetch();
+            for (Settlement s : list) {
+                String no = s.getOrderNo();
+                if (no == null || no.length() < serialLen) {
+                    continue;
+                }
+                String tail = no.substring(no.length() - serialLen);
+                if (!tail.chars().allMatch(Character::isDigit)) {
+                    continue;
+                }
+                try {
+                    Integer serial = Integer.valueOf(tail);
+                    seeded += codeSeedService.raiseSeed(merchantId, accountBookId, "结算单", s.getCreatedAt(), serial);
+                } catch (NumberFormatException ignore) {
+                    // 历史随机单号（非规则流水）跳过，不影响新号
+                }
+            }
+        }
+        return seeded;
+    }
+
+    /**
+     * 审核核销：在 INVENTORY 结算明细上累加本次核销金额（钳制与状态重算见 applyWriteOff）。
      */
     @Transactional
     public void updateWriteOff(Long orderId, BigDecimal currentVerifyAmount, Long merchantId, Long accountBookId, String businessType) {
-        if (orderId == null || currentVerifyAmount == null) return;
+        if (orderId == null || currentVerifyAmount == null || currentVerifyAmount.signum() == 0) return;
+        applyWriteOff(orderId, currentVerifyAmount, merchantId, accountBookId, businessType, false);
+    }
+
+    /**
+     * 反审核核销：对称扣减该笔贡献（收款/付款/核销单反审核时调用，防止重复累加/残留已平账）。
+     * 未找到匹配的 INVENTORY 结算明细（期初行、结算单已被删除等正常缺省）时不抛异常，仅告警。
+     */
+    @Transactional
+    public void reverseWriteOff(Long orderId, BigDecimal currentVerifyAmount, Long merchantId, Long accountBookId, String businessType) {
+        if (orderId == null || currentVerifyAmount == null || currentVerifyAmount.signum() == 0) return;
+        applyWriteOff(orderId, currentVerifyAmount.negate(), merchantId, accountBookId, businessType, true);
+    }
+
+    /**
+     * 有符号核销核心：delta&gt;0 审核累加，delta&lt;0 反审核扣减。
+     * 两端钳制（0 ≤ verified ≤ document），并统一走 recalcSettlementStatus 重算主表平账状态（增/减两方向一致）。
+     */
+    private void applyWriteOff(Long orderId, BigDecimal delta, Long merchantId, Long accountBookId,
+                               String businessType, boolean warnIfMissing) {
         SettlementItem item = jqf.selectFrom(qSettlementItem)
                 .innerJoin(qSettlement).on(qSettlement.id.eq(qSettlementItem.settlementId))
                 .where(qSettlementItem.businessId.eq(orderId)
@@ -308,24 +484,60 @@ public class SettlementService extends BaseService {
                         .and(qSettlement.merchantId.eq(merchantId))
                         .and(qSettlement.accountBookId.eq(accountBookId)))
                 .fetchFirst();
-        if (item != null) {
-            BigDecimal newVerified = (item.getVerifiedAmount() != null ? item.getVerifiedAmount() : BigDecimal.ZERO)
-                    .add(currentVerifyAmount);
-            BigDecimal unverified = (item.getDocumentAmount() != null ? item.getDocumentAmount() : BigDecimal.ZERO)
-                    .subtract(newVerified);
-            item.setVerifiedAmount(newVerified);
-            item.setUnverifiedAmount(unverified);
-            item.setCurrentVerifyAmount(currentVerifyAmount);
-            settlementItemRepository.save(item);
-
-            // 已结清 → 标记为已平账
-            if (unverified.compareTo(BigDecimal.ZERO) <= 0) {
-                jqf.update(qSettlement)
-                        .set(qSettlement.orderStatus, OrderStatus.已平账)
-                        .where(qSettlement.id.eq(item.getSettlementId()))
-                        .execute();
+        if (item == null) {
+            if (warnIfMissing) {
+                log.warn("reverseWriteOff: 未找到可扣减的 INVENTORY 结算明细, businessType={}, businessId={}, delta={}",
+                        businessType, orderId, delta);
             }
+            return;
         }
+        BigDecimal document = item.getDocumentAmount() != null ? item.getDocumentAmount() : BigDecimal.ZERO;
+        BigDecimal verified = item.getVerifiedAmount() != null ? item.getVerifiedAmount() : BigDecimal.ZERO;
+        BigDecimal newVerified = verified.add(delta);
+        if (newVerified.signum() < 0) {
+            log.warn("reverseWriteOff: 扣减超出已核销, 已钳制为0, businessId={}, delta={}, verified={}", orderId, delta, verified);
+            newVerified = BigDecimal.ZERO;
+        }
+        if (newVerified.compareTo(document) > 0) {
+            log.warn("updateWriteOff: 核销超出单据金额, 已钳制为单据金额, businessId={}, document={}, newVerified={}",
+                    orderId, document, newVerified);
+            newVerified = document;
+        }
+        item.setVerifiedAmount(newVerified);
+        item.setUnverifiedAmount(document.subtract(newVerified));
+        if (delta.signum() > 0) {
+            item.setCurrentVerifyAmount(delta);
+        } else if (newVerified.signum() == 0) {
+            item.setCurrentVerifyAmount(BigDecimal.ZERO);
+        }
+        settlementItemRepository.save(item);
+        recalcSettlementStatus(item.getSettlementId());
+    }
+
+    /**
+     * 重算结算单主表平账状态：只要存在任一 INVENTORY 明细剩余未结&gt;0.005 即未平账，否则已平账。
+     * FUND / business_category 为空的历史手工行忽略（不属于自动结算口径）。
+     * 仅对当前状态为 未平账/已平账 的自动结算单生效，不覆盖手工单的 已保存/已审核 状态。
+     */
+    private void recalcSettlementStatus(Long settlementId) {
+        if (settlementId == null) return;
+        Settlement settlement = settlementRepository.findById(settlementId).orElse(null);
+        if (settlement == null) return;
+        if (settlement.getOrderStatus() != OrderStatus.未平账 && settlement.getOrderStatus() != OrderStatus.已平账) {
+            log.warn("recalcSettlementStatus: 跳过非自动结算单状态 orderStatus={}, settlementId={}",
+                    settlement.getOrderStatus(), settlementId);
+            return;
+        }
+        List<SettlementItem> invItems = jqf.selectFrom(qSettlementItem)
+                .where(qSettlementItem.settlementId.eq(settlementId)
+                        .and(qSettlementItem.businessCategory.eq("INVENTORY")))
+                .fetch();
+        boolean open = invItems.stream().anyMatch(i ->
+                i.getUnverifiedAmount() == null || i.getUnverifiedAmount().compareTo(SETTLE_EPSILON) > 0);
+        jqf.update(qSettlement)
+                .set(qSettlement.orderStatus, open ? OrderStatus.未平账 : OrderStatus.已平账)
+                .where(qSettlement.id.eq(settlementId))
+                .execute();
     }
 
     public PageResults<Map<String, Object>> writeOffCandidates(Page page, WriteOffQuery query) {

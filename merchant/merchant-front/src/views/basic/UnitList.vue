@@ -2,7 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="showUnitForm()">新 增</t-button>
+        <t-button v-auth="'unit:edit'" theme="primary" style="border-radius: 4px" @click="showUnitForm()">新 增</t-button>
         <t-input
             v-model="params.name"
             clearable
@@ -33,8 +33,8 @@
       >
         <template #ops="{ row }">
           <t-space size="small">
-            <t-link theme="primary" @click="showUnitForm(row)"><t-icon name="edit"/></t-link>
-            <t-link theme="primary" @click="deleteUnit(row)"><t-icon name="delete"/></t-link>
+            <t-link v-auth="'unit:edit'" theme="primary" @click="showUnitForm(row)"><t-icon name="edit"/></t-link>
+            <t-link v-auth="'unit:delete'" theme="primary" @click="deleteUnit(row)"><t-icon name="delete"/></t-link>
           </t-space>
         </template>
       </t-table>

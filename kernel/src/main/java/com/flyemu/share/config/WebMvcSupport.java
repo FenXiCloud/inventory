@@ -23,15 +23,18 @@ import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalTimeSerializer;
 import com.flyemu.share.converter.DateConverter;
 import com.flyemu.share.converter.LocalDateConverter;
+import com.flyemu.share.interceptor.PermissionInterceptor;
 import com.flyemu.share.resolver.SaHandlerMethodArgumentResolver;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.annotation.Resource;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.PersistenceUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -71,6 +74,19 @@ public class WebMvcSupport extends WebMvcConfigurationSupport implements Initial
     @PersistenceUnit
     private EntityManagerFactory entityManagerFactory;
 
+    /**
+     * 共享 EntityManager 代理（线程/事务安全）。不注入本类 @Bean 的 JPAQueryFactory，避免循环依赖。
+     */
+    @PersistenceContext
+    private EntityManager sharedEntityManager;
+
+    /**
+     * 操作级权限强制开关。默认关闭（admin-server 等平台端不受影响），
+     * merchant-server 在 application-app.yml 显式置 true。
+     */
+    @Value("${permission.enforce:false}")
+    private boolean permissionEnforce;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         InterceptorRegistration interceptorRegistration = registry.addInterceptor(new SaInterceptor());
@@ -80,6 +96,22 @@ public class WebMvcSupport extends WebMvcConfigurationSupport implements Initial
         list.add("/category/**");
         list.add("/inventory/rebuildCostChain");
         interceptorRegistration.addPathPatterns("/**").excludePathPatterns(list);
+        if (permissionEnforce) {
+            // 排在 SaInterceptor 之后：登录校验先于权限校验；排除名单保持一致（既有公开面不收紧）
+            List<String> permExclude = new ArrayList<>(list);
+            permExclude.add("/login");
+            permExclude.add("/logout");
+            permExclude.add("/init");
+            permExclude.add("/dd/auth");
+            permExclude.add("/financial/login");
+            permExclude.add("/getToken");
+            permExclude.add("/py");
+            permExclude.add("/error");
+            registry.addInterceptor(new PermissionInterceptor(new JPAQueryFactory(sharedEntityManager)))
+                    .addPathPatterns("/**")
+                    .excludePathPatterns(permExclude);
+            log.info("操作级权限拦截器已启用 (permission.enforce=true)");
+        }
     }
 
     @Override

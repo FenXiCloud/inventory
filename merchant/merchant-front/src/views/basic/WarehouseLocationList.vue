@@ -2,8 +2,8 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addLocation">新 增</t-button>
-        <t-button theme="danger" variant="outline" style="border-radius: 4px" @click="batchDelete"
+        <t-button v-auth="'warehouseLocation:edit'" theme="primary" style="border-radius: 4px" @click="addLocation">新 增</t-button>
+        <t-button v-auth="'warehouseLocation:delete'" theme="danger" variant="outline" style="border-radius: 4px" @click="batchDelete"
                   :disabled="selectedRowKeys.length === 0">批量删除</t-button>
         <t-select
             v-model="params.warehouseId"
@@ -64,8 +64,8 @@
         </template>
         <template #op="{ row }">
           <t-space>
-            <t-link theme="primary" @click="editLocation(row)">编辑</t-link>
-            <t-link theme="danger" @click="deleteLocation(row)">删除</t-link>
+            <t-link v-auth="'warehouseLocation:edit'" theme="primary" @click="editLocation(row)">编辑</t-link>
+            <t-link v-auth="'warehouseLocation:delete'" theme="danger" @click="deleteLocation(row)">删除</t-link>
           </t-space>
         </template>
       </t-table>

@@ -1,24 +1,15 @@
-import store from "@/js/store";
+import { hasPerm } from '@common/perm';
 
 export default {
   mounted(el, binding) {
-    //门店账号需要控制权限
-    if (store.state.user.role.accountBookId) {
-      const {value} = binding
-      if (value && value instanceof Array && value.length > 0) {
-        const hasPermission = store.state.granted.some(role => {
-          return value.includes(role)
-        })
-        if (!hasPermission) {
-          el.parentNode && el.parentNode.removeChild(el)
-        }
-      } else if (value && typeof value === 'string') {
-        if (!store.state.granted.includes(value)) {
-          el.parentNode && el.parentNode.removeChild(el);
-        }
-      } else {
-        throw new Error(`need permission! Like v-auth="['create','editor']" or v-auth="'create'"`)
-      }
+    const { value } = binding;
+    const valid = (typeof value === 'string' && value.length > 0)
+        || (Array.isArray(value) && value.length > 0);
+    if (!valid) {
+      throw new Error(`need permission! Like v-auth="'product:edit'" or v-auth="['salesOrder:audit']"`);
+    }
+    if (!hasPerm(value)) {
+      el.parentNode && el.parentNode.removeChild(el);
     }
   }
-}
+};

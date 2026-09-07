@@ -2,6 +2,7 @@ package com.flyemu.share.service.setting;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.lang.Dict;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -11,16 +12,15 @@ import com.aliyun.teaopenapi.models.Config;
 import com.dingtalk.api.DefaultDingTalkClient;
 import com.dingtalk.api.DingTalkClient;
 import com.dingtalk.api.request.OapiUserGetuserinfoRequest;
-import com.dingtalk.api.request.OapiUserListidRequest;
 import com.dingtalk.api.request.OapiV2DepartmentListsubRequest;
-import com.dingtalk.api.request.OapiV2UserGetRequest;
+import com.dingtalk.api.request.OapiV2UserListRequest;
 import com.dingtalk.api.response.OapiUserGetuserinfoResponse;
-import com.dingtalk.api.response.OapiUserListidResponse;
 import com.dingtalk.api.response.OapiV2DepartmentListsubResponse;
-import com.dingtalk.api.response.OapiV2UserGetResponse;
+import com.dingtalk.api.response.OapiV2UserListResponse;
 import com.flyemu.share.entity.setting.Admin;
 import com.flyemu.share.entity.setting.Dept;
 import com.flyemu.share.entity.setting.Role;
+import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.setting.AdminRepository;
 import com.taobao.api.ApiException;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +33,9 @@ import org.springframework.stereotype.Service;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @Slf4j
@@ -40,13 +43,23 @@ public class DDLoginServiceImpl implements DDLoginService{
 
     private static String accessToken = null;
 
-    @Value("${dingtalk.appKey}")
+    /** 钉钉同步后台任务状态（单实例内存态，防重 + 进度轮询） */
+    private static final ExecutorService DD_SYNC_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "dd-user-sync");
+        t.setDaemon(true);
+        return t;
+    });
+    private final AtomicBoolean ddSyncing = new AtomicBoolean(false);
+    private volatile String ddSyncProgress = "";
+    private volatile String ddSyncResult = null;
+
+    @Value("${dingtalk.appKey:}")
     private String appKey;
-    @Value("${dingtalk.appSecret}")
+    @Value("${dingtalk.appSecret:}")
     private String appSecret;
-    @Value("${dingtalk.corpId}")
+    @Value("${dingtalk.corpId:}")
     private String corpId;
-    @Value("${dingtalk.agentID}")
+    @Value("${dingtalk.agentID:}")
     private String agentID;
 
     @Autowired
@@ -154,17 +167,55 @@ public class DDLoginServiceImpl implements DDLoginService{
     }
 
     @Override
-    public String addUserByDingDing() {
+    public String submitUserSync() {
+        if (StringUtils.isAnyBlank(appKey, appSecret)) {
+            throw new ServiceException("尚未配置钉钉同步参数（dingtalk.appKey / appSecret），请先在 merchant-server 配置文件中填写~");
+        }
+        if (!ddSyncing.compareAndSet(false, true)) {
+            throw new ServiceException("上一个钉钉同步任务仍在进行中，请稍候~");
+        }
+        ddSyncProgress = "任务已提交，排队中…";
+        ddSyncResult = null;
+        DD_SYNC_EXECUTOR.execute(() -> {
+            try {
+                ddSyncResult = doSyncUsers();
+            } catch (Exception e) {
+                log.error("钉钉同步任务异常：", e);
+                ddSyncResult = "SYNC_ERROR:" + StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName());
+            } finally {
+                ddSyncing.set(false);
+            }
+        });
+        return "同步任务已提交，正在后台执行，进度见工具栏提示~";
+    }
+
+    @Override
+    public Dict getSyncProgress() {
+        return Dict.create()
+                .set("running", ddSyncing.get())
+                .set("progress", ddSyncProgress)
+                .set("result", ddSyncResult);
+    }
+
+    /**
+     * 真正的同步流程（后台线程执行）：串行调用钉钉接口较慢，故全程更新进度供前端轮询。
+     */
+    private String doSyncUsers() {
         Counter counter = new Counter();
         Set<String> userIds = new HashSet<>();
-        //获取accessToken
+        ddSyncProgress = "正在获取钉钉accessToken…";
         accessToken = this.getAccessToken();
-        log.info("accessToken:" + accessToken);
+        ddSyncProgress = "正在拉取部门列表…";
         try {
             DingTalkClient client1 = new DefaultDingTalkClient("https://oapi.dingtalk.com/topapi/v2/department/listsub");
             OapiV2DepartmentListsubRequest req1 = new OapiV2DepartmentListsubRequest();
             //获取部门id列表
             OapiV2DepartmentListsubResponse rsp1 = client1.execute(req1, accessToken);
+            if (rsp1 == null || !rsp1.isSuccess()) {
+                throw new ServiceException("获取钉钉部门列表失败："
+                        + (rsp1 == null ? "无响应" : StringUtils.defaultIfBlank(rsp1.getSubMsg(), rsp1.getMsg()))
+                        + "，请检查钉钉应用权限与参数~");
+            }
             //查询默认角色
             Long roleId = null;
             List<Role> roleList = roleService.systemDefaultRole();
@@ -174,6 +225,8 @@ public class DDLoginServiceImpl implements DDLoginService{
             this.insertUserByDingDing(rsp1, counter, userIds, roleId);
         } catch (ApiException e) {
             log.error("获取钉钉用户异常：", e);
+            throw new ServiceException("钉钉用户同步失败：" + StringUtils.defaultIfBlank(e.getErrMsg(), e.getMessage())
+                    + "；中断前已拉取 " + counter.sumNum + " 条、入库 " + counter.successNum + " 条~");
         }
         String message = "共拉取到：" + counter.sumNum + "条；<br/>成功："
                 + counter.successNum + "条；<br/>更新：" + counter.failureNum + "条；";
@@ -191,7 +244,7 @@ public class DDLoginServiceImpl implements DDLoginService{
      * @return accessToken信息
      */
     private String getAccessToken() {
-        GetAccessTokenResponse accessTokenRsp = new GetAccessTokenResponse();
+        GetAccessTokenResponse accessTokenRsp;
         try {
             com.aliyun.dingtalkoauth2_1_0.Client client = createClient();
             com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest getAccessTokenRequest = new com.aliyun.dingtalkoauth2_1_0.models.GetAccessTokenRequest()
@@ -199,112 +252,117 @@ public class DDLoginServiceImpl implements DDLoginService{
                     .setAppSecret(appSecret);
             accessTokenRsp = client.getAccessToken(getAccessTokenRequest);
         } catch (TeaException err) {
-            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
-                // err 中含有 code 和 message 属性，可帮助开发定位问题
-                log.error("code:" + err.code + ";message:" + err.message );
-            }
+            log.error("获取钉钉accessToken失败 code:{} message:{}", err.code, err.message);
+            throw new ServiceException("获取钉钉accessToken失败：" + StringUtils.defaultIfBlank(err.message, StringUtils.defaultIfBlank(err.code, "未知错误"))
+                    + "，请检查 appKey/appSecret~");
         } catch (Exception _err) {
-            TeaException err = new TeaException(_err.getMessage(), _err);
-            if (!com.aliyun.teautil.Common.empty(err.code) && !com.aliyun.teautil.Common.empty(err.message)) {
-                // err 中含有 code 和 message 属性，可帮助开发定位问题
-                log.error("code:" + err.code + ";message:" + err.message );
-            }
+            log.error("获取钉钉accessToken异常：", _err);
+            throw new ServiceException("获取钉钉accessToken异常：" + _err.getMessage() + "，请检查钉钉参数配置或网络~");
         }
-
-        return accessTokenRsp.getBody().getAccessToken();
+        String token = accessTokenRsp.getBody() == null ? null : accessTokenRsp.getBody().getAccessToken();
+        if (StringUtils.isBlank(token)) {
+            throw new ServiceException("未能获取钉钉accessToken，请检查 appKey/appSecret 配置~");
+        }
+        return token;
     }
 
     public void insertUserByDingDing(OapiV2DepartmentListsubResponse rsp1, Counter counter, Set<String> userIds, Long roleId) throws ApiException {
         if (ObjectUtils.isEmpty(rsp1.getResult())) {
             return;
         }
-        DingTalkClient client1 = new DefaultDingTalkClient("https://oapi.dingtalk.com/topapi/v2/department/listsub");
-        DingTalkClient client2 = new DefaultDingTalkClient("https://oapi.dingtalk.com/topapi/user/listid");
-        DingTalkClient client3 = new DefaultDingTalkClient("https://oapi.dingtalk.com/topapi/v2/user/get");
-        OapiV2DepartmentListsubRequest req1 = new OapiV2DepartmentListsubRequest();
-        OapiUserListidRequest req2 = new OapiUserListidRequest();
-        OapiV2UserGetRequest req3 = new OapiV2UserGetRequest();
+        DingTalkClient deptClient = new DefaultDingTalkClient("https://oapi.dingtalk.com/topapi/v2/department/listsub");
+        // 批量成员接口：一次拉 100 人（含姓名/手机号/邮箱），替代旧“listid + 每人一次 user/get”的海量串行请求
+        DingTalkClient userClient = new DefaultDingTalkClient("https://oapi.dingtalk.com/topapi/v2/user/list");
 
         //循环部门列表
         for (OapiV2DepartmentListsubResponse.DeptBaseResponse deptBaseResponse : rsp1.getResult()) {
             //判断这个组织是否存在
             String deptName = deptBaseResponse.getName();
-//            SysDept sysDept = sysDeptMapper.checkDeptNameUnique(deptName, SecurityUtils.getDeptId());
-//            SysDept info = sysDeptMapper.selectDeptById(SecurityUtils.getDeptId());
-
             Dept sysDept = deptService.checkDeptNameUnique(deptName);
 
             if (ObjectUtils.isEmpty(sysDept)) {
                 //新建部门
                 sysDept = new Dept();
                 sysDept.setDeptName(deptName);
-//                sysDept.setParentId(SecurityUtils.DeptId);
                 sysDept.setDelFlag("0");
                 sysDept.setStatus("0");
-//                sysDept.setAncestors(info.getAncestors() + "," + info.getId());
                 sysDept.setAncestors("");
                 deptService.insertDept(sysDept);
             }
-            req1.setDeptId(deptBaseResponse.getDeptId());
-            //获取部门id列表
-            OapiV2DepartmentListsubResponse rsp11 = client1.execute(req1, accessToken);
-            this.insertUserByDingDing(rsp11, counter, userIds, roleId);
 
-            req2.setDeptId(deptBaseResponse.getDeptId());
-            //获取部门下的员工列表
-            OapiUserListidResponse rsp2 = client2.execute(req2, accessToken);
-            log.info("钉钉拉取用户用户列表：{}", JSONObject.toJSONString(rsp2));
-            if (ObjectUtils.isEmpty(rsp2) || ObjectUtils.isEmpty(rsp2.getResult())) {
-                log.error("钉钉拉取用户用户列表为空：{}", deptBaseResponse.getDeptId());
-                continue;
-            }
-            for (String userId : rsp2.getResult().getUseridList()) {
-                if (ObjectUtils.isEmpty(userId)) {
-                    log.error("钉钉拉取用户userId为空：{}", userId);
-                    continue;
+            //下级部门递归
+            OapiV2DepartmentListsubRequest subReq = new OapiV2DepartmentListsubRequest();
+            subReq.setDeptId(deptBaseResponse.getDeptId());
+            OapiV2DepartmentListsubResponse subRsp = deptClient.execute(subReq, accessToken);
+            this.insertUserByDingDing(subRsp, counter, userIds, roleId);
+
+            //分页拉取本部门直属成员
+            long cursor = 0L;
+            boolean hasMore = true;
+            while (hasMore) {
+                OapiV2UserListRequest userReq = new OapiV2UserListRequest();
+                userReq.setDeptId(deptBaseResponse.getDeptId());
+                userReq.setSize(100L);
+                userReq.setCursor(cursor);
+                OapiV2UserListResponse userRsp = userClient.execute(userReq, accessToken);
+                if (userRsp == null || !userRsp.isSuccess() || userRsp.getResult() == null) {
+                    throw new ServiceException("拉取部门「" + deptName + "」成员失败："
+                            + (userRsp == null ? "无响应" : StringUtils.defaultIfBlank(userRsp.getSubMsg(), userRsp.getMsg())) + "~");
                 }
-                if (!userIds.contains(userId)) {
-                    userIds.add(userId);
-                    req3.setUserid(userId);
-                    //获取员工信息
-                    OapiV2UserGetResponse rsp3 = client3.execute(req3, accessToken);
-                    log.info("钉钉拉取用户信息：{}", JSONObject.toJSONString(rsp3));
-                    if (ObjectUtils.isEmpty(rsp3) || ObjectUtils.isEmpty(rsp3.getResult())) {
-                        log.error("钉钉拉取用户信息为空：{}", userId);
-                        continue;
-                    }
-
-                    Admin admin = new Admin();
-                    admin.setEmail(rsp3.getResult().getEmail());
-                    admin.setUsername(rsp3.getResult().getMobile());
-                    admin.setName(rsp3.getResult().getName());
-                    admin.setMobile(rsp3.getResult().getMobile());
-                    admin.setDeptId(sysDept.getId());
-                    admin.setDingDingUserId(userId);
-                    admin.setMerchantId(1L);
-                    admin.setRoleId(roleId);
-                    //如果手机号为空 取钉钉id后6位
-                    if(StringUtils.isEmpty(admin.getMobile())){
-                        admin.setMobile(admin.getDingDingUserId());
-                        admin.setUsername(userId);
-                        admin.setPassword(DigestUtil.bcrypt(admin.getDingDingUserId().substring(admin.getDingDingUserId().length() - 6)));
-                    }else{
-                        admin.setPassword(DigestUtil.bcrypt(admin.getMobile().substring(admin.getMobile().length() - 6)));
-                    }
-
-                    // 验证是否存在这个用户
-                    counter.sumNum++;
-                    Admin u = adminService.selectAdminByMobile(admin.getMobile());
-                    if (ObjectUtils.isEmpty(u)) {
-                        this.adminSave(admin);
-                        counter.successNum++;
-                    } else{
-                        u.setDingDingUserId(userId);
-                        this.adminSave(u);
-                        counter.failureNum++;
+                List<OapiV2UserListResponse.ListUserResponse> users = userRsp.getResult().getList();
+                if (!ObjectUtils.isEmpty(users)) {
+                    for (OapiV2UserListResponse.ListUserResponse dingUser : users) {
+                        this.syncOneUser(dingUser, sysDept, roleId, counter, userIds);
                     }
                 }
+                hasMore = Boolean.TRUE.equals(userRsp.getResult().getHasMore());
+                cursor = userRsp.getResult().getNextCursor() == null ? 0L : userRsp.getResult().getNextCursor();
+                ddSyncProgress = "部门「" + deptName + "」已处理；累计拉取 " + counter.sumNum
+                        + " 人（新增 " + counter.successNum + "、更新 " + counter.failureNum + "）…";
             }
+        }
+    }
+
+    /**
+     * 落库单个钉钉成员：跨部门去重，已存在则仅回填钉钉ID，不存在则新建（密码=手机号后6位）。
+     */
+    private void syncOneUser(OapiV2UserListResponse.ListUserResponse dingUser, Dept sysDept, Long roleId,
+                             Counter counter, Set<String> userIds) {
+        String userId = dingUser.getUserid();
+        if (ObjectUtils.isEmpty(userId)) {
+            log.error("钉钉拉取用户userId为空，跳过");
+            return;
+        }
+        if (!userIds.add(userId)) {
+            return;
+        }
+        Admin admin = new Admin();
+        admin.setEmail(dingUser.getEmail());
+        admin.setUsername(dingUser.getMobile());
+        admin.setName(dingUser.getName());
+        admin.setMobile(dingUser.getMobile());
+        admin.setDeptId(sysDept.getId());
+        admin.setDingDingUserId(userId);
+        admin.setMerchantId(1L);
+        admin.setRoleId(roleId);
+        //如果手机号为空 取钉钉id后6位
+        if (StringUtils.isEmpty(admin.getMobile())) {
+            admin.setMobile(userId);
+            admin.setUsername(userId);
+        }
+
+        counter.sumNum++;
+        Admin u = adminService.selectAdminByMobile(admin.getMobile());
+        if (ObjectUtils.isEmpty(u)) {
+            // 仅新建时算密码哈希（bcrypt 单次上百毫秒，存量用户不白算）
+            String seed = StringUtils.isEmpty(dingUser.getMobile()) ? userId : admin.getMobile();
+            admin.setPassword(DigestUtil.bcrypt(seed.substring(Math.max(0, seed.length() - 6))));
+            this.adminSave(admin);
+            counter.successNum++;
+        } else {
+            u.setDingDingUserId(userId);
+            this.adminSave(u);
+            counter.failureNum++;
         }
     }
 

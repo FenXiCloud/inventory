@@ -23,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +57,11 @@ public class InventoryCostBatchService extends BaseService {
             dto.setProductName(tuple.get(qProduct.name));
             dto.setWarehouseName(tuple.get(qWarehouse.name));
             dto.setSupplierName(tuple.get(qSupplier.name));
+            Integer qtyIn = tuple.get(qBatch.qtyIn);
+            BigDecimal unitCost = tuple.get(qBatch.unitCost);
+            if (qtyIn != null && unitCost != null) {
+                dto.setAmountIn(unitCost.multiply(BigDecimal.valueOf(qtyIn)).setScale(2, RoundingMode.HALF_EVEN));
+            }
             dtos.add(dto);
         });
         return new PageResults<>(dtos, page, fetchPage.getTotalSize());

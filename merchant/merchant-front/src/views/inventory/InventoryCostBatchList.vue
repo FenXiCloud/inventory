@@ -57,7 +57,7 @@
     </div>
 
     <div class="simple-page__hint">
-      展示成本核算批次层。入库建批，出库按成本法扣减剩余数量。
+      {{ hintText }}
     </div>
 
     <div class="simple-page__table">
@@ -67,6 +67,7 @@
           bordered
           stripe
           hover
+          resizable
           height="100%"
           table-layout="fixed"
           :data="dataList"
@@ -74,6 +75,11 @@
           :loading="loading"
           :foot-data="footData"
       >
+        <template #qtyIn="{ row }"><span class="num">{{ fmtInt(row.qtyIn) }}</span></template>
+        <template #qtyRemain="{ row }"><span class="num">{{ fmtInt(row.qtyRemain) }}</span></template>
+        <template #amountIn="{ row }"><span class="num">{{ fmt(row.amountIn) }}</span></template>
+        <template #unitCost="{ row }"><span class="num">{{ fmtCost(row.unitCost) }}</span></template>
+        <template #totalCostRemain="{ row }"><span class="num">{{ fmt(row.totalCostRemain) }}</span></template>
         <template #closed="{ row }">
           <t-tag :theme="row.closed ? 'default' : 'success'" variant="light">
             {{ row.closed ? '已关闭' : '未关闭' }}
@@ -83,7 +89,8 @@
     </div>
 
     <div class="simple-page__pager">
-      <span class="simple-page__total">剩余成本：{{ amountTotal }}元</span>
+      <span v-if="isFifo" class="simple-page__total">入库金额：{{ amountInTotal }} / 剩余成本：{{ amountTotal }}元</span>
+      <span v-else class="simple-page__total">剩余数量合计：{{ remainQtyTotal }}</span>
       <t-pagination
           v-model:current="pagination.page"
           v-model:page-size="pagination.pageSize"
@@ -100,6 +107,7 @@
 <script>
 import manba from 'manba';
 import InventoryCostBatch from '@js/api/inventory/InventoryCostBatch';
+import AccountBook from '@js/api/setting/AccountBook';
 import Product from '@js/api/basic/Product';
 import Warehouse from '@js/api/basic/Warehouse';
 
@@ -112,7 +120,8 @@ export default {
     return {
       dataList: [],
       loading: false,
-      amountTotal: '0.00',
+      // 成本核算方法：1=移动平均，2=先进先出（读取账套参数 costAccounting）
+      costMethod: 1,
       pagination: {
         page: 1,
         pageSize: 20,
@@ -140,7 +149,20 @@ export default {
         { label: '销售退货', value: '销售退货' },
         { label: '期初库存', value: '期初库存' },
       ],
-      columns: [
+    };
+  },
+  computed: {
+    isFifo() {
+      return Number(this.costMethod) === 2;
+    },
+    hintText() {
+      if (this.isFifo) {
+        return '先进先出法：每个入库批次登记入库数量、单位成本与入库金额；出库按入库先后顺序核算成本。';
+      }
+      return '移动平均法：成本按库内移动平均核算，不按批次标记单位成本；批次仅用于数量与来源追溯。';
+    },
+    columns() {
+      const cols = [
         { colKey: 'inboundDate', title: '入库日期', width: 120, align: 'center' },
         { colKey: 'batchNo', title: '批次号', minWidth: 180, ellipsis: true },
         { colKey: 'productCode', title: '产品编码', width: 120, ellipsis: true },
@@ -148,15 +170,20 @@ export default {
         { colKey: 'warehouseName', title: '仓库', width: 120, ellipsis: true },
         { colKey: 'inboundOrderType', title: '来源类型', width: 110, align: 'center' },
         { colKey: 'qtyIn', title: '入库数量', width: 100, align: 'right' },
-        { colKey: 'qtyRemain', title: '剩余数量', width: 100, align: 'right' },
-        { colKey: 'unitCost', title: '单位成本', width: 110, align: 'right' },
-        { colKey: 'totalCostRemain', title: '剩余成本', width: 110, align: 'right' },
-        { colKey: 'supplierName', title: '供应商', width: 120, ellipsis: true },
-        { colKey: 'closed', title: '状态', width: 90, align: 'center', fixed: 'right' },
-      ],
-    };
-  },
-  computed: {
+      ];
+      // 先进先出法才登记/展示批次单位成本与金额
+      if (this.isFifo) {
+        cols.push({ colKey: 'amountIn', title: '入库金额', width: 120, align: 'right' });
+      }
+      cols.push({ colKey: 'qtyRemain', title: '剩余数量', width: 100, align: 'right' });
+      if (this.isFifo) {
+        cols.push({ colKey: 'unitCost', title: '单位成本', width: 110, align: 'right' });
+        cols.push({ colKey: 'totalCostRemain', title: '剩余成本', width: 120, align: 'right' });
+      }
+      cols.push({ colKey: 'supplierName', title: '供应商', width: 120, ellipsis: true });
+      cols.push({ colKey: 'closed', title: '状态', width: 90, align: 'center', fixed: 'right' });
+      return cols;
+    },
     queryParams() {
       const [start, end] = this.dateRangeValue || [];
       return Object.assign({}, this.params, {
@@ -168,12 +195,28 @@ export default {
     },
     footData() {
       const sum = (key) => (this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0);
-      return [{
+      const foot = {
         inboundDate: '合计',
         qtyIn: sum('qtyIn'),
         qtyRemain: sum('qtyRemain'),
-        totalCostRemain: sum('totalCostRemain').toFixed(2),
-      }];
+      };
+      if (this.isFifo) {
+        foot.amountIn = sum('amountIn').toFixed(2);
+        foot.totalCostRemain = sum('totalCostRemain').toFixed(2);
+      }
+      return [foot];
+    },
+    amountInTotal() {
+      const sum = (this.dataList || []).reduce((acc, row) => acc + Number(row.amountIn || 0), 0);
+      return sum.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+    amountTotal() {
+      const sum = (this.dataList || []).reduce((acc, row) => acc + Number(row.totalCostRemain || 0), 0);
+      return sum.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+    remainQtyTotal() {
+      const sum = (this.dataList || []).reduce((acc, row) => acc + Number(row.qtyRemain || 0), 0);
+      return sum.toLocaleString('zh-CN');
     },
   },
   methods: {
@@ -186,15 +229,36 @@ export default {
       this.pagination.page = 1;
       this.loadList();
     },
+    fmtInt(v) {
+      const n = Number(v) || 0;
+      return n.toLocaleString('zh-CN');
+    },
+    fmt(v) {
+      const n = Number(v) || 0;
+      return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+    fmtCost(v) {
+      const n = Number(v) || 0;
+      return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    },
     loadList() {
       this.loading = true;
       InventoryCostBatch.list(this.queryParams).then(({ data: { results, total } }) => {
         this.dataList = results || [];
         this.pagination.total = total || 0;
-        const remain = (this.dataList || []).reduce((acc, row) => acc + Number(row.totalCostRemain || 0), 0);
-        this.amountTotal = remain.toFixed(2);
       }).finally(() => {
         this.loading = false;
+      });
+    },
+    loadCostMethod() {
+      AccountBook.parameters().then(({ data }) => {
+        if (data && data.costAccounting != null) {
+          this.costMethod = Number(data.costAccounting);
+        }
+      }).catch(() => {
+        // 读取失败时按默认移动平均展示
+      }).finally(() => {
+        this.loadList();
       });
     },
   },
@@ -203,12 +267,15 @@ export default {
       this.warehouseList = wh.data || [];
       this.productList = prod.data || [];
     });
-    this.loadList();
+    this.loadCostMethod();
   },
 };
 </script>
 
 <style scoped>
+.num {
+  font-variant-numeric: tabular-nums;
+}
 .simple-page__hint {
   flex-shrink: 0;
   padding: 0 4px 8px;

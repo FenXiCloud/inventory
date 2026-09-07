@@ -66,6 +66,7 @@
           size="medium"
           bordered
           hover
+          resizable
           height="100%"
           table-layout="fixed"
           :data="dataList"
@@ -131,7 +132,8 @@ export default {
       productList: [],
       productCategoryList: [],
       customerLevelList: [],
-      balanceTotalList: []
+      balanceTotalList: [],
+      latestSalesPrices: {}
     };
   },
   computed: {
@@ -250,15 +252,20 @@ export default {
         targetLevelId = levels[0].id;
       }
       // 从产品列表的客户级别定价构建售价 map
+      // 优先使用最近销售价格，如果没有则使用客户级别定价或产品固定售价
       const priceMap = {};
+      const latestPrices = this.latestSalesPrices || {};
       (this.productList || []).forEach(p => {
-        let price = 0;
-        if (targetLevelId && p.customerLevelPriceList && p.customerLevelPriceList.length) {
+        // 优先使用最近销售价格
+        let price = Number(latestPrices[p.id] || 0);
+        // 如果没有最近销售价格，则使用客户级别定价
+        if (!price && targetLevelId && p.customerLevelPriceList && p.customerLevelPriceList.length) {
           const levelPrice = p.customerLevelPriceList.find(lp => lp.customerLevelId === targetLevelId);
           if (levelPrice) {
             price = Number(levelPrice.price || 0);
           }
         }
+        // 如果还没有，则使用产品固定售价
         if (!price) {
           price = Number(p.retailCustomerPrice || p.purchasePrice || 0);
         }
@@ -317,11 +324,12 @@ export default {
     loadList() {
       this.loading = true;
       const params = this.buildRequestParams();
-      Promise.all([Inventory.balance(params), Inventory.balanceTotal(params)])
-        .then(([reportRes, inventoryRes]) => {
+      Promise.all([Inventory.balance(params), Inventory.balanceTotal(params), Inventory.latestSalesPrices()])
+        .then(([reportRes, inventoryRes, latestPricesRes]) => {
           const rows = reportRes?.data?.results || [];
           this.pagination.total = reportRes?.data?.total || 0;
           this.balanceTotalList = inventoryRes?.data || [];
+          this.latestSalesPrices = latestPricesRes?.data || {};
           this.dataList = this.fillRowInventory(rows, this.balanceTotalList);
         })
         .catch(() => {

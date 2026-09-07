@@ -39,6 +39,24 @@ public class CustomerFlowController {
 
     }
 
+    @GetMapping("/statementSummary")
+    public JsonResult statementSummary(
+            @RequestParam Long customerId,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startTime,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endTime, @SaAccountVal AccountDto accountDto) {
+        LocalDateTime startDateTime = startTime.atStartOfDay();
+        LocalDateTime endDateTime = endTime.atTime(LocalTime.MAX);
+        return JsonResult.successful(customerFlowService.statementSummary(customerId, startDateTime, endDateTime, accountDto.getMerchantId(), accountDto.getAccountBookId()));
+    }
+
+    /**
+     * 调试接口：查看指定客户的所有 CustomerFlow 记录
+     */
+    @GetMapping("/debug/list")
+    public JsonResult debugList(@RequestParam Long customerId, @SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(customerFlowService.debugList(customerId, accountDto.getMerchantId(), accountDto.getAccountBookId()));
+    }
+
     @GetMapping
     public JsonResult list(CustomerFlowService.Query query, @SaAccountVal AccountDto accountDto) {
         TenantScope.bind(query, accountDto);

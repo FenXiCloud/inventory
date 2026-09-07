@@ -39,8 +39,8 @@
     <section class="customer-main">
       <div class="customer-main__toolbar">
         <t-space break-line>
-          <t-button theme="primary" style="border-radius: 4px" @click="showCustomerForm()">新 增</t-button>
-          <t-button style="border-radius: 4px" @click="showCustomerImportForm()">导入</t-button>
+          <t-button v-auth="'customer:edit'" theme="primary" style="border-radius: 4px" @click="showCustomerForm()">新 增</t-button>
+          <t-button v-auth="'customer:edit'" style="border-radius: 4px" @click="showCustomerImportForm()">导入</t-button>
           <t-button style="border-radius: 4px" @click="exportCustomerToExcel()">导出</t-button>
           <t-input
               v-model="params.name"
@@ -83,8 +83,8 @@
         >
           <template #ops="{ row }">
             <t-space size="small">
-              <t-link theme="primary" @click="showCustomerForm(row)"><t-icon name="edit"/></t-link>
-              <t-link theme="primary" @click="deleteCustomer(row)"><t-icon name="delete"/></t-link>
+              <t-link v-auth="'customer:edit'" theme="primary" @click="showCustomerForm(row)"><t-icon name="edit"/></t-link>
+              <t-link v-auth="'customer:delete'" theme="primary" @click="deleteCustomer(row)"><t-icon name="delete"/></t-link>
             </t-space>
           </template>
         </t-table>
@@ -247,7 +247,7 @@ export default {
         header: '客户信息',
         closeOnOverlayClick: false,
         closeBtn: false,
-        width: '720px',
+        width: '960px',
         body: h(CustomerForm, {
           entity,
           onClose: () => closeDialog(dialogId),

@@ -2,7 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="showCustomerLevelForm()">新 增</t-button>
+        <t-button v-auth="'customerLevel:edit'" theme="primary" style="border-radius: 4px" @click="showCustomerLevelForm()">新 增</t-button>
         <t-input
             v-model="params.name"
             clearable
@@ -33,8 +33,8 @@
       >
         <template #ops="{ row }">
           <t-space size="small">
-            <t-link theme="primary" @click="showCustomerLevelForm(row)"><t-icon name="edit"/></t-link>
-            <t-link v-if="!row.systemDefault" theme="primary" @click="deleteCustomerLevel(row)">
+            <t-link v-auth="'customerLevel:edit'" theme="primary" @click="showCustomerLevelForm(row)"><t-icon name="edit"/></t-link>
+            <t-link v-if="$can('customerLevel:delete') && !row.systemDefault" theme="primary" @click="deleteCustomerLevel(row)">
               <t-icon name="delete"/>
             </t-link>
           </t-space>

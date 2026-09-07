@@ -44,7 +44,7 @@
               v-model="row.quantity"
               theme="normal"
               :min="0"
-              :decimal-places="2"
+              :decimal-places="qtyDp"
               style="width: 100%"
               @blur="updateQuantity(row)"
           />
@@ -55,7 +55,7 @@
               v-model="row.unitPrice"
               theme="normal"
               :min="0"
-              :decimal-places="2"
+              :decimal-places="priceDp"
               style="width: 100%"
               @blur="updatePrice(row)"
           />
@@ -75,7 +75,7 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading">取消</t-button>
       <div>
-        <t-button theme="primary" @click="save" :loading="loading">保存</t-button>
+        <t-button v-auth="'inventoryInitial:edit'" theme="primary" @click="save" :loading="loading">保存</t-button>
       </div>
     </div>
   </div>
@@ -90,6 +90,9 @@ import Product from "@js/api/basic/Product";
 import Unit from "@js/api/basic/Unit";
 
 let rowSeq = 0;
+function round2(n) {
+  return Number((n).toFixed(2));
+}
 function newRow(extra = {}) {
   return { _rowKey: `r-${++rowSeq}`, productId: null, quantity: null, ...extra };
 }
@@ -179,18 +182,34 @@ export default {
     },
 
     updateQuantity(item) {
-      this.compute(item);
+      //改数量
+      const qty = Number(item.quantity) || 0;
+      const price = Number(item.unitPrice) || 0;
+      const amount = Number(item.subtotal) || 0;
+      if (price > 0 && amount > 0 && Math.abs(price * qty - amount) > 0.009) {
+        //金额是手工录入(与 数量×单价 不一致)：保持金额权威，反算单价 = 金额 / 数量
+        item.unitPrice = qty > 0 ? round2(amount / qty) : 0;
+      } else {
+        //常规：单价权威，金额 = 数量 × 单价
+        this.forwardByPrice(item);
+      }
     },
 
     updatePrice(item) {
-      this.compute(item);
+      //改单价：金额 = 数量 × 单价
+      this.forwardByPrice(item);
     },
-    updateSubtotal(item){
-      this.compute(item);
+    updateSubtotal(item) {
+      //改金额：以金额为准反算单价 = 金额 / 数量(数量>0时)
+      item.subtotal = round2(Number(item.subtotal) || 0);
+      const qty = Number(item.quantity) || 0;
+      const amount = Number(item.subtotal) || 0;
+      item.unitPrice = qty > 0 ? round2(amount / qty) : 0;
     },
-    compute(item){
-      //计算总价 = 数量 * 单价
-      item.subtotal = (item.quantity * item.unitPrice).toFixed(2);
+    forwardByPrice(item) {
+      const qty = Number(item.quantity) || 0;
+      const price = Number(item.unitPrice) || 0;
+      item.subtotal = round2(qty * price);
     },
 
     //选择产品

@@ -10,9 +10,11 @@ import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.blazebit.persistence.PagedList;
 import com.flyemu.share.common.TenantFilters;
+import com.flyemu.share.config.AppConfig;
 import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AuxiliaryUnitPrice;
+import com.flyemu.share.dto.CustomerAttachment;
 import com.flyemu.share.dto.CustomerDto;
 import com.flyemu.share.dto.CustomerImportVo;
 import com.flyemu.share.dto.SelectProductDto;
@@ -35,7 +37,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -60,6 +65,7 @@ public class CustomerService extends BaseService {
     private final CustomerFlowService customerFlowService;
     private final ProductExistenceChecker existenceChecker;
     private final PriceResolveService priceResolveService;
+    private final AppConfig appConfig;
 
     public List<SelectProductDto> selectProducts(Long customerId, Long merchantId, Long accountBookId) {
         priceResolveService.ensureDefaultPolicies(merchantId, accountBookId);
@@ -118,8 +124,12 @@ public class CustomerService extends BaseService {
                     customer.setCode(original.getCode());
                 }
             }
+            // 记录更新前的附件（用于清理被删除的文件）
+            List<CustomerAttachment> oldAttachments = original.getAttachments();
             BeanUtil.copyProperties(customer, original, CopyOptions.create().ignoreNullValue());
-            return customerRepository.save(original);
+            Customer saved = customerRepository.save(original);
+            deleteRemovedAttachmentFiles(oldAttachments, original.getAttachments());
+            return saved;
         }
         if (StringUtils.isEmpty(customer.getCode())) {
             CodeRule codeRule = codeRuleService.findByDocumentTypeAndMerchantIdAndAccountBookId(CodeRule.DocumentType.客户, customer.getMerchantId(), customer.getAccountBookId());
@@ -191,7 +201,48 @@ public class CustomerService extends BaseService {
         if (existenceChecker.existsInOtherOutbound(customersId, 2)) {
             throw new ServiceException("该档案已存在其他出库单,不能删除");
         }
+        Customer original = customerRepository.findById(customersId).orElse(null);
         jqf.delete(qCustomer).where(qCustomer.id.eq(customersId).and(qCustomer.merchantId.eq(merchantId)).and(qCustomer.accountBookId.eq(accountBookId))).execute();
+        if (original != null) {
+            // 档案删除时一并清理其附件文件
+            deleteRemovedAttachmentFiles(original.getAttachments(), null);
+        }
+    }
+
+    /** 清理本次变更中被移除的附件文件（newList 为 null 表示整档案删除，全部清理） */
+    private void deleteRemovedAttachmentFiles(List<CustomerAttachment> oldList, List<CustomerAttachment> newList) {
+        if (CollUtil.isEmpty(oldList)) {
+            return;
+        }
+        Set<String> keep = new HashSet<>();
+        if (CollUtil.isNotEmpty(newList)) {
+            for (CustomerAttachment attachment : newList) {
+                if (StrUtil.isNotBlank(attachment.getFilePath())) {
+                    keep.add(attachment.getFilePath());
+                }
+            }
+        }
+        for (CustomerAttachment attachment : oldList) {
+            if (StrUtil.isBlank(attachment.getFilePath()) || keep.contains(attachment.getFilePath())) {
+                continue;
+            }
+            deleteAttachmentFile(attachment.getFilePath());
+        }
+    }
+
+    private void deleteAttachmentFile(String filePath) {
+        // 仅允许删除本地上传目录内、且形如 /attachment/xxx 的托管文件，防止越权路径
+        if (StrUtil.isBlank(filePath) || !filePath.startsWith("/attachment/")) {
+            return;
+        }
+        try {
+            File file = new File(appConfig.getUploadRoot(), filePath.substring("/attachment/".length()));
+            if (file.exists()) {
+                Files.deleteIfExists(file.toPath());
+            }
+        } catch (IOException e) {
+            log.error("删除客户附件文件失败: {}", filePath, e);
+        }
     }
 
     public List<Customer> select(Long merchantId, Long accountBookId) {

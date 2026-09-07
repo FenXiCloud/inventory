@@ -298,14 +298,18 @@ blockquote {
   height: 12px;
 }
 
+::-webkit-scrollbar-track {
+  background: #e8e8e8;
+  border-radius: 6px;
+}
+
 ::-webkit-scrollbar-thumb {
-  background-color: hsla(0, 0%, 44%, 0.06);
-  border-radius: 12px;
+  background-color: #aaa;
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: #3d74ff;
-  border-radius: 12px;
 }
 
 pre {
@@ -513,6 +517,37 @@ pre {
   height: 0;
   min-height: 0;
   overflow: auto;
+}
+
+/* 让外层容器统一管理滚动，横向滚动条始终在可视区域底部 */
+.simple-page__table .t-table__content,
+.product-main__table .t-table__content,
+.customer-main__table .t-table__content,
+.supplier-main__table .t-table__content,
+.order-select__table .t-table__content,
+.scan-order__table .t-table__content {
+  overflow: visible !important;
+}
+
+.simple-page__table .t-table__content table,
+.product-main__table .t-table__content table,
+.customer-main__table .t-table__content table,
+.supplier-main__table .t-table__content table,
+.order-select__table .t-table__content table,
+.scan-order__table .t-table__content table {
+  min-width: max-content;
+}
+
+/* 外层容器滚动时表头吸顶，便于查看数据时对照列字段 */
+.simple-page__table .t-table thead.t-table__header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background-color: var(--td-bg-color-container);
+}
+
+.simple-page__table .t-table thead.t-table__header th {
+  background-color: var(--td-bg-color-container);
 }
 
 .simple-page__pager {

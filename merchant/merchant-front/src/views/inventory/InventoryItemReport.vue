@@ -89,6 +89,7 @@
           size="medium"
           bordered
           hover
+          resizable
           height="100%"
           table-layout="fixed"
           :data="dataList"

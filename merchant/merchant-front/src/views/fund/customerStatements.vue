@@ -34,22 +34,9 @@
           :data="tableData"
           :columns="columns"
           :loading="loading"
-          :foot-data="footData"
       >
         <template #empty>{{ emptyText }}</template>
       </t-table>
-    </div>
-    <div class="simple-page__pager">
-      <span class="simple-page__total">实收合计：{{ amountTotal }}元</span>
-      <t-pagination
-          v-model:current="pagination.page"
-          v-model:page-size="pagination.pageSize"
-          :total="pagination.total"
-          :show-jumper="true"
-          :show-page-size="true"
-          :popup-props="{ attach: 'body' }"
-          @change="onPageChange"
-      />
     </div>
   </div>
 </template>
@@ -68,24 +55,15 @@ export default {
   name: 'CustomerStatements',
   data() {
     return {
-      dataList: [],
-      pagination: { page: 1, pageSize: 20, total: 0 },
+      summaryData: null,
       loading: false,
-      amountTotal: '0.00',
       searched: false,
       params: { customerId: null },
       customerDataList: [],
       dateRangeValue: [startTime, endTime],
       columns: [
-        { colKey: 'businessDate', title: '单据日期', width: 120, align: 'center' },
-        { colKey: 'businessNo', title: '单据编号', minWidth: 180, ellipsis: true },
-        { colKey: 'customerFlowType', title: '业务类型', width: 140, align: 'center' },
-        { colKey: 'salesAmount', title: '销售金额', width: 120, align: 'right' },
-        { colKey: 'preferentialAmount', title: '优惠金额', width: 110, align: 'right' },
-        { colKey: 'receivableAmount', title: '应收金额', width: 120, align: 'right' },
-        { colKey: 'paidUpAmount', title: '实收金额', width: 120, align: 'right' },
-        { colKey: 'balanceReceivables', title: '应收余额', width: 120, align: 'right' },
-        { colKey: 'remarks', title: '备注', minWidth: 120, ellipsis: true },
+        { colKey: 'item', title: '项目', width: 200, align: 'left' },
+        { colKey: 'amount', title: '金额', width: 180, align: 'right' },
       ]
     };
   },
@@ -97,51 +75,37 @@ export default {
       const [start, end] = this.dateRangeValue || [];
       return {
         ...this.params,
-        page: this.pagination.page,
-        pageSize: this.pagination.pageSize,
         startTime: start || null,
         endTime: end || null
       };
     },
     tableData() {
-      return (this.dataList || []).map((row) => ({
-        ...row,
-        salesAmount: money(row.salesAmount),
-        preferentialAmount: money(row.preferentialAmount),
-        receivableAmount: money(row.receivableAmount),
-        paidUpAmount: money(row.paidUpAmount),
-        balanceReceivables: money(row.balanceReceivables)
-      }));
-    },
-    footData() {
-      const sum = (key) => money((this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0));
-      return [{
-        businessNo: '合计',
-        salesAmount: sum('salesAmount'),
-        preferentialAmount: sum('preferentialAmount'),
-        receivableAmount: sum('receivableAmount'),
-        paidUpAmount: sum('paidUpAmount'),
-        balanceReceivables: sum('balanceReceivables'),
-      }];
+      if (!this.summaryData) return [];
+      // 期末余额 = 期初余额 + 本期销售 - 本期优惠 - 本期收款
+      const openingBalance = Number(this.summaryData.openingBalance || 0);
+      const totalSales = Number(this.summaryData.totalSalesAmount || 0);
+      const totalPaid = Number(this.summaryData.totalPaidUpAmount || 0);
+      const totalDiscount = Number(this.summaryData.totalPreferentialAmount || 0);
+      const closingBalance = openingBalance + totalSales - totalDiscount - totalPaid;
+      return [
+        { item: '期初余额', amount: money(openingBalance) },
+        { item: '本期销售金额', amount: money(totalSales) },
+        { item: '本期优惠金额', amount: money(totalDiscount) },
+        { item: '本期收款金额', amount: money(totalPaid) },
+        { item: '期末余额', amount: money(closingBalance) },
+      ];
     }
   },
   methods: {
     exportData() {
-      if (!this.dataList || this.dataList.length === 0) {
+      if (!this.summaryData) {
         MessagePlugin.warning('没有可导出的数据');
         return;
       }
       try {
-        const exportData = this.dataList.map(item => ({
-          '业务日期': item.businessDate,
-          '单据编号': item.businessNo,
-          '业务类型': item.customerFlowType,
-          '销售金额': item.salesAmount,
-          '优惠金额': item.preferentialAmount,
-          '应收金额': item.receivableAmount,
-          '实收金额': item.paidUpAmount,
-          '应收余额': item.balanceReceivables,
-          '备注': item.remarks,
+        const exportData = this.tableData.map(item => ({
+          '项目': item.item,
+          '金额': item.amount,
         }));
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
@@ -154,11 +118,6 @@ export default {
       }
     },
 
-    onPageChange(pageInfo) {
-      this.pagination.page = pageInfo.current;
-      this.pagination.pageSize = pageInfo.pageSize;
-      this.loadList();
-    },
     doSearch() {
       if (!this.params.customerId) {
         return MessagePlugin.warning('请选择客户后再查询');
@@ -166,22 +125,19 @@ export default {
       if (!this.dateRangeValue || !this.dateRangeValue[0] || !this.dateRangeValue[1]) {
         return MessagePlugin.warning('请选择单据日期');
       }
-      this.pagination.page = 1;
-      this.loadList();
+      this.loadSummary();
     },
     loadCustomer() {
       Customer.select().then(({ data }) => {
         this.customerDataList = data || [];
       });
     },
-    loadList() {
+    loadSummary() {
       this.loading = true;
       this.searched = true;
-      AccountFlow.customerStatement(this.queryParams)
-        .then(({ data: { results, total } }) => {
-          this.dataList = results || [];
-          this.pagination.total = total || 0;
-          this.amountTotal = money(this.dataList.reduce((acc, row) => acc + Number(row.paidUpAmount || 0), 0));
+      AccountFlow.customerStatementSummary(this.queryParams)
+        .then(({ data }) => {
+          this.summaryData = data || null;
         })
         .finally(() => (this.loading = false));
     }

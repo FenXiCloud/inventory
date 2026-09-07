@@ -2,8 +2,8 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="batchDelete">批量删除</t-button>
+        <t-button v-auth="'customerInitial:edit'" theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button v-auth="'customerInitial:delete'" variant="outline" style="border-radius: 4px" @click="batchDelete">批量删除</t-button>
         <t-select
             v-model="params.customerIds"
             :options="customerList"
@@ -47,8 +47,8 @@
       >
         <template #ops="{ row }">
           <t-space size="small">
-            <t-link theme="primary" @click="addForm('edit', row.id)"><t-icon name="edit"/></t-link>
-            <t-link theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
+            <t-link v-auth="'customerInitial:edit'" theme="primary" @click="addForm('edit', row.id)"><t-icon name="edit"/></t-link>
+            <t-link v-auth="'customerInitial:delete'" theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
           </t-space>
         </template>
       </t-table>

@@ -55,12 +55,14 @@ public class InventoryItem implements TenantAware {
     private Integer currentQuantity;
 
     @Comment("平均成本")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal averageCost;
 
     @Comment("成本总计")
     private BigDecimal totalCost;
 
     @Comment("单价（以基本单位计）")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal unitPrice;
 
     @Comment("小计 (quantity * unitPrice * (1 - discount_value/100) 或 quantity * unitPrice - discount_value，根据折扣类型计算)")

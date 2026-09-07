@@ -27,6 +27,9 @@ export default {
     balanceSalesPrice(param) {
         return Ajax.get("/inventory/balanceSalesPrice", param);
     },
+    latestSalesPrices() {
+        return Ajax.get("/inventory/latestSalesPrices");
+    },
     totalCost(productId, warehouseId) {
         return Ajax.get(`/inventory/totalCost/${productId}/${warehouseId}`);
     },

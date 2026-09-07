@@ -20,7 +20,7 @@ public class DingDingAddUserScheduling {
 
 //    @Scheduled(cron = "0 0 23 * * ?")
     public void scheduledMethod() {
-        loginService.addUserByDingDing();
+        loginService.submitUserSync();
     }
 
 }

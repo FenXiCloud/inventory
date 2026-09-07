@@ -101,6 +101,11 @@ public class InventoryController {
         return JsonResult.successful(inventoryService.productSalesPrices(query));
     }
 
+    @GetMapping("/latestSalesPrices")
+    public JsonResult latestSalesPrices(@SaAccountVal AccountDto accountDto) {
+        return JsonResult.successful(inventoryService.getLatestSalesPrices(accountDto.getMerchantId(), accountDto.getAccountBookId()));
+    }
+
     @PostMapping("/rebuildCostChain")
     public JsonResult rebuildCostChain(@RequestParam Long merchantId, @RequestParam Long accountBookId) {
         inventoryItemService.rebuildCostChain(merchantId, accountBookId);

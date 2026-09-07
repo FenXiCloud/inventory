@@ -18,8 +18,10 @@ import com.flyemu.share.entity.inventory.InventoryCostConsume;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
 import com.flyemu.share.entity.inventory.QInventoryItem;
+import com.flyemu.share.entity.setting.AccountBookParameters;
 import com.flyemu.share.entity.setting.FinanceVoucher;
 import com.flyemu.share.entity.setting.QAccountBook;
+import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.entity.setting.QFinanceVoucher;
 import com.flyemu.share.enums.OperationType;
@@ -153,11 +155,7 @@ public class InventoryItemService extends BaseService {
      * 校验账套是否已结账，结账后不允许设置/修改期初余额
      */
     private void assertNotCheckedOut(Long merchantId, Long accountBookId) {
-        LocalDate checkoutDate = jqf.select(qAccountBook.checkoutDate)
-                .from(qAccountBook)
-                .where(qAccountBook.merchantId.eq(merchantId).and(qAccountBook.id.eq(accountBookId)))
-                .fetchOne();
-        if (checkoutDate != null) {
+        if (checkoutService.isCheckedOut(merchantId, accountBookId)) {
             throw new ServiceException("账套已结账，不允许设置或修改期初余额");
         }
     }
@@ -703,6 +701,19 @@ public class InventoryItemService extends BaseService {
     }
 
     /**
+     * 判断账套成本核算方法是否为先进先出（false=移动平均）
+     */
+    private boolean isFifoCosting(Long accountBookId) {
+        if (accountBookId == null) {
+            return false;
+        }
+        AccountBookParameters params = bqf.selectFrom(QAccountBookParameters.accountBookParameters)
+                .where(QAccountBookParameters.accountBookParameters.accountBookId.eq(Math.toIntExact(accountBookId)))
+                .fetchFirst();
+        return params != null && params.getCostAccounting() != null && params.getCostAccounting() == 2;
+    }
+
+    /**
      * 全量修复并重建库存成本链：
      * 1. 修正批次成本表（jxc_inventory_cost_batch）的 unitCost / totalCostRemain
      * 2. 修正出库耗用表（jxc_inventory_cost_consume）的 unitCostUsed / costAmount
@@ -712,49 +723,66 @@ public class InventoryItemService extends BaseService {
      */
     @Transactional
     public void rebuildCostChain(Long merchantId, Long accountBookId) {
-        log.info("=== 开始库存成本链全量修复 ===");
+        // 读取成本核算方法：移动平均法下批次仅作数量层、成本按库内均价核算（不入批次）；
+        // 先进先出法下才按采购单价登记每个入库批次的成本并回写耗用。因此重建按成本法区分。
+        boolean fifo = isFifoCosting(accountBookId);
+        log.info("=== 开始库存成本链全量修复 === 成本核算方法: {}", fifo ? "先进先出" : "移动平均");
 
-        // === Step 1: 修正批次单位成本（从采购入库明细获取正确的 unitPrice）===
-        int batchFixed = entityManager.createNativeQuery("""
-            UPDATE jxc_inventory_cost_batch icb
-            JOIN jxc_purchase_inbound_item pii ON icb.inbound_item_id = pii.id
-            SET icb.unit_cost = ROUND(pii.secondary_price / COALESCE(NULLIF(pii.conversion_rate, 0), 1), 2),
-                icb.total_cost_remain = ROUND(icb.qty_remain * ROUND(pii.secondary_price / COALESCE(NULLIF(pii.conversion_rate, 0), 1), 2), 2)
-            WHERE icb.merchant_id = :merchantId
-              AND icb.inbound_order_type = '采购入库'
-              AND ABS(icb.unit_cost - ROUND(pii.secondary_price / COALESCE(NULLIF(pii.conversion_rate, 0), 1), 2)) > 0.01
-        """)
-            .setParameter("merchantId", merchantId)
-            .executeUpdate();
-        log.info("Step 1: 修正批次成本 {} 条", batchFixed);
+        if (fifo) {
+            // === Step 1(FIFO): 修正批次单位成本（从采购入库明细获取正确的 unitPrice）===
+            int batchFixed = entityManager.createNativeQuery("""
+                UPDATE jxc_inventory_cost_batch icb
+                JOIN jxc_purchase_inbound_item pii ON icb.inbound_item_id = pii.id
+                SET icb.unit_cost = ROUND(pii.secondary_price / COALESCE(NULLIF(pii.conversion_rate, 0), 1), 2),
+                    icb.total_cost_remain = ROUND(icb.qty_remain * ROUND(pii.secondary_price / COALESCE(NULLIF(pii.conversion_rate, 0), 1), 2), 2)
+                WHERE icb.merchant_id = :merchantId
+                  AND icb.inbound_order_type = '采购入库'
+                  AND ABS(icb.unit_cost - ROUND(pii.secondary_price / COALESCE(NULLIF(pii.conversion_rate, 0), 1), 2)) > 0.01
+            """)
+                .setParameter("merchantId", merchantId)
+                .executeUpdate();
+            log.info("Step 1(FIFO): 修正批次成本 {} 条", batchFixed);
 
-        // === Step 2: 修正出库耗用记录 ===
-        int consumeFixed = entityManager.createNativeQuery("""
-            UPDATE jxc_inventory_cost_consume icc
-            JOIN jxc_inventory_cost_batch icb ON icc.batch_id = icb.id
-            SET icc.unit_cost_used = icb.unit_cost,
-                icc.cost_amount = ROUND(icc.qty * icb.unit_cost, 2)
-            WHERE icc.merchant_id = :merchantId
-              AND ABS(icc.unit_cost_used - icb.unit_cost) > 0.01
-        """)
-            .setParameter("merchantId", merchantId)
-            .executeUpdate();
-        log.info("Step 2: 修正出库耗用 {} 条", consumeFixed);
+            // === Step 2(FIFO): 修正出库耗用记录 ===
+            int consumeFixed = entityManager.createNativeQuery("""
+                UPDATE jxc_inventory_cost_consume icc
+                JOIN jxc_inventory_cost_batch icb ON icc.batch_id = icb.id
+                SET icc.unit_cost_used = icb.unit_cost,
+                    icc.cost_amount = ROUND(icc.qty * icb.unit_cost, 2)
+                WHERE icc.merchant_id = :merchantId
+                  AND ABS(icc.unit_cost_used - icb.unit_cost) > 0.01
+            """)
+                .setParameter("merchantId", merchantId)
+                .executeUpdate();
+            log.info("Step 2(FIFO): 修正出库耗用 {} 条", consumeFixed);
 
-        // === Step 3: 修正出库类库存明细的 subtotal ===
-        int itemFixed = entityManager.createNativeQuery("""
-            UPDATE jxc_inventory_item ii
-            JOIN jxc_inventory_cost_consume icc ON ii.order_id = icc.outbound_order_id
-                AND ii.product_id = icc.product_id
-                AND ii.operation_type = icc.outbound_order_type
-            SET ii.subtotal = ROUND(icc.qty * icc.unit_cost_used, 2),
-                ii.unit_price = icc.unit_cost_used
-            WHERE ii.merchant_id = :merchantId
-              AND ii.operation_type IN ('销售出库','采购退货','调拨出库','盘亏出库','其他出库')
-        """)
-            .setParameter("merchantId", merchantId)
-            .executeUpdate();
-        log.info("Step 3: 修正出库明细 subtotal {} 条", itemFixed);
+            // === Step 3(FIFO): 修正出库类库存明细的 subtotal ===
+            int itemFixed = entityManager.createNativeQuery("""
+                UPDATE jxc_inventory_item ii
+                JOIN jxc_inventory_cost_consume icc ON ii.order_id = icc.outbound_order_id
+                    AND ii.product_id = icc.product_id
+                    AND ii.operation_type = icc.outbound_order_type
+                SET ii.subtotal = ROUND(icc.qty * icc.unit_cost_used, 2),
+                    ii.unit_price = icc.unit_cost_used
+                WHERE ii.merchant_id = :merchantId
+                  AND ii.operation_type IN ('销售出库','采购退货','调拨出库','盘亏出库','其他出库')
+            """)
+                .setParameter("merchantId", merchantId)
+                .executeUpdate();
+            log.info("Step 3(FIFO): 修正出库明细 subtotal {} 条", itemFixed);
+        } else {
+            // === Step 1(移动平均): 批次不登记成本，将历史遗留批次成本清零 ===
+            int batchZeroed = entityManager.createNativeQuery("""
+                UPDATE jxc_inventory_cost_batch icb
+                SET icb.unit_cost = 0, icb.total_cost_remain = 0
+                WHERE icb.merchant_id = :merchantId
+                  AND icb.account_book_id = :accountBookId
+            """)
+                .setParameter("merchantId", merchantId)
+                .setParameter("accountBookId", accountBookId)
+                .executeUpdate();
+            log.info("Step 1(移动平均): 批次成本清零 {} 条", batchZeroed);
+        }
 
         // === Step 4: 获取所有 (productId, warehouseId) 组合，重算成本链 ===
         List<Tuple> pairs = jqf.selectFrom(qInventoryItem)

@@ -23,6 +23,8 @@ public class InventoryCostBatchDto {
     private Integer qtyIn;
     private Integer qtyRemain;
     private BigDecimal unitCost;
+    /** 入库金额（= 入库数量 × 单位成本，先进先出登记用） */
+    private BigDecimal amountIn;
     private BigDecimal totalCostRemain;
     private Long supplierId;
     private String supplierName;

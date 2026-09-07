@@ -2,7 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addTransfer">新 增</t-button>
+        <t-button v-auth="'locationTransfer:edit'" theme="primary" style="border-radius: 4px" @click="addTransfer">新 增</t-button>
         <t-select
             v-model="params.orderStatus"
             :options="statusOptions"
@@ -47,8 +47,8 @@
         <template #op="{ row }">
           <t-space>
             <t-link theme="primary" @click="viewDetail(row)">查看</t-link>
-            <t-link v-if="row.orderStatus === '已保存'" theme="success" @click="approveTransfer(row)">审核</t-link>
-            <t-link v-if="row.orderStatus === '已保存'" theme="danger" @click="deleteTransfer(row)">删除</t-link>
+            <t-link v-auth="'locationTransfer:audit'" v-if="row.orderStatus === '已保存'" theme="success" @click="approveTransfer(row)">审核</t-link>
+            <t-link v-auth="'locationTransfer:delete'" v-if="row.orderStatus === '已保存'" theme="danger" @click="deleteTransfer(row)">删除</t-link>
           </t-space>
         </template>
       </t-table>

@@ -160,16 +160,16 @@
       <t-button :loading="loading" @click="closeWindow">取消</t-button>
       <div>
         <template v-if="!isAudited">
-          <t-button theme="primary" :loading="loading" @click="saveForm('add')">保存并新增</t-button>
-          <t-button :loading="loading" @click="saveForm('save')">保存</t-button>
+          <t-button v-auth="'otherExpense:edit'" theme="primary" :loading="loading" @click="saveForm('add')">保存并新增</t-button>
+          <t-button v-auth="'otherExpense:edit'" :loading="loading" @click="saveForm('save')">保存</t-button>
           <t-button
-            v-if="form.orderStatus == '已保存'"
+            v-if="$can('otherExpense:audit') && form.orderStatus == '已保存'"
             :loading="loading"
             @click="saveForm('audit', '已审核')"
           >审核</t-button>
         </template>
         <t-button
-          v-else
+          v-if="isAudited && $can('otherExpense:audit')"
           :loading="loading"
           @click="approved('已保存')"
         >反审核</t-button>
@@ -201,11 +201,6 @@ function newRow(extra = {}) {
 export default {
   name: 'OtherExpenseForm',
   components: { Stamp },
-  props: {
-    orderId: [String, Number],
-    type: String,
-    index: Number
-  },
   data() {
     return {
       logContent: null,
@@ -288,9 +283,11 @@ export default {
   methods: {
     ...mapMutations(['pushTab', 'closeSelfTab']),
     closeWindow() {
-      this.closeSelfTab(this.index);
+      const currentIndex = this.$store.state.tabs.findIndex(tab => tab.key === this.$store.state.currentTab);
+      if (currentIndex !== -1) {
+        this.closeSelfTab(currentIndex);
+      }
       this.pushTab({
-        keepAlive: false,
         key: 'OtherExpenseList',
         title: '其他支出单'
       });
@@ -308,7 +305,7 @@ export default {
       this.form.arrearsAmount = this.calcArrearsAmount();
     },
     loadAccountType() {
-      AccountType.list().then((res) => {
+      AccountType.listByType('支出').then((res) => {
         this.accountTypeList = res.data;
       });
     },
@@ -544,6 +541,10 @@ export default {
     }
   },
   created() {
+    const tabData = this.$store.state.currentTabData;
+    this.$store.commit('SET_TAB_DATA', null);
+    this.type = tabData?.type;
+    this.orderId = tabData?.orderId;
     if (this.orderId) {
       this.loadList();
     }

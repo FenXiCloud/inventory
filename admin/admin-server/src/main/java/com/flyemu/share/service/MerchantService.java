@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -37,6 +38,8 @@ public class MerchantService extends BaseService {
 
     private static final QMenu qMenu = QMenu.menu;
 
+    private static final QMenuRole qMenuRole = QMenuRole.menuRole;
+
     private final MerchantRepository merchantRepository;
 
     private final AdminRepository adminRepository;
@@ -49,11 +52,40 @@ public class MerchantService extends BaseService {
 
     private final MerchantMenuRepository merchantMenuRepository;
 
+    private final MenuRoleRepository menuRoleRepository;
+
     private final JdbcTemplate jdbcTemplate;
+
+    /**
+     * 操作权限(FUNCTION)种子表：{页面Menu id, 后端URL前缀, 是否有审核/反审核}
+     * 每页生成 {前缀}:edit / {前缀}:audit(可选) / {前缀}:delete 行，component 即权限码。
+     * 查看=页面 MENU 行本身（勾选即菜单可见），不建 FUNCTION 行。
+     */
+    private static final Object[][] FUNC_SEED = {
+            // 单据类（edit + audit + delete）
+            {60L, "salesOrder", true}, {61L, "salesOutbound", true}, {62L, "salesReturn", true},
+            {257L, "salesReservation", true}, {52L, "purchaseOrder", true}, {53L, "purchaseInbound", true},
+            {54L, "purchaseReturn", true}, {258L, "purchaseReservation", true}, {211L, "assemblyOrder", true},
+            {86L, "costAdjustment", true}, {75L, "inventoryTransfer", true}, {78L, "otherInbound", true},
+            {77L, "otherOutbound", true}, {76L, "stockTake", true}, {301L, "locationTransfer", true},
+            {30L, "orderReceipt", true}, {31L, "orderPayment", true}, {32L, "verification", true},
+            {88L, "settlement", true}, {33L, "accountTransfer", true}, {34L, "otherReceipt", true},
+            {35L, "otherExpense", true},
+            // 基础资料类（edit + delete）
+            {20L, "product", false}, {236L, "productCategory", false}, {237L, "productCombo", false},
+            {239L, "productAttribute", false}, {80L, "unit", false}, {81L, "pricingPolicy", false},
+            {45L, "priceRecord", false}, {7L, "customer", false}, {12L, "customerLevel", false},
+            {8L, "supplier", false}, {9L, "warehouse", false}, {300L, "warehouseLocation", false},
+            {79L, "account", false}, {23L, "accountType", false}, {24L, "paymentMethod", false},
+            {83L, "inventoryInitial", false}, {84L, "customerInitial", false}, {85L, "supplierInitial", false},
+            // 设置类（保守：仅角色、账号）
+            {18L, "role", false}, {19L, "admin", false}
+    };
 
     @PostConstruct
     public void initDefaultUser() {
         ensureDefaultMenus();
+        ensureFunctionMenus();
         // 为所有已有商户补齐新增菜单的关联
         List<Long> allMerchantIds = jqf.selectFrom(qMerchant).select(qMerchant.id).fetch();
         for (Long merchantId : allMerchantIds) {
@@ -73,6 +105,7 @@ public class MerchantService extends BaseService {
 
             // 初始化菜单数据
             initMenus(merchant.getId());
+            migrateFunctionGrants();
 
             log.info("测试商户账号：13944878765，密码：878765");
         } else {
@@ -81,6 +114,8 @@ public class MerchantService extends BaseService {
             for (Long merchantId : merchantIds) {
                 associateMissingMenus(merchantId);
             }
+            // 存量角色授权迁移：已授权页面自动补齐其下全部操作子项（等价升级前行为）
+            migrateFunctionGrants();
         }
     }
 
@@ -220,12 +255,13 @@ public class MerchantService extends BaseService {
      */
     private void insertMenuNative(Menu menu) {
         jdbcTemplate.update(
-                "INSERT INTO jxc_menu (id, component, name, icon_cls, parent_id, pos, enabled, menu_module, menu_type, menu_group) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO jxc_menu (id, component, name, icon_cls, require_auth, parent_id, pos, enabled, menu_module, menu_type, menu_group) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 menu.getId(),
                 menu.getComponent(),
                 menu.getName(),
                 menu.getIconCls(),
+                Boolean.TRUE.equals(menu.getRequireAuth()) ? 1 : 0,
                 menu.getParentId(),
                 menu.getPos(),
                 Boolean.TRUE.equals(menu.getEnabled()) ? 1 : 0,
@@ -233,6 +269,92 @@ public class MerchantService extends BaseService {
                 menu.getMenuType() != null ? menu.getMenuType().name() : null,
                 menu.getMenuGroup() != null ? menu.getMenuGroup().name() : null
         );
+    }
+
+    /**
+     * 操作级权限(FUNCTION)菜单种子：挂在各页面 MENU 行下，component=「URL前缀:操作」。
+     * 幂等：按 component 判存，缺则补、有则跳。id 从 1000 连号（历史 MENU 最大 301，无冲突）。
+     */
+    @Transactional
+    public void ensureFunctionMenus() {
+        long id = 1000L;
+        for (Object[] row : FUNC_SEED) {
+            Long pageId = (Long) row[0];
+            String prefix = (String) row[1];
+            boolean audit = (Boolean) row[2];
+            Menu page = jqf.selectFrom(qMenu).where(qMenu.id.eq(pageId)).fetchFirst();
+            if (page == null) {
+                log.warn("操作权限种子跳过：页面菜单 {} 不存在", pageId);
+                id += audit ? 3 : 2;
+                continue;
+            }
+            id = upsertFunction(id, prefix + ":edit", "新增/编辑", pageId, 0);
+            if (audit) {
+                id = upsertFunction(id, prefix + ":audit", "审核/反审核", pageId, 1);
+            }
+            id = upsertFunction(id, prefix + ":delete", "删除", pageId, audit ? 2 : 1);
+        }
+    }
+
+    private long upsertFunction(long id, String component, String name, Long parentId, int pos) {
+        Menu exist = jqf.selectFrom(qMenu)
+                .where(qMenu.component.eq(component).and(qMenu.menuType.eq(Menu.MenuType.FUNCTION)))
+                .fetchFirst();
+        if (exist != null) {
+            return id + 1;
+        }
+        Menu m = new Menu();
+        m.setId(id);
+        m.setComponent(component);
+        m.setName(name);
+        m.setParentId(parentId);
+        m.setPos(pos);
+        m.setEnabled(true);
+        m.setRequireAuth(true);
+        m.setMenuType(Menu.MenuType.FUNCTION);
+        m.setMenuModule(Menu.MenuModule.MERCHANT);
+        m.setMenuGroup(Menu.MenuGroup.MERCHANT);
+        insertMenuNative(m);
+        return id + 1;
+    }
+
+    /**
+     * 存量授权迁移：凡角色已持有某页面的 MENU 授权，自动补齐该页面下所有 FUNCTION 操作子项，
+     * 使权限细化上线对现有角色无感（等价于升级前“看得见页面即可用全部按钮”的行为）。幂等。
+     */
+    @Transactional
+    public void migrateFunctionGrants() {
+        List<Menu> funcs = jqf.selectFrom(qMenu)
+                .where(qMenu.menuType.eq(Menu.MenuType.FUNCTION).and(qMenu.enabled.isTrue()))
+                .fetch();
+        if (funcs.isEmpty()) {
+            return;
+        }
+        Map<Long, List<Long>> childMap = funcs.stream().collect(Collectors.groupingBy(
+                Menu::getParentId, Collectors.mapping(Menu::getId, Collectors.toList())));
+        List<MenuRole> all = jqf.selectFrom(qMenuRole).fetch();
+        Set<String> have = all.stream()
+                .map(mr -> mr.getRoleId() + "#" + mr.getMenuId())
+                .collect(Collectors.toSet());
+        List<MenuRole> adds = new ArrayList<>();
+        for (MenuRole mr : all) {
+            List<Long> children = childMap.get(mr.getMenuId());
+            if (children == null) {
+                continue;
+            }
+            for (Long fid : children) {
+                if (have.add(mr.getRoleId() + "#" + fid)) {
+                    MenuRole x = new MenuRole();
+                    x.setRoleId(mr.getRoleId());
+                    x.setMenuId(fid);
+                    adds.add(x);
+                }
+            }
+        }
+        if (!adds.isEmpty()) {
+            menuRoleRepository.saveAll(adds);
+            log.info("操作权限迁移：为存量角色补齐 menu_role {} 条", adds.size());
+        }
     }
 
     /**
@@ -365,8 +487,8 @@ public class MerchantService extends BaseService {
         menus.add(menu(35L, "OtherExpenseList", "其他支出单", null, 29L, 8));
         // 资金报表
         menus.add(menu(36L, null, "资金报表", null, 28L, 1));
-        menus.add(disabledMenu(38L, "CustomerStatements", "客户对账单", null, 36L, 0));
-        menus.add(disabledMenu(39L, "VendorStatements", "供货商对账单", null, 36L, 1));
+        menus.add(menu(38L, "CustomerStatements", "客户对账单", null, 36L, 0));
+        menus.add(menu(39L, "VendorStatements", "供货商对账单", null, 36L, 1));
         menus.add(menu(40L, "CustomerFlowReport", "应收账款明细表", null, 36L, 2));
         menus.add(menu(41L, "SupplierFlowReport", "应付账款明细表", null, 36L, 3));
         menus.add(menu(37L, "CounterpartDebt", "往来单位欠款表", null, 36L, 4));
@@ -467,6 +589,7 @@ public class MerchantService extends BaseService {
         menu.setParentId(parentId);
         menu.setPos(pos);
         menu.setEnabled(true);
+        menu.setRequireAuth(true);
         menu.setMenuType(Menu.MenuType.MENU);
         menu.setMenuModule(Menu.MenuModule.MERCHANT);
         menu.setMenuGroup(Menu.MenuGroup.MERCHANT);

@@ -4,6 +4,7 @@ import com.flyemu.share.annotation.SaAccountVal;
 import com.flyemu.share.common.TenantScope;
 import com.flyemu.share.controller.JsonResult;
 import com.flyemu.share.controller.Page;
+import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.AccountDto;
 import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.service.fund.OrderReceiptService;
@@ -12,7 +13,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/orderReceipt")
@@ -67,6 +70,12 @@ public class OrderReceiptController {
     @GetMapping("/writeOff")
     public JsonResult writeOff(Page page, OrderReceiptService.SalesQuery query, @SaAccountVal AccountDto accountDto) {
         TenantScope.bind(query, accountDto);
-        return JsonResult.successful(orderReceiptService.writeOffCandidates(page, query));
+        PageResults<OrderReceiptService.SalesOrderWithVerification> results = orderReceiptService.writeOffCandidates(page, query);
+        Map<String, Object> map = new HashMap<>();
+        map.put("results", results.getResults());
+        map.put("total", results.getTotal());
+        // 期初应收的未收额，供收款单「选择源单」展示期初余额行（未录期初的客户为 0，不展示）
+        map.put("opening", orderReceiptService.openingOutstanding(query.getCustomerId(), accountDto.getMerchantId(), accountDto.getAccountBookId()));
+        return JsonResult.successful(map);
     }
 }

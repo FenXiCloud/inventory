@@ -57,6 +57,7 @@
           </div>
         </template>
         <template #quantity="{ row }">
+          <!-- 库存调拨为仓内移库整件口径，恒0位、不随账套参数 -->
           <t-input-number
               v-if="!isLocked"
               v-model="row.quantity"
@@ -86,13 +87,13 @@
     <div class="page-column-footer modal-column-between bg-white-color border">
       <t-button @click="closeWindow" :loading="loading"> 取消</t-button>
       <div>
-        <t-button v-if="!isAudited && !looked" theme="primary" @click="saveOrder('add')" :loading="loading">
+        <t-button v-if="!isAudited && !looked" v-auth="'inventoryTransfer:edit'" theme="primary" @click="saveOrder('add')" :loading="loading">
           保存并新增
         </t-button>
-        <t-button v-if="!isAudited && !looked" @click="saveOrder('save')" :loading="loading"> 保存</t-button>
+        <t-button v-if="!isAudited && !looked" v-auth="'inventoryTransfer:edit'" @click="saveOrder('save')" :loading="loading"> 保存</t-button>
         <t-button @click="doPrint" :loading="loading"> 打印 </t-button>
-        <t-button v-if="form.id && !isAudited" @click="approved()" :loading="loading"> 审核</t-button>
-        <t-button v-if="isAudited" @click="backApproved()" :loading="loading"> 反审核</t-button>
+        <t-button v-if="$can('inventoryTransfer:audit') && form.id && !isAudited" @click="approved()" :loading="loading"> 审核</t-button>
+        <t-button v-if="$can('inventoryTransfer:audit') && isAudited" @click="backApproved()" :loading="loading"> 反审核</t-button>
       </div>
     </div>
   </div>

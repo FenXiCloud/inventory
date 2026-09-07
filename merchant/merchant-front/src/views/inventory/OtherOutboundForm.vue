@@ -75,7 +75,7 @@
                 v-model="row.quantity"
                 theme="normal"
                 :min="0"
-                :decimal-places="0"
+                :decimal-places="qtyDp"
                 style="width: 100%"
                 @focus="quantityFocus({ rowIndex })"
                 @blur="quantityBlur"
@@ -104,22 +104,23 @@
       <div>
         <t-button
             v-if="!isLocked && fromStockTake"
+            v-auth="'otherOutbound:edit'"
             theme="primary"
             :loading="loading"
             @click="saveAndApprove"
         >
           保存并审核
         </t-button>
-        <t-button theme="primary" v-if="!isLocked && !fromStockTake" @click="saveOrder('add')"
+        <t-button theme="primary" v-if="!isLocked && !fromStockTake" v-auth="'otherOutbound:edit'" @click="saveOrder('add')"
                   :loading="loading">
           保存并新增
         </t-button>
-        <t-button @click="saveOrder('save')" v-if="!isLocked"
+        <t-button @click="saveOrder('save')" v-if="!isLocked" v-auth="'otherOutbound:edit'"
                   :loading="loading"> 保存
         </t-button>
         <t-button @click="doPrint" :loading="loading"> 打印 </t-button>
-        <t-button v-if="form.id && !isLocked" @click="approved()" :loading="loading"> 审核</t-button>
-        <t-button v-if="isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</t-button>
+        <t-button v-if="$can('otherOutbound:audit') && form.id && !isLocked" @click="approved()" :loading="loading"> 审核</t-button>
+        <t-button v-if="$can('otherOutbound:audit') && isAudited && !looked" @click="backApproved()" :loading="loading"> 反审核</t-button>
       </div>
     </div>
   </div>

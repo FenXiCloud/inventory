@@ -18,4 +18,6 @@ public interface MonthlyCloseLogRepository extends JpaRepository<MonthlyCloseLog
     Optional<MonthlyCloseLog> findFirstByMerchantIdAndAccountBookIdAndStatusOrderByClosePeriodDesc(Long merchantId, Long accountBookId, Integer status);
 
     boolean existsByMerchantIdAndAccountBookIdAndClosePeriodAndStatus(Long merchantId, Long accountBookId, LocalDate closePeriod, Integer status);
+
+    void deleteByMerchantIdAndAccountBookIdAndClosePeriod(Long merchantId, Long accountBookId, LocalDate closePeriod);
 }

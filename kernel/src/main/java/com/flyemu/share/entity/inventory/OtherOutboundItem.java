@@ -50,6 +50,7 @@ public class OtherOutboundItem implements TenantAware {
     private BigDecimal conversionRate;
 
     @Comment("单价（以基本单位计）")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal unitPrice;
 
     @Comment("折扣率")
@@ -62,6 +63,7 @@ public class OtherOutboundItem implements TenantAware {
     private BigDecimal subtotal;
 
     @Comment("出库单位成本（审核时按成本法写入）")
+    @Column(precision = 38, scale = 6) // 单价族口径：小数位上限 6（见 sql/price_scale_widen.sql）
     private BigDecimal costPrice;
 
     @Comment("出库成本金额（审核时按成本法写入）")

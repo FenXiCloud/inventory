@@ -159,6 +159,9 @@
             ></div>
           </template>
         </template>
+        <template #businessType="{ row }">
+          <span>{{ businessTypeName(row) }}</span>
+        </template>
         <template #currentVerifyAmount="{ row }">
           <t-input-number
             v-if="!isAudited"
@@ -209,17 +212,17 @@
       <t-button :loading="loading" @click="closeWindow">取消</t-button>
       <div>
         <template v-if="!isAudited">
-          <t-button theme="primary" :loading="loading" @click="saveForm('add')">保存并新增</t-button>
-          <t-button :loading="loading" @click="saveForm('save')">保存</t-button>
+          <t-button v-auth="'orderReceipt:edit'" theme="primary" :loading="loading" @click="saveForm('add')">保存并新增</t-button>
+          <t-button v-auth="'orderReceipt:edit'" :loading="loading" @click="saveForm('save')">保存</t-button>
           <t-button @click="doPrint" :loading="loading">打印</t-button>
           <t-button
-            v-if="form.orderStatus == '已保存'"
+            v-if="$can('orderReceipt:audit') && form.orderStatus == '已保存'"
             :loading="loading"
             @click="saveForm('audit', '已审核')"
           >审核</t-button>
         </template>
         <t-button
-          v-else
+          v-if="isAudited && $can('orderReceipt:audit')"
           :loading="loading"
           @click="approved('已保存')"
         >反审核</t-button>
@@ -530,7 +533,7 @@ export default {
         if (this.form.collectionAmount > 0) {
           DialogPlugin.confirm({
             header: '系统提示',
-            body: `收款金额大于本次折扣后核销金额,是否仍要修改?`,
+            body: `收款金额大于本次折扣后核销金额,是否仍要保存?`,
             onConfirm: () => {
               this.save(type, params);
             }
@@ -540,7 +543,7 @@ export default {
         if (this.form.collectionAmount < 0) {
           DialogPlugin.confirm({
             header: '系统提示',
-            body: `收款金额小于本次折扣后核销金额,是否仍要修改?`,
+            body: `收款金额小于本次折扣后核销金额,是否仍要保存?`,
             onConfirm: () => {
               this.save(type, params);
             }
@@ -692,14 +695,22 @@ export default {
       MessagePlugin.success('已核销');
       this.syncCollectionAmount();
     },
+    businessTypeName(row) {
+      if (row.salesOrderId == -1 || row.businessType == 2) {
+        return '期初余额';
+      }
+      if (row.businessType == 1) {
+        return '销售出库单';
+      }
+      return row.businessTypeLabel || (row.businessType != null ? String(row.businessType) : '-');
+    },
     sourceForm() {
       if (!this.form.customerId) {
         return MessagePlugin.error('请选择客户');
       }
       let params = {
         customerId: this.form.customerId,
-        type: 1,
-        balance: this.form.totalAmountsOwed
+        type: 1
       };
       let dialogId = openDialog({
         header: '选择源单',
@@ -708,23 +719,24 @@ export default {
         width: '900px',
         body: h(SourceForm, {
           params,
-          URL: 'Settlement',
+          URL: 'OrderReceipt',
           onClose: () => {
             closeDialog(dialogId);
           },
           onSuccess: (checkList) => {
-            // 结算单数据映射到收款单明细格式
-            const mappedList = checkList.map(item => ({
+            // 候选为真实销售出库单 + 期初余额行：映射为核销明细，已存在明细保留，仅补充本次新勾选的源单
+            const mappedList = checkList.map((item) => ({
               ...item,
-              salesOrderNo: item.businessNo,
-              salesOrderId: item.businessId,
+              salesOrderNo: item.salesOrderNo || item.businessNo,
+              salesOrderId: item.salesOrderId != null ? item.salesOrderId : item.businessId
             }));
             const merged = new Map(
-              this.tableData2.map((item) => [item.salesOrderNo, item])
+              this.tableData2.map((item) => [String(item.salesOrderNo), item])
             );
             mappedList.forEach((item) => {
-              if (!merged.has(item.salesOrderNo)) {
-                merged.set(item.salesOrderNo, item);
+              const key = String(item.salesOrderNo);
+              if (!merged.has(key)) {
+                merged.set(key, item);
               }
             });
             this.tableData2 = Array.from(merged.values())

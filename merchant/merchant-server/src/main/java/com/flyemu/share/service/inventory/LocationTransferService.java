@@ -18,6 +18,7 @@ import com.flyemu.share.enums.OrderStatus;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.inventory.LocationTransferRepository;
 import com.flyemu.share.service.BaseService;
+import com.flyemu.share.service.setting.AccountBookParamReader;
 import com.flyemu.share.service.setting.CheckoutService;
 import com.flyemu.share.service.setting.CodeSeedService;
 import com.querydsl.core.BooleanBuilder;
@@ -49,6 +50,7 @@ public class LocationTransferService extends BaseService {
     private final CodeSeedService codeSeedService;
     private final CheckoutService checkoutService;
     private final InventoryService inventoryService;
+    private final AccountBookParamReader accountBookParamReader;
 
     /**
      * 分页查询
@@ -144,10 +146,14 @@ public class LocationTransferService extends BaseService {
         // 结账日期校验
         checkoutService.assertEditable(merchantId, accountBookId, transfer.getTransferDate());
 
-        // 检查源货位库存
+        // 检查源货位库存：库存不足是否放行跟随账套参数「可用库存允许为负」（源货位无记录时无法负库存，仍拦截）
         Inventory fromInventory = getInventory(transfer.getFromWarehouseId(), transfer.getFromLocationId(),
                 transfer.getProductId(), merchantId, accountBookId);
-        if (fromInventory == null || fromInventory.getCurrentQuantity().compareTo(transfer.getQuantity().intValue()) < 0) {
+        if (fromInventory == null) {
+            throw new ServiceException("源货位库存不足");
+        }
+        boolean allowNegative = accountBookParamReader.allowNegativeStock(accountBookId);
+        if (!allowNegative && fromInventory.getCurrentQuantity().compareTo(transfer.getQuantity().intValue()) < 0) {
             throw new ServiceException("源货位库存不足");
         }
 

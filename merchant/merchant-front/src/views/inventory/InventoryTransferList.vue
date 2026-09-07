@@ -2,9 +2,9 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="auditsForm('audits')">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="auditsForm('antiAudits')">反审核</t-button>
+        <t-button v-auth="'inventoryTransfer:edit'" theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button v-auth="'inventoryTransfer:audit'" variant="outline" style="border-radius: 4px" @click="auditsForm('audits')">审 核</t-button>
+        <t-button v-auth="'inventoryTransfer:audit'" variant="outline" style="border-radius: 4px" @click="auditsForm('antiAudits')">反审核</t-button>
         <t-select
             v-model="params.productIds"
             :options="productList"
@@ -82,8 +82,8 @@
         <template #ops="{ row }">
           <t-space size="small">
             <template v-if="editable(row)">
-              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
-              <t-link theme="danger" @click="doRemove(row)">删除</t-link>
+              <t-link v-auth="'inventoryTransfer:edit'" theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link v-auth="'inventoryTransfer:delete'" theme="danger" @click="doRemove(row)">删除</t-link>
             </template>
             <template v-else>
               <t-link theme="primary" @click="addForm('look', row.id)">查看</t-link>

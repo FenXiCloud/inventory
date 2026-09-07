@@ -84,7 +84,7 @@
           <t-input-number
               v-model="formData.quantity"
               :min="0"
-              :decimal-places="2"
+              :decimal-places="qtyDp"
               placeholder="请输入调拨数量"
               style="width: 100%"
           />
@@ -109,7 +109,7 @@
 
     <t-form-item>
       <t-space>
-        <t-button theme="primary" type="submit">保 存</t-button>
+        <t-button v-auth="'locationTransfer:edit'" theme="primary" type="submit">保 存</t-button>
         <t-button variant="outline" @click="onCancel">取 消</t-button>
       </t-space>
     </t-form-item>

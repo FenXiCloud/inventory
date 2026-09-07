@@ -2,10 +2,10 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="doRemove()">删 除</t-button>
+        <t-button v-auth="'otherExpense:edit'" theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button v-auth="'otherExpense:audit'" variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
+        <t-button v-auth="'otherExpense:audit'" variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
+        <t-button v-auth="'otherExpense:delete'" variant="outline" style="border-radius: 4px" @click="doRemove()">删 除</t-button>
         <t-date-range-picker
             v-model="dateRangeValue"
             clearable
@@ -45,8 +45,8 @@
         <template #ops="{ row }">
           <t-space size="small">
             <template v-if="row.orderStatus != '已审核'">
-              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
-              <t-link theme="danger" @click="doRemove(row)">删除</t-link>
+              <t-link v-auth="'otherExpense:edit'" theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link v-auth="'otherExpense:delete'" theme="danger" @click="doRemove(row)">删除</t-link>
             </template>
             <template v-else>
               <t-link theme="primary" @click="addForm('edit', row.id)">查看</t-link>
@@ -172,12 +172,10 @@ export default {
       return (this.selectedRowKeys || []).join(',');
     },
     addForm(type = 'add', orderId = null) {
-      this.closeTabKey('OtherExpenseForm');
+      this.$store.commit('SET_TAB_DATA', {type, orderId});
       this.pushTab({
-        keepAlive: false,
         key: 'OtherExpenseForm',
-        params: {type: type, orderId: orderId},
-        title: '其他支出单'
+        title: type === 'edit' ? '编辑其他支出单' : '新增其他支出单',
       });
     },
     loadList() {
@@ -214,7 +212,7 @@ export default {
         header: '系统提示',
         body: `确认删除?`,
         onConfirm: () => {
-          OtherExpense.remove({id: ids}).then(() => {
+          OtherExpense.remove(ids).then(() => {
             MessagePlugin.success('删除成功~');
             this.clearSelection();
             this.loadList();

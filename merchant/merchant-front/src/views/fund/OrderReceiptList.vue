@@ -2,10 +2,10 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="doRemove()">删 除</t-button>
+        <t-button v-auth="'orderReceipt:edit'" theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button v-auth="'orderReceipt:audit'" variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
+        <t-button v-auth="'orderReceipt:audit'" variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
+        <t-button v-auth="'orderReceipt:delete'" variant="outline" style="border-radius: 4px" @click="doRemove()">删 除</t-button>
         <t-select
             v-model="params.orderStatus"
             :options="stateOptions"
@@ -70,8 +70,8 @@
         <template #ops="{ row }">
           <t-space size="small">
             <template v-if="row.orderStatus != '已审核'">
-              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
-              <t-link theme="danger" @click="doRemove(row)">删除</t-link>
+              <t-link v-auth="'orderReceipt:edit'" theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link v-auth="'orderReceipt:delete'" theme="danger" @click="doRemove(row)">删除</t-link>
             </template>
             <template v-else>
               <t-link theme="primary" @click="addForm('edit', row.id)">查看</t-link>
@@ -225,10 +225,23 @@ export default {
         const total = (this.dataList || []).reduce((acc, row) => acc + Number(row[key] || 0), 0);
         return total.toFixed(digits);
       };
+      // amount 字段需要从 collectionList 中累加
+      const sumAmount = () => {
+        const total = (this.dataList || []).reduce((acc, row) => {
+          const collectionList = row.collectionList || [];
+          const rowTotal = collectionList.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+          return acc + rowTotal;
+        }, 0);
+        return total.toFixed(2);
+      };
       return [{
         ops: '合计',
+        amount: sumAmount(),
         discountAmount: sum('discountAmount'),
+        collectionAmount: sum('collectionAmount'),
         shouldVerificationAmount: sum('shouldVerificationAmount'),
+        hasVerificationAmount: sum('hasVerificationAmount'),
+        notVerificationAmount: sum('notVerificationAmount'),
       }];
     },
   },
@@ -293,7 +306,7 @@ export default {
         header: '系统提示',
         body: `确认删除?`,
         onConfirm: () => {
-          OrderReceipt.remove({id: ids}).then(() => {
+          OrderReceipt.remove(ids).then(() => {
             MessagePlugin.success('删除成功~');
             this.clearSelection();
             this.loadList();

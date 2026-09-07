@@ -209,17 +209,17 @@
       <t-button :loading="loading" @click="closeWindow">取消</t-button>
       <div>
         <template v-if="!isAudited">
-          <t-button theme="primary" :loading="loading" @click="saveForm('add')">保存并新增</t-button>
-          <t-button :loading="loading" @click="saveForm('save')">保存</t-button>
+          <t-button v-auth="'orderPayment:edit'" theme="primary" :loading="loading" @click="saveForm('add')">保存并新增</t-button>
+          <t-button v-auth="'orderPayment:edit'" :loading="loading" @click="saveForm('save')">保存</t-button>
           <t-button @click="doPrint" :loading="loading">打印</t-button>
           <t-button
-            v-if="form.orderStatus == '已保存'"
+            v-if="$can('orderPayment:audit') && form.orderStatus == '已保存'"
             :loading="loading"
             @click="saveForm('audit', '已审核')"
           >审核</t-button>
         </template>
         <t-button
-          v-else
+          v-if="isAudited && $can('orderPayment:audit')"
           :loading="loading"
           @click="approved('已保存')"
         >反审核</t-button>

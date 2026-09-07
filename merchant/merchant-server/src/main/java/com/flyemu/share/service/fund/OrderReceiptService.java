@@ -71,6 +71,7 @@ public class OrderReceiptService extends BaseService {
     private final static QOrderReceiptItem qItem = QOrderReceiptItem.orderReceiptItem;
     private final QOrderReceiptCollection qCollection = QOrderReceiptCollection.orderReceiptCollection;
     private final QCustomer qCustomer = QCustomer.customer;
+    private final QCustomerFlow qCustomerFlow = QCustomerFlow.customerFlow;
     private final QCustomerCategory qCustomerCategory = QCustomerCategory.customerCategory;
 
     private final static QPaymentMethod qPaymentMethod = QPaymentMethod.paymentMethod;
@@ -425,16 +426,7 @@ public class OrderReceiptService extends BaseService {
     private BigDecimal getCurrentReceipt(Long customerId, SummaryReceivableDetailsQuery query) {
         LocalDateTime startTime = query.getStartDate().atStartOfDay();
         LocalDateTime endTime = query.getEndDate().atStartOfDay();
-        QSalesOutbound qSales = QSalesOutbound.salesOutbound;
         QOrderReceipt qReceipt = QOrderReceipt.orderReceipt;
-
-        // 销售订单收款金额
-        BigDecimal salesPayment = jqf.select(qSales.finalAmount.sum())
-                .from(qSales)
-                .where(qSales.customerId.eq(customerId)
-                        .and(qSales.approvedAt.between(startTime, endTime))
-                        .and(qSales.orderStatus.eq(OrderStatus.已审核)))
-                .fetchOne();
 
         // 收款单收款金额
         BigDecimal orderPayment = jqf.select(qReceipt.collectionAmount.sum())
@@ -461,8 +453,7 @@ public class OrderReceiptService extends BaseService {
                 .where(otherBuilder)
                 .fetchOne();
 
-        return nz(salesPayment)
-                .add(nz(orderPayment))
+        return nz(orderPayment)
                 .add(nz(otherIncomePayment));
     }
 
@@ -687,13 +678,10 @@ public class OrderReceiptService extends BaseService {
             }
             if (salesOrderId == -1) {
                 boo = false;
-                Customer customer = customerService.findById(orderReceipt.getCustomerId());
-                if (customer == null) {
-                    throw new ServiceException("客户不存在");
-                }
-                BigDecimal availableAdvance = customer.getBalance() != null ? customer.getBalance() : BigDecimal.ZERO;
-                if (availableAdvance.compareTo(currentVerifyAmount) < 0) {
-                    throw new ServiceException("客户预收款余额不足，无法进行核销");
+                // 期初行：可核销上限 = 期初应收余额 - 其他收款单（已审核 + 在制草稿，排除当前单）已占用/回收的期初金额
+                BigDecimal openingCap = openingAvailable(customerId, merchantId, accountBookId, orderReceipt.getId());
+                if (currentVerifyAmount.compareTo(openingCap) > 0) {
+                    throw new ServiceException("期初应收余额不足：本次核销金额不能超过期初应收的未收额");
                 }
             } else {
 
@@ -1002,6 +990,9 @@ public class OrderReceiptService extends BaseService {
                         .from(qOrderReceiptItem).where(qOrderReceiptItem.receiptId.eq(receipt.getId())).fetch();
                 for (OrderReceiptItem item : items) {
                     if (item.getSalesOrderId() != null && item.getCurrentVerifyAmount() != null) {
+                        // 对称回减关联结算单已核销金额(修复反审核不同步结算单 → 重复累加/残留已平账)
+                        settlementService.reverseWriteOff(item.getSalesOrderId(), item.getCurrentVerifyAmount(),
+                                receipt.getMerchantId(), receipt.getAccountBookId(), "销售出库单");
                         jqf.update(qSalesOutbound)
                                 .set(qSalesOutbound.verifiedAmount,
                                         Expressions.numberTemplate(BigDecimal.class,
@@ -1107,10 +1098,10 @@ public class OrderReceiptService extends BaseService {
         BigDecimal collectionAmount = receipt.getCollectionAmount();
         if (targetStatus == OrderStatus.已审核) {
             flowType = CustomerFlow.CustomerFlowType.收款单;
-            customerFlow.setSalesAmount(collectionAmount);
+            customerFlow.setPaidUpAmount(collectionAmount);  // 实收金额
         } else {
             flowType = CustomerFlow.CustomerFlowType.反审核_收款单;
-            customerFlow.setSalesAmount(collectionAmount != null ? collectionAmount.negate() : BigDecimal.ZERO);
+            customerFlow.setPaidUpAmount(collectionAmount != null ? collectionAmount.negate() : BigDecimal.ZERO);
         }
         customerFlow.setCustomerFlowType(flowType);
 
@@ -1124,7 +1115,7 @@ public class OrderReceiptService extends BaseService {
         return customerFlow;
     }
 
-    public Object writeOffCandidates(Page page, OrderReceiptService.SalesQuery query) {
+    public PageResults<SalesOrderWithVerification> writeOffCandidates(Page page, OrderReceiptService.SalesQuery query) {
         if (query.getCustomerId() == null) {
             throw new ServiceException("客户ID不能为空");
         }
@@ -1171,6 +1162,74 @@ public class OrderReceiptService extends BaseService {
         long total = mainQuery.fetchCount();
 
         return new PageResults<>(result, page, total);
+    }
+
+    /**
+     * 期初应收的未收额（展示用）：客户期初应收余额 - 已通过已审核收款单（salesOrderId = -1，表示期初余额行）回收的期初金额。
+     * 未录期初应收的客户返回 0，前端据此决定是否展示「期初余额」可选行。
+     */
+    public BigDecimal openingOutstanding(Long customerId, Long merchantId, Long accountBookId) {
+        BigDecimal base = openingBase(customerId, merchantId, accountBookId);
+        if (base == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal outstanding = base.subtract(openingCollected(customerId, merchantId, accountBookId, null, true));
+        return outstanding.compareTo(BigDecimal.ZERO) > 0 ? outstanding : BigDecimal.ZERO;
+    }
+
+    /**
+     * 期初行的可核销上限（保存校验用）：期初应收余额 - 其他收款单（已审核 + 未审核草稿，排除当前单）已占用/已回收的期初金额，
+     * 用于防止两张在制收款单同时占用同一笔期初应收。
+     */
+    private BigDecimal openingAvailable(Long customerId, Long merchantId, Long accountBookId, Long currentReceiptId) {
+        BigDecimal base = openingBase(customerId, merchantId, accountBookId);
+        if (base == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal outstanding = base.subtract(openingCollected(customerId, merchantId, accountBookId, currentReceiptId, false));
+        return outstanding.compareTo(BigDecimal.ZERO) > 0 ? outstanding : BigDecimal.ZERO;
+    }
+
+    private BigDecimal openingBase(Long customerId, Long merchantId, Long accountBookId) {
+        if (customerId == null || merchantId == null || accountBookId == null) {
+            return null;
+        }
+        return jqf.select(qCustomerFlow.balanceReceivables)
+                .from(qCustomerFlow)
+                .where(qCustomerFlow.merchantId.eq(merchantId)
+                        .and(qCustomerFlow.accountBookId.eq(accountBookId))
+                        .and(qCustomerFlow.customerId.eq(customerId))
+                        .and(qCustomerFlow.customerFlowType.eq(CustomerFlow.CustomerFlowType.期初)))
+                .fetchFirst();
+    }
+
+    /**
+     * 统计该客户期初行（salesOrderId = -1）已被核销/占用的金额。
+     *
+     * @param excludeReceiptId 排除的收款单（当前正在保存的单，避免把自己的历史占用算进去）
+     * @param auditedOnly      true 只统计已审核单据（用于前端展示真实未收额）；false 统计已保存+已审核（用于防超占校验）
+     */
+    private BigDecimal openingCollected(Long customerId, Long merchantId, Long accountBookId,
+                                        Long excludeReceiptId, boolean auditedOnly) {
+        BooleanBuilder where = new BooleanBuilder();
+        where.and(qItem.salesOrderId.eq(-1L))
+                .and(qOrderReceipt.merchantId.eq(merchantId))
+                .and(qOrderReceipt.accountBookId.eq(accountBookId))
+                .and(qOrderReceipt.customerId.eq(customerId));
+        if (excludeReceiptId != null) {
+            where.and(qOrderReceipt.id.ne(excludeReceiptId));
+        }
+        if (auditedOnly) {
+            where.and(qOrderReceipt.orderStatus.eq(OrderStatus.已审核));
+        } else {
+            where.and(qOrderReceipt.orderStatus.in(OrderStatus.已保存, OrderStatus.已审核));
+        }
+        BigDecimal collected = jqf.select(qItem.currentVerifyAmount.sum())
+                .from(qItem)
+                .innerJoin(qOrderReceipt).on(qOrderReceipt.id.eq(qItem.receiptId))
+                .where(where)
+                .fetchOne();
+        return collected == null ? BigDecimal.ZERO : collected;
     }
 
     @JsonInclude()

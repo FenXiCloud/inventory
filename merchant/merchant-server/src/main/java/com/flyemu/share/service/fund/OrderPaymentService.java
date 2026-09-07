@@ -394,13 +394,8 @@ public class OrderPaymentService extends BaseService {
     private BigDecimal getCurrentPayment(Long supplierId, SummaryPayableDetailsQuery query) {
         LocalDateTime startTime = query.getStartDate().atStartOfDay();
         LocalDateTime endTime = query.getEndDate().atStartOfDay();
-        QPurchaseOrder qPurchase = QPurchaseOrder.purchaseOrder;
         QOrderPayment qPayment = QOrderPayment.orderPayment;
 
-        BooleanBuilder purchaseScope = new BooleanBuilder()
-                .and(qPurchase.supplierId.eq(supplierId))
-                .and(qPurchase.approvedAt.between(startTime, endTime))
-                .and(qPurchase.orderStatus.eq(OrderStatus.已审核));
         BooleanBuilder paymentScope = new BooleanBuilder()
                 .and(qPayment.supplierId.eq(supplierId))
                 .and(qPayment.approvedAt.between(startTime, endTime))
@@ -410,21 +405,18 @@ public class OrderPaymentService extends BaseService {
                 .and(qOtherExpense.approvedAt.between(startTime, endTime))
                 .and(qOtherExpense.orderStatus.eq(OrderStatus.已审核));
         if (query.getMerchantId() != null) {
-            purchaseScope.and(qPurchase.merchantId.eq(query.getMerchantId()));
             paymentScope.and(qPayment.merchantId.eq(query.getMerchantId()));
             otherScope.and(qOtherExpense.merchantId.eq(query.getMerchantId()));
         }
         if (query.getAccountBookId() != null) {
-            purchaseScope.and(qPurchase.accountBookId.eq(query.getAccountBookId()));
             paymentScope.and(qPayment.accountBookId.eq(query.getAccountBookId()));
             otherScope.and(qOtherExpense.accountBookId.eq(query.getAccountBookId()));
         }
 
-        BigDecimal purchasePayment = jqf.select(qPurchase.finalAmount.sum()).from(qPurchase).where(purchaseScope).fetchOne();
         BigDecimal orderPayment = jqf.select(qPayment.collectionAmount.sum()).from(qPayment).where(paymentScope).fetchOne();
         BigDecimal otherExpensePayment = jqf.select(qOtherExpense.collectionAmount.sum()).from(qOtherExpense).where(otherScope).fetchOne();
 
-        return nz(purchasePayment).add(nz(orderPayment)).add(nz(otherExpensePayment));
+        return nz(orderPayment).add(nz(otherExpensePayment));
     }
 
     private static BigDecimal nz(BigDecimal value) {
@@ -878,6 +870,9 @@ public class OrderPaymentService extends BaseService {
                         .where(qItem.paymentId.eq(payment.getId())).fetch();
                 for (OrderPaymentItem item : items) {
                     if (item.getBusinessId() != null && item.getCurrentVerifyAmount() != null) {
+                        // 对称回减关联结算单已核销金额(修复反审核不同步结算单 → 重复累加/残留已平账)
+                        settlementService.reverseWriteOff(item.getBusinessId(), item.getCurrentVerifyAmount(),
+                                payment.getMerchantId(), payment.getAccountBookId(), "采购入库单");
                         jqf.update(qPurchaseOrderInbound)
                                 .set(qPurchaseOrderInbound.verifiedAmount,
                                         Expressions.numberTemplate(BigDecimal.class,
@@ -1027,6 +1022,7 @@ public class OrderPaymentService extends BaseService {
 
     public BigDecimal queryTotal(Query query) {
         return bqf.selectFrom(qOrderPayment)
+                .leftJoin(qSupplier).on(qSupplier.id.eq(qOrderPayment.supplierId))
                 .select(qOrderPayment.collectionAmount.sum())
                 .where(query.builder).fetchFirst();
     }

@@ -10,16 +10,16 @@ import com.flyemu.share.controller.Page;
 import com.flyemu.share.controller.PageResults;
 import com.flyemu.share.dto.InventoryReportDto;
 import com.flyemu.share.entity.basic.*;
+import com.flyemu.share.entity.basic.QPriceRecord;
 import com.flyemu.share.entity.inventory.Inventory;
 import com.flyemu.share.entity.inventory.InventoryItem;
 import com.flyemu.share.entity.inventory.QInventory;
 import com.flyemu.share.entity.inventory.QInventoryItem;
-import com.flyemu.share.entity.setting.AccountBookParameters;
-import com.flyemu.share.entity.setting.QAccountBookParameters;
 import com.flyemu.share.enums.OperationType;
 import com.flyemu.share.exception.ServiceException;
 import com.flyemu.share.repository.inventory.InventoryRepository;
 import com.flyemu.share.service.BaseService;
+import com.flyemu.share.service.setting.AccountBookParamReader;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import jakarta.persistence.EntityManager;
@@ -51,6 +51,8 @@ public class InventoryService extends BaseService {
     private final InventoryRepository inventoryRepository;
 
     private final InventoryItemService inventoryItemService;
+
+    private final AccountBookParamReader accountBookParamReader;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -156,7 +158,7 @@ public class InventoryService extends BaseService {
         currentQuantity -= computedQuantity;
         totalCost = totalCost.subtract(computedCost).setScale(2, RoundingMode.HALF_EVEN);
         Long accountBookId = inventory.getAccountBookId() != null ? inventory.getAccountBookId() : item.getAccountBookId();
-        if (!allowNegativeStock(accountBookId)) {
+        if (!accountBookParamReader.allowNegativeStock(accountBookId)) {
             if (currentQuantity < 0) {
                 currentQuantity = 0;
             }
@@ -165,16 +167,6 @@ public class InventoryService extends BaseService {
             }
         }
         this.operateInventory(orderId, operationType, inventoryItems, inventory, currentQuantity, totalCost, operateItems);
-    }
-
-    private boolean allowNegativeStock(Long accountBookId) {
-        if (accountBookId == null) {
-            return false;
-        }
-        AccountBookParameters params = bqf.selectFrom(QAccountBookParameters.accountBookParameters)
-                .where(QAccountBookParameters.accountBookParameters.accountBookId.eq(Math.toIntExact(accountBookId)))
-                .fetchFirst();
-        return params != null && params.getAvailableInventory() != null && params.getAvailableInventory() == 1;
     }
 
     /**
@@ -265,7 +257,8 @@ public class InventoryService extends BaseService {
         }
         Integer currentQty = inventory.getCurrentQuantity() != null ? inventory.getCurrentQuantity() : 0;
         Integer newQty = currentQty + quantity;
-        if (newQty < 0) {
+        // 负库存校验跟随账套参数「可用库存允许为负」；该方法不改动 totalCost/averageCost，放行为负无除零风险
+        if (newQty < 0 && !accountBookParamReader.allowNegativeStock(inventory.getAccountBookId())) {
             throw new ServiceException("库存不足，当前库存：" + currentQty + "，调整数量：" + quantity);
         }
         inventory.setCurrentQuantity(newQty);
@@ -645,6 +638,39 @@ public class InventoryService extends BaseService {
             return BigDecimal.ZERO;
         }
         return inventory.getTotalCost();
+    }
+
+    /**
+     * 获取产品的最近销售价格（从 PriceRecord 表获取）
+     * @return Map<productId, latestSalesPrice>
+     */
+    public Map<Long, BigDecimal> getLatestSalesPrices(Long merchantId, Long accountBookId) {
+        Map<Long, BigDecimal> result = new HashMap<>();
+        if (merchantId == null || accountBookId == null) {
+            return result;
+        }
+        try {
+            QPriceRecord qPriceRecord = QPriceRecord.priceRecord;
+            // 查询所有最近销售价格记录，按日期降序排列
+            List<PriceRecord> records = bqf.selectFrom(qPriceRecord)
+                    .where(qPriceRecord.merchantId.eq(merchantId)
+                            .and(qPriceRecord.accountBookId.eq(accountBookId))
+                            .and(qPriceRecord.priceType.eq(com.flyemu.share.enums.PriceType.最近销售价格)))
+                    .orderBy(qPriceRecord.orderDate.desc())
+                    .fetch();
+
+            // 只保留每个产品的最新价格
+            for (PriceRecord record : records) {
+                if (record.getProductId() != null && record.getUnitPrice() != null
+                        && !result.containsKey(record.getProductId())) {
+                    result.put(record.getProductId(), record.getUnitPrice());
+                }
+            }
+            return result;
+        } catch (Exception e) {
+            log.warn("获取最近销售价格失败: {}", e.getMessage());
+            return result;
+        }
     }
 
     /**

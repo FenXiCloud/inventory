@@ -292,7 +292,7 @@ public class InventoryReportService extends BaseService {
                         qProductCategory.name, qUnit.name)
                 .fetch();
 
-        // 采购在途：已审核且未生成入库单的采购订单数量
+        // 采购在途：已审核且未整单入库(旧模型)的采购订单数量 − 已被审核入库单引用入库的数量（新模型分批入库）
         List<Tuple> onOrderTuples = jqf.select(qPurchaseOrderItem.productId, qPurchaseOrderItem.quantity.sum())
                 .from(qPurchaseOrderItem)
                 .leftJoin(qPurchaseOrder).on(qPurchaseOrder.id.eq(qPurchaseOrderItem.purchaseOrderId))
@@ -300,6 +300,16 @@ public class InventoryReportService extends BaseService {
                         .and(qPurchaseOrderItem.accountBookId.eq(accountBookId))
                         .and(qPurchaseOrder.orderStatus.eq(OrderStatus.已审核))
                         .and(qPurchaseOrder.purchaseInboundId.isNull()))
+                .groupBy(qPurchaseOrderItem.productId)
+                .fetch();
+        List<Tuple> inboundOnOrderTuples = jqf.select(qPurchaseOrderItem.productId, qPurchaseInboundItem.quantity.sum())
+                .from(qPurchaseInboundItem)
+                .innerJoin(qPurchaseOrderItem).on(qPurchaseOrderItem.id.eq(qPurchaseInboundItem.purchaseOrderItemId))
+                .innerJoin(qPurchaseInbound).on(qPurchaseInbound.id.eq(qPurchaseInboundItem.purchaseInboundId))
+                .where(qPurchaseInboundItem.merchantId.eq(merchantId)
+                        .and(qPurchaseInboundItem.accountBookId.eq(accountBookId))
+                        .and(qPurchaseInboundItem.purchaseOrderItemId.isNotNull())
+                        .and(qPurchaseInbound.orderStatus.eq(OrderStatus.已审核)))
                 .groupBy(qPurchaseOrderItem.productId)
                 .fetch();
 
@@ -317,6 +327,11 @@ public class InventoryReportService extends BaseService {
         Map<Long, BigDecimal> onOrderMap = new HashMap<>();
         for (Tuple t : onOrderTuples) {
             onOrderMap.put(t.get(qPurchaseOrderItem.productId), nz(t.get(qPurchaseOrderItem.quantity.sum())));
+        }
+        for (Tuple t : inboundOnOrderTuples) {
+            Long pid = t.get(qPurchaseOrderItem.productId);
+            BigDecimal remain = nz(onOrderMap.get(pid)).subtract(nz(t.get(qPurchaseInboundItem.quantity.sum())));
+            onOrderMap.put(pid, remain.signum() > 0 ? remain : BigDecimal.ZERO);
         }
         Map<Long, BigDecimal> reservedMap = new HashMap<>();
         for (Tuple t : reservedTuples) {

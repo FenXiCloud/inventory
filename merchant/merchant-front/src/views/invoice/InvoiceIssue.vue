@@ -102,10 +102,10 @@
             <t-input v-model="row.unit" size="small" placeholder="单位"/>
           </template>
           <template #quantity="{ row }">
-            <t-input-number v-model="row.quantity" size="small" :min="0" :decimal-places="4" theme="normal" style="width:100%"/>
+            <t-input-number v-model="row.quantity" size="small" :min="0" :decimal-places="4" theme="normal" style="width:100%"/> <!-- 发票数量按税务规则恒4位 -->
           </template>
           <template #unitPrice="{ row }">
-            <t-input-number v-model="row.unitPrice" size="small" :min="0" :decimal-places="2" theme="normal" style="width:100%"/>
+            <t-input-number v-model="row.unitPrice" size="small" :min="0" :decimal-places="priceDp" theme="normal" style="width:100%"/>
           </template>
           <template #taxRate="{ row }">
             <t-select v-model="row.taxRate" size="small" :options="taxRateOptions"/>

@@ -24,5 +24,11 @@ export default {
   },
   customerStatement(param) {
     return Ajax.get('/customerFlow/statement', param);
+  },
+  customerStatementSummary(param) {
+    return Ajax.get('/customerFlow/statementSummary', param);
+  },
+  supplierStatementSummary(param) {
+    return Ajax.get('/supplierFlow/statementSummary', param);
   }
 };

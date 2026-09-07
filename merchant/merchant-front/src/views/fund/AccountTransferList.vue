@@ -2,10 +2,10 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
-        <t-button variant="outline" style="border-radius: 4px" @click="doRemove()">删 除</t-button>
+        <t-button v-auth="'accountTransfer:edit'" theme="primary" style="border-radius: 4px" @click="addForm()">新 增</t-button>
+        <t-button v-auth="'accountTransfer:audit'" variant="outline" style="border-radius: 4px" @click="approved()">审 核</t-button>
+        <t-button v-auth="'accountTransfer:audit'" variant="outline" style="border-radius: 4px" @click="backApproved()">反审核</t-button>
+        <t-button v-auth="'accountTransfer:delete'" variant="outline" style="border-radius: 4px" @click="doRemove()">删 除</t-button>
         <t-date-range-picker
             v-model="dateRangeValue"
             clearable
@@ -36,8 +36,8 @@
         <template #ops="{ row }">
           <t-space size="small">
             <template v-if="row.orderStatus != '已审核'">
-              <t-link theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
-              <t-link theme="danger" @click="doRemove(row)">删除</t-link>
+              <t-link v-auth="'accountTransfer:edit'" theme="primary" @click="addForm('edit', row.id)">编辑</t-link>
+              <t-link v-auth="'accountTransfer:delete'" theme="danger" @click="doRemove(row)">删除</t-link>
             </template>
             <template v-else>
               <t-link theme="primary" @click="addForm('edit', row.id)">查看</t-link>

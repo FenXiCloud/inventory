@@ -43,7 +43,7 @@
     </div>
     <div class="modal-column-between">
       <t-button variant="outline" :loading="loading" @click="$emit('close')">取消</t-button>
-      <t-button theme="primary" :loading="loading" @click="confirm">保存</t-button>
+      <t-button theme="primary" v-auth="'account:edit'" :loading="loading" @click="confirm">保存</t-button>
     </div>
   </div>
 </template>

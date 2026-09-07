@@ -2,7 +2,7 @@
   <div class="simple-page">
     <div class="simple-page__toolbar">
       <t-space break-line>
-        <t-button theme="primary" style="border-radius: 4px" @click="showForm()">新 增</t-button>
+        <t-button theme="primary" style="border-radius: 4px" v-auth="'account:edit'" @click="showForm()">新 增</t-button>
         <t-input
             v-model="params.filter"
             clearable
@@ -33,17 +33,21 @@
       >
         <template #ops="{ row }">
           <t-space size="small">
-            <t-link theme="primary" @click="showForm(row)"><t-icon name="edit"/></t-link>
-            <t-link theme="primary" @click="doRemove(row)"><t-icon name="delete"/></t-link>
+            <t-link theme="primary" v-auth="'account:edit'" @click="showForm(row)"><t-icon name="edit"/></t-link>
+            <t-link theme="primary" v-auth="'account:delete'" @click="doRemove(row)"><t-icon name="delete"/></t-link>
           </t-space>
         </template>
         <template #enabled="{ row }">
           <t-tag
+              v-if="$can('account:edit')"
               :theme="row.enabled ? 'primary' : 'danger'"
               variant="light"
               style="cursor:pointer"
               @click="trigger(row)"
           >
+            {{ row.enabled ? '启用' : '禁用' }}
+          </t-tag>
+          <t-tag v-else :theme="row.enabled ? 'primary' : 'danger'" variant="light">
             {{ row.enabled ? '启用' : '禁用' }}
           </t-tag>
         </template>

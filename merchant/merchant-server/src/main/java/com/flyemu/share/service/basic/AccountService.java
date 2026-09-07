@@ -139,5 +139,11 @@ public class AccountService extends BaseService {
         public void setAccountBookId(Long accountBookId) {
             TenantFilters.accountBook(builder, qAccount.accountBookId, accountBookId);
         }
+
+        public void setFilter(String filter) {
+            if (cn.hutool.core.util.StrUtil.isNotEmpty(filter)) {
+                builder.and(qAccount.name.contains(filter));
+            }
+        }
     }
 }
